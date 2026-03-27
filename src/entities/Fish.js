@@ -747,6 +747,13 @@ export class Fish {
     return (r << 16) | (g << 8) | b;
   }
 
+  _lighten(hex, amount) {
+    const r = Math.min(255, Math.floor(((hex >> 16) & 0xff) + (255 - ((hex >> 16) & 0xff)) * amount));
+    const g = Math.min(255, Math.floor(((hex >> 8)  & 0xff) + (255 - ((hex >> 8)  & 0xff)) * amount));
+    const b = Math.min(255, Math.floor((hex & 0xff)          + (255 - (hex & 0xff))          * amount));
+    return (r << 16) | (g << 8) | b;
+  }
+
   // ── AI / Movement ──────────────────────────────────────────────────────────
 
   /**
