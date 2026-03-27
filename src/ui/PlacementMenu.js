@@ -432,6 +432,9 @@ export class PlacementMenu {
 
   /** Refresh lock states after a level up. */
   updateLevel() {
+    // Refresh biome header in case seagrass just unlocked
+    this._buildBiomeHeader();
+
     this._rows.forEach(r => {
       const locked = r.unlockLevel > state.level;
       r.lockDim.visible  = locked;
