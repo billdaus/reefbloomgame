@@ -151,6 +151,46 @@ export function clearSlot(idx) {
   try { localStorage.removeItem(SLOT_KEYS[idx]); } catch { /* ignore */ }
 }
 
+/** Clear only one biome's data within a slot, preserving the other biome and economy. */
+export function clearBiome(slotIdx, biome) {
+  try {
+    const raw = localStorage.getItem(SLOT_KEYS[slotIdx]);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data.grid) {
+      // Old flat format — coral is the only biome; clearing it = clearing the slot
+      if (biome === 'coral') localStorage.removeItem(SLOT_KEYS[slotIdx]);
+      return;
+    }
+    delete data[biome];
+    localStorage.setItem(SLOT_KEYS[slotIdx], JSON.stringify(data));
+  } catch { /* ignore */ }
+}
+
+/**
+ * Returns basic info about one biome within a slot, or null if that biome
+ * has no placed entities (never visited / already cleared).
+ */
+export function getBiomePreview(slotIdx, biome) {
+  try {
+    const raw = localStorage.getItem(SLOT_KEYS[slotIdx]);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (d.grid) {
+      // Old flat format — only coral data at top level
+      if (biome !== 'coral') return null;
+      const n = (d.placedCoral || []).length + (d.fishTypes || []).length;
+      return n > 0 ? { count: n } : null;
+    }
+    const bd = d[biome];
+    if (!bd) return null;
+    const n = (bd.placedCoral || []).length + (bd.fishTypes || []).length;
+    return n > 0 ? { count: n } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Returns the placedCoral array of the biome NOT currently active.
  * Used to compute passive BE production from the other biome.

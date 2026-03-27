@@ -1,7 +1,7 @@
 import { Application } from 'pixi.js';
 import { ReefScene }   from './scenes/ReefScene.js';
 import { SCREEN_W, SCREEN_H, IS_PORTRAIT } from './constants.js';
-import { setCurrentSlot, setCurrentBiome, getSlotPreview, clearSlot } from './save.js';
+import { setCurrentSlot, setCurrentBiome, getSlotPreview, clearSlot, clearBiome, getBiomePreview } from './save.js';
 
 async function main() {
   const app = new Application();
@@ -146,10 +146,11 @@ function buildSlotCards(onChoose) {
 
     card.appendChild(btnRow);
 
-    // Biome indicators (decorative — travel happens in-game)
+    // Biome chips — show occupancy; chips with data are resettable
+    const onRebuild = () => buildSlotCards(onChoose);
     const biomesRow = el('div', 'slp-biomes');
-    biomesRow.appendChild(el('span', 'slp-biome-chip', '🪸 Coral Reef'));
-    biomesRow.appendChild(el('span', 'slp-biome-chip', '🌿 Seagrass Lv3'));
+    biomesRow.appendChild(makeBiomeChip(i, 'coral',    '🪸', 'Coral Reef', onRebuild));
+    biomesRow.appendChild(makeBiomeChip(i, 'seagrass', '🌿', 'Seagrass',   onRebuild));
     card.appendChild(biomesRow);
 
     wrap.appendChild(card);
@@ -162,6 +163,50 @@ function el(tag, cls, text) {
   if (cls)  e.className   = cls;
   if (text) e.textContent = text;
   return e;
+}
+
+/**
+ * Build a biome chip for the slot card.
+ * If the biome has data, the chip is a button with a confirm-to-reset flow.
+ * If empty, it renders as a dim non-interactive label.
+ */
+/**
+ * Build a biome chip for the slot card.
+ * If the biome has saved data, the chip is a button with a confirm-to-reset flow.
+ * If empty, it renders as a dim non-interactive label.
+ * onReset() should rebuild the slot card list.
+ */
+function makeBiomeChip(slotIdx, biome, icon, label, onReset) {
+  const hasData = !!getBiomePreview(slotIdx, biome);
+  const chip    = el('button', 'slp-biome-chip' + (hasData ? '' : ' slp-biome-empty'), `${icon} ${label}`);
+
+  if (!hasData) {
+    chip.disabled = true;
+    return chip;
+  }
+
+  let confirming     = false;
+  let confirmTimeout = null;
+
+  chip.addEventListener('click', e => {
+    e.stopPropagation();
+    if (confirming) {
+      clearTimeout(confirmTimeout);
+      clearBiome(slotIdx, biome);
+      onReset();
+    } else {
+      confirming = true;
+      chip.textContent = '✕ Reset?';
+      chip.classList.add('confirming');
+      confirmTimeout = setTimeout(() => {
+        confirming = false;
+        chip.textContent = `${icon} ${label}`;
+        chip.classList.remove('confirming');
+      }, 3000);
+    }
+  });
+
+  return chip;
 }
 
 main().catch(console.error);

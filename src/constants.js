@@ -183,7 +183,7 @@ export const CORAL_SPECIES = {
   // ── Seagrass biome vegetation ─────────────────────────────────────────────
   seagrass: {
     id: 'seagrass', name: 'Seagrass', scientific: 'Halophila sp.',
-    tier: TIER.RARE, tall: true, blocksB: false, color: 0x4caf50, unlockLevel: 3,
+    tier: TIER.RARE, tall: false, blocksB: false, color: 0x4caf50, unlockLevel: 3,
     biome: 'seagrass',
   },
 };
