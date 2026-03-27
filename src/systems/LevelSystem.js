@@ -12,8 +12,18 @@ const REQUIREMENTS = [
   null,  // 1 — starting level, no requirement
   { coralCount: 3 },
   { coralCount: 6,  fishCount: 2 },
-  { coralCount: 12, fishCount: 4, harmony: 60 },
-  { coralCount: 18, fishCount: 7, harmony: 75 },
+  { coralCount: 12, fishCount: 4,  harmony: 60 },
+  { coralCount: 18, fishCount: 7,  harmony: 75 },
+  { coralCount: 24, fishCount: 10, harmony: 78 },
+  { coralCount: 30, fishCount: 13, harmony: 80 },  // unlocks Epic
+  { coralCount: 38, fishCount: 17, harmony: 82 },
+  { coralCount: 46, fishCount: 21, harmony: 85 },
+  { coralCount: 55, fishCount: 25, harmony: 87 },  // unlocks Legendary
+  { coralCount: 64, fishCount: 29, harmony: 89 },
+  { coralCount: 74, fishCount: 34, harmony: 91 },  // unlocks Mythic
+  { coralCount: 84, fishCount: 39, harmony: 93 },
+  { coralCount: 95, fishCount: 45, harmony: 95 },
+  { coralCount: 100, fishCount: 50, harmony: 98 }, // max
 ];
 
 export const MAX_LEVEL = REQUIREMENTS.length - 1;

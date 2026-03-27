@@ -2,7 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { SCREEN_W, SCREEN_H, COLORS, FISH_SPECIES } from '../constants.js';
 
 const FONT      = 'system-ui, -apple-system, sans-serif';
-const WATCH_MS  = 2500;   // simulated ad duration before rewards shown
+const WATCH_MS  = 15000;  // placeholder ad duration before rewards shown
 const LINGER_MS = 4000;   // auto-dismiss after this long in rewards phase
 
 /**

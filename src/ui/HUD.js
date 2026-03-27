@@ -118,6 +118,9 @@ export class HUD {
     this._levelText.y = HUD_H / 2 - 16;
     this.container.addChild(this._levelText);
 
+    // ── Pearl Market button ───────────────────────────────────────────────────
+    this._buildMarketBtn();
+
     // ── Home button ──────────────────────────────────────────────────────────
     this._buildHomeBtn();
 
@@ -140,6 +143,42 @@ export class HUD {
     this._lvlUpBanner.x = SCREEN_W / 2;
     this._lvlUpBanner.y = HUD_H / 2;
     this.container.addChild(this._lvlUpBanner);
+  }
+
+  _buildMarketBtn() {
+    const W = 80, H = 30, R = 8;
+    const bx = 530;                    // sits in the gap between Harmony and Menu
+    const by = (HUD_H - H) / 2;
+
+    const bg = new Graphics();
+    const drawBg = (hover) => {
+      bg.clear();
+      bg.roundRect(0, 0, W, H, R)
+        .fill({ color: hover ? 0x2a3a1a : 0x1a2a10, alpha: hover ? 1 : 0.85 });
+      bg.roundRect(0, 0, W, H, R)
+        .stroke({ color: 0x4a7a30, width: 1.5, alpha: 0.9 });
+    };
+    drawBg(false);
+
+    const label = new Text({
+      text: '💎 Market',
+      style: { fontSize: 11, fill: 0xc8e6a0, fontFamily: FONT, fontWeight: '600' },
+    });
+    label.x = (W - label.width) / 2;
+    label.y = (H - label.height) / 2;
+
+    const btn = new Container();
+    btn.addChild(bg);
+    btn.addChild(label);
+    btn.x = bx;
+    btn.y = by;
+    btn.interactive = true;
+    btn.cursor = 'pointer';
+    btn.on('pointerover',  () => { drawBg(true);  label.style.fill = 0xffffff; });
+    btn.on('pointerout',   () => { drawBg(false); label.style.fill = 0xc8e6a0; });
+    btn.on('pointerdown',  () => this._onPearlShop?.());
+
+    this.container.addChild(btn);
   }
 
   _buildHomeBtn() {
