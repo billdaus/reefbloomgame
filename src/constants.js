@@ -230,6 +230,11 @@ export const FISH_SPECIES = {
     tier: TIER.RARE, layer: 'B', color: 0x1565c0, accentColor: 0x29b6f6,
     size: 18, speed: 1.1, unlockLevel: 3,
   },
+  octopus: {
+    id: 'octopus', name: 'Octopus', scientific: 'Octopus vulgaris',
+    tier: TIER.RARE, layer: 'B', color: 0xd84315, accentColor: 0xff8a65,
+    size: 20, speed: 0.7, unlockLevel: 4,
+  },
   // ── Super Rare ───────────────────────────────────────────────────────────────
   moorishIdol: {
     id: 'moorishIdol', name: 'Moorish Idol', scientific: 'Zanclus cornutus',

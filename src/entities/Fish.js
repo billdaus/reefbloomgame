@@ -57,6 +57,7 @@ export class Fish {
       case 'clownfish':         this._drawOvalFish(g, sz, c, ac, true);   break;
       case 'yellowTang':        this._drawDiscFish(g, sz, c, ac);         break;
       case 'blueTang':          this._drawDiscFish(g, sz, c, ac);         break;
+      case 'octopus':           this._drawOctopus(g, sz, c, ac);          break;
       // Super Rare
       case 'moorishIdol':       this._drawIdol(g, sz, c, ac);             break;
       case 'butterflyfish':     this._drawDiscFish(g, sz, c, 0xffcc02);   break;
@@ -374,6 +375,48 @@ export class Fish {
 
     g.circle(hw * 0.44, -hh * 0.22, sz * 0.13).fill(0xffffff);
     g.circle(hw * 0.46, -hh * 0.20, sz * 0.08).fill(0x111111);
+  }
+
+  /** Octopus — rounded mantle + 8 curling tentacles. */
+  _drawOctopus(g, sz, bodyColor, accentColor) {
+    const mw = sz * 0.9;  // mantle half-width
+    const mh = sz * 1.1;  // mantle half-height
+
+    // 8 tentacles radiating downward from mantle base
+    for (let i = 0; i < 8; i++) {
+      const spread = Math.PI * 0.9;
+      const angle  = (Math.PI / 2) + (-spread / 2) + i * (spread / 7);
+      const tx = Math.cos(angle) * sz * 1.6;
+      const ty = Math.sin(angle) * sz * 1.4;
+      // control point curls the tentacle
+      const cx1 = Math.cos(angle) * sz * 0.8 + Math.cos(angle + Math.PI / 2) * sz * 0.3;
+      const cy1 = Math.sin(angle) * sz * 0.8 + Math.sin(angle + Math.PI / 2) * sz * 0.3;
+      g.moveTo(Math.cos(angle) * mw * 0.6, mh * 0.55)
+       .bezierCurveTo(cx1, cy1, tx * 0.85, ty * 0.85, tx, ty)
+       .stroke({ color: bodyColor, width: sz * 0.14, cap: 'round' });
+      // sucker dots
+      for (let s = 1; s <= 3; s++) {
+        const t = s / 4;
+        const sx = Math.cos(angle) * mw * 0.6 + (tx - Math.cos(angle) * mw * 0.6) * t;
+        const sy = mh * 0.55 + (ty - mh * 0.55) * t;
+        g.circle(sx, sy, sz * 0.045).fill(accentColor);
+      }
+    }
+
+    // Mantle (rounded teardrop)
+    this._ellipse(g, 0, 0, mw, mh);
+    g.fill(bodyColor);
+
+    // Subtle pattern spots
+    g.circle(-mw * 0.3, -mh * 0.2, sz * 0.1).fill({ color: accentColor, alpha: 0.5 });
+    g.circle( mw * 0.2, -mh * 0.3, sz * 0.08).fill({ color: accentColor, alpha: 0.5 });
+    g.circle( mw * 0.1,  mh * 0.1, sz * 0.07).fill({ color: accentColor, alpha: 0.4 });
+
+    // Eyes (forward-facing on mantle)
+    g.circle(-mw * 0.35, -mh * 0.05, sz * 0.14).fill(0xffffff);
+    g.circle(-mw * 0.34, -mh * 0.04, sz * 0.09).fill(0x111111);
+    g.circle( mw * 0.35, -mh * 0.05, sz * 0.14).fill(0xffffff);
+    g.circle( mw * 0.34, -mh * 0.04, sz * 0.09).fill(0x111111);
   }
 
   _darken(hex, amount) {
