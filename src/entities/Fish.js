@@ -686,16 +686,18 @@ export class Fish {
   }
 
   _drawSeaTurtle(g, sz, bodyColor, accentColor) {
-    const hw  = sz * 0.9;
-    const hh  = sz * 0.68;
-    const dark = this._darken(bodyColor, 0.28);
-    const scute = this._lighten(bodyColor, 0.18);
+    // bodyColor = green (body, flippers, head, scute fills)
+    // accentColor = brown (shell carapace)
+    const hw        = sz * 0.9;
+    const hh        = sz * 0.68;
+    const bodyDark  = this._darken(bodyColor,  0.30);
+    const shellDark = this._darken(accentColor, 0.28);
 
-    // Shell (domed oval)
+    // Shell (domed oval) — brown
     this._ellipse(g, 0, 0, hw, hh);
-    g.fill(bodyColor);
+    g.fill(accentColor);
 
-    // Shell scute pattern — central row + two side rows
+    // Shell scute pattern — green fills on brown shell
     const scutes = [
       [0, -hh * 0.45, hw * 0.22, hh * 0.28],
       [0,  0,          hw * 0.24, hh * 0.30],
@@ -703,41 +705,42 @@ export class Fish {
     ];
     scutes.forEach(([cx, cy, rx, ry]) => {
       this._ellipse(g, cx, cy, rx, ry);
-      g.stroke({ color: dark, width: 1.2, alpha: 0.7 });
-      this._ellipse(g, cx, cy, rx * 0.7, ry * 0.7);
-      g.fill({ color: scute, alpha: 0.35 });
+      g.stroke({ color: shellDark, width: 1.2, alpha: 0.8 });
+      this._ellipse(g, cx, cy, rx * 0.72, ry * 0.72);
+      g.fill({ color: bodyColor, alpha: 0.7 });
     });
-    // side scutes
+    // Side scutes — green tinted
     [-hw * 0.5, hw * 0.5].forEach(sx => {
       [-hh * 0.22, hh * 0.22].forEach(sy => {
         this._ellipse(g, sx, sy, hw * 0.18, hh * 0.22);
-        g.stroke({ color: dark, width: 1, alpha: 0.55 });
+        g.fill({ color: bodyColor, alpha: 0.45 });
+        g.stroke({ color: shellDark, width: 1, alpha: 0.6 });
       });
     });
 
-    // Head (slightly ahead of shell)
+    // Head — green
     g.circle(hw * 1.0, 0, sz * 0.28).fill(bodyColor);
     // Eye
-    g.circle(hw * 1.16, -sz * 0.12, sz * 0.08).fill(dark);
+    g.circle(hw * 1.16, -sz * 0.12, sz * 0.08).fill(bodyDark);
     g.circle(hw * 1.17, -sz * 0.11, sz * 0.045).fill(0xffffff);
     g.circle(hw * 1.18, -sz * 0.10, sz * 0.025).fill(0x111111);
 
-    // Four flippers
+    // Four flippers — dark green
     const flippers = [
-      [ hw * 0.35,  hh * 0.82,  hw * 0.75,  hh * 1.35],  // front-bottom
-      [ hw * 0.35, -hh * 0.82,  hw * 0.75, -hh * 1.35],  // front-top
-      [-hw * 0.45,  hh * 0.72, -hw * 0.85,  hh * 1.15],  // rear-bottom
-      [-hw * 0.45, -hh * 0.72, -hw * 0.85, -hh * 1.15],  // rear-top
+      [ hw * 0.35,  hh * 0.82,  hw * 0.75,  hh * 1.35],
+      [ hw * 0.35, -hh * 0.82,  hw * 0.75, -hh * 1.35],
+      [-hw * 0.45,  hh * 0.72, -hw * 0.85,  hh * 1.15],
+      [-hw * 0.45, -hh * 0.72, -hw * 0.85, -hh * 1.15],
     ];
     flippers.forEach(([x1, y1, x2, y2]) => {
-      g.moveTo(x1, y1 * 0.5).lineTo(x2, y2).lineTo(x1, y1).closePath().fill(dark);
+      g.moveTo(x1, y1 * 0.5).lineTo(x2, y2).lineTo(x1, y1).closePath().fill(bodyDark);
     });
 
-    // Tail nub
+    // Tail nub — dark green
     g.moveTo(-hw * 0.9, -sz * 0.1)
      .lineTo(-hw * 1.18, 0)
      .lineTo(-hw * 0.9,  sz * 0.1)
-     .closePath().fill(dark);
+     .closePath().fill(bodyDark);
   }
 
   _darken(hex, amount) {
