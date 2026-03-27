@@ -211,12 +211,12 @@ export const FISH_SPECIES = {
   yellowTang: {
     id: 'yellowTang', name: 'Yellow Tang', scientific: 'Zebrasoma flavescens',
     tier: TIER.RARE, layer: 'B', color: 0xffeb3b, accentColor: 0xfff9c4,
-    size: 18, speed: 1.1, unlockLevel: 3,
+    size: 18, speed: 1.1, unlockLevel: 3, biome: 'both',
   },
   blueTang: {
     id: 'blueTang', name: 'Blue Tang', scientific: '',
     tier: TIER.RARE, layer: 'B', color: 0x1565c0, accentColor: 0x29b6f6,
-    size: 18, speed: 1.1, unlockLevel: 3,
+    size: 18, speed: 1.1, unlockLevel: 3, biome: 'both',
   },
   octopus: {
     id: 'octopus', name: 'Octopus', scientific: 'Octopus vulgaris',
@@ -267,6 +267,38 @@ export const FISH_SPECIES = {
     tier: TIER.MYTHIC, layer: 'B', color: 0x546e7a, accentColor: 0xeceff1,
     size: 40, speed: 1.3, unlockLevel: 12,
   },
+  // ── Seagrass Basin — Grazers ─────────────────────────────────────────────────
+  tropicBlenny: {
+    id: 'tropicBlenny', name: 'Tropic Blenny', scientific: '',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0x558b2f, accentColor: 0xaed581,
+    size: 11, speed: 1.4, unlockLevel: 2, biome: 'seagrass', grazer: true,
+  },
+  seaUrchin: {
+    id: 'seaUrchin', name: 'Sea Urchin', scientific: 'Diadema antillarum',
+    tier: TIER.RARE, layer: 'A', color: 0x1a1a2e, accentColor: 0x7b1fa2,
+    size: 14, speed: 0.3, unlockLevel: 3, biome: 'seagrass', grazer: true,
+  },
+  parrotfish: {
+    id: 'parrotfish', name: 'Parrotfish', scientific: 'Scaridae spp.',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0x00acc1, accentColor: 0xf06292,
+    size: 20, speed: 1.0, unlockLevel: 5, biome: 'seagrass', grazer: true,
+  },
+  rabbitfish: {
+    id: 'rabbitfish', name: 'Rabbitfish', scientific: 'Siganus spp.',
+    tier: TIER.EPIC, layer: 'A', color: 0xfb8c00, accentColor: 0xffe0b2,
+    size: 22, speed: 0.9, unlockLevel: 7, biome: 'seagrass', grazer: true,
+  },
+  // ── Seagrass Basin — Premium visitors ────────────────────────────────────────
+  cleanerShrimp: {
+    id: 'cleanerShrimp', name: 'Cleaner Shrimp', scientific: 'Lysmata amboinensis',
+    tier: TIER.EPIC, layer: 'A', color: 0xe53935, accentColor: 0xffffff,
+    size: 10, speed: 0.8, unlockLevel: 7, biome: 'seagrass', pearlCost: 30,
+  },
+  mantaRay: {
+    id: 'mantaRay', name: 'Manta Ray', scientific: 'Mobula birostris',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x263238, accentColor: 0xeceff1,
+    size: 38, speed: 1.1, unlockLevel: 10, biome: 'seagrass', pearlCost: 60,
+  },
   // ── Pearl (premium) ──────────────────────────────────────────────────────────
   rainbowGoby: {
     id: 'rainbowGoby', name: 'Rainbow Goby', scientific: '',
@@ -297,5 +329,23 @@ export const FISH_SPECIES = {
     tier: TIER.MYTHIC, layer: 'B', color: 0x7c4dff, accentColor: 0xff4081,
     size: 28, speed: 0.6, unlockLevel: 12,
     pearlCost: 60,
+  },
+};
+
+// ─── Biomes ───────────────────────────────────────────────────────────────────
+export const BIOMES = {
+  coral: {
+    id: 'coral',
+    icon: '🪸',
+    name: 'Coral Reef',
+    depth: 'Shallow–Mid (1–20 m)',
+    description: 'The classic tropical reef — vibrant coral structures hosting diverse fish life. Your home biome.',
+  },
+  seagrass: {
+    id: 'seagrass',
+    icon: '🌿',
+    name: 'Seagrass Basin',
+    depth: 'Shallow (1–5 m)',
+    description: 'Dense seagrass meadows with sandy patches. Grazers generate bonus BE while feeding. Dual-biome fish explore freely.',
   },
 };

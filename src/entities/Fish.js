@@ -58,6 +58,12 @@ export class Fish {
       case 'yellowTang':        this._drawDiscFish(g, sz, c, ac);         break;
       case 'blueTang':          this._drawDiscFish(g, sz, c, ac);         break;
       case 'octopus':           this._drawOctopus(g, sz, c, ac);          break;
+      case 'tropicBlenny':    this._drawTropicBlenny(g, sz, c, ac);    break;
+      case 'seaUrchin':       this._drawSeaUrchin(g, sz, c, ac);       break;
+      case 'parrotfish':      this._drawParrotfish(g, sz, c, ac);      break;
+      case 'rabbitfish':      this._drawRabbitfish(g, sz, c, ac);      break;
+      case 'cleanerShrimp':   this._drawCleanerShrimp(g, sz, c, ac);   break;
+      case 'mantaRay':        this._drawMantaRay(g, sz, c, ac);        break;
       // Super Rare
       case 'moorishIdol':       this._drawIdol(g, sz, c, ac);             break;
       case 'butterflyfish':     this._drawDiscFish(g, sz, c, 0xffcc02);   break;
@@ -417,6 +423,213 @@ export class Fish {
     g.circle(-mw * 0.34, -mh * 0.04, sz * 0.09).fill(0x111111);
     g.circle( mw * 0.35, -mh * 0.05, sz * 0.14).fill(0xffffff);
     g.circle( mw * 0.34, -mh * 0.04, sz * 0.09).fill(0x111111);
+  }
+
+  /** Tropic Blenny — small elongated blenny with crest and spots. */
+  _drawTropicBlenny(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.05;
+    const hh = sz * 0.4;
+
+    // Forked tail
+    g.moveTo(-hw * 0.72, 0)
+     .lineTo(-hw * 1.3, -hh * 1.0)
+     .lineTo(-hw * 1.1, 0)
+     .lineTo(-hw * 1.3,  hh * 1.0)
+     .closePath().fill(bodyColor);
+
+    // Body
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+
+    // Long dorsal fin
+    g.moveTo(hw * 0.4, -hh)
+     .lineTo(-hw * 0.55, -hh - sz * 0.42)
+     .lineTo(-hw * 0.7,  -hh)
+     .closePath().fill({ color: accentColor, alpha: 0.8 });
+
+    // Head crest
+    g.moveTo(hw * 0.48, -hh)
+     .lineTo(hw * 0.60, -hh - sz * 0.28)
+     .lineTo(hw * 0.72, -hh)
+     .closePath().fill(accentColor);
+
+    // Spots
+    for (let i = 0; i < 4; i++) {
+      g.circle(-hw * 0.28 + i * hw * 0.2, sz * 0.08, sz * 0.07)
+       .fill({ color: accentColor, alpha: 0.65 });
+    }
+
+    // Eye
+    g.circle(hw * 0.6,  -hh * 0.2, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.62, -hh * 0.18, sz * 0.07).fill(0x111111);
+  }
+
+  /** Sea Urchin — spiny sphere. */
+  _drawSeaUrchin(g, sz, bodyColor, accentColor) {
+    const r = sz * 0.72;
+
+    // Spines
+    for (let i = 0; i < 12; i++) {
+      const a  = (i / 12) * Math.PI * 2;
+      const x0 = Math.cos(a) * r * 0.88;
+      const y0 = Math.sin(a) * r * 0.88;
+      const x1 = Math.cos(a) * r * 1.75;
+      const y1 = Math.sin(a) * r * 1.75;
+      g.moveTo(x0, y0).lineTo(x1, y1)
+       .stroke({ color: accentColor, width: 1.5, cap: 'round' });
+    }
+
+    // Body
+    g.circle(0, 0, r).fill(bodyColor);
+
+    // Suture lines
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      g.moveTo(0, 0)
+       .lineTo(Math.cos(a) * r * 0.88, Math.sin(a) * r * 0.88)
+       .stroke({ color: accentColor, width: 1, alpha: 0.35 });
+    }
+
+    // Highlight
+    g.circle(-r * 0.28, -r * 0.28, r * 0.32).fill({ color: 0xffffff, alpha: 0.1 });
+  }
+
+  /** Parrotfish — wide body with beak and bright colors. */
+  _drawParrotfish(g, sz, bodyColor, accentColor) {
+    const hw = sz;
+    const hh = sz * 0.72;
+
+    // Tail
+    g.moveTo(-hw * 0.60, 0)
+     .lineTo(-hw * 1.28, -hh * 0.88)
+     .lineTo(-hw * 1.28,  hh * 0.88)
+     .closePath().fill(bodyColor);
+
+    // Body
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+
+    // Accent overlay (pink scales)
+    this._ellipse(g, hw * 0.05, 0, hw * 0.62, hh * 0.72);
+    g.fill({ color: accentColor, alpha: 0.35 });
+
+    // Beak (distinctive parrotfish feature)
+    g.roundRect(hw * 0.66, -hh * 0.24, hw * 0.44, hh * 0.48, hw * 0.18)
+     .fill(0x80cbc4);
+
+    // Dorsal fin
+    g.moveTo(-hw * 0.36, -hh)
+     .lineTo( hw * 0.12, -hh - sz * 0.42)
+     .lineTo( hw * 0.52, -hh)
+     .closePath().fill({ color: accentColor, alpha: 0.7 });
+
+    // Eye
+    g.circle(hw * 0.62, -hh * 0.2,  sz * 0.13).fill(0xffffff);
+    g.circle(hw * 0.64, -hh * 0.18, sz * 0.08).fill(0x111111);
+  }
+
+  /** Rabbitfish — oval body with venomous spiny dorsal, round snout. */
+  _drawRabbitfish(g, sz, bodyColor, accentColor) {
+    const hw = sz;
+    const hh = sz * 0.74;
+
+    // Tail
+    g.moveTo(-hw * 0.60, 0)
+     .lineTo(-hw * 1.22, -hh * 0.82)
+     .lineTo(-hw * 1.22,  hh * 0.82)
+     .closePath().fill(bodyColor);
+
+    // Body
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+
+    // Creamy belly
+    this._ellipse(g, hw * 0.12, hh * 0.22, hw * 0.58, hh * 0.48);
+    g.fill({ color: accentColor, alpha: 0.55 });
+
+    // Spiny dorsal (4 spines)
+    for (let i = 0; i < 4; i++) {
+      const sx  = -hw * 0.18 + i * hw * 0.16;
+      const tip = -hh - sz * (0.32 + (i % 2) * 0.14);
+      g.moveTo(sx, -hh).lineTo(sx, tip)
+       .stroke({ color: bodyColor, width: 2.5, cap: 'round' });
+    }
+
+    // Round rabbit-like snout
+    g.circle(hw * 0.78, 0, hh * 0.34).fill(bodyColor);
+
+    // Eye
+    g.circle(hw * 0.56, -hh * 0.2,  sz * 0.13).fill(0xffffff);
+    g.circle(hw * 0.58, -hh * 0.18, sz * 0.08).fill(0x111111);
+  }
+
+  /** Cleaner Shrimp — small banded body with long antennae. */
+  _drawCleanerShrimp(g, sz, bodyColor, accentColor) {
+    const len = sz * 1.55;
+    const th  = sz * 0.38;
+
+    // Antennae
+    g.moveTo(len * 0.38, -th * 0.35).lineTo(len * 0.82, -th * 2.1)
+     .stroke({ color: accentColor, width: 1, cap: 'round' });
+    g.moveTo(len * 0.38, -th * 0.05).lineTo(len * 0.88, -th * 1.8)
+     .stroke({ color: accentColor, width: 1, cap: 'round' });
+
+    // Body
+    g.roundRect(-len * 0.5, -th * 0.5, len, th, th * 0.42).fill(bodyColor);
+
+    // White bands
+    [-len * 0.14, len * 0.06, len * 0.26].forEach(bx => {
+      g.rect(bx - sz * 0.09, -th * 0.5, sz * 0.18, th)
+       .fill({ color: accentColor, alpha: 0.88 });
+    });
+    g.roundRect(-len * 0.5, -th * 0.5, len, th, th * 0.42)
+     .fill({ color: bodyColor, alpha: 0.18 });
+
+    // Tail fan
+    g.moveTo(-len * 0.5, -th * 0.5)
+     .lineTo(-len * 0.72, -th)
+     .lineTo(-len * 0.5,  th * 0.5)
+     .closePath().fill({ color: accentColor, alpha: 0.7 });
+
+    // Eye
+    g.circle(len * 0.4,  -th * 0.3, sz * 0.12).fill(accentColor);
+    g.circle(len * 0.41, -th * 0.28, sz * 0.07).fill(0x111111);
+  }
+
+  /** Manta Ray — wide kite silhouette with cephalic fins and thin tail. */
+  _drawMantaRay(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.55;   // half-wingspan
+    const hh = sz * 0.55;   // body depth
+
+    // Wing body (kite shape)
+    g.moveTo(0, -hh * 0.9)
+     .lineTo(-hw, hh * 0.3)
+     .lineTo(0,   hh)
+     .lineTo( hw, hh * 0.3)
+     .closePath().fill(bodyColor);
+
+    // White belly patch
+    this._ellipse(g, sz * 0.22, hh * 0.2, sz * 0.75, hh * 0.5);
+    g.fill({ color: accentColor, alpha: 0.12 });
+
+    // Cephalic fins (forward "horns")
+    g.moveTo(-sz * 0.28, -hh * 0.5)
+     .lineTo(-sz * 0.72, -hh * 1.15)
+     .lineTo(-sz * 0.18, -hh * 0.85)
+     .closePath().fill(bodyColor);
+    g.moveTo( sz * 0.28, -hh * 0.5)
+     .lineTo( sz * 0.72, -hh * 1.15)
+     .lineTo( sz * 0.18, -hh * 0.85)
+     .closePath().fill(bodyColor);
+
+    // Tail
+    g.moveTo(sz * 0.04, hh)
+     .lineTo(sz * 0.08, sz * 2.1)
+     .stroke({ color: bodyColor, width: 2.5, cap: 'round' });
+
+    // Eye
+    g.circle(sz * 0.14, -hh * 0.12, sz * 0.09).fill(accentColor);
+    g.circle(sz * 0.15, -hh * 0.10, sz * 0.05).fill(0x111111);
   }
 
   _darken(hex, amount) {

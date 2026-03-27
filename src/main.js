@@ -145,6 +145,22 @@ function buildSlotCards(onChoose) {
 
     card.appendChild(btnRow);
 
+    // Biome chips
+    const biomesRow = el('div', 'slp-biomes');
+    const coralChip = el('button', 'slp-biome-chip', '🪸 Coral Reef');
+    coralChip.addEventListener('click', e => {
+      e.stopPropagation();
+      // Coral biome overview: future — for now just a note
+    });
+    const seagrassChip = el('button', 'slp-biome-chip', '🌿 Seagrass Basin');
+    seagrassChip.addEventListener('click', e => {
+      e.stopPropagation();
+      openBiome('seagrass');
+    });
+    biomesRow.appendChild(coralChip);
+    biomesRow.appendChild(seagrassChip);
+    card.appendChild(biomesRow);
+
     wrap.appendChild(card);
   }
 }

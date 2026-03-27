@@ -1,17 +1,19 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import {
   PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT,
-  COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
+  COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL, BIOMES,
 } from '../constants.js';
 import { state } from '../state.js';
 import { recordInteraction } from '../systems/BEEconomy.js';
 
 const FONT    = 'system-ui, -apple-system, sans-serif';
-const ROW_H   = 48;
-const ICON_SZ = 30;
-const PAD     = 10;
+const ROW_H        = 48;
+const ICON_SZ      = 30;
+const PAD          = 10;
+const TAB_H        = 34;
 const REMOVE_BTN_H = 36;
-const SCROLL_AREA_H = PANEL_H - 4 - REMOVE_BTN_H - 6;
+const SCROLL_TOP   = PANEL_Y + TAB_H + REMOVE_BTN_H + 6;
+const SCROLL_AREA_H = PANEL_H - TAB_H - 4 - REMOVE_BTN_H - 6;
 
 /**
  * PlacementMenu — scrollable right panel for species selection.
@@ -43,10 +45,12 @@ export class PlacementMenu {
 
     // Hover tracking
     this._hoverRowId    = null;
+    this._activeBiome   = 'coral';
+    this._tabGfx        = new Graphics();
 
     this._scrollContent = new Container();
     this._scrollContent.x = PANEL_X;
-    this._scrollContent.y = PANEL_Y + REMOVE_BTN_H + 6;
+    this._scrollContent.y = SCROLL_TOP;
 
     this._sbGfx       = new Graphics();   // scrollbar graphic
     this._removeBtnGfx = new Graphics();  // remove mode toggle
@@ -68,53 +72,131 @@ export class PlacementMenu {
     }
     this.container.addChild(bg);
 
-    // 1b. Remove mode toggle button (top of panel)
+    // 1a. Biome tab buttons
+    this.container.addChild(this._tabGfx);
+    this._drawTabs();
+    this._buildTabHitAreas();
+
+    // 1b. Remove mode toggle button
     this._drawRemoveBtn();
     this.container.addChild(this._removeBtnGfx);
 
     const removeBtnHit = new Graphics();
-    removeBtnHit.rect(PANEL_X + 4, PANEL_Y + 4, PANEL_W - 16, REMOVE_BTN_H - 2)
+    removeBtnHit.rect(PANEL_X + 4, PANEL_Y + TAB_H + 4, PANEL_W - 16, REMOVE_BTN_H - 2)
       .fill({ color: 0x000000, alpha: 0 });
     removeBtnHit.interactive = true;
     removeBtnHit.cursor = 'pointer';
     removeBtnHit.on('pointerdown', () => this._toggleRemoveMode());
     this.container.addChild(removeBtnHit);
 
-    // 2. Scrollable content (positioned relative to scroll offset)
-    const scrollTop = PANEL_Y + REMOVE_BTN_H + 6;
-    let cursor = PAD;
-    cursor = this._sectionLabel('CORAL', cursor);
-    Object.values(CORAL_SPECIES).forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
-    cursor += PAD * 2;
-    cursor = this._sectionLabel('FISH', cursor);
-    Object.values(FISH_SPECIES).forEach(spec =>  { cursor = this._addRow('fish',  spec, cursor); });
-    cursor += PAD;
-
-    this._contentH   = cursor;
-    this._maxScrollY = Math.max(0, this._contentH - SCROLL_AREA_H);
-
+    // 2. Scrollable content
+    this._scrollContent.x = PANEL_X;
+    this._scrollContent.y = SCROLL_TOP;
+    this._buildContent(this._activeBiome);
     this.container.addChild(this._scrollContent);
 
-    // 3. Scroll mask (clips the content)
+    // 3. Scroll mask
     const maskGfx = new Graphics();
-    maskGfx.rect(PANEL_X, scrollTop + 2, PANEL_W - 8, SCROLL_AREA_H).fill(0xffffff);
+    maskGfx.rect(PANEL_X, SCROLL_TOP + 2, PANEL_W - 8, SCROLL_AREA_H).fill(0xffffff);
     this._scrollContent.mask = maskGfx;
     this.container.addChild(maskGfx);
 
-    // 4. Scrollbar track + thumb
+    // 4. Scrollbar
     this.container.addChild(this._sbGfx);
     this._drawScrollbar();
 
-    // 5. Hit area — covers full scroll region, sits above content
+    // 5. Hit area
     const hitArea = new Graphics();
-    hitArea.rect(PANEL_X, scrollTop, PANEL_W - 10, SCROLL_AREA_H).fill({ color: 0x000000, alpha: 0 });
+    hitArea.rect(PANEL_X, SCROLL_TOP, PANEL_W - 10, SCROLL_AREA_H).fill({ color: 0x000000, alpha: 0 });
     hitArea.interactive = true;
-    hitArea.on('pointerdown',    e => this._onDown(e));
-    hitArea.on('pointermove',    e => this._onMove(e));
-    hitArea.on('pointerup',      e => this._onUp(e));
+    hitArea.on('pointerdown',      e => this._onDown(e));
+    hitArea.on('pointermove',      e => this._onMove(e));
+    hitArea.on('pointerup',        e => this._onUp(e));
     hitArea.on('pointerupoutside', () => this._onCancel());
-    hitArea.on('wheel',          e => this._onWheel(e));
+    hitArea.on('wheel',            e => this._onWheel(e));
     this.container.addChild(hitArea);
+  }
+
+  _drawTabs() {
+    const g   = this._tabGfx;
+    const tw  = (PANEL_W - 2) / 2;
+    const th  = TAB_H - 2;
+    g.clear();
+
+    Object.values(BIOMES).forEach((biome, i) => {
+      const bx     = PANEL_X + 1 + i * tw;
+      const by     = PANEL_Y + 1;
+      const active = this._activeBiome === biome.id;
+      g.roundRect(bx, by, tw - 1, th, 0)
+       .fill({ color: active ? COLORS.panel_border : COLORS.panel_bg, alpha: active ? 0.7 : 0.4 });
+      if (active) {
+        g.roundRect(bx, by + th - 2, tw - 1, 2, 0).fill({ color: COLORS.selected_hl, alpha: 1 });
+      }
+    });
+    // bottom border of tab row
+    g.rect(PANEL_X, PANEL_Y + TAB_H - 1, PANEL_W, 1)
+     .fill({ color: COLORS.panel_border, alpha: 0.5 });
+  }
+
+  _buildTabHitAreas() {
+    const tw = (PANEL_W - 2) / 2;
+    Object.values(BIOMES).forEach((biome, i) => {
+      const hit = new Graphics();
+      hit.rect(PANEL_X + 1 + i * tw, PANEL_Y + 1, tw - 1, TAB_H - 2)
+         .fill({ color: 0x000000, alpha: 0 });
+      hit.interactive = true;
+      hit.cursor = 'pointer';
+      hit.on('pointerdown', () => this._switchBiome(biome.id));
+
+      // Biome label text
+      const label = new Text({
+        text: `${biome.icon} ${biome.name}`,
+        style: { fontSize: 10, fill: COLORS.text_secondary, fontFamily: FONT, fontWeight: '600', letterSpacing: 0.5 },
+      });
+      label.x = PANEL_X + 1 + i * tw + (tw - label.width) / 2;
+      label.y = PANEL_Y + (TAB_H - label.height) / 2;
+      this.container.addChild(label);
+      this.container.addChild(hit);
+    });
+  }
+
+  _switchBiome(biomeId) {
+    if (this._activeBiome === biomeId) return;
+    this._activeBiome = biomeId;
+    this._drawTabs();
+    // Clear and rebuild scrollable content
+    this._scrollContent.removeChildren();
+    this._rows = [];
+    this._scrollY = 0;
+    this._scrollContent.y = SCROLL_TOP;
+    this._buildContent(biomeId);
+    this._drawScrollbar();
+    // Clear selection when switching biomes
+    state.selectedType = null;
+    state.selectedId   = null;
+  }
+
+  _buildContent(biomeId) {
+    let cursor = PAD;
+
+    if (biomeId === 'coral') {
+      cursor = this._sectionLabel('CORAL', cursor);
+      Object.values(CORAL_SPECIES).forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
+      cursor += PAD * 2;
+      cursor = this._sectionLabel('FISH — CORAL REEF', cursor);
+      Object.values(FISH_SPECIES)
+        .filter(s => !s.biome || s.biome === 'coral' || s.biome === 'both')
+        .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
+    } else {
+      cursor = this._sectionLabel('FISH — SEAGRASS BASIN', cursor);
+      Object.values(FISH_SPECIES)
+        .filter(s => s.biome === 'seagrass' || s.biome === 'both')
+        .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
+    }
+
+    cursor += PAD;
+    this._contentH    = cursor;
+    this._maxScrollY  = Math.max(0, this._contentH - SCROLL_AREA_H);
   }
 
   _sectionLabel(text, y) {
@@ -209,10 +291,9 @@ export class PlacementMenu {
 
   _onMove(e) {
     const py = e.global.y;
-    const scrollTop = PANEL_Y + REMOVE_BTN_H + 6;
 
     // Update hover row (for visual feedback)
-    const contentY = py - scrollTop + this._scrollY;
+    const contentY = py - SCROLL_TOP + this._scrollY;
     const hovered  = this._rows.find(r => contentY >= r.rowY && contentY < r.rowY + ROW_H);
     const hoverId  = hovered ? `${hovered.type}:${hovered.id}` : null;
     if (hoverId !== this._hoverRowId) {
@@ -235,8 +316,7 @@ export class PlacementMenu {
   _onUp(e) {
     if (!this._dragMoved) {
       // It was a tap — find which row
-      const scrollTop = PANEL_Y + REMOVE_BTN_H + 6;
-      const contentY = e.global.y - scrollTop + this._scrollY;
+      const contentY = e.global.y - SCROLL_TOP + this._scrollY;
       const row = this._rows.find(r => contentY >= r.rowY && contentY < r.rowY + ROW_H);
       if (row && row.unlockLevel <= state.level) {
         recordInteraction();
@@ -274,9 +354,8 @@ export class PlacementMenu {
   // ── Scroll helpers ─────────────────────────────────────────────────────────
 
   _setScroll(y) {
-    const scrollTop = PANEL_Y + REMOVE_BTN_H + 6;
     this._scrollY = Math.max(0, Math.min(this._maxScrollY, y));
-    this._scrollContent.y = scrollTop - this._scrollY;
+    this._scrollContent.y = SCROLL_TOP - this._scrollY;
     this._drawScrollbar();
   }
 
@@ -285,9 +364,8 @@ export class PlacementMenu {
     g.clear();
     if (this._maxScrollY <= 0) return;
 
-    const scrollTop = PANEL_Y + REMOVE_BTN_H + 6;
     const trackX = PANEL_X + PANEL_W - 5;
-    const trackY = scrollTop + 4;
+    const trackY = SCROLL_TOP + 4;
     const trackH = SCROLL_AREA_H - 8;
 
     // Track
@@ -317,7 +395,7 @@ export class PlacementMenu {
     const g = this._removeBtnGfx;
     g.clear();
     const bx = PANEL_X + 6;
-    const by = PANEL_Y + 5;
+    const by = PANEL_Y + TAB_H + 5;
     const bw = PANEL_W - 20;
     const bh = REMOVE_BTN_H - 6;
 

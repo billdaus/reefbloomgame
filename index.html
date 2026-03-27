@@ -340,6 +340,121 @@
       transition: color 0.15s;
     }
     .legal-link:hover { color: #fff; }
+
+    /* ── Biome overview modal ────────────────────────────────────────────────── */
+    .biome-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      align-items: flex-start;
+      justify-content: center;
+      background: rgba(4, 15, 40, 0.82);
+      backdrop-filter: blur(6px);
+      padding: 16px;
+      overflow-y: auto;
+    }
+    .biome-modal.open { display: flex; }
+    .biome-box {
+      background: linear-gradient(175deg, #0e3a1e 0%, #071810 100%);
+      border: 1px solid rgba(100,220,140,0.22);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 680px;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+    .biome-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid rgba(100,220,140,0.15);
+    }
+    .biome-header h2 { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+    .biome-close {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.7);
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .biome-close:hover { background: rgba(255,255,255,0.22); color: #fff; }
+    .biome-body { padding: 20px 24px 28px; }
+    .biome-body .biome-depth {
+      font-size: 11px; color: rgba(140,220,180,0.5); letter-spacing: 2px;
+      text-transform: uppercase; margin-bottom: 10px;
+    }
+    .biome-body .biome-desc {
+      font-size: 13px; line-height: 1.7; color: rgba(255,255,255,0.7);
+      margin-bottom: 22px;
+    }
+    .biome-body h3 {
+      font-size: 11px; font-weight: 700; letter-spacing: 3px;
+      text-transform: uppercase; color: rgba(140,220,180,0.85);
+      margin: 22px 0 8px;
+    }
+    .biome-body p, .biome-body li {
+      font-size: 13px; line-height: 1.75; color: rgba(255,255,255,0.7);
+    }
+    .biome-body ul { padding-left: 18px; margin-top: 4px; }
+    .biome-body li { margin-bottom: 3px; }
+    .biome-table {
+      width: 100%; border-collapse: collapse; margin-top: 10px;
+      font-size: 12px;
+    }
+    .biome-table th {
+      text-align: left; padding: 6px 8px;
+      font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(140,220,180,0.65);
+      border-bottom: 1px solid rgba(100,220,140,0.15);
+    }
+    .biome-table td {
+      padding: 7px 8px;
+      color: rgba(255,255,255,0.72);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      vertical-align: top;
+    }
+    .biome-table tr:last-child td { border-bottom: none; }
+    .biome-table td:first-child { font-weight: 600; color: rgba(200,240,220,0.9); }
+    .biome-pill {
+      display: inline-block;
+      background: rgba(100,220,140,0.12);
+      border: 1px solid rgba(100,220,140,0.25);
+      border-radius: 20px;
+      padding: 1px 8px;
+      font-size: 10px;
+      color: rgba(140,220,180,0.85);
+      white-space: nowrap;
+    }
+    /* Biome chips on slot cards */
+    .slp-biomes {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 4px;
+    }
+    .slp-biome-chip {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 20px;
+      color: rgba(200,240,255,0.65);
+      font-size: 10px;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+    .slp-biome-chip:hover {
+      background: rgba(100,220,140,0.15);
+      border-color: rgba(100,220,140,0.45);
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -358,6 +473,110 @@
       <button class="legal-link" onclick="openLegal('privacy')">Privacy Policy</button>
       ·
       <button class="legal-link" onclick="openLegal('terms')">Terms of Service</button>
+    </div>
+  </div>
+
+  <!-- ── Seagrass Basin Biome Modal ───────────────────────────────────────────── -->
+  <div id="modal-biome-seagrass" class="biome-modal" onclick="closeBiomeOnBackdrop(event,this)">
+    <div class="biome-box">
+      <div class="biome-header">
+        <h2>🌿 SEAGRASS BASIN</h2>
+        <button class="biome-close" onclick="closeBiome('seagrass')">✕</button>
+      </div>
+      <div class="biome-body">
+        <p class="biome-depth">Environment: Shallow (1–5 m)</p>
+        <p class="biome-desc">Dense seagrass meadows with sandy patches and occasional rocks. Grazers generate bonus Bubble Energy while feeding. Dual-biome fish explore freely between Coral Reef and Seagrass Basin.</p>
+
+        <h3>Key Mechanics</h3>
+        <ul>
+          <li><strong>Bubble Energy:</strong> Standard coral BE applies. Grazers generate +1 to +4 additional BE per tick depending on rarity.</li>
+          <li><strong>Harmony:</strong> Biodiversity slightly increases Harmony. Dual-biome fish grazing in seagrass provide small harmony boosts.</li>
+          <li><strong>Grazers</strong> swim on Layer A, blocked only by tall coral or rocks. Seagrass patches occupy 1×1 tiles and ripple visually when grazed.</li>
+          <li><strong>Unlock:</strong> Grazer species unlock via seagrass patch placement or observation. Dual-biome fish explore automatically once unlocked in Coral Reef.</li>
+        </ul>
+
+        <h3>Grazer BE Bonuses</h3>
+        <ul>
+          <li>🟪 Uncommon → +1 BE / tick</li>
+          <li>🟦 Rare → +2 BE / tick</li>
+          <li>🟩 Super Rare → +3 BE / tick</li>
+          <li>🟨 Epic → +4 BE / tick</li>
+        </ul>
+
+        <h3>Species</h3>
+        <table class="biome-table">
+          <thead>
+            <tr>
+              <th>Species</th>
+              <th>Type</th>
+              <th>Rarity</th>
+              <th>Cost</th>
+              <th>Access</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Tropic Blenny</td>
+              <td>Grazer</td>
+              <td>🟪 Uncommon</td>
+              <td>5 🫧</td>
+              <td><span class="biome-pill">🌿 Seagrass</span></td>
+            </tr>
+            <tr>
+              <td>Sea Urchin</td>
+              <td>Grazer</td>
+              <td>🟦 Rare</td>
+              <td>10 🫧</td>
+              <td><span class="biome-pill">🌿 Seagrass</span></td>
+            </tr>
+            <tr>
+              <td>Parrotfish</td>
+              <td>Grazer</td>
+              <td>🟩 Super Rare</td>
+              <td>25 🫧</td>
+              <td><span class="biome-pill">🌿 Seagrass</span></td>
+            </tr>
+            <tr>
+              <td>Rabbitfish</td>
+              <td>Grazer</td>
+              <td>🟨 Epic</td>
+              <td>60 🫧</td>
+              <td><span class="biome-pill">🌿 Seagrass</span></td>
+            </tr>
+            <tr>
+              <td>Yellow Tang</td>
+              <td>Dual-Biome</td>
+              <td>🟦 Rare</td>
+              <td>10 🫧</td>
+              <td><span class="biome-pill">🪸 Coral</span> <span class="biome-pill">🌿 Seagrass</span></td>
+            </tr>
+            <tr>
+              <td>Blue Tang</td>
+              <td>Dual-Biome</td>
+              <td>🟦 Rare</td>
+              <td>10 🫧</td>
+              <td><span class="biome-pill">🪸 Coral</span> <span class="biome-pill">🌿 Seagrass</span></td>
+            </tr>
+            <tr>
+              <td>Cleaner Shrimp ✦</td>
+              <td>Premium Visitor</td>
+              <td>🟨 Epic</td>
+              <td>30 💎</td>
+              <td><span class="biome-pill">🌿 Seagrass</span></td>
+            </tr>
+            <tr>
+              <td>Manta Ray ✦</td>
+              <td>Premium Visitor</td>
+              <td>🟧 Legendary</td>
+              <td>60 💎</td>
+              <td><span class="biome-pill">🌿 Seagrass</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Coral Reef Fish (Dual-Biome)</h3>
+        <p>Yellow Tang and Blue Tang unlock in Coral Reef and automatically explore Seagrass Basin. All other Coral Reef fish remain in their home biome.</p>
+      </div>
     </div>
   </div>
 
@@ -484,11 +703,23 @@
     function closeLegalOnBackdrop(e, modal) {
       if (e.target === modal) modal.classList.remove('open');
     }
+    function openBiome(which) {
+      document.getElementById('modal-biome-' + which).classList.add('open');
+    }
+    function closeBiome(which) {
+      document.getElementById('modal-biome-' + which).classList.remove('open');
+    }
+    function closeBiomeOnBackdrop(e, modal) {
+      if (e.target === modal) modal.classList.remove('open');
+    }
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
+        document.querySelectorAll('.biome-modal.open').forEach(m => m.classList.remove('open'));
         document.querySelectorAll('.legal-modal.open').forEach(m => m.classList.remove('open'));
       }
     });
+    // Expose for PixiJS event handlers
+    window.openBiome = openBiome;
   </script>
 </body>
 </html>
