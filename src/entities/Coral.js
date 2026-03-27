@@ -41,6 +41,7 @@ export class Coral {
       case 'table':        this._drawTable(g, s, c);       break;
       case 'rainbowCoral': this._drawRainbowCoral(g, s, c); break;
       case 'sunfire':      this._drawSunfire(g, s, c);     break;
+      case 'seagrass':     this._drawSeagrass(g, s, c);    break;
       default:             this._drawGeneric(g, s, c);     break;
     }
   }
@@ -300,6 +301,39 @@ export class Coral {
     }
     g.circle(mid, coreY, s * 0.1).fill(bright);
     g.circle(mid, coreY, s * 0.05).fill(0xffffff);
+  }
+
+  // ── Seagrass — tall ribbon blades growing from substrate ─────────────────
+  _drawSeagrass(g, s, c) {
+    const dark  = this._darken(c, 0.28);
+    const light = this._lighten(c, 0.3);
+    // Five blades at irregular x offsets, swaying slightly
+    const blades = [
+      { x: s * 0.18, h: s * 0.78, lean: -0.10 },
+      { x: s * 0.34, h: s * 0.88, lean:  0.06 },
+      { x: s * 0.50, h: s * 0.95, lean: -0.04 },
+      { x: s * 0.66, h: s * 0.84, lean:  0.12 },
+      { x: s * 0.82, h: s * 0.72, lean: -0.08 },
+    ];
+    blades.forEach(({ x, h, lean }, i) => {
+      const base  = s - 2;
+      const tipX  = x + lean * s;
+      const tipY  = base - h;
+      const col   = i % 2 === 0 ? c : dark;
+      // blade as a tapered quad
+      g.moveTo(x - 4, base)
+       .lineTo(x + 4, base)
+       .lineTo(tipX + 1.5, tipY)
+       .lineTo(tipX - 1.5, tipY)
+       .closePath()
+       .fill(col);
+      // midrib highlight
+      g.moveTo(x, base)
+       .lineTo(tipX, tipY)
+       .stroke({ color: light, width: 1, alpha: 0.55 });
+    });
+    // substrate base line
+    g.rect(s * 0.06, s - 4, s * 0.88, 4).fill(dark);
   }
 
   // ── Generic fallback ──────────────────────────────────────────────────────

@@ -179,6 +179,13 @@ export const CORAL_SPECIES = {
     tier: TIER.MYTHIC, tall: true, blocksB: true, color: 0xffa726, unlockLevel: 12,
     pearlCost: 60,
   },
+
+  // ── Seagrass biome vegetation ─────────────────────────────────────────────
+  seagrass: {
+    id: 'seagrass', name: 'Seagrass', scientific: 'Halophila sp.',
+    tier: TIER.RARE, tall: true, blocksB: false, color: 0x4caf50, unlockLevel: 3,
+    biome: 'seagrass',
+  },
 };
 
 // ─── Fish species ─────────────────────────────────────────────────────────────

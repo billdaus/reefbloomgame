@@ -49,6 +49,9 @@ export class PlacementMenu {
     // Hover tracking
     this._hoverRowId    = null;
 
+    // Track seagrass lock state so we can react to level changes every tick
+    this._seagrassWasLocked = state.level < SEAGRASS_UNLOCK_LEVEL;
+
     // Biome header container (rebuilt on biome travel)
     this._headerC = new Container();
 
@@ -171,6 +174,11 @@ export class PlacementMenu {
     let cursor = PAD;
 
     if (state.biome === 'seagrass') {
+      cursor = this._sectionLabel('SEAGRASS', cursor);
+      Object.values(CORAL_SPECIES)
+        .filter(s => s.biome === 'seagrass')
+        .forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
+      cursor += PAD * 2;
       cursor = this._sectionLabel('FISH — SEAGRASS BASIN', cursor);
       Object.values(FISH_SPECIES)
         .filter(s => s.biome === 'seagrass' || s.biome === 'both')
@@ -336,6 +344,13 @@ export class PlacementMenu {
   // ── Per-frame update (momentum) ─────────────────────────────────────────────
 
   update(_deltaMS) {
+    // Rebuild header if seagrass lock state changed (e.g. just reached level 3)
+    const nowLocked = state.level < SEAGRASS_UNLOCK_LEVEL;
+    if (nowLocked !== this._seagrassWasLocked) {
+      this._seagrassWasLocked = nowLocked;
+      this._buildBiomeHeader();
+    }
+
     if (!this._dragActive && Math.abs(this._momentum) > 0.3) {
       this._setScroll(this._scrollY + this._momentum);
       this._momentum *= 0.94;
@@ -432,9 +447,6 @@ export class PlacementMenu {
 
   /** Refresh lock states after a level up. */
   updateLevel() {
-    // Refresh biome header in case seagrass just unlocked
-    this._buildBiomeHeader();
-
     this._rows.forEach(r => {
       const locked = r.unlockLevel > state.level;
       r.lockDim.visible  = locked;
