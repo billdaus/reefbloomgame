@@ -681,6 +681,36 @@
     <button class="slp-back-btn" id="slp-back">← Back</button>
   </div>
 
+  <!-- ── Travel button (DOM, positioned over panel header) ─────────────────── -->
+  <button id="rf-travel-btn" onclick="rfOpenTravel()" style="
+    display:none; position:fixed; z-index:100;
+    background:rgba(20,40,80,0.82); border:1px solid rgba(100,160,255,0.45);
+    color:rgba(180,210,255,0.95); border-radius:5px;
+    font-size:10px; font-weight:700; letter-spacing:0.5px;
+    padding:0; cursor:pointer; font-family:system-ui,sans-serif;
+    transition:background 0.12s;
+  ">🗺 Travel</button>
+
+  <!-- ── Travel modal (DOM) ─────────────────────────────────────────────────── -->
+  <div id="rf-travel-modal" onclick="if(event.target===this)rfCloseTravel()" style="
+    display:none; position:fixed; inset:0; z-index:250;
+    align-items:center; justify-content:center;
+    background:rgba(4,12,30,0.88); backdrop-filter:blur(8px);
+  ">
+    <div style="
+      background:linear-gradient(160deg,#07111f,#0b1a30);
+      border:1px solid rgba(80,130,220,0.3); border-radius:16px;
+      width:92%; max-width:400px;
+      box-shadow:0 24px 80px rgba(0,0,0,0.7); overflow:hidden;
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;border-bottom:1px solid rgba(80,130,220,0.15);">
+        <span style="font-size:13px;font-weight:700;color:#fff;letter-spacing:0.5px;">🗺&nbsp; Travel to Biome</span>
+        <button onclick="rfCloseTravel()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.65);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+      <div id="rf-travel-cards" style="padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+
   <script type="module" src="/src/main.js"></script>
 
   <!-- Spawn animated bubbles for both pages -->
@@ -730,6 +760,78 @@
     });
     // Expose for PixiJS event handlers
     window.openBiome = openBiome;
+
+    // ── Travel button + modal ────────────────────────────────────────────────
+    function rfPositionBtn() {
+      const btn    = document.getElementById('rf-travel-btn');
+      const canvas = document.querySelector('canvas');
+      if (!btn || !canvas || !window._rfLayout) return;
+      const r  = canvas.getBoundingClientRect();
+      const L  = window._rfLayout;
+      const sx = r.width  / L.SCREEN_W;
+      const sy = r.height / L.SCREEN_H;
+      const bW = 62 * sx, bH = 22 * sy;
+      btn.style.left   = (r.left + (L.PANEL_X + L.PANEL_W - 68) * sx) + 'px';
+      btn.style.top    = (r.top  + (L.PANEL_Y + 3) * sy) + 'px';
+      btn.style.width  = bW + 'px';
+      btn.style.height = bH + 'px';
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.justifyContent = 'center';
+    }
+    window._rfPositionBtn = rfPositionBtn;
+    window.addEventListener('resize', rfPositionBtn);
+
+    function rfOpenTravel() {
+      const cards = document.getElementById('rf-travel-cards');
+      const modal = document.getElementById('rf-travel-modal');
+      if (!cards || !modal || !window._rfBiomes || !window._rfGetState) return;
+      const { biome: curBiome, level } = window._rfGetState();
+      cards.innerHTML = '';
+      window._rfBiomes.forEach(b => {
+        const isCurr = b.id === curBiome;
+        const locked = level < (b.unlockLevel ?? 1);
+        const card = document.createElement('div');
+        card.style.cssText = [
+          'display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;',
+          'border:1px solid ' + (isCurr ? 'rgba(100,180,255,0.5)' : locked ? 'rgba(50,70,110,0.4)' : 'rgba(60,100,200,0.35)') + ';',
+          'background:' + (isCurr ? 'rgba(20,50,120,0.55)' : locked ? 'rgba(8,14,28,0.9)' : 'rgba(12,22,50,0.9)') + ';',
+        ].join('');
+
+        card.innerHTML = `
+          <div style="font-size:22px;flex-shrink:0">${b.icon}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600;color:${locked ? 'rgba(100,130,190,0.6)' : '#fff'};margin-bottom:2px">${b.name}</div>
+            <div style="font-size:9px;color:rgba(100,140,220,0.5);letter-spacing:0.4px">${b.depth ?? ''}</div>
+          </div>
+          <div style="flex-shrink:0">${
+            isCurr
+              ? '<span style="font-size:9px;font-weight:700;color:rgba(100,200,255,0.85);letter-spacing:1px">● HERE</span>'
+              : locked
+                ? `<span style="font-size:9px;color:rgba(90,110,170,0.65)">🔒 Lvl ${b.unlockLevel}</span>`
+                : `<button data-biome="${b.id}" style="background:rgba(30,70,180,0.45);border:1px solid rgba(100,160,255,0.55);color:rgba(180,215,255,0.95);border-radius:6px;padding:5px 11px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">→ Travel</button>`
+          }</div>`;
+        cards.appendChild(card);
+      });
+
+      // Wire travel buttons
+      cards.querySelectorAll('button[data-biome]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          rfCloseTravel();
+          window._rfTravelTo?.(btn.dataset.biome);
+        });
+      });
+
+      modal.style.display = 'flex';
+    }
+
+    function rfCloseTravel() {
+      document.getElementById('rf-travel-modal').style.display = 'none';
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') rfCloseTravel();
+    });
   </script>
 </body>
 </html>

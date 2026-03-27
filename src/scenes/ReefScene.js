@@ -1,6 +1,6 @@
-import { Container, ColorMatrixFilter, Graphics, Text } from 'pixi.js';
+import { Container, ColorMatrixFilter } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, COLORS } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -19,7 +19,6 @@ import { initClamSystem, tickClamSystem, canWatch, collectAdReward, despawnClam 
 import { Clam } from '../entities/Clam.js';
 import { ClamRewardModal }    from '../ui/ClamRewardModal.js';
 import { PearlShopModal }     from '../ui/PearlShopModal.js';
-import { BiomeTravelModal }   from '../ui/BiomeTravelModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 
@@ -74,7 +73,6 @@ export class ReefScene {
     this._uiContainer   = new Container();
     this._rewardModal   = new ClamRewardModal();
     this._shopModal     = new PearlShopModal();
-    this._travelModal   = new BiomeTravelModal();
     this._hud  = new HUD(
       () => { saveGame(); window.location.reload(); },
       () => this._shopModal.show(),
@@ -84,38 +82,17 @@ export class ReefScene {
       (id) => this._onFishSelected(id),
     );
 
-    // Travel button — built here on _uiContainer so it's a direct sibling of HUD (same depth that works)
-    const FONT   = 'system-ui, -apple-system, sans-serif';
-    const btnW   = 60, btnH = 20;
-    const btnX   = PANEL_X + PANEL_W - btnW - 6;
-    const btnY   = PANEL_Y + 4;
-    const tBg    = new Graphics();
-    const drawTBg = (hover) => {
-      tBg.clear();
-      tBg.roundRect(0, 0, btnW, btnH, 4).fill({ color: COLORS.panel_border, alpha: hover ? 0.9 : 0.6 });
-    };
-    drawTBg(false);
-    const tLabel = new Text({ text: '🗺  Travel', style: { fontSize: 8.5, fill: COLORS.text_secondary, fontFamily: FONT } });
-    tLabel.anchor.set(0.5, 0.5);
-    tLabel.x = btnW / 2;
-    tLabel.y = btnH / 2;
-    this._travelBtn = new Container();
-    this._travelBtn.addChild(tBg);
-    this._travelBtn.addChild(tLabel);
-    this._travelBtn.x = btnX;
-    this._travelBtn.y = btnY;
-    this._travelBtn.interactive = true;
-    this._travelBtn.cursor = 'pointer';
-    this._travelBtn.on('pointerover',  () => drawTBg(true));
-    this._travelBtn.on('pointerout',   () => drawTBg(false));
-    this._travelBtn.on('pointerdown',  () => this._travelModal.show((biome) => this._travelToBiome(biome)));
-
     this._uiContainer.addChild(this._menu.container);
     this._uiContainer.addChild(this._hud.container);
-    this._uiContainer.addChild(this._travelBtn);
     this._uiContainer.addChild(this._rewardModal.container);
     this._uiContainer.addChild(this._shopModal.container);
-    this._uiContainer.addChild(this._travelModal.container);
+
+    // Expose layout + travel callback for DOM travel button/modal (see index.html)
+    window._rfLayout   = { PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H };
+    window._rfBiomes   = Object.values(BIOMES);
+    window._rfGetState = () => ({ biome: state.biome, level: state.level });
+    window._rfTravelTo = (biomeId) => this._travelToBiome(biomeId);
+    requestAnimationFrame(() => window._rfPositionBtn?.());
 
     app.stage.addChild(this.worldContainer);
     app.stage.addChild(this._uiContainer);
