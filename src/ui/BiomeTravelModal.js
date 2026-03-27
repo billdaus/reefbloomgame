@@ -32,7 +32,7 @@ export class BiomeTravelModal {
     this.container.addChild(this._content);
 
     // Tap backdrop to dismiss
-    this._overlay.interactive = true;
+    this._overlay.eventMode = 'static';
     this._overlay.on('pointerdown', () => this.hide());
   }
 
@@ -79,7 +79,7 @@ export class BiomeTravelModal {
     // Close button
     const closeBtn = new Graphics();
     closeBtn.roundRect(px + PW - 34, py + 10, 24, 24, 6).fill({ color: COLORS.panel_border, alpha: 0.5 });
-    closeBtn.interactive = true;
+    closeBtn.eventMode = 'static';
     closeBtn.cursor = 'pointer';
     closeBtn.on('pointerdown', () => this.hide());
     this._content.addChild(closeBtn);
@@ -183,7 +183,7 @@ export class BiomeTravelModal {
          .fill({ color: COLORS.text_secondary, alpha: 0.18 });
       btn.roundRect(btnX, btnY, btnW, btnH, 6)
          .stroke({ color: COLORS.text_secondary, width: 1.2, alpha: 0.7 });
-      btn.interactive = true;
+      btn.eventMode = 'static';
       btn.cursor = 'pointer';
       this._content.addChild(btn);
 
@@ -207,7 +207,7 @@ export class BiomeTravelModal {
 
     // Make entire card (except current/locked) also tappable for travel
     if (!isCurr && !locked) {
-      cardBg.interactive = true;
+      cardBg.eventMode = 'static';
       cardBg.cursor = 'pointer';
       cardBg.on('pointerover',  () => { cardBg.tint = 0xaaccee; });
       cardBg.on('pointerout',   () => { cardBg.tint = 0xffffff; });

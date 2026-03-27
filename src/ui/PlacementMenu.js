@@ -166,6 +166,11 @@ export class PlacementMenu {
     const btnBg = new Graphics();
     btnBg.roundRect(btnX, btnY, btnW, btnH, 4)
          .fill({ color: COLORS.panel_border, alpha: 0.55 });
+    btnBg.eventMode = 'static';
+    btnBg.cursor = 'pointer';
+    btnBg.on('pointerover', () => { btnBg.tint = 0xbbddff; });
+    btnBg.on('pointerout',  () => { btnBg.tint = 0xffffff; });
+    btnBg.on('pointerdown', () => this._onTravel?.());
     this._headerC.addChild(btnBg);
 
     const btnLabel = new Text({
@@ -176,15 +181,6 @@ export class PlacementMenu {
     btnLabel.x = btnX + btnW / 2;
     btnLabel.y = btnY + btnH / 2;
     this._headerC.addChild(btnLabel);
-
-    const hit = new Graphics();
-    hit.rect(btnX, PANEL_Y, btnW + 6, BIOME_HEADER_H).fill({ color: 0x000000, alpha: 0 });
-    hit.interactive = true;
-    hit.cursor = 'pointer';
-    hit.on('pointerover', () => { btnBg.tint = 0xbbddff; });
-    hit.on('pointerout',  () => { btnBg.tint = 0xffffff; });
-    hit.on('pointerdown', () => this._onTravel?.());
-    this._headerC.addChild(hit);
   }
 
   _buildContent() {
