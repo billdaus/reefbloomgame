@@ -64,6 +64,8 @@ export class Fish {
       case 'rabbitfish':      this._drawRabbitfish(g, sz, c, ac);      break;
       case 'cleanerShrimp':   this._drawCleanerShrimp(g, sz, c, ac);   break;
       case 'mantaRay':        this._drawMantaRay(g, sz, c, ac);        break;
+      case 'manatee':         this._drawManatee(g, sz, c, ac);         break;
+      case 'seaTurtle':       this._drawSeaTurtle(g, sz, c, ac);       break;
       // Super Rare
       case 'moorishIdol':       this._drawIdol(g, sz, c, ac);             break;
       case 'butterflyfish':     this._drawDiscFish(g, sz, c, 0xffcc02);   break;
@@ -630,6 +632,112 @@ export class Fish {
     // Eye
     g.circle(sz * 0.14, -hh * 0.12, sz * 0.09).fill(accentColor);
     g.circle(sz * 0.15, -hh * 0.10, sz * 0.05).fill(0x111111);
+  }
+
+  _drawManatee(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.1;
+    const hh = sz * 0.52;
+    const dark = this._darken(bodyColor, 0.18);
+
+    // Main body — large rounded barrel
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+
+    // Belly highlight
+    this._ellipse(g, sz * 0.1, hh * 0.15, hw * 0.55, hh * 0.45);
+    g.fill({ color: accentColor, alpha: 0.18 });
+
+    // Paddle tail (rounded fan)
+    g.moveTo(-hw * 0.85, -hh * 0.25)
+     .lineTo(-hw * 1.42, -hh * 0.55)
+     .lineTo(-hw * 1.5,  0)
+     .lineTo(-hw * 1.42,  hh * 0.55)
+     .lineTo(-hw * 0.85,  hh * 0.25)
+     .closePath().fill(dark);
+
+    // Front flippers
+    g.moveTo(hw * 0.35, hh * 0.55)
+     .lineTo(hw * 0.55, hh * 1.1)
+     .lineTo(hw * 0.15, hh * 0.85)
+     .closePath().fill(dark);
+    g.moveTo(hw * 0.35, -hh * 0.55)
+     .lineTo(hw * 0.55, -hh * 1.1)
+     .lineTo(hw * 0.15, -hh * 0.85)
+     .closePath().fill(dark);
+
+    // Rounded snout
+    g.circle(hw * 0.98, 0, hh * 0.35).fill(bodyColor);
+
+    // Nostrils
+    g.circle(hw * 1.1, -hh * 0.14, sz * 0.065).fill(dark);
+    g.circle(hw * 1.1,  hh * 0.14, sz * 0.065).fill(dark);
+
+    // Eye
+    g.circle(hw * 0.72, -hh * 0.32, sz * 0.1).fill(dark);
+    g.circle(hw * 0.73, -hh * 0.31, sz * 0.055).fill(0xffffff);
+    g.circle(hw * 0.74, -hh * 0.30, sz * 0.03).fill(0x111111);
+
+    // Wrinkle lines on body
+    for (let i = 0; i < 3; i++) {
+      const lx = hw * (-0.1 + i * 0.22);
+      g.moveTo(lx, -hh * 0.55).lineTo(lx - sz * 0.06, hh * 0.55)
+       .stroke({ color: dark, width: 1, alpha: 0.4 });
+    }
+  }
+
+  _drawSeaTurtle(g, sz, bodyColor, accentColor) {
+    const hw  = sz * 0.9;
+    const hh  = sz * 0.68;
+    const dark = this._darken(bodyColor, 0.28);
+    const scute = this._lighten(bodyColor, 0.18);
+
+    // Shell (domed oval)
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+
+    // Shell scute pattern — central row + two side rows
+    const scutes = [
+      [0, -hh * 0.45, hw * 0.22, hh * 0.28],
+      [0,  0,          hw * 0.24, hh * 0.30],
+      [0,  hh * 0.45,  hw * 0.22, hh * 0.28],
+    ];
+    scutes.forEach(([cx, cy, rx, ry]) => {
+      this._ellipse(g, cx, cy, rx, ry);
+      g.stroke({ color: dark, width: 1.2, alpha: 0.7 });
+      this._ellipse(g, cx, cy, rx * 0.7, ry * 0.7);
+      g.fill({ color: scute, alpha: 0.35 });
+    });
+    // side scutes
+    [-hw * 0.5, hw * 0.5].forEach(sx => {
+      [-hh * 0.22, hh * 0.22].forEach(sy => {
+        this._ellipse(g, sx, sy, hw * 0.18, hh * 0.22);
+        g.stroke({ color: dark, width: 1, alpha: 0.55 });
+      });
+    });
+
+    // Head (slightly ahead of shell)
+    g.circle(hw * 1.0, 0, sz * 0.28).fill(bodyColor);
+    // Eye
+    g.circle(hw * 1.16, -sz * 0.12, sz * 0.08).fill(dark);
+    g.circle(hw * 1.17, -sz * 0.11, sz * 0.045).fill(0xffffff);
+    g.circle(hw * 1.18, -sz * 0.10, sz * 0.025).fill(0x111111);
+
+    // Four flippers
+    const flippers = [
+      [ hw * 0.35,  hh * 0.82,  hw * 0.75,  hh * 1.35],  // front-bottom
+      [ hw * 0.35, -hh * 0.82,  hw * 0.75, -hh * 1.35],  // front-top
+      [-hw * 0.45,  hh * 0.72, -hw * 0.85,  hh * 1.15],  // rear-bottom
+      [-hw * 0.45, -hh * 0.72, -hw * 0.85, -hh * 1.15],  // rear-top
+    ];
+    flippers.forEach(([x1, y1, x2, y2]) => {
+      g.moveTo(x1, y1 * 0.5).lineTo(x2, y2).lineTo(x1, y1).closePath().fill(dark);
+    });
+
+    // Tail nub
+    g.moveTo(-hw * 0.9, -sz * 0.1)
+     .lineTo(-hw * 1.18, 0)
+     .lineTo(-hw * 0.9,  sz * 0.1)
+     .closePath().fill(dark);
   }
 
   _darken(hex, amount) {

@@ -309,6 +309,16 @@ export const FISH_SPECIES = {
     tier: TIER.LEGENDARY, layer: 'B', color: 0x263238, accentColor: 0xeceff1,
     size: 38, speed: 1.1, unlockLevel: 10, biome: 'seagrass', pearlCost: 60,
   },
+  manatee: {
+    id: 'manatee', name: 'Manatee', scientific: 'Trichechus manatus',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x8d9ea0, accentColor: 0xd0dfe0,
+    size: 30, speed: 0.45, unlockLevel: 8, biome: 'seagrass',
+  },
+  seaTurtle: {
+    id: 'seaTurtle', name: 'Sea Turtle', scientific: 'Chelonia mydas',
+    tier: TIER.MYTHIC, layer: 'B', color: 0x4e7c50, accentColor: 0xc8e6c9,
+    size: 26, speed: 0.7, unlockLevel: 11, biome: 'seagrass',
+  },
   // ── Pearl (premium) ──────────────────────────────────────────────────────────
   rainbowGoby: {
     id: 'rainbowGoby', name: 'Rainbow Goby', scientific: '',
