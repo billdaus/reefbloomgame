@@ -2,17 +2,19 @@ import { Container, Graphics, Text } from 'pixi.js';
 import {
   PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT,
   COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
+  BIOMES, SEAGRASS_UNLOCK_LEVEL,
 } from '../constants.js';
 import { state } from '../state.js';
 import { recordInteraction } from '../systems/BEEconomy.js';
 
-const FONT         = 'system-ui, -apple-system, sans-serif';
-const ROW_H        = 48;
-const ICON_SZ      = 30;
-const PAD          = 10;
-const REMOVE_BTN_H = 36;
-const SCROLL_TOP   = PANEL_Y + REMOVE_BTN_H + 6;
-const SCROLL_AREA_H = PANEL_H - 4 - REMOVE_BTN_H - 6;
+const FONT           = 'system-ui, -apple-system, sans-serif';
+const ROW_H          = 48;
+const ICON_SZ        = 30;
+const PAD            = 10;
+const BIOME_HEADER_H = 28;
+const REMOVE_BTN_H   = 36;
+const SCROLL_TOP     = PANEL_Y + BIOME_HEADER_H + REMOVE_BTN_H + 6;
+const SCROLL_AREA_H  = PANEL_H - BIOME_HEADER_H - 4 - REMOVE_BTN_H - 6;
 
 /**
  * PlacementMenu — scrollable right panel for species selection.
@@ -25,10 +27,11 @@ const SCROLL_AREA_H = PANEL_H - 4 - REMOVE_BTN_H - 6;
  *   - Tap (< 8px movement) selects a row
  */
 export class PlacementMenu {
-  constructor(onCoralSelect, onFishSelect) {
+  constructor(onCoralSelect, onFishSelect, onTravel) {
     this.container     = new Container();
     this.onCoralSelect = onCoralSelect;
     this.onFishSelect  = onFishSelect;
+    this._onTravel     = onTravel;
 
     this._rows         = [];   // { type, id, rowY, hl, lockText, lockDim, unlockLevel }
     this._scrollY      = 0;
@@ -45,6 +48,9 @@ export class PlacementMenu {
 
     // Hover tracking
     this._hoverRowId    = null;
+
+    // Biome header container (rebuilt on biome travel)
+    this._headerC = new Container();
 
     this._scrollContent = new Container();
     this._scrollContent.x = PANEL_X;
@@ -70,12 +76,16 @@ export class PlacementMenu {
     }
     this.container.addChild(bg);
 
-    // 2. Remove mode toggle button
+    // 2. Biome header (current biome + travel button)
+    this.container.addChild(this._headerC);
+    this._buildBiomeHeader();
+
+    // 3. Remove mode toggle button
     this._drawRemoveBtn();
     this.container.addChild(this._removeBtnGfx);
 
     const removeBtnHit = new Graphics();
-    removeBtnHit.rect(PANEL_X + 4, PANEL_Y + 4, PANEL_W - 16, REMOVE_BTN_H - 2)
+    removeBtnHit.rect(PANEL_X + 4, PANEL_Y + BIOME_HEADER_H + 4, PANEL_W - 16, REMOVE_BTN_H - 2)
       .fill({ color: 0x000000, alpha: 0 });
     removeBtnHit.interactive = true;
     removeBtnHit.cursor = 'pointer';
@@ -108,6 +118,53 @@ export class PlacementMenu {
     hitArea.on('pointerupoutside', () => this._onCancel());
     hitArea.on('wheel',            e => this._onWheel(e));
     this.container.addChild(hitArea);
+  }
+
+  _buildBiomeHeader() {
+    this._headerC.removeChildren();
+
+    const current = state.biome === 'seagrass' ? BIOMES.seagrass : BIOMES.coral;
+    const other   = state.biome === 'seagrass' ? BIOMES.coral    : BIOMES.seagrass;
+    const locked  = other.id === 'seagrass' && state.level < SEAGRASS_UNLOCK_LEVEL;
+
+    // Background + bottom border
+    const bg = new Graphics();
+    bg.rect(PANEL_X, PANEL_Y, PANEL_W, BIOME_HEADER_H)
+      .fill({ color: COLORS.panel_bg, alpha: 1 });
+    bg.rect(PANEL_X, PANEL_Y + BIOME_HEADER_H - 1, PANEL_W, 1)
+      .fill({ color: COLORS.panel_border, alpha: 0.6 });
+    this._headerC.addChild(bg);
+
+    // Current biome label
+    const currLabel = new Text({
+      text: `${current.icon} ${current.name}`,
+      style: { fontSize: 9, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: '600', letterSpacing: 0.5 },
+    });
+    currLabel.x = PANEL_X + 6;
+    currLabel.y = PANEL_Y + (BIOME_HEADER_H - currLabel.height) / 2;
+    this._headerC.addChild(currLabel);
+
+    // Travel button (right side)
+    const travelText = locked
+      ? `${other.icon} Lvl ${SEAGRASS_UNLOCK_LEVEL}`
+      : `→ ${other.icon} ${other.name}`;
+    const travelLabel = new Text({
+      text: travelText,
+      style: { fontSize: 9, fill: locked ? COLORS.text_dim : COLORS.text_secondary, fontFamily: FONT },
+    });
+    travelLabel.x = PANEL_X + PANEL_W - travelLabel.width - 8;
+    travelLabel.y = PANEL_Y + (BIOME_HEADER_H - travelLabel.height) / 2;
+    this._headerC.addChild(travelLabel);
+
+    if (!locked) {
+      const hit = new Graphics();
+      hit.rect(travelLabel.x - 4, PANEL_Y + 2, travelLabel.width + 8, BIOME_HEADER_H - 4)
+         .fill({ color: 0x000000, alpha: 0 });
+      hit.interactive = true;
+      hit.cursor = 'pointer';
+      hit.on('pointerdown', () => this._onTravel?.(other.id));
+      this._headerC.addChild(hit);
+    }
   }
 
   _buildContent() {
@@ -330,7 +387,7 @@ export class PlacementMenu {
     const g = this._removeBtnGfx;
     g.clear();
     const bx = PANEL_X + 6;
-    const by = PANEL_Y + 5;
+    const by = PANEL_Y + BIOME_HEADER_H + 5;
     const bw = PANEL_W - 20;
     const bh = REMOVE_BTN_H - 6;
 
@@ -388,5 +445,22 @@ export class PlacementMenu {
     state.selectedType = null;
     state.selectedId   = null;
     this._updateHighlights();
+  }
+
+  /**
+   * Rebuild panel content after a biome switch.
+   * Redraws the biome header, clears + repopulates the species list.
+   */
+  rebuild() {
+    this._buildBiomeHeader();
+    this._drawRemoveBtn();
+    this._scrollContent.removeChildren();
+    this._rows    = [];
+    this._scrollY = 0;
+    this._scrollContent.y = SCROLL_TOP;
+    this._buildContent();
+    this._drawScrollbar();
+    state.selectedType = null;
+    state.selectedId   = null;
   }
 }

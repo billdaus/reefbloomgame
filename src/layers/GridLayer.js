@@ -160,6 +160,11 @@ export class GridLayer {
     this._coralSprites.delete(uid);
   }
 
+  /** Remove all coral sprites (used when switching biomes). */
+  clearAllCoral() {
+    [...this._coralSprites.keys()].forEach(uid => this.removeCoral(uid));
+  }
+
   /** Refresh hover highlight (call after selection changes). */
   refreshHover() {
     this._drawHover();

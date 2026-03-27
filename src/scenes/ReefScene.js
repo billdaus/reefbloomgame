@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -20,7 +20,7 @@ import { Clam } from '../entities/Clam.js';
 import { ClamRewardModal } from '../ui/ClamRewardModal.js';
 import { PearlShopModal }  from '../ui/PearlShopModal.js';
 import { tileCenter } from '../utils/grid.js';
-import { saveGame, loadGame } from '../save.js';
+import { saveGame, loadGame, setCurrentBiome } from '../save.js';
 
 export class ReefScene {
   constructor(app) {
@@ -80,6 +80,7 @@ export class ReefScene {
     this._menu = new PlacementMenu(
       (id) => this._onCoralSelected(id),
       (id) => this._onFishSelected(id),
+      (biome) => this._travelToBiome(biome),
     );
     this._uiContainer.addChild(this._menu.container);
     this._uiContainer.addChild(this._hud.container);
@@ -392,6 +393,54 @@ export class ReefScene {
     state._nextUid = Math.max(state._nextUid, maxUid + 1);
 
     this._menu.updateLevel();
+  }
+
+  // ── Biome travel ───────────────────────────────────────────────────────────
+
+  _travelToBiome(biome) {
+    if (biome === state.biome) return;
+    if (biome === 'seagrass' && state.level < SEAGRASS_UNLOCK_LEVEL) return;
+
+    // Save current biome state before leaving
+    saveGame();
+
+    // Remove all coral sprites
+    this._grid.clearAllCoral();
+
+    // Remove all fish sprites
+    state.fish.forEach(f => {
+      f.container.parent?.removeChild(f.container);
+      f.container.destroy({ children: true });
+    });
+
+    // Reset biome-specific state
+    state.grid         = Array.from({ length: GRID_ROWS }, () => Array(GRID_COLS).fill(null));
+    state.placedCoral  = [];
+    state.fish         = [];
+    state.coralCount   = 0;
+    state.fishCount    = 0;
+    state.coralTierCounts = { common: 0, uncommon: 0, rare: 0, superRare: 0, epic: 0, legendary: 0, mythic: 0 };
+    state.fishTierCounts  = { common: 0, uncommon: 0, rare: 0, superRare: 0, epic: 0, legendary: 0, mythic: 0 };
+    state.fishLayerCounts = { A: 0, B: 0 };
+    state.coralTypesSeen  = new Set();
+    state.fishTypesSeen   = new Set();
+    state.selectedType    = null;
+    state.selectedId      = null;
+    state.removeMode      = false;
+
+    // Switch active biome
+    state.biome = biome;
+    setCurrentBiome(biome);
+
+    // Tint the water differently per biome
+    this.app.renderer.background.color = biome === 'seagrass' ? 0x0a3d1e : 0x1878c8;
+
+    // Load and restore the new biome's saved state
+    const saved = loadGame();
+    if (saved) this._restoreFromSave(saved);
+
+    // Rebuild placement menu for new biome
+    this._menu.rebuild();
   }
 
   // ── Low BE warning ─────────────────────────────────────────────────────────

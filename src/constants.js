@@ -34,6 +34,9 @@ export const START_HARMONY = 50;
 export const START_LEVEL   = 1;
 export const START_PEARLS  = 0;
 
+// ─── Biomes ──────────────────────────────────────────────────────────────────
+export const SEAGRASS_UNLOCK_LEVEL = 3;
+
 // ─── Clam / Ad system ────────────────────────────────────────────────────────
 export const CLAM_TICK_MS      = 60_000;  // check for spawn every 1 min
 export const CLAM_SPAWN_CHANCE = 0.30;    // 30% per tick
