@@ -1,6 +1,6 @@
 import { Application } from 'pixi.js';
 import { ReefScene }   from './scenes/ReefScene.js';
-import { SCREEN_W, SCREEN_H } from './constants.js';
+import { SCREEN_W, SCREEN_H, IS_PORTRAIT } from './constants.js';
 import { setCurrentSlot, getSlotPreview, clearSlot } from './save.js';
 
 async function main() {
@@ -17,9 +17,15 @@ async function main() {
   });
 
   function resize() {
-    const scale = Math.min(window.innerWidth / SCREEN_W, window.innerHeight / SCREEN_H);
-    app.canvas.style.width  = `${SCREEN_W * scale}px`;
-    app.canvas.style.height = `${SCREEN_H * scale}px`;
+    if (IS_PORTRAIT) {
+      // Canvas matches viewport — just pin it; no letterboxing needed
+      app.canvas.style.width  = `${SCREEN_W}px`;
+      app.canvas.style.height = `${SCREEN_H}px`;
+    } else {
+      const scale = Math.min(window.innerWidth / SCREEN_W, window.innerHeight / SCREEN_H);
+      app.canvas.style.width  = `${SCREEN_W * scale}px`;
+      app.canvas.style.height = `${SCREEN_H * scale}px`;
+    }
   }
   window.addEventListener('resize', resize);
 

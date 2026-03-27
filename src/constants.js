@@ -1,24 +1,12 @@
-// ─── Screen & Layout ─────────────────────────────────────────────────────────
-export const SCREEN_W = 1024;
-export const SCREEN_H = 768;
-
-// ─── Grid ────────────────────────────────────────────────────────────────────
-export const TILE_SIZE  = 60;
-export const GRID_COLS  = 10;
-export const GRID_ROWS  = 10;
-export const GRID_X     = 16;
-export const GRID_Y     = 80;
-export const GRID_W     = TILE_SIZE * GRID_COLS;   // 600
-export const GRID_H     = TILE_SIZE * GRID_ROWS;   // 600
-
-// ─── HUD (top bar) ───────────────────────────────────────────────────────────
-export const HUD_H = GRID_Y;  // 80
-
-// ─── Right panel ─────────────────────────────────────────────────────────────
-export const PANEL_X = GRID_X + GRID_W + 16;              // 632
-export const PANEL_Y = GRID_Y;                              // 80
-export const PANEL_W = SCREEN_W - PANEL_X - 8;            // 384
-export const PANEL_H = GRID_H;                             // 600
+// ─── Responsive layout (computed from viewport at startup) ───────────────────
+export {
+  IS_PORTRAIT,
+  SCREEN_W, SCREEN_H,
+  TILE_SIZE, GRID_COLS, GRID_ROWS,
+  GRID_X, GRID_Y, GRID_W, GRID_H,
+  HUD_H,
+  PANEL_X, PANEL_Y, PANEL_W, PANEL_H,
+} from './layout.js';
 
 // ─── Economy ─────────────────────────────────────────────────────────────────
 export const TICK_MS          = 5000;   // BE tick every 5 s

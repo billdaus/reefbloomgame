@@ -1,6 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import {
-  PANEL_X, PANEL_Y, PANEL_W, PANEL_H,
+  PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT,
   COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
 } from '../constants.js';
 import { state } from '../state.js';
@@ -59,10 +59,13 @@ export class PlacementMenu {
   _build() {
     // 1. Panel background (static)
     const bg = new Graphics();
-    bg.roundRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 6)
+    bg.roundRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT ? 0 : 6)
       .fill({ color: COLORS.panel_bg, alpha: 0.94 });
-    bg.rect(PANEL_X, PANEL_Y, 1, PANEL_H)
-      .fill({ color: COLORS.panel_border, alpha: 1 });
+    if (IS_PORTRAIT) {
+      bg.rect(PANEL_X, PANEL_Y, PANEL_W, 1).fill({ color: COLORS.panel_border, alpha: 1 });
+    } else {
+      bg.rect(PANEL_X, PANEL_Y, 1, PANEL_H).fill({ color: COLORS.panel_border, alpha: 1 });
+    }
     this.container.addChild(bg);
 
     // 1b. Remove mode toggle button (top of panel)

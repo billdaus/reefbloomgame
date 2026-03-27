@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { SCREEN_W, HUD_H, COLORS } from '../constants.js';
+import { SCREEN_W, HUD_H, IS_PORTRAIT, COLORS } from '../constants.js';
 import { state } from '../state.js';
 
 const FONT = 'system-ui, -apple-system, sans-serif';
@@ -63,33 +63,35 @@ export class HUD {
     pearlSection.cursor = 'pointer';
     pearlSection.on('pointerdown', () => this._onPearlShop?.());
 
-    const pearlIcon = new Text({ text: '💎', style: { fontSize: 18 } });
-    pearlIcon.x = 128;
+    const pearlX = IS_PORTRAIT ? 86 : 128;
+    const pearlIcon = new Text({ text: '💎', style: { fontSize: IS_PORTRAIT ? 16 : 18 } });
+    pearlIcon.x = pearlX;
     pearlIcon.y = HUD_H / 2 - 12;
     pearlSection.addChild(pearlIcon);
 
     this._pearlText = new Text({
       text: '0',
-      style: { fontSize: 18, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: 'bold' },
+      style: { fontSize: IS_PORTRAIT ? 16 : 18, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: 'bold' },
     });
-    this._pearlText.x = 152;
+    this._pearlText.x = pearlX + 22;
     this._pearlText.y = HUD_H / 2 - 12;
     pearlSection.addChild(this._pearlText);
 
-    // Invisible hit area to make clicking easier
     const pearlHit = new Graphics();
-    pearlHit.rect(124, HUD_H / 2 - 16, 70, 30).fill({ color: 0xffffff, alpha: 0 });
+    pearlHit.rect(pearlX - 4, HUD_H / 2 - 16, 70, 30).fill({ color: 0xffffff, alpha: 0 });
     pearlSection.addChild(pearlHit);
     this.container.addChild(pearlSection);
 
     // ── Harmony section ──────────────────────────────────────────────────────
-    const hmLabel = new Text({
-      text: 'HARMONY',
-      style: { fontSize: 10, fill: COLORS.text_secondary, fontFamily: FONT, letterSpacing: 2 },
-    });
-    hmLabel.x = 200;
-    hmLabel.y = HUD_H / 2 - 22;
-    this.container.addChild(hmLabel);
+    if (!IS_PORTRAIT) {
+      const hmLabel = new Text({
+        text: 'HARMONY',
+        style: { fontSize: 10, fill: COLORS.text_secondary, fontFamily: FONT, letterSpacing: 2 },
+      });
+      hmLabel.x = 200;
+      hmLabel.y = HUD_H / 2 - 22;
+      this.container.addChild(hmLabel);
+    }
 
     this.container.addChild(this._harmonyBar);
 
@@ -97,25 +99,27 @@ export class HUD {
       text: `${state.harmony}`,
       style: { fontSize: 13, fill: COLORS.harmony_fill, fontFamily: FONT, fontWeight: 'bold' },
     });
-    this._harmonyText.x = 200;
-    this._harmonyText.y = HUD_H / 2 + 4;
-    this.container.addChild(this._harmonyText);
+    if (!IS_PORTRAIT) {
+      this._harmonyText.x = 200;
+      this._harmonyText.y = HUD_H / 2 + 4;
+      this.container.addChild(this._harmonyText);
+    }
 
     // ── Level section ────────────────────────────────────────────────────────
     const lvlLabel = new Text({
       text: 'LEVEL',
       style: { fontSize: 10, fill: COLORS.text_secondary, fontFamily: FONT, letterSpacing: 2 },
     });
-    lvlLabel.x = SCREEN_W - 90;
-    lvlLabel.y = HUD_H / 2 - 22;
+    lvlLabel.x = IS_PORTRAIT ? SCREEN_W - 46 : SCREEN_W - 90;
+    lvlLabel.y = IS_PORTRAIT ? HUD_H / 2 - 18 : HUD_H / 2 - 22;
     this.container.addChild(lvlLabel);
 
     this._levelText = new Text({
       text: String(state.level),
-      style: { fontSize: 28, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: 'bold' },
+      style: { fontSize: IS_PORTRAIT ? 20 : 28, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: 'bold' },
     });
-    this._levelText.x = SCREEN_W - 70;
-    this._levelText.y = HUD_H / 2 - 16;
+    this._levelText.x = IS_PORTRAIT ? SCREEN_W - 40 : SCREEN_W - 70;
+    this._levelText.y = IS_PORTRAIT ? HUD_H / 2 - 4 : HUD_H / 2 - 16;
     this.container.addChild(this._levelText);
 
     // ── Pearl Market button ───────────────────────────────────────────────────
@@ -146,8 +150,9 @@ export class HUD {
   }
 
   _buildMarketBtn() {
+    if (IS_PORTRAIT) return;           // on portrait, tap 💎 to open shop
     const W = 80, H = 30, R = 8;
-    const bx = 530;                    // sits in the gap between Harmony and Menu
+    const bx = 530;
     const by = (HUD_H - H) / 2;
 
     const bg = new Graphics();
@@ -182,8 +187,8 @@ export class HUD {
   }
 
   _buildHomeBtn() {
-    const W = 64, H = 30, R = 8;
-    const bx = SCREEN_W - 148;   // sits left of the Level section
+    const W = IS_PORTRAIT ? 38 : 64, H = IS_PORTRAIT ? 26 : 30, R = 8;
+    const bx = IS_PORTRAIT ? SCREEN_W - 90 : SCREEN_W - 148;
     const by = (HUD_H - H) / 2;
 
     const bg = new Graphics();
@@ -197,10 +202,10 @@ export class HUD {
     drawBg(false);
 
     const label = new Text({
-      text: '⌂ Menu',
+      text: IS_PORTRAIT ? '⌂' : '⌂ Menu',
       style: { fontSize: 11, fill: COLORS.text_secondary, fontFamily: FONT, fontWeight: '600' },
     });
-    label.x = 10;
+    label.x = IS_PORTRAIT ? (W - label.width) / 2 : 10;
     label.y = (H - label.height) / 2;
 
     const btn = new Container();
@@ -245,10 +250,10 @@ export class HUD {
 
   _drawHarmonyBar() {
     const g   = this._harmonyBar;
-    const bx  = 200;
-    const by  = HUD_H / 2 - 6;
-    const bw  = 300;
-    const bh  = 10;
+    const bx  = IS_PORTRAIT ? 158 : 200;
+    const by  = HUD_H / 2 - (IS_PORTRAIT ? 4 : 6);
+    const bw  = IS_PORTRAIT ? 88  : 300;
+    const bh  = IS_PORTRAIT ? 7   : 10;
     const pct = state.harmony / 100;
 
     g.clear();

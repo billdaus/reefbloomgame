@@ -1,13 +1,15 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { GRID_X, GRID_Y, GRID_W, GRID_H } from '../constants.js';
+import { GRID_X, GRID_Y, GRID_W, GRID_H, IS_PORTRAIT } from '../constants.js';
 
 const FONT     = 'system-ui, -apple-system, sans-serif';
 const SPEED    = 1.8;    // px per frame
 const BOB_AMP  = 3;      // idle bob amplitude px
 
-// Where Bubbles lives when docked (Rocky Outcrop, synced with BackgroundLayer)
-const DOCK_X = 300;
-const DOCK_Y = 686;
+// Where Bubbles lives when docked — relative to grid so it adapts to layout
+// Desktop: aligns with the rocky outcrop dock drawn in BackgroundLayer
+// Portrait: docks inside the grid near the bottom-right
+const DOCK_X = GRID_X + 284;
+const DOCK_Y = IS_PORTRAIT ? GRID_Y + GRID_H - 22 : GRID_Y + GRID_H + 6;
 
 // Positions Bubbles floats to when speaking
 const SPEAK_POSITIONS = [
