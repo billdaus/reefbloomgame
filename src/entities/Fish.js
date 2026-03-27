@@ -79,8 +79,26 @@ export class Fish {
       case 'glowfinAngelfish':  this._drawGlowfinAngel(g, sz, c, ac);     break;
       case 'neonSeahorse':      this._drawSeahorse(g, sz, c, ac);         break;
       case 'sunburstWrasse':    this._drawOvalFish(g, sz, c, ac, false);  break;
-      case 'phantomLionfish':   this._drawLionfish(g, sz, c, ac);         break;
-      default:                  this._drawOvalFish(g, sz, c, ac, false);  break;
+      case 'phantomLionfish':   this._drawLionfish(g, sz, c, ac);           break;
+      // Deep Twilight
+      case 'lanternfish':       this._drawLanternfish(g, sz, c, ac);       break;
+      case 'ghostGoby':         this._drawGhostGoby(g, sz, c, ac);         break;
+      case 'hatchetfish':       this._drawHatchetfish(g, sz, c, ac);       break;
+      case 'deepBlenny':        this._drawDeepBlenny(g, sz, c, ac);        break;
+      case 'dragonfish':        this._drawDragonfish(g, sz, c, ac);        break;
+      case 'flashlightFish':    this._drawFlashlightFish(g, sz, c, ac);    break;
+      case 'viperfish':         this._drawViperfish(g, sz, c, ac);         break;
+      case 'barreleye':         this._drawBarreleye(g, sz, c, ac);         break;
+      case 'ribbonfish':        this._drawRibbonfish(g, sz, c, ac);        break;
+      case 'twilightSeahorse':  this._drawSeahorse(g, sz, c, ac);          break;
+      case 'gulperEel':         this._drawGulperEel(g, sz, c, ac);         break;
+      case 'fangtooth':         this._drawFangtooth(g, sz, c, ac);         break;
+      case 'frilledShark':      this._drawFrilledShark(g, sz, c, ac);      break;
+      case 'giantSquid':        this._drawGiantSquid(g, sz, c, ac);        break;
+      case 'abyssalRay':        this._drawAbyssalRay(g, sz, c, ac);        break;
+      case 'oarfish':           this._drawOarfish(g, sz, c, ac);           break;
+      case 'twilightWhaleShark': this._drawTwilightWhaleShark(g, sz, c, ac); break;
+      default:                  this._drawOvalFish(g, sz, c, ac, false);   break;
     }
   }
 
@@ -741,6 +759,371 @@ export class Fish {
      .lineTo(-hw * 1.18, 0)
      .lineTo(-hw * 0.9,  sz * 0.1)
      .closePath().fill(bodyDark);
+  }
+
+  // ── Deep Twilight fish ─────────────────────────────────────────────────────
+
+  /** Lanternfish — small torpedo with a row of photophores. */
+  _drawLanternfish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 0.9;
+    const hh = sz * 0.38;
+    g.moveTo(-hw * 0.7, 0).lineTo(-hw * 1.3, -hh).lineTo(-hw * 1.3, hh).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Photophore row along belly
+    for (let i = 0; i < 5; i++) {
+      g.circle(-hw * 0.4 + i * hw * 0.2, hh * 0.55, sz * 0.07).fill(accentColor);
+    }
+    g.circle(hw * 0.5, -hh * 0.1, sz * 0.11).fill(0xffffff);
+    g.circle(hw * 0.52, -hh * 0.09, sz * 0.065).fill(0x111111);
+  }
+
+  /** Ghost Goby — translucent pale body, nearly invisible. */
+  _drawGhostGoby(g, sz, bodyColor, accentColor) {
+    const hw = sz;
+    const hh = sz * 0.44;
+    g.moveTo(-hw * 0.65, 0).lineTo(-hw * 1.28, -hh * 0.82).lineTo(-hw * 1.28, hh * 0.82).closePath()
+     .fill({ color: bodyColor, alpha: 0.45 });
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill({ color: bodyColor, alpha: 0.55 });
+    // Faint spine stripe
+    g.moveTo(-hw * 0.5, 0).lineTo(hw * 0.7, 0).stroke({ color: accentColor, width: 1, alpha: 0.4 });
+    g.circle(hw * 0.52, -hh * 0.1, sz * 0.12).fill({ color: accentColor, alpha: 0.8 });
+    g.circle(hw * 0.54, -hh * 0.09, sz * 0.07).fill(0x111111);
+  }
+
+  /** Hatchetfish — laterally compressed with silver scales and bioluminescent underside. */
+  _drawHatchetfish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 0.7;
+    const hh = sz * 0.9;
+    // Hatchet body shape (flattened disc, deep belly)
+    g.moveTo(-hw * 0.5, -hh * 0.5)
+     .lineTo( hw * 0.8,  -hh * 0.3)
+     .lineTo( hw * 0.8,   hh * 0.1)
+     .lineTo(-hw * 0.5,   hh * 0.5)
+     .closePath().fill(bodyColor);
+    // Photophore row along belly curve
+    for (let i = 0; i < 4; i++) {
+      const t = -0.3 + i * 0.2;
+      g.circle(-hw * 0.3 + i * hw * 0.28, hh * (0.3 + Math.abs(t) * 0.3), sz * 0.07)
+       .fill(accentColor);
+    }
+    // Tiny tail
+    g.moveTo(-hw * 0.5, 0).lineTo(-hw * 1.1, -hh * 0.35).lineTo(-hw * 1.1, hh * 0.1).closePath()
+     .fill(bodyColor);
+    g.circle(hw * 0.55, -hh * 0.22, sz * 0.1).fill(0xffffff);
+    g.circle(hw * 0.57, -hh * 0.20, sz * 0.06).fill(0x111111);
+  }
+
+  /** Deep Blenny — dark elongated body with bioluminescent stripe and frilly dorsal. */
+  _drawDeepBlenny(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.2;
+    const hh = sz * 0.4;
+    g.moveTo(-hw * 0.72, 0).lineTo(-hw * 1.32, -hh * 0.85).lineTo(-hw * 1.32, hh * 0.85).closePath()
+     .fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Glow stripe along lateral line
+    g.moveTo(-hw * 0.5, 0).lineTo(hw * 0.7, 0)
+     .stroke({ color: accentColor, width: 1.5, alpha: 0.85 });
+    // Frilly dorsal — wavy
+    for (let i = 0; i < 5; i++) {
+      const bx = -hw * 0.3 + i * hw * 0.22;
+      g.moveTo(bx, -hh).lineTo(bx + sz * 0.04, -hh - sz * 0.2 - (i % 2) * sz * 0.1)
+       .stroke({ color: accentColor, width: 1.5, alpha: 0.7, cap: 'round' });
+    }
+    g.circle(hw * 0.55, -hh * 0.1, sz * 0.11).fill(0xffffff);
+    g.circle(hw * 0.57, -hh * 0.08, sz * 0.065).fill(0x111111);
+  }
+
+  /** Dragonfish — elongated predator with chin barbel and fangs. */
+  _drawDragonfish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.4;
+    const hh = sz * 0.38;
+    g.moveTo(-hw * 0.75, 0).lineTo(-hw * 1.3, -hh * 0.8).lineTo(-hw * 1.3, hh * 0.8).closePath()
+     .fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Photophore row
+    for (let i = 0; i < 6; i++) {
+      g.circle(-hw * 0.4 + i * hw * 0.14, hh * 0.6, sz * 0.065).fill(accentColor);
+    }
+    // Chin barbel with bioluminescent tip
+    g.moveTo(hw * 0.6, hh * 0.5).lineTo(hw * 0.6, hh * 2.2)
+     .stroke({ color: accentColor, width: 1.2, alpha: 0.8, cap: 'round' });
+    g.circle(hw * 0.6, hh * 2.3, sz * 0.1).fill(accentColor);
+    // Fang
+    g.moveTo(hw * 0.72, hh * 0.4).lineTo(hw * 0.84, hh * 0.85)
+     .stroke({ color: 0xffffff, width: 1.5, cap: 'round' });
+    g.circle(hw * 0.6, -hh * 0.08, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.62, -hh * 0.06, sz * 0.07).fill(0x111111);
+  }
+
+  /** Flashlight Fish — black body with glowing eye-organ patch. */
+  _drawFlashlightFish(g, sz, bodyColor, accentColor) {
+    const hw = sz;
+    const hh = sz * 0.58;
+    g.moveTo(-hw * 0.68, 0).lineTo(-hw * 1.28, -hh * 0.88).lineTo(-hw * 1.28, hh * 0.88).closePath()
+     .fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Dorsal fin
+    g.moveTo(-hw * 0.1, -hh).lineTo(hw * 0.1, -hh - sz * 0.36).lineTo(hw * 0.48, -hh).closePath()
+     .fill(bodyColor);
+    // Bioluminescent organ below eye (kidney-shaped glow patch)
+    g.roundRect(hw * 0.3, -hh * 0.15, sz * 0.36, sz * 0.22, sz * 0.1)
+     .fill({ color: accentColor, alpha: 0.9 });
+    // Eye above organ
+    g.circle(hw * 0.5, -hh * 0.28, sz * 0.13).fill(0xffffff);
+    g.circle(hw * 0.52, -hh * 0.26, sz * 0.08).fill(0x111111);
+  }
+
+  /** Viperfish — elongated with enormous curved fangs. */
+  _drawViperfish(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.4;
+    const th  = sz * 0.3;
+    g.roundRect(-len / 2, -th / 2, len, th, th * 0.45).fill(bodyColor);
+    // Photophores
+    for (let i = 0; i < 7; i++) {
+      g.circle(-len * 0.36 + i * len * 0.1, th * 0.55, sz * 0.07).fill(accentColor);
+    }
+    // Huge curved fang
+    g.moveTo(len * 0.42, -th * 0.4)
+     .lineTo(len * 0.68,  th * 1.1)
+     .stroke({ color: 0xe8e8e8, width: 2, cap: 'round' });
+    g.moveTo(len * 0.38,  th * 0.4)
+     .lineTo(len * 0.6,  -th * 1.1)
+     .stroke({ color: 0xe8e8e8, width: 2, cap: 'round' });
+    g.circle(len * 0.38, -th * 0.18, sz * 0.1).fill(0xffffff);
+    g.circle(len * 0.4,  -th * 0.16, sz * 0.06).fill(0x111111);
+  }
+
+  /** Barreleye — transparent dome head with green tubular eyes. */
+  _drawBarreleye(g, sz, bodyColor, accentColor) {
+    const hw = sz;
+    const hh = sz * 0.52;
+    // Tail
+    g.moveTo(-hw * 0.65, 0).lineTo(-hw * 1.22, -hh * 0.82).lineTo(-hw * 1.22, hh * 0.82).closePath()
+     .fill(bodyColor);
+    // Body
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Transparent dome over forward part of head
+    this._ellipse(g, hw * 0.42, -hh * 0.1, hw * 0.45, hh * 0.82);
+    g.fill({ color: 0xffffff, alpha: 0.15 });
+    g.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    // Two distinctive upward-pointing tubular eyes
+    g.roundRect(hw * 0.2, -hh * 0.7, sz * 0.18, sz * 0.42, sz * 0.08)
+     .fill({ color: accentColor, alpha: 0.9 });
+    g.roundRect(hw * 0.5, -hh * 0.78, sz * 0.18, sz * 0.42, sz * 0.08)
+     .fill({ color: accentColor, alpha: 0.9 });
+    // Pupils
+    g.circle(hw * 0.29, -hh * 0.62, sz * 0.065).fill(0x111111);
+    g.circle(hw * 0.59, -hh * 0.7,  sz * 0.065).fill(0x111111);
+  }
+
+  /** Ribbonfish — long narrow silver ribbon with red dorsal crest. */
+  _drawRibbonfish(g, sz, bodyColor, accentColor) {
+    const len = sz * 3.2;
+    const th  = sz * 0.2;
+    // Main ribbon body
+    g.roundRect(-len / 2, -th / 2, len, th, th * 0.4).fill(bodyColor);
+    // Red dorsal crest running full length
+    g.moveTo(-len / 2 + 4, -th / 2).lineTo(len / 2 - 4, -th / 2)
+     .stroke({ color: accentColor, width: 3, alpha: 0.9 });
+    // Pelvic threadfins (hanging filaments)
+    [len * 0.1, len * 0.2].forEach(fx => {
+      g.moveTo(fx, th * 0.4).lineTo(fx + sz * 0.1, th * 1.6)
+       .stroke({ color: bodyColor, width: 1.5, alpha: 0.7, cap: 'round' });
+    });
+    g.circle(len * 0.46, -th * 0.12, sz * 0.1).fill(0x111111);
+  }
+
+  /** Gulper Eel — tiny body with enormous pelican-like expanding jaw. */
+  _drawGulperEel(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.0;
+    const th  = sz * 0.25;
+    // Long whip tail
+    g.roundRect(-len * 0.55, -th * 0.35, len * 0.55, th * 0.7, th * 0.3).fill(bodyColor);
+    // Bioluminescent tail tip
+    g.circle(-len * 0.55, 0, sz * 0.12).fill(accentColor);
+    // Gaping jaw
+    g.moveTo(0, -sz * 0.4)
+     .lineTo(len * 0.52,  -sz * 0.05)
+     .lineTo(len * 0.52,   sz * 0.05)
+     .lineTo(0,             sz * 0.4)
+     .closePath().fill(bodyColor);
+    // Dark inner maw
+    g.moveTo(len * 0.06, -sz * 0.28)
+     .lineTo(len * 0.46, -sz * 0.04)
+     .lineTo(len * 0.46,  sz * 0.04)
+     .lineTo(len * 0.06,  sz * 0.28)
+     .closePath().fill(0x0a0a1a);
+    g.circle(len * 0.08, -sz * 0.18, sz * 0.1).fill(0xffffff);
+    g.circle(len * 0.1,  -sz * 0.16, sz * 0.06).fill(0x111111);
+  }
+
+  /** Fangtooth — compact body, disproportionately huge teeth. */
+  _drawFangtooth(g, sz, bodyColor, accentColor) {
+    const hw = sz * 0.95;
+    const hh = sz * 0.72;
+    g.moveTo(-hw * 0.68, 0).lineTo(-hw * 1.3, -hh * 0.8).lineTo(-hw * 1.3, hh * 0.8).closePath()
+     .fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Oversized lower jaw
+    g.moveTo(-hw * 0.4, hh * 0.7).lineTo(hw * 0.9, hh * 0.55).lineTo(hw * 0.9, hh * 1.0)
+     .lineTo(-hw * 0.4, hh * 1.1).closePath().fill(this._darken(bodyColor, 0.2));
+    // Fangs
+    [0.1, 0.4, 0.7].forEach(t => {
+      g.moveTo(hw * t, hh * 0.6).lineTo(hw * (t + 0.05), hh * 1.2)
+       .stroke({ color: 0xe8e8e8, width: 2.5, cap: 'round' });
+    });
+    g.circle(hw * 0.55, -hh * 0.2, sz * 0.14).fill(accentColor);
+    g.circle(hw * 0.57, -hh * 0.18, sz * 0.08).fill(0x111111);
+  }
+
+  /** Frilled Shark — ancient eel-like shark with 6-gill frills. */
+  _drawFrilledShark(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.6;
+    const th  = sz * 0.38;
+    g.roundRect(-len / 2, -th / 2, len, th, th * 0.42).fill(bodyColor);
+    // 6 gill frills (ruffled)
+    for (let i = 0; i < 6; i++) {
+      const fx = len * 0.26 + i * sz * 0.14;
+      g.moveTo(fx, -th * 0.5).lineTo(fx + sz * 0.04, -th * 1.1).lineTo(fx + sz * 0.08, -th * 0.5)
+       .closePath().fill({ color: accentColor, alpha: 0.7 });
+      g.moveTo(fx, th * 0.5).lineTo(fx + sz * 0.04, th * 1.1).lineTo(fx + sz * 0.08, th * 0.5)
+       .closePath().fill({ color: accentColor, alpha: 0.7 });
+    }
+    // Rounded terminal mouth
+    g.roundRect(len * 0.44, -th * 0.55, sz * 0.22, th * 1.1, sz * 0.06).fill(0x1a2a2a);
+    g.circle(len * 0.36, -th * 0.22, sz * 0.1).fill(0xffffff);
+    g.circle(len * 0.38, -th * 0.20, sz * 0.06).fill(0x111111);
+    // Asymmetric caudal fin
+    g.moveTo(-len * 0.5, -th * 0.5)
+     .lineTo(-len * 0.62, -th * 1.4)
+     .lineTo(-len * 0.52,  th * 0.5)
+     .closePath().fill(bodyColor);
+  }
+
+  /** Giant Squid — mantle body with tentacles and huge eye. */
+  _drawGiantSquid(g, sz, bodyColor, accentColor) {
+    const hw = sz * 0.8;
+    const hh = sz * 1.1;
+    // Mantle (torpedo-shaped)
+    this._ellipse(g, 0, -hh * 0.1, hw, hh);
+    g.fill(bodyColor);
+    // Chromatophore spots
+    for (let i = 0; i < 6; i++) {
+      g.circle(
+        (Math.random() > 0.5 ? 1 : -1) * hw * (0.1 + (i % 3) * 0.2),
+        -hh * 0.4 + i * hh * 0.14,
+        sz * 0.06
+      ).fill({ color: accentColor, alpha: 0.6 });
+    }
+    // Two long tentacles
+    [-hw * 0.28, hw * 0.28].forEach(tx => {
+      g.moveTo(tx, hh * 0.85)
+       .lineTo(tx * 1.3, hh * 1.6)
+       .stroke({ color: bodyColor, width: 3, cap: 'round' });
+    });
+    // Eight arms
+    for (let i = 0; i < 8; i++) {
+      const angle = Math.PI * 0.6 + (i / 7) * Math.PI * 0.8;
+      g.moveTo(0, hh * 0.88)
+       .lineTo(Math.cos(angle) * hw * 1.3, hh * 0.88 + Math.sin(Math.abs(angle - Math.PI)) * sz * 0.5)
+       .stroke({ color: this._darken(bodyColor, 0.1), width: 2, cap: 'round' });
+    }
+    // Fin lobes
+    g.moveTo(-hw * 0.8, -hh * 0.68).lineTo(-hw * 1.35, -hh * 0.45).lineTo(-hw * 0.55, -hh * 0.38).closePath().fill(bodyColor);
+    g.moveTo( hw * 0.8, -hh * 0.68).lineTo( hw * 1.35, -hh * 0.45).lineTo( hw * 0.55, -hh * 0.38).closePath().fill(bodyColor);
+    // Eye
+    g.circle(hw * 0.52, -hh * 0.25, sz * 0.22).fill(0xffffff);
+    g.circle(hw * 0.56, -hh * 0.22, sz * 0.14).fill(0x111111);
+  }
+
+  /** Abyssal Ray — wide dark ray with bioluminescent trailing edge. */
+  _drawAbyssalRay(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.4;
+    const hh = sz * 0.52;
+    // Wing body
+    g.moveTo(0, -hh * 0.9).lineTo(-hw, hh * 0.35).lineTo(0, hh).lineTo(hw, hh * 0.35).closePath()
+     .fill(bodyColor);
+    // Bioluminescent edge glow
+    g.moveTo(-hw, hh * 0.35).lineTo(0, hh).lineTo(hw, hh * 0.35)
+     .stroke({ color: accentColor, width: 2, alpha: 0.75 });
+    // Bioluminescent spots along trailing edge
+    for (let i = 0; i < 5; i++) {
+      const t = -1 + i * 0.5;
+      g.circle(t * hw, hh * (0.8 + Math.abs(t) * 0.18), sz * 0.07).fill(accentColor);
+    }
+    // Cephalic horn nubs
+    g.moveTo(hw * 0.72, hh * 0.1).lineTo(hw * 0.92, -hh * 0.5).stroke({ color: bodyColor, width: 4, cap: 'round' });
+    g.moveTo(-hw * 0.72, hh * 0.1).lineTo(-hw * 0.92, -hh * 0.5).stroke({ color: bodyColor, width: 4, cap: 'round' });
+    // Whip tail
+    g.moveTo(0, hh).lineTo(-sz * 0.1, hh + sz * 1.2).stroke({ color: bodyColor, width: 2.5, cap: 'round' });
+    g.circle(0, 0, sz * 0.12).fill(0xffffff);
+    g.circle(sz * 0.02, sz * 0.02, sz * 0.07).fill(0x111111);
+  }
+
+  /** Oarfish — enormous flat ribbon, red dorsal crest, red oar-like pelvic fins. */
+  _drawOarfish(g, sz, bodyColor, accentColor) {
+    const len = sz * 3.8;
+    const th  = sz * 0.22;
+    // Ribbon body (tapers toward tail)
+    g.moveTo(-len / 2, -th * 0.3)
+     .lineTo(len * 0.45, -th * 0.55)
+     .lineTo(len * 0.45,  th * 0.55)
+     .lineTo(-len / 2,  th * 0.3)
+     .closePath().fill(bodyColor);
+    // Red dorsal crest
+    g.moveTo(-len / 2, -th * 0.3).lineTo(len * 0.38, -th * 0.55)
+     .stroke({ color: accentColor, width: 4, alpha: 0.95 });
+    // Decorative crest filaments
+    for (let i = 0; i < 6; i++) {
+      const bx = -len * 0.38 + i * len * 0.13;
+      g.moveTo(bx, -th * 0.3).lineTo(bx, -th * 1.4 - (i === 0 ? sz * 0.4 : 0))
+       .stroke({ color: accentColor, width: 2, alpha: 0.8, cap: 'round' });
+    }
+    // Oar-like pelvic fins (long red paddle)
+    g.moveTo(len * 0.14, th * 0.4).lineTo(len * 0.16, th * 1.8)
+     .stroke({ color: accentColor, width: 4, cap: 'round' });
+    g.circle(len * 0.16, th * 1.9, sz * 0.12).fill(accentColor);
+    // Eye
+    g.circle(len * 0.42, -th * 0.18, sz * 0.12).fill(0xffffff);
+    g.circle(len * 0.44, -th * 0.16, sz * 0.07).fill(0x111111);
+  }
+
+  /** Twilight Whale Shark — massive spotted body with wide mouth. */
+  _drawTwilightWhaleShark(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.8;
+    const th  = sz * 0.72;
+    // Broad flat tail fin
+    g.moveTo(-len * 0.5, 0)
+     .lineTo(-len * 0.62, -th * 0.95)
+     .lineTo(-len * 0.5,  th * 0.6)
+     .closePath().fill(bodyColor);
+    // Body
+    g.roundRect(-len * 0.5, -th / 2, len, th, th * 0.34).fill(bodyColor);
+    // Wide flat mouth (terminal)
+    g.roundRect(len * 0.4, -th * 0.3, sz * 0.28, th * 0.6, sz * 0.08).fill(0x0a1030);
+    // Bioluminescent spots
+    for (let i = 0; i < 8; i++) {
+      g.circle(
+        -len * 0.28 + (i % 4) * len * 0.18,
+        (Math.floor(i / 4) === 0 ? -1 : 1) * th * 0.28,
+        sz * 0.07
+      ).fill({ color: accentColor, alpha: 0.8 });
+    }
+    // Dorsal fin
+    g.moveTo(-len * 0.05, -th / 2)
+     .lineTo( len * 0.08, -th / 2 - sz * 0.55)
+     .lineTo( len * 0.22, -th / 2)
+     .closePath().fill(bodyColor);
+    // Eye
+    g.circle(len * 0.32, -th * 0.18, sz * 0.12).fill(0xffffff);
+    g.circle(len * 0.34, -th * 0.16, sz * 0.07).fill(0x111111);
   }
 
   _darken(hex, amount) {

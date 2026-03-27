@@ -41,7 +41,10 @@ export class Coral {
       case 'table':        this._drawTable(g, s, c);       break;
       case 'rainbowCoral': this._drawRainbowCoral(g, s, c); break;
       case 'sunfire':      this._drawSunfire(g, s, c);     break;
-      case 'seagrass':     this._drawSeagrass(g, s, c);    break;
+      case 'seagrass':     this._drawSeagrass(g, s, c);      break;
+      case 'twilightBrain': this._drawTwilightBrain(g, s, c); break;
+      case 'phantomPolyp': this._drawPhantomPolyp(g, s, c); break;
+      case 'midnightTable': this._drawMidnightTable(g, s, c); break;
       default:             this._drawGeneric(g, s, c);     break;
     }
   }
@@ -334,6 +337,71 @@ export class Coral {
     });
     // substrate base line
     g.rect(s * 0.06, s - 4, s * 0.88, 4).fill(dark);
+  }
+
+  // ── Twilight Brain Coral — glowing dome with labyrinthine grooves ─────────
+  _drawTwilightBrain(g, s, c) {
+    const mid   = s / 2;
+    const r     = s * 0.38;
+    const glow  = this._lighten(c, 0.6);
+    const dark  = this._darken(c, 0.35);
+    // Outer glow halo
+    g.circle(mid, s * 0.56, r + 5).fill({ color: c, alpha: 0.18 });
+    g.circle(mid, s * 0.56, r).fill(dark);
+    // Bioluminescent grooves radiating from center
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      const x1 = mid + Math.cos(angle) * r * 0.3;
+      const y1 = s * 0.56 + Math.sin(angle) * r * 0.3;
+      const x2 = mid + Math.cos(angle) * r * 0.88;
+      const y2 = s * 0.56 + Math.sin(angle) * r * 0.88;
+      g.moveTo(x1, y1).lineTo(x2, y2).stroke({ color: glow, width: 1.5, alpha: 0.9 });
+    }
+    g.circle(mid, s * 0.56, r * 0.18).fill(glow);
+  }
+
+  // ── Phantom Polyp — translucent tall column with glowing tips ─────────────
+  _drawPhantomPolyp(g, s, c) {
+    const mid   = s / 2;
+    const glow  = this._lighten(c, 0.55);
+    const dark  = this._darken(c, 0.2);
+    const cols  = [s * 0.28, s * 0.5, s * 0.72];
+    const tops  = [s * 0.18, s * 0.08, s * 0.14];
+    cols.forEach((cx, i) => {
+      const top = tops[i];
+      const h   = s - top - 4;
+      g.roundRect(cx - 5, top, 10, h, 5).fill({ color: dark, alpha: 0.7 });
+      // Glow vein running up center
+      g.moveTo(cx, top + h * 0.7).lineTo(cx, top + 4)
+       .stroke({ color: glow, width: 1.5, alpha: 0.8 });
+      // Glowing tip
+      g.circle(cx, top, 5).fill({ color: glow, alpha: 0.9 });
+      g.circle(cx, top, 3).fill(0xffffff);
+    });
+  }
+
+  // ── Midnight Table Coral — dark shelf with bioluminescent edge trim ────────
+  _drawMidnightTable(g, s, c) {
+    const mid  = s / 2;
+    const dark = this._darken(c, 0.4);
+    const glow = this._lighten(c, 0.6);
+    // Stalk
+    g.roundRect(mid - 5, s * 0.42, 10, s * 0.5, 4).fill(dark);
+    // Table surface — very dark
+    g.roundRect(s * 0.08, s * 0.26, s * 0.84, s * 0.16, 6).fill(dark);
+    // Glowing edge outline
+    g.roundRect(s * 0.08, s * 0.26, s * 0.84, s * 0.16, 6)
+     .stroke({ color: glow, width: 2, alpha: 0.85 });
+    // Bioluminescent dots on the surface
+    for (let i = 0; i < 5; i++) {
+      g.circle(s * 0.18 + i * s * 0.16, s * 0.34, 2.5).fill(glow);
+    }
+    // Hanging tendrils under the shelf
+    for (let i = 0; i < 4; i++) {
+      const tx = s * 0.2 + i * s * 0.2;
+      g.moveTo(tx, s * 0.42).lineTo(tx + (i % 2 ? 2 : -2), s * 0.52)
+       .stroke({ color: glow, width: 1.5, alpha: 0.7, cap: 'round' });
+    }
   }
 
   // ── Generic fallback ──────────────────────────────────────────────────────

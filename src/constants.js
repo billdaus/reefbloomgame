@@ -35,7 +35,8 @@ export const START_LEVEL   = 1;
 export const START_PEARLS  = 0;
 
 // ─── Biomes ──────────────────────────────────────────────────────────────────
-export const SEAGRASS_UNLOCK_LEVEL = 3;
+export const SEAGRASS_UNLOCK_LEVEL     = 3;
+export const DEEP_TWILIGHT_UNLOCK_LEVEL = 6;
 
 // ─── Clam / Ad system ────────────────────────────────────────────────────────
 export const CLAM_TICK_MS      = 60_000;  // check for spawn every 1 min
@@ -185,6 +186,23 @@ export const CORAL_SPECIES = {
     id: 'seagrass', name: 'Seagrass', scientific: 'Halophila sp.',
     tier: TIER.RARE, tall: false, blocksB: false, color: 0x4caf50, unlockLevel: 3,
     biome: 'seagrass',
+  },
+
+  // ── Deep Twilight Reef — Bioluminescent structures ────────────────────────
+  twilightBrain: {
+    id: 'twilightBrain', name: 'Twilight Brain Coral', scientific: '',
+    tier: TIER.RARE, tall: false, color: 0x00bcd4, unlockLevel: 6,
+    biome: 'deepTwilight',
+  },
+  phantomPolyp: {
+    id: 'phantomPolyp', name: 'Phantom Polyp', scientific: '',
+    tier: TIER.SUPER_RARE, tall: true, color: 0x9c27b0, unlockLevel: 8,
+    biome: 'deepTwilight',
+  },
+  midnightTable: {
+    id: 'midnightTable', name: 'Midnight Table Coral', scientific: '',
+    tier: TIER.LEGENDARY, tall: false, blocksB: true, color: 0x3d5afe, unlockLevel: 12,
+    pearlCost: 50, biome: 'deepTwilight',
   },
 };
 
@@ -348,24 +366,117 @@ export const FISH_SPECIES = {
     id: 'phantomLionfish', name: 'Phantom Lionfish', scientific: '',
     tier: TIER.MYTHIC, layer: 'B', color: 0x7c4dff, accentColor: 0xff4081,
     size: 28, speed: 0.6, unlockLevel: 12,
+    pearlCost: 60, biome: ['coral', 'deepTwilight'],
+  },
+
+  // ── Deep Twilight Reef — Bioluminescent ────────────────────────────────────
+  lanternfish: {
+    id: 'lanternfish', name: 'Lanternfish', scientific: 'Myctophidae spp.',
+    tier: TIER.COMMON, layer: 'A', color: 0x26c6da, accentColor: 0x00e5ff,
+    size: 10, speed: 2.2, unlockLevel: 6, biome: 'deepTwilight',
+  },
+  ghostGoby: {
+    id: 'ghostGoby', name: 'Ghost Goby', scientific: '',
+    tier: TIER.COMMON, layer: 'A', color: 0xb0bec5, accentColor: 0x7986cb,
+    size: 11, speed: 1.6, unlockLevel: 6, biome: 'deepTwilight',
+  },
+  hatchetfish: {
+    id: 'hatchetfish', name: 'Hatchetfish', scientific: 'Argyropelecus spp.',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0xe0e0e0, accentColor: 0x00e5ff,
+    size: 12, speed: 1.8, unlockLevel: 6, biome: 'deepTwilight',
+  },
+  deepBlenny: {
+    id: 'deepBlenny', name: 'Deep Blenny', scientific: '',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0x4a148c, accentColor: 0xce93d8,
+    size: 11, speed: 1.3, unlockLevel: 6, biome: 'deepTwilight',
+  },
+  dragonfish: {
+    id: 'dragonfish', name: 'Dragonfish', scientific: 'Stomiidae spp.',
+    tier: TIER.RARE, layer: 'A', color: 0x1a237e, accentColor: 0x00e5ff,
+    size: 17, speed: 1.0, unlockLevel: 7, biome: 'deepTwilight',
+  },
+  flashlightFish: {
+    id: 'flashlightFish', name: 'Flashlight Fish', scientific: 'Anomalopidae spp.',
+    tier: TIER.RARE, layer: 'A', color: 0x212121, accentColor: 0x00e5ff,
+    size: 14, speed: 1.2, unlockLevel: 7, biome: 'deepTwilight',
+  },
+  viperfish: {
+    id: 'viperfish', name: 'Viperfish', scientific: 'Chauliodus spp.',
+    tier: TIER.RARE, layer: 'B', color: 0x37474f, accentColor: 0x69f0ae,
+    size: 22, speed: 0.9, unlockLevel: 7, biome: 'deepTwilight',
+  },
+  barreleye: {
+    id: 'barreleye', name: 'Barreleye', scientific: 'Macropinna microstoma',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0xe8f5e9, accentColor: 0x00e5ff,
+    size: 15, speed: 0.7, unlockLevel: 8, biome: 'deepTwilight',
+  },
+  ribbonfish: {
+    id: 'ribbonfish', name: 'Ribbonfish', scientific: 'Trachipteridae spp.',
+    tier: TIER.SUPER_RARE, layer: 'B', color: 0xe8eaf6, accentColor: 0x7986cb,
+    size: 30, speed: 1.4, unlockLevel: 8, biome: 'deepTwilight',
+  },
+  twilightSeahorse: {
+    id: 'twilightSeahorse', name: 'Twilight Seahorse', scientific: '',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0x7c4dff, accentColor: 0xe040fb,
+    size: 14, speed: 0.4, unlockLevel: 8, biome: 'deepTwilight',
+  },
+  gulperEel: {
+    id: 'gulperEel', name: 'Gulper Eel', scientific: 'Eurypharynx pelecanoides',
+    tier: TIER.EPIC, layer: 'B', color: 0x1a237e, accentColor: 0x00e5ff,
+    size: 34, speed: 0.6, unlockLevel: 9, biome: 'deepTwilight',
+  },
+  fangtooth: {
+    id: 'fangtooth', name: 'Fangtooth', scientific: 'Anoplogaster cornuta',
+    tier: TIER.EPIC, layer: 'B', color: 0x212121, accentColor: 0xff5722,
+    size: 22, speed: 0.8, unlockLevel: 9, biome: 'deepTwilight',
+  },
+  frilledShark: {
+    id: 'frilledShark', name: 'Frilled Shark', scientific: 'Chlamydoselachus anguineus',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x455a64, accentColor: 0x78909c,
+    size: 40, speed: 0.7, unlockLevel: 12, biome: 'deepTwilight',
+  },
+  giantSquid: {
+    id: 'giantSquid', name: 'Giant Squid', scientific: 'Architeuthis dux',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0xce93d8, accentColor: 0x9c27b0,
+    size: 36, speed: 1.0, unlockLevel: 11, biome: 'deepTwilight',
     pearlCost: 60,
+  },
+  abyssalRay: {
+    id: 'abyssalRay', name: 'Abyssal Ray', scientific: '',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x1a237e, accentColor: 0x7986cb,
+    size: 36, speed: 1.0, unlockLevel: 10, biome: 'deepTwilight',
+  },
+  oarfish: {
+    id: 'oarfish', name: 'Oarfish', scientific: 'Regalecus glesne',
+    tier: TIER.MYTHIC, layer: 'B', color: 0xe8eaf6, accentColor: 0xef5350,
+    size: 44, speed: 0.8, unlockLevel: 13, biome: 'deepTwilight',
+  },
+  twilightWhaleShark: {
+    id: 'twilightWhaleShark', name: 'Twilight Whale Shark', scientific: '',
+    tier: TIER.MYTHIC, layer: 'B', color: 0x1565c0, accentColor: 0x00e5ff,
+    size: 46, speed: 0.6, unlockLevel: 14, biome: 'deepTwilight',
+    pearlCost: 80,
   },
 };
 
 // ─── Biomes ───────────────────────────────────────────────────────────────────
 export const BIOMES = {
   coral: {
-    id: 'coral',
-    icon: '🪸',
-    name: 'Coral Reef',
+    id: 'coral', icon: '🪸', name: 'Coral Reef', shortName: 'Coral',
+    unlockLevel: 1, bgColor: 0x1878c8,
     depth: 'Shallow–Mid (1–20 m)',
     description: 'The classic tropical reef — vibrant coral structures hosting diverse fish life. Your home biome.',
   },
   seagrass: {
-    id: 'seagrass',
-    icon: '🌿',
-    name: 'Seagrass Basin',
+    id: 'seagrass', icon: '🌿', name: 'Seagrass Basin', shortName: 'Seagrass',
+    unlockLevel: 3, bgColor: 0x0a3d1e,
     depth: 'Shallow (1–5 m)',
     description: 'Dense seagrass meadows with sandy patches. Grazers generate bonus BE while feeding. Dual-biome fish explore freely.',
+  },
+  deepTwilight: {
+    id: 'deepTwilight', icon: '🌌', name: 'Deep Twilight Reef', shortName: 'Twilight',
+    unlockLevel: 6, bgColor: 0x050a1a,
+    depth: 'Deep (200–500 m)',
+    description: 'Bioluminescent creatures drift through the perpetual dark. Strange glowing coral and deep-sea predators call this abyss home.',
   },
 };

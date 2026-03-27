@@ -2,12 +2,23 @@ import { Container, Graphics, Text } from 'pixi.js';
 import {
   PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT,
   COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
-  BIOMES, SEAGRASS_UNLOCK_LEVEL,
+  BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL,
 } from '../constants.js';
 import { state } from '../state.js';
 import { recordInteraction } from '../systems/BEEconomy.js';
 
 const FONT           = 'system-ui, -apple-system, sans-serif';
+
+/** Returns true if the species belongs to the given biome. */
+function _matchesBiome(spec, biome) {
+  const b = spec.biome;
+  if (!b || b === 'coral')      return biome === 'coral';
+  if (b === 'seagrass')         return biome === 'seagrass';
+  if (b === 'deepTwilight')     return biome === 'deepTwilight';
+  if (b === 'both')             return biome === 'coral' || biome === 'seagrass';
+  if (Array.isArray(b))         return b.includes(biome);
+  return false;
+}
 const ROW_H          = 48;
 const ICON_SZ        = 30;
 const PAD            = 10;
@@ -49,8 +60,9 @@ export class PlacementMenu {
     // Hover tracking
     this._hoverRowId    = null;
 
-    // Track seagrass lock state so we can react to level changes every tick
+    // Track biome lock states so we can react to level changes every tick
     this._seagrassWasLocked = state.level < SEAGRASS_UNLOCK_LEVEL;
+    this._twilightWasLocked = state.level < DEEP_TWILIGHT_UNLOCK_LEVEL;
 
     // Biome header container (rebuilt on biome travel)
     this._headerC = new Container();
@@ -126,10 +138,6 @@ export class PlacementMenu {
   _buildBiomeHeader() {
     this._headerC.removeChildren();
 
-    const current = state.biome === 'seagrass' ? BIOMES.seagrass : BIOMES.coral;
-    const other   = state.biome === 'seagrass' ? BIOMES.coral    : BIOMES.seagrass;
-    const locked  = other.id === 'seagrass' && state.level < SEAGRASS_UNLOCK_LEVEL;
-
     // Background + bottom border
     const bg = new Graphics();
     bg.rect(PANEL_X, PANEL_Y, PANEL_W, BIOME_HEADER_H)
@@ -138,59 +146,84 @@ export class PlacementMenu {
       .fill({ color: COLORS.panel_border, alpha: 0.6 });
     this._headerC.addChild(bg);
 
-    // Current biome label
-    const currLabel = new Text({
-      text: `${current.icon} ${current.name}`,
-      style: { fontSize: 9, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: '600', letterSpacing: 0.5 },
-    });
-    currLabel.x = PANEL_X + 6;
-    currLabel.y = PANEL_Y + (BIOME_HEADER_H - currLabel.height) / 2;
-    this._headerC.addChild(currLabel);
+    // Three tab chips, evenly spaced
+    const biomeOrder = ['coral', 'seagrass', 'deepTwilight'];
+    const tabW = Math.floor(PANEL_W / 3);
 
-    // Travel button (right side)
-    const travelText = locked
-      ? `${other.icon} Lvl ${SEAGRASS_UNLOCK_LEVEL}`
-      : `→ ${other.icon} ${other.name}`;
-    const travelLabel = new Text({
-      text: travelText,
-      style: { fontSize: 9, fill: locked ? COLORS.text_dim : COLORS.text_secondary, fontFamily: FONT },
-    });
-    travelLabel.x = PANEL_X + PANEL_W - travelLabel.width - 8;
-    travelLabel.y = PANEL_Y + (BIOME_HEADER_H - travelLabel.height) / 2;
-    this._headerC.addChild(travelLabel);
+    biomeOrder.forEach((biomeId, i) => {
+      const biome   = BIOMES[biomeId];
+      const isCurr  = state.biome === biomeId;
+      const locked  = state.level < biome.unlockLevel;
+      const label   = locked ? `${biome.icon} ${biome.unlockLevel}` : `${biome.icon} ${biome.shortName}`;
 
-    if (!locked) {
-      const hit = new Graphics();
-      hit.rect(travelLabel.x - 4, PANEL_Y + 2, travelLabel.width + 8, BIOME_HEADER_H - 4)
-         .fill({ color: 0x000000, alpha: 0 });
-      hit.interactive = true;
-      hit.cursor = 'pointer';
-      hit.on('pointerdown', () => this._onTravel?.(other.id));
-      this._headerC.addChild(hit);
-    }
+      const tx = PANEL_X + i * tabW;
+
+      // Active tab highlight
+      if (isCurr) {
+        const hl = new Graphics();
+        hl.rect(tx, PANEL_Y, tabW, BIOME_HEADER_H - 1)
+          .fill({ color: COLORS.panel_border, alpha: 0.5 });
+        this._headerC.addChild(hl);
+      }
+
+      const tab = new Text({
+        text: label,
+        style: {
+          fontSize: 8,
+          fill: isCurr ? COLORS.text_primary : locked ? COLORS.text_dim : COLORS.text_secondary,
+          fontFamily: FONT,
+          fontWeight: isCurr ? '700' : '400',
+        },
+      });
+      tab.x = tx + tabW / 2 - tab.width / 2;
+      tab.y = PANEL_Y + (BIOME_HEADER_H - tab.height) / 2;
+      this._headerC.addChild(tab);
+
+      if (!isCurr && !locked) {
+        const hit = new Graphics();
+        hit.rect(tx, PANEL_Y, tabW, BIOME_HEADER_H).fill({ color: 0x000000, alpha: 0 });
+        hit.interactive = true;
+        hit.cursor = 'pointer';
+        hit.on('pointerdown', () => this._onTravel?.(biomeId));
+        this._headerC.addChild(hit);
+      }
+    });
   }
 
   _buildContent() {
     let cursor = PAD;
+    const biome = state.biome;
 
-    if (state.biome === 'seagrass') {
+    if (biome === 'seagrass') {
       cursor = this._sectionLabel('SEAGRASS', cursor);
       Object.values(CORAL_SPECIES)
-        .filter(s => s.biome === 'seagrass')
+        .filter(s => _matchesBiome(s, 'seagrass'))
         .forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
       cursor += PAD * 2;
       cursor = this._sectionLabel('FISH — SEAGRASS BASIN', cursor);
       Object.values(FISH_SPECIES)
-        .filter(s => s.biome === 'seagrass' || s.biome === 'both')
+        .filter(s => _matchesBiome(s, 'seagrass'))
+        .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
+    } else if (biome === 'deepTwilight') {
+      cursor = this._sectionLabel('DEEP STRUCTURES', cursor);
+      Object.values(CORAL_SPECIES)
+        .filter(s => _matchesBiome(s, 'deepTwilight'))
+        .forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
+      cursor += PAD * 2;
+      cursor = this._sectionLabel('FISH — DEEP TWILIGHT', cursor);
+      Object.values(FISH_SPECIES)
+        .filter(s => _matchesBiome(s, 'deepTwilight'))
         .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
     } else {
       // coral (default)
       cursor = this._sectionLabel('CORAL', cursor);
-      Object.values(CORAL_SPECIES).forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
+      Object.values(CORAL_SPECIES)
+        .filter(s => _matchesBiome(s, 'coral'))
+        .forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
       cursor += PAD * 2;
       cursor = this._sectionLabel('FISH — CORAL REEF', cursor);
       Object.values(FISH_SPECIES)
-        .filter(s => !s.biome || s.biome === 'coral' || s.biome === 'both')
+        .filter(s => _matchesBiome(s, 'coral'))
         .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
     }
 
@@ -344,10 +377,12 @@ export class PlacementMenu {
   // ── Per-frame update (momentum) ─────────────────────────────────────────────
 
   update(_deltaMS) {
-    // Rebuild header if seagrass lock state changed (e.g. just reached level 3)
-    const nowLocked = state.level < SEAGRASS_UNLOCK_LEVEL;
-    if (nowLocked !== this._seagrassWasLocked) {
-      this._seagrassWasLocked = nowLocked;
+    // Rebuild header if any biome lock state changed
+    const sgLocked  = state.level < SEAGRASS_UNLOCK_LEVEL;
+    const dtLocked  = state.level < DEEP_TWILIGHT_UNLOCK_LEVEL;
+    if (sgLocked !== this._seagrassWasLocked || dtLocked !== this._twilightWasLocked) {
+      this._seagrassWasLocked = sgLocked;
+      this._twilightWasLocked = dtLocked;
       this._buildBiomeHeader();
     }
 

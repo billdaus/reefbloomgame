@@ -132,14 +132,16 @@ export function getSlotPreview(idx) {
       };
     }
 
-    // New biome-split format — aggregate across both biomes
-    const coral    = d.coral    ?? {};
-    const seagrass = d.seagrass ?? {};
+    // New biome-split format — aggregate across all biomes
+    const coral        = d.coral        ?? {};
+    const seagrass     = d.seagrass     ?? {};
+    const deepTwilight = d.deepTwilight ?? {};
     return {
       level:      d.level || 1,
       coralCount: (coral.placedCoral    || []).length,
       fishCount:  (coral.fishTypes      || []).length
-                + (seagrass.fishTypes   || []).length,
+                + (seagrass.fishTypes   || []).length
+                + (deepTwilight.fishTypes || []).length,
     };
   } catch {
     return null;
@@ -192,19 +194,21 @@ export function getBiomePreview(slotIdx, biome) {
 }
 
 /**
- * Returns the placedCoral array of the biome NOT currently active.
- * Used to compute passive BE production from the other biome.
+ * Returns the combined placedCoral arrays from ALL inactive biomes.
+ * Used to compute passive BE production from inactive biomes.
  */
-export function getOtherBiomePlacedCoral() {
+export function getInactiveBiomesPlacedCoral() {
   try {
     const full = _readRaw();
     if (!full) return [];
-    const other = _currentBiome === 'coral' ? 'seagrass' : 'coral';
     if (full.grid) {
-      // Old flat-format save — only coral data exists at top level
-      return other === 'coral' ? (full.placedCoral ?? []) : [];
+      // Old flat-format save — only coral data at top level
+      return _currentBiome === 'coral' ? [] : (full.placedCoral ?? []);
     }
-    return full[other]?.placedCoral ?? [];
+    const allBiomes = ['coral', 'seagrass', 'deepTwilight'];
+    return allBiomes
+      .filter(b => b !== _currentBiome)
+      .flatMap(b => full[b]?.placedCoral ?? []);
   } catch {
     return [];
   }

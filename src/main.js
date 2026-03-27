@@ -149,8 +149,9 @@ function buildSlotCards(onChoose) {
     // Biome chips — show occupancy; chips with data are resettable
     const onRebuild = () => buildSlotCards(onChoose);
     const biomesRow = el('div', 'slp-biomes');
-    biomesRow.appendChild(makeBiomeChip(i, 'coral',    '🪸', 'Coral Reef', onRebuild));
-    biomesRow.appendChild(makeBiomeChip(i, 'seagrass', '🌿', 'Seagrass',   onRebuild));
+    biomesRow.appendChild(makeBiomeChip(i, 'coral',        '🪸', 'Coral Reef',  onRebuild));
+    biomesRow.appendChild(makeBiomeChip(i, 'seagrass',     '🌿', 'Seagrass',    onRebuild));
+    biomesRow.appendChild(makeBiomeChip(i, 'deepTwilight', '🌌', 'Twilight',    onRebuild));
     card.appendChild(biomesRow);
 
     wrap.appendChild(card);

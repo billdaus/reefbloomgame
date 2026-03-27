@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, BE_PER_TICK } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -20,7 +20,7 @@ import { Clam } from '../entities/Clam.js';
 import { ClamRewardModal } from '../ui/ClamRewardModal.js';
 import { PearlShopModal }  from '../ui/PearlShopModal.js';
 import { tileCenter } from '../utils/grid.js';
-import { saveGame, loadGame, setCurrentBiome, getOtherBiomePlacedCoral } from '../save.js';
+import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 
 export class ReefScene {
   constructor(app) {
@@ -398,10 +398,10 @@ export class ReefScene {
     this._refreshPassiveIncome();
   }
 
-  /** Compute BE/tick from the other biome's saved coral and cache it in state. */
+  /** Compute BE/tick from all inactive biomes' saved coral and cache it in state. */
   _refreshPassiveIncome() {
-    const other = getOtherBiomePlacedCoral();
-    state.passiveBEPerTick = other.reduce((sum, { speciesId }) => {
+    const inactive = getInactiveBiomesPlacedCoral();
+    state.passiveBEPerTick = inactive.reduce((sum, { speciesId }) => {
       const spec = CORAL_SPECIES[speciesId];
       return sum + (spec ? (BE_PER_TICK[spec.tier] ?? 0) : 0);
     }, 0);
@@ -411,7 +411,8 @@ export class ReefScene {
 
   _travelToBiome(biome) {
     if (biome === state.biome) return;
-    if (biome === 'seagrass' && state.level < SEAGRASS_UNLOCK_LEVEL) return;
+    if (biome === 'seagrass'     && state.level < SEAGRASS_UNLOCK_LEVEL)      return;
+    if (biome === 'deepTwilight' && state.level < DEEP_TWILIGHT_UNLOCK_LEVEL) return;
 
     // Save current biome state before leaving
     saveGame();
@@ -445,7 +446,7 @@ export class ReefScene {
     setCurrentBiome(biome);
 
     // Tint the water differently per biome
-    this.app.renderer.background.color = biome === 'seagrass' ? 0x0a3d1e : 0x1878c8;
+    this.app.renderer.background.color = BIOMES[biome]?.bgColor ?? 0x1878c8;
 
     // Load and restore the new biome's saved state
     const saved = loadGame();
