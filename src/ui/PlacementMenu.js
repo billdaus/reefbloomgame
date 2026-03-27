@@ -154,7 +154,7 @@ export class PlacementMenu {
       const biome   = BIOMES[biomeId];
       const isCurr  = state.biome === biomeId;
       const locked  = state.level < biome.unlockLevel;
-      const label   = locked ? `${biome.icon} ${biome.unlockLevel}` : `${biome.icon} ${biome.shortName}`;
+      const label   = `${biome.icon} ${biome.shortName}${locked ? ` (${biome.unlockLevel})` : ''}`;
 
       const tx = PANEL_X + i * tabW;
 
