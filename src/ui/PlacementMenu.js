@@ -223,10 +223,10 @@ export class PlacementMenu {
     if (!this._dragActive) return;
 
     const dy = py - this._dragStartY;
-    if (Math.abs(dy) > 6) this._dragMoved = true;
+    if (Math.abs(dy) > 3) this._dragMoved = true;
 
     if (this._dragMoved) {
-      this._momentum = this._lastDragY - py;
+      this._momentum = (this._lastDragY - py) * 1.4;  // amplify for snappier feel
       this._lastDragY = py;
       this._setScroll(this._dragStartScroll - dy);
     }
@@ -266,7 +266,7 @@ export class PlacementMenu {
   update(_deltaMS) {
     if (!this._dragActive && Math.abs(this._momentum) > 0.3) {
       this._setScroll(this._scrollY + this._momentum);
-      this._momentum *= 0.90;
+      this._momentum *= 0.94;
       if (Math.abs(this._momentum) < 0.3) this._momentum = 0;
     }
   }
