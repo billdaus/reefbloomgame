@@ -44,6 +44,19 @@ export const FISH_COST = {
 export const START_BE      = 20;
 export const START_HARMONY = 50;
 export const START_LEVEL   = 1;
+export const START_PEARLS  = 0;
+
+// ─── Clam / Ad system ────────────────────────────────────────────────────────
+export const CLAM_TICK_MS      = 60_000;  // check for spawn every 1 min
+export const CLAM_SPAWN_CHANCE = 0.30;    // 30% per tick
+export const AD_DAILY_LIMIT    = 5;       // max watches per calendar day
+
+// Reward tables (index = outcome)
+export const AD_REWARDS = {
+  be:     [25, 30, 50],           // weight: 50% / 30% / 20%
+  pearls: [1, 5],                  // weight: 75% / 25%
+  fish:   ['clownfish', 'dolphin'],// weight: 99% / 1%
+};
 
 // ─── Tier enum ───────────────────────────────────────────────────────────────
 export const TIER = {

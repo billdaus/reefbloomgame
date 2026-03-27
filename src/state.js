@@ -1,5 +1,5 @@
 import {
-  START_BE, START_HARMONY, START_LEVEL,
+  START_BE, START_HARMONY, START_LEVEL, START_PEARLS,
   GRID_ROWS, GRID_COLS,
 } from './constants.js';
 
@@ -8,6 +8,11 @@ export const state = {
   be:      START_BE,
   harmony: START_HARMONY,
   level:   START_LEVEL,
+  pearls:  START_PEARLS,
+
+  // ── Ad / clam tracking ─────────────────────────────────────────────────────
+  clamWatchCount: 0,           // watches used today
+  clamWatchDate:  '',          // date string — resets count when day changes
 
   // ── Selection (placement mode) ─────────────────────────────────────────────
   selectedType: null,   // 'coral' | 'fish' | null

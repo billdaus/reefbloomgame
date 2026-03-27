@@ -9,11 +9,16 @@ import { PlacementMenu }    from '../ui/PlacementMenu.js';
 import { Fish }             from '../entities/Fish.js';
 import { Bubbles }          from '../entities/Bubbles.js';
 import {
-  initEconomy, tickEconomy, spendForCoral, spendForFish, recordInteraction,
-  refundCoral, refundFish,
+  initEconomy, tickEconomy,
+  spendForCoral, spendForFish, spendForCoralPearl, spendForFishPearl,
+  recordInteraction, refundCoral, refundFish,
 } from '../systems/BEEconomy.js';
 import { updateHarmonyFilter } from '../systems/HarmonySystem.js';
 import { initLevelSystem, checkLevelUp } from '../systems/LevelSystem.js';
+import { initClamSystem, tickClamSystem, canWatch, collectAdReward, despawnClam } from '../systems/ClamSystem.js';
+import { Clam } from '../entities/Clam.js';
+import { ClamRewardModal } from '../ui/ClamRewardModal.js';
+import { PearlShopModal }  from '../ui/PearlShopModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame } from '../save.js';
 
@@ -30,6 +35,10 @@ export class ReefScene {
     this._fishContainerA = new Container();
     this._fishContainerB = new Container();
 
+    // ── Clam ─────────────────────────────────────────────────────────────────
+    this._clamContainer = new Container();
+    this._clamEntity    = null;
+
     // ── Layers ───────────────────────────────────────────────────────────────
     this._bg         = new BackgroundLayer();
     this._grid       = new GridLayer((tile) => this._onTileTap(tile));
@@ -45,6 +54,8 @@ export class ReefScene {
     this.worldContainer.addChild(this._grid.container);
     // 3. Short/flat coral — fish Layer A swims over these
     this.worldContainer.addChild(this._grid.shortCoralContainer);
+    // 3b. Clam sits on the reef floor (above short coral, below fish)
+    this.worldContainer.addChild(this._clamContainer);
     // 4. Fish Layer A (clownfish, chromis, butterflyfish, seahorse)
     this.worldContainer.addChild(this._fishContainerA);
     // 5. Tall coral — renders in front of Layer-A fish
@@ -59,14 +70,21 @@ export class ReefScene {
     this.worldContainer.addChild(this._grid.hoverContainer);
 
     // ── UI (no saturation filter) ────────────────────────────────────────────
-    this._uiContainer = new Container();
-    this._hud  = new HUD(() => { saveGame(); window.location.reload(); });
+    this._uiContainer   = new Container();
+    this._rewardModal   = new ClamRewardModal();
+    this._shopModal     = new PearlShopModal();
+    this._hud  = new HUD(
+      () => { saveGame(); window.location.reload(); },
+      () => this._shopModal.show(),
+    );
     this._menu = new PlacementMenu(
       (id) => this._onCoralSelected(id),
       (id) => this._onFishSelected(id),
     );
     this._uiContainer.addChild(this._menu.container);
     this._uiContainer.addChild(this._hud.container);
+    this._uiContainer.addChild(this._rewardModal.container);
+    this._uiContainer.addChild(this._shopModal.container);
 
     app.stage.addChild(this.worldContainer);
     app.stage.addChild(this._uiContainer);
@@ -86,6 +104,20 @@ export class ReefScene {
       this._hud.showLevelUp(newLevel);
       this._menu.updateLevel();
       this._bubbles.trigger('levelUp');
+    });
+
+    initClamSystem({
+      onSpawn: (x, y) => {
+        this._clamEntity = new Clam(x, y, () => this._onClamTap());
+        this._clamContainer.addChild(this._clamEntity.container);
+      },
+      onDespawn: () => {
+        if (this._clamEntity) {
+          this._clamContainer.removeChild(this._clamEntity.container);
+          this._clamEntity.container.destroy({ children: true });
+          this._clamEntity = null;
+        }
+      },
     });
 
     // ── Ticker ───────────────────────────────────────────────────────────────
@@ -110,8 +142,12 @@ export class ReefScene {
     this._menu.update(dms);
 
     tickEconomy(dms);
+    tickClamSystem(dms);
     updateHarmonyFilter(this.worldContainer);
     checkLevelUp();
+
+    if (this._clamEntity) this._clamEntity.update(dms);
+    this._rewardModal.update(dms);
 
     state.fish.forEach(fish => fish.update(dt, state.grid, CORAL_SPECIES));
 
@@ -152,7 +188,8 @@ export class ReefScene {
     if (state.grid[row][col] !== null) return;
     const spec = CORAL_SPECIES[speciesId];
     if (!spec || spec.unlockLevel > state.level) return;
-    if (!spendForCoral(speciesId)) return;
+    const spent = spec.pearlCost ? spendForCoralPearl(speciesId) : spendForCoral(speciesId);
+    if (!spent) return;
 
     const uid = state.nextUid();
     state.grid[row][col] = speciesId;
@@ -173,7 +210,8 @@ export class ReefScene {
   _trySpawnFish(col, row, speciesId) {
     const spec = FISH_SPECIES[speciesId];
     if (!spec || spec.unlockLevel > state.level) return;
-    if (!spendForFish(speciesId)) return;
+    const spent = spec.pearlCost ? spendForFishPearl(speciesId) : spendForFish(speciesId);
+    if (!spent) return;
     this._spawnFish(speciesId, spec, col, row);
   }
 
@@ -264,6 +302,34 @@ export class ReefScene {
     saveGame();
   }
 
+  // ── Clam / ad ──────────────────────────────────────────────────────────────
+
+  _onClamTap() {
+    if (!canWatch()) return;
+    recordInteraction();
+
+    const rewards = collectAdReward();
+
+    // Apply BE and pearl rewards immediately
+    state.be     += rewards.be;
+    state.pearls += rewards.pearls;
+    this._hud.showBonus(`+${rewards.be} 🫧  +${rewards.pearls} 💎`);
+
+    // Spawn fish reward at a random reef position
+    const spec = FISH_SPECIES[rewards.fishId];
+    if (spec) {
+      const col = 1 + Math.floor(Math.random() * 8);
+      const row = 1 + Math.floor(Math.random() * 8);
+      this._spawnFish(rewards.fishId, spec, col, row);
+    }
+
+    despawnClam();
+    saveGame();
+
+    // Show reward modal (informational — rewards already applied above)
+    this._rewardModal.show(rewards, () => {});
+  }
+
   // ── Save / restore ─────────────────────────────────────────────────────────
 
   _restoreFromSave(data) {
@@ -271,6 +337,9 @@ export class ReefScene {
     state.be             = data.be      ?? state.be;
     state.harmony        = data.harmony ?? state.harmony;
     state.level          = data.level   ?? state.level;
+    state.pearls         = data.pearls  ?? state.pearls;
+    state.clamWatchCount = data.clamWatchCount ?? 0;
+    state.clamWatchDate  = data.clamWatchDate  ?? '';
     state.harmonySmoothed = state.harmony;
 
     state.coralTypesSeen = new Set(data.coralTypesSeen ?? []);

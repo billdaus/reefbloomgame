@@ -103,6 +103,24 @@ export function refundFish(speciesId) {
   return refund;
 }
 
+/** Spend pearls for a pearl-only coral. Returns true if successful. */
+export function spendForCoralPearl(speciesId) {
+  const spec = CORAL_SPECIES[speciesId];
+  if (!spec || !spec.pearlCost) return false;
+  if (state.pearls < spec.pearlCost) return false;
+  state.pearls -= spec.pearlCost;
+  return true;
+}
+
+/** Spend pearls for a pearl-only fish. Returns true if successful. */
+export function spendForFishPearl(speciesId) {
+  const spec = FISH_SPECIES[speciesId];
+  if (!spec || !spec.pearlCost) return false;
+  if (state.pearls < spec.pearlCost) return false;
+  state.pearls -= spec.pearlCost;
+  return true;
+}
+
 /** Cost string for display. */
 export function coralCostStr(speciesId) {
   const spec = CORAL_SPECIES[speciesId];

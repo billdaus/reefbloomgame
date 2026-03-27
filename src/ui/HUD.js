@@ -8,13 +8,15 @@ const FONT = 'system-ui, -apple-system, sans-serif';
  * HUD — top bar showing BE, Harmony bar, and Level.
  */
 export class HUD {
-  constructor(onHome) {
-    this._onHome  = onHome;
+  constructor(onHome, onPearlShop) {
+    this._onHome      = onHome;
+    this._onPearlShop = onPearlShop;
     this.container = new Container();
-    this._bg       = new Graphics();
-    this._beText   = null;
-    this._bonusText = null;
-    this._bonusTimer = 0;
+    this._bg          = new Graphics();
+    this._beText      = null;
+    this._pearlText   = null;
+    this._bonusText   = null;
+    this._bonusTimer  = 0;
     this._harmonyBar  = new Graphics();
     this._harmonyText = null;
     this._levelText   = null;
@@ -54,6 +56,31 @@ export class HUD {
     this._bonusText.y = HUD_H / 2 + 8;
     this._bonusText.alpha = 0;
     this.container.addChild(this._bonusText);
+
+    // ── Pearl section ─────────────────────────────────────────────────────────
+    const pearlSection = new Container();
+    pearlSection.interactive = true;
+    pearlSection.cursor = 'pointer';
+    pearlSection.on('pointerdown', () => this._onPearlShop?.());
+
+    const pearlIcon = new Text({ text: '💎', style: { fontSize: 18 } });
+    pearlIcon.x = 128;
+    pearlIcon.y = HUD_H / 2 - 12;
+    pearlSection.addChild(pearlIcon);
+
+    this._pearlText = new Text({
+      text: '0',
+      style: { fontSize: 18, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: 'bold' },
+    });
+    this._pearlText.x = 152;
+    this._pearlText.y = HUD_H / 2 - 12;
+    pearlSection.addChild(this._pearlText);
+
+    // Invisible hit area to make clicking easier
+    const pearlHit = new Graphics();
+    pearlHit.rect(124, HUD_H / 2 - 16, 70, 30).fill({ color: 0xffffff, alpha: 0 });
+    pearlSection.addChild(pearlHit);
+    this.container.addChild(pearlSection);
 
     // ── Harmony section ──────────────────────────────────────────────────────
     const hmLabel = new Text({
@@ -155,7 +182,8 @@ export class HUD {
 
   /** Call every frame. deltaMS from PixiJS ticker. */
   update(deltaMS) {
-    this._beText.text = String(Math.floor(state.be));
+    this._beText.text    = String(Math.floor(state.be));
+    this._pearlText.text = String(Math.floor(state.pearls));
     this._levelText.text = String(state.level);
     this._harmonyText.text = String(Math.round(state.harmony));
     this._drawHarmonyBar();
