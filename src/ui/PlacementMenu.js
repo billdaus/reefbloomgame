@@ -4,6 +4,7 @@ import {
   COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
   BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL,
 } from '../constants.js';
+// Note: SEAGRASS_UNLOCK_LEVEL / DEEP_TWILIGHT_UNLOCK_LEVEL kept for lock-state tracking
 import { state } from '../state.js';
 import { recordInteraction } from '../systems/BEEconomy.js';
 
@@ -146,48 +147,44 @@ export class PlacementMenu {
       .fill({ color: COLORS.panel_border, alpha: 0.6 });
     this._headerC.addChild(bg);
 
-    // Three tab chips, evenly spaced
-    const biomeOrder = ['coral', 'seagrass', 'deepTwilight'];
-    const tabW = Math.floor(PANEL_W / 3);
-
-    biomeOrder.forEach((biomeId, i) => {
-      const biome   = BIOMES[biomeId];
-      const isCurr  = state.biome === biomeId;
-      const locked  = state.level < biome.unlockLevel;
-      const label   = `${biome.icon} ${biome.shortName}${locked ? ` (${biome.unlockLevel})` : ''}`;
-
-      const tx = PANEL_X + i * tabW;
-
-      // Active tab highlight
-      if (isCurr) {
-        const hl = new Graphics();
-        hl.rect(tx, PANEL_Y, tabW, BIOME_HEADER_H - 1)
-          .fill({ color: COLORS.panel_border, alpha: 0.5 });
-        this._headerC.addChild(hl);
-      }
-
-      const tab = new Text({
-        text: label,
-        style: {
-          fontSize: 8,
-          fill: isCurr ? COLORS.text_primary : locked ? COLORS.text_dim : COLORS.text_secondary,
-          fontFamily: FONT,
-          fontWeight: isCurr ? '700' : '400',
-        },
-      });
-      tab.x = tx + tabW / 2 - tab.width / 2;
-      tab.y = PANEL_Y + (BIOME_HEADER_H - tab.height) / 2;
-      this._headerC.addChild(tab);
-
-      if (!isCurr && !locked) {
-        const hit = new Graphics();
-        hit.rect(tx, PANEL_Y, tabW, BIOME_HEADER_H).fill({ color: 0x000000, alpha: 0 });
-        hit.interactive = true;
-        hit.cursor = 'pointer';
-        hit.on('pointerdown', () => this._onTravel?.(biomeId));
-        this._headerC.addChild(hit);
-      }
+    // Current biome label (left)
+    const biome    = BIOMES[state.biome] ?? BIOMES.coral;
+    const currLabel = new Text({
+      text: `${biome.icon}  ${biome.name}`,
+      style: { fontSize: 9, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: '600', letterSpacing: 0.4 },
     });
+    currLabel.x = PANEL_X + 8;
+    currLabel.y = PANEL_Y + (BIOME_HEADER_H - currLabel.height) / 2;
+    this._headerC.addChild(currLabel);
+
+    // Travel button (right)
+    const btnW  = 60;
+    const btnX  = PANEL_X + PANEL_W - btnW - 6;
+    const btnY  = PANEL_Y + 4;
+    const btnH  = BIOME_HEADER_H - 8;
+
+    const btnBg = new Graphics();
+    btnBg.roundRect(btnX, btnY, btnW, btnH, 4)
+         .fill({ color: COLORS.panel_border, alpha: 0.55 });
+    this._headerC.addChild(btnBg);
+
+    const btnLabel = new Text({
+      text: '🗺  Travel',
+      style: { fontSize: 8.5, fill: COLORS.text_secondary, fontFamily: FONT },
+    });
+    btnLabel.anchor.set(0.5, 0.5);
+    btnLabel.x = btnX + btnW / 2;
+    btnLabel.y = btnY + btnH / 2;
+    this._headerC.addChild(btnLabel);
+
+    const hit = new Graphics();
+    hit.rect(btnX, PANEL_Y, btnW + 6, BIOME_HEADER_H).fill({ color: 0x000000, alpha: 0 });
+    hit.interactive = true;
+    hit.cursor = 'pointer';
+    hit.on('pointerover', () => { btnBg.tint = 0xbbddff; });
+    hit.on('pointerout',  () => { btnBg.tint = 0xffffff; });
+    hit.on('pointerdown', () => this._onTravel?.());
+    this._headerC.addChild(hit);
   }
 
   _buildContent() {
@@ -377,13 +374,12 @@ export class PlacementMenu {
   // ── Per-frame update (momentum) ─────────────────────────────────────────────
 
   update(_deltaMS) {
-    // Rebuild header if any biome lock state changed
-    const sgLocked  = state.level < SEAGRASS_UNLOCK_LEVEL;
-    const dtLocked  = state.level < DEEP_TWILIGHT_UNLOCK_LEVEL;
+    // Nothing to rebuild in header on lock changes (modal handles lock display)
+    const sgLocked = state.level < SEAGRASS_UNLOCK_LEVEL;
+    const dtLocked = state.level < DEEP_TWILIGHT_UNLOCK_LEVEL;
     if (sgLocked !== this._seagrassWasLocked || dtLocked !== this._twilightWasLocked) {
       this._seagrassWasLocked = sgLocked;
       this._twilightWasLocked = dtLocked;
-      this._buildBiomeHeader();
     }
 
     if (!this._dragActive && Math.abs(this._momentum) > 0.3) {

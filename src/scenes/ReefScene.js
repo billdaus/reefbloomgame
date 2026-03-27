@@ -17,8 +17,9 @@ import { updateHarmonyFilter } from '../systems/HarmonySystem.js';
 import { initLevelSystem, checkLevelUp } from '../systems/LevelSystem.js';
 import { initClamSystem, tickClamSystem, canWatch, collectAdReward, despawnClam } from '../systems/ClamSystem.js';
 import { Clam } from '../entities/Clam.js';
-import { ClamRewardModal } from '../ui/ClamRewardModal.js';
-import { PearlShopModal }  from '../ui/PearlShopModal.js';
+import { ClamRewardModal }    from '../ui/ClamRewardModal.js';
+import { PearlShopModal }     from '../ui/PearlShopModal.js';
+import { BiomeTravelModal }   from '../ui/BiomeTravelModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 
@@ -73,6 +74,7 @@ export class ReefScene {
     this._uiContainer   = new Container();
     this._rewardModal   = new ClamRewardModal();
     this._shopModal     = new PearlShopModal();
+    this._travelModal   = new BiomeTravelModal();
     this._hud  = new HUD(
       () => { saveGame(); window.location.reload(); },
       () => this._shopModal.show(),
@@ -80,12 +82,13 @@ export class ReefScene {
     this._menu = new PlacementMenu(
       (id) => this._onCoralSelected(id),
       (id) => this._onFishSelected(id),
-      (biome) => this._travelToBiome(biome),
+      () => this._travelModal.show((biome) => this._travelToBiome(biome)),
     );
     this._uiContainer.addChild(this._menu.container);
     this._uiContainer.addChild(this._hud.container);
     this._uiContainer.addChild(this._rewardModal.container);
     this._uiContainer.addChild(this._shopModal.container);
+    this._uiContainer.addChild(this._travelModal.container);
 
     app.stage.addChild(this.worldContainer);
     app.stage.addChild(this._uiContainer);
