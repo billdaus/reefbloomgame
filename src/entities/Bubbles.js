@@ -156,7 +156,7 @@ export class Bubbles {
 
     // Clickable — Bubbles sasses back
     this.container.eventMode = 'static';
-    this.container.cursor = 'pointer';
+    this.container.cursor = "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><text y=\"28\" font-size=\"28\">🐠</text></svg>') 16 16, pointer";
     this.container.hitArea = { contains: (x, y) => Math.abs(x) < 36 && Math.abs(y) < 22 };
     this.container.on('pointertap', () => this.trigger('tapped'));
   }
