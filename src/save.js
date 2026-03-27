@@ -3,7 +3,8 @@ import { state } from './state.js';
 const SLOT_KEYS        = ['reef-bloom-save-0', 'reef-bloom-save-1', 'reef-bloom-save-2'];
 const CURRENT_SLOT_KEY = 'reef-bloom-current-slot';
 
-let _currentSlot = 0;
+let _currentSlot  = 0;
+let _currentBiome = 'coral';
 
 export function setCurrentSlot(idx) {
   _currentSlot = idx;
@@ -18,36 +19,97 @@ export function getCurrentSlot() {
   return _currentSlot;
 }
 
+export function setCurrentBiome(biome) {
+  _currentBiome = biome;
+}
+
+export function getCurrentBiome() {
+  return _currentBiome;
+}
+
+// ── Save / load ──────────────────────────────────────────────────────────────
+
+/** Serialize current biome's grid state; shared economy fields are written too. */
 export function saveGame() {
-  const data = {
-    be:      state.be,
-    harmony: state.harmony,
-    level:   state.level,
-    pearls:  state.pearls,
-    clamWatchCount: state.clamWatchCount,
-    clamWatchDate:  state.clamWatchDate,
-    grid:    state.grid.map(row => [...row]),
+  const biomeData = {
+    grid:           state.grid.map(row => [...row]),
     placedCoral:    state.placedCoral.map(c => ({ uid: c.uid, col: c.col, row: c.row, speciesId: c.speciesId })),
     fishTypes:      state.fish.map(f => f.speciesId),
     coralTypesSeen: [...state.coralTypesSeen],
     fishTypesSeen:  [...state.fishTypesSeen],
   };
+
+  // Read existing slot data so we don't clobber the OTHER biome's grid
+  let full = _readRaw() ?? {};
+
+  // Migrate old flat-format saves (before biome split)
+  if (full.grid) {
+    const oldCoral = {
+      grid:           full.grid,
+      placedCoral:    full.placedCoral    ?? [],
+      fishTypes:      full.fishTypes      ?? [],
+      coralTypesSeen: full.coralTypesSeen ?? [],
+      fishTypesSeen:  full.fishTypesSeen  ?? [],
+    };
+    full = {
+      be:             full.be,
+      harmony:        full.harmony,
+      level:          full.level,
+      pearls:         full.pearls,
+      clamWatchCount: full.clamWatchCount,
+      clamWatchDate:  full.clamWatchDate,
+      coral:    oldCoral,
+      seagrass: null,
+    };
+  }
+
+  // Update shared economy fields
+  full.be             = state.be;
+  full.harmony        = state.harmony;
+  full.level          = state.level;
+  full.pearls         = state.pearls;
+  full.clamWatchCount = state.clamWatchCount;
+  full.clamWatchDate  = state.clamWatchDate;
+
+  // Write current biome's grid state
+  full[_currentBiome] = biomeData;
+
   try {
-    localStorage.setItem(SLOT_KEYS[_currentSlot], JSON.stringify(data));
+    localStorage.setItem(SLOT_KEYS[_currentSlot], JSON.stringify(full));
   } catch (e) {
     console.warn('[save] write failed', e);
   }
 }
 
+/**
+ * Load the current biome from the active slot.
+ * Returns a flat object with shared fields merged with biome-specific fields,
+ * or null if the slot is empty.
+ */
 export function loadGame() {
-  try {
-    const raw = localStorage.getItem(SLOT_KEYS[_currentSlot]);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (e) {
-    console.warn('[save] read failed', e);
-    return null;
+  const full = _readRaw();
+  if (!full) return null;
+
+  // Migrate old flat-format saves
+  if (full.grid) {
+    return full; // _restoreFromSave handles old format fine
   }
+
+  const biomeData = full[_currentBiome] ?? {};
+
+  return {
+    be:             full.be,
+    harmony:        full.harmony,
+    level:          full.level,
+    pearls:         full.pearls,
+    clamWatchCount: full.clamWatchCount,
+    clamWatchDate:  full.clamWatchDate,
+    grid:           biomeData.grid           ?? null,
+    placedCoral:    biomeData.placedCoral    ?? [],
+    fishTypes:      biomeData.fishTypes      ?? [],
+    coralTypesSeen: biomeData.coralTypesSeen ?? [],
+    fishTypesSeen:  biomeData.fishTypesSeen  ?? [],
+  };
 }
 
 export function clearSave() {
@@ -60,10 +122,24 @@ export function getSlotPreview(idx) {
     const raw = localStorage.getItem(SLOT_KEYS[idx]);
     if (!raw) return null;
     const d = JSON.parse(raw);
+
+    // Old flat format
+    if (d.grid) {
+      return {
+        level:      d.level || 1,
+        coralCount: (d.placedCoral || []).length,
+        fishCount:  (d.fishTypes   || []).length,
+      };
+    }
+
+    // New biome-split format — aggregate across both biomes
+    const coral    = d.coral    ?? {};
+    const seagrass = d.seagrass ?? {};
     return {
       level:      d.level || 1,
-      coralCount: (d.placedCoral || []).length,
-      fishCount:  (d.fishTypes  || []).length,
+      coralCount: (coral.placedCoral    || []).length,
+      fishCount:  (coral.fishTypes      || []).length
+                + (seagrass.fishTypes   || []).length,
     };
   } catch {
     return null;
@@ -73,4 +149,17 @@ export function getSlotPreview(idx) {
 /** Permanently delete a specific slot. */
 export function clearSlot(idx) {
   try { localStorage.removeItem(SLOT_KEYS[idx]); } catch { /* ignore */ }
+}
+
+// ── Internal ─────────────────────────────────────────────────────────────────
+
+function _readRaw() {
+  try {
+    const raw = localStorage.getItem(SLOT_KEYS[_currentSlot]);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn('[save] read failed', e);
+    return null;
+  }
 }

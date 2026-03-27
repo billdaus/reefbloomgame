@@ -4,6 +4,9 @@ import {
 } from './constants.js';
 
 export const state = {
+  // ── Biome ──────────────────────────────────────────────────────────────────
+  biome: 'coral',   // 'coral' | 'seagrass'
+
   // ── Resources ──────────────────────────────────────────────────────────────
   be:      START_BE,
   harmony: START_HARMONY,

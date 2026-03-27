@@ -1,22 +1,22 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import {
   PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT,
-  COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL, BIOMES,
+  COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
 } from '../constants.js';
 import { state } from '../state.js';
 import { recordInteraction } from '../systems/BEEconomy.js';
 
-const FONT    = 'system-ui, -apple-system, sans-serif';
+const FONT         = 'system-ui, -apple-system, sans-serif';
 const ROW_H        = 48;
 const ICON_SZ      = 30;
 const PAD          = 10;
-const TAB_H        = 34;
 const REMOVE_BTN_H = 36;
-const SCROLL_TOP   = PANEL_Y + TAB_H + REMOVE_BTN_H + 6;
-const SCROLL_AREA_H = PANEL_H - TAB_H - 4 - REMOVE_BTN_H - 6;
+const SCROLL_TOP   = PANEL_Y + REMOVE_BTN_H + 6;
+const SCROLL_AREA_H = PANEL_H - 4 - REMOVE_BTN_H - 6;
 
 /**
  * PlacementMenu — scrollable right panel for species selection.
+ * Content is filtered to the current biome (state.biome).
  *
  * Scroll mechanics:
  *   - Pointer drag anywhere in the panel area
@@ -45,15 +45,13 @@ export class PlacementMenu {
 
     // Hover tracking
     this._hoverRowId    = null;
-    this._activeBiome   = 'coral';
-    this._tabGfx        = new Graphics();
 
     this._scrollContent = new Container();
     this._scrollContent.x = PANEL_X;
     this._scrollContent.y = SCROLL_TOP;
 
-    this._sbGfx       = new Graphics();   // scrollbar graphic
-    this._removeBtnGfx = new Graphics();  // remove mode toggle
+    this._sbGfx        = new Graphics();   // scrollbar graphic
+    this._removeBtnGfx = new Graphics();   // remove mode toggle
 
     this._build();
   }
@@ -72,40 +70,35 @@ export class PlacementMenu {
     }
     this.container.addChild(bg);
 
-    // 1a. Biome tab buttons
-    this.container.addChild(this._tabGfx);
-    this._drawTabs();
-    this._buildTabHitAreas();
-
-    // 1b. Remove mode toggle button
+    // 2. Remove mode toggle button
     this._drawRemoveBtn();
     this.container.addChild(this._removeBtnGfx);
 
     const removeBtnHit = new Graphics();
-    removeBtnHit.rect(PANEL_X + 4, PANEL_Y + TAB_H + 4, PANEL_W - 16, REMOVE_BTN_H - 2)
+    removeBtnHit.rect(PANEL_X + 4, PANEL_Y + 4, PANEL_W - 16, REMOVE_BTN_H - 2)
       .fill({ color: 0x000000, alpha: 0 });
     removeBtnHit.interactive = true;
     removeBtnHit.cursor = 'pointer';
     removeBtnHit.on('pointerdown', () => this._toggleRemoveMode());
     this.container.addChild(removeBtnHit);
 
-    // 2. Scrollable content
+    // 3. Scrollable content
     this._scrollContent.x = PANEL_X;
     this._scrollContent.y = SCROLL_TOP;
-    this._buildContent(this._activeBiome);
+    this._buildContent();
     this.container.addChild(this._scrollContent);
 
-    // 3. Scroll mask
+    // 4. Scroll mask
     const maskGfx = new Graphics();
     maskGfx.rect(PANEL_X, SCROLL_TOP + 2, PANEL_W - 8, SCROLL_AREA_H).fill(0xffffff);
     this._scrollContent.mask = maskGfx;
     this.container.addChild(maskGfx);
 
-    // 4. Scrollbar
+    // 5. Scrollbar
     this.container.addChild(this._sbGfx);
     this._drawScrollbar();
 
-    // 5. Hit area
+    // 6. Hit area
     const hitArea = new Graphics();
     hitArea.rect(PANEL_X, SCROLL_TOP, PANEL_W - 10, SCROLL_AREA_H).fill({ color: 0x000000, alpha: 0 });
     hitArea.interactive = true;
@@ -117,69 +110,16 @@ export class PlacementMenu {
     this.container.addChild(hitArea);
   }
 
-  _drawTabs() {
-    const g   = this._tabGfx;
-    const tw  = (PANEL_W - 2) / 2;
-    const th  = TAB_H - 2;
-    g.clear();
-
-    Object.values(BIOMES).forEach((biome, i) => {
-      const bx     = PANEL_X + 1 + i * tw;
-      const by     = PANEL_Y + 1;
-      const active = this._activeBiome === biome.id;
-      g.roundRect(bx, by, tw - 1, th, 0)
-       .fill({ color: active ? COLORS.panel_border : COLORS.panel_bg, alpha: active ? 0.7 : 0.4 });
-      if (active) {
-        g.roundRect(bx, by + th - 2, tw - 1, 2, 0).fill({ color: COLORS.selected_hl, alpha: 1 });
-      }
-    });
-    // bottom border of tab row
-    g.rect(PANEL_X, PANEL_Y + TAB_H - 1, PANEL_W, 1)
-     .fill({ color: COLORS.panel_border, alpha: 0.5 });
-  }
-
-  _buildTabHitAreas() {
-    const tw = (PANEL_W - 2) / 2;
-    Object.values(BIOMES).forEach((biome, i) => {
-      const hit = new Graphics();
-      hit.rect(PANEL_X + 1 + i * tw, PANEL_Y + 1, tw - 1, TAB_H - 2)
-         .fill({ color: 0x000000, alpha: 0 });
-      hit.interactive = true;
-      hit.cursor = 'pointer';
-      hit.on('pointerdown', () => this._switchBiome(biome.id));
-
-      // Biome label text
-      const label = new Text({
-        text: `${biome.icon} ${biome.name}`,
-        style: { fontSize: 10, fill: COLORS.text_secondary, fontFamily: FONT, fontWeight: '600', letterSpacing: 0.5 },
-      });
-      label.x = PANEL_X + 1 + i * tw + (tw - label.width) / 2;
-      label.y = PANEL_Y + (TAB_H - label.height) / 2;
-      this.container.addChild(label);
-      this.container.addChild(hit);
-    });
-  }
-
-  _switchBiome(biomeId) {
-    if (this._activeBiome === biomeId) return;
-    this._activeBiome = biomeId;
-    this._drawTabs();
-    // Clear and rebuild scrollable content
-    this._scrollContent.removeChildren();
-    this._rows = [];
-    this._scrollY = 0;
-    this._scrollContent.y = SCROLL_TOP;
-    this._buildContent(biomeId);
-    this._drawScrollbar();
-    // Clear selection when switching biomes
-    state.selectedType = null;
-    state.selectedId   = null;
-  }
-
-  _buildContent(biomeId) {
+  _buildContent() {
     let cursor = PAD;
 
-    if (biomeId === 'coral') {
+    if (state.biome === 'seagrass') {
+      cursor = this._sectionLabel('FISH — SEAGRASS BASIN', cursor);
+      Object.values(FISH_SPECIES)
+        .filter(s => s.biome === 'seagrass' || s.biome === 'both')
+        .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
+    } else {
+      // coral (default)
       cursor = this._sectionLabel('CORAL', cursor);
       Object.values(CORAL_SPECIES).forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
       cursor += PAD * 2;
@@ -187,16 +127,11 @@ export class PlacementMenu {
       Object.values(FISH_SPECIES)
         .filter(s => !s.biome || s.biome === 'coral' || s.biome === 'both')
         .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
-    } else {
-      cursor = this._sectionLabel('FISH — SEAGRASS BASIN', cursor);
-      Object.values(FISH_SPECIES)
-        .filter(s => s.biome === 'seagrass' || s.biome === 'both')
-        .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
     }
 
     cursor += PAD;
-    this._contentH    = cursor;
-    this._maxScrollY  = Math.max(0, this._contentH - SCROLL_AREA_H);
+    this._contentH   = cursor;
+    this._maxScrollY = Math.max(0, this._contentH - SCROLL_AREA_H);
   }
 
   _sectionLabel(text, y) {
@@ -281,12 +216,12 @@ export class PlacementMenu {
   // ── Scroll input ───────────────────────────────────────────────────────────
 
   _onDown(e) {
-    this._dragActive     = true;
-    this._dragStartY     = e.global.y;
-    this._lastDragY      = e.global.y;
+    this._dragActive      = true;
+    this._dragStartY      = e.global.y;
+    this._lastDragY       = e.global.y;
     this._dragStartScroll = this._scrollY;
-    this._dragMoved      = false;
-    this._momentum       = 0;
+    this._dragMoved       = false;
+    this._momentum        = 0;
   }
 
   _onMove(e) {
@@ -307,7 +242,7 @@ export class PlacementMenu {
     if (Math.abs(dy) > 3) this._dragMoved = true;
 
     if (this._dragMoved) {
-      this._momentum = (this._lastDragY - py) * 1.4;  // amplify for snappier feel
+      this._momentum  = (this._lastDragY - py) * 1.4;
       this._lastDragY = py;
       this._setScroll(this._dragStartScroll - dy);
     }
@@ -372,13 +307,13 @@ export class PlacementMenu {
     g.rect(trackX, trackY, 3, trackH).fill({ color: COLORS.panel_border, alpha: 0.4 });
 
     // Thumb
-    const ratio   = SCROLL_AREA_H / this._contentH;
-    const thumbH  = Math.max(24, trackH * ratio);
-    const thumbY  = trackY + (trackH - thumbH) * (this._scrollY / this._maxScrollY);
+    const ratio  = SCROLL_AREA_H / this._contentH;
+    const thumbH = Math.max(24, trackH * ratio);
+    const thumbY = trackY + (trackH - thumbH) * (this._scrollY / this._maxScrollY);
     g.roundRect(trackX, thumbY, 3, thumbH, 1.5).fill({ color: COLORS.text_secondary, alpha: 0.6 });
   }
 
-  // ── Remove mode ───────────────────────────────────────────────────────
+  // ── Remove mode ────────────────────────────────────────────────────────────
 
   _toggleRemoveMode() {
     state.removeMode = !state.removeMode;
@@ -395,7 +330,7 @@ export class PlacementMenu {
     const g = this._removeBtnGfx;
     g.clear();
     const bx = PANEL_X + 6;
-    const by = PANEL_Y + TAB_H + 5;
+    const by = PANEL_Y + 5;
     const bw = PANEL_W - 20;
     const bh = REMOVE_BTN_H - 6;
 
@@ -407,8 +342,6 @@ export class PlacementMenu {
       g.roundRect(bx, by, bw, bh, 5).stroke({ color: COLORS.panel_border, width: 1, alpha: 0.7 });
     }
 
-    // "✕ REMOVE" label — draw as PixiJS text, but we'll just use a Text child
-    // We reuse a cached text node to avoid recreating each frame
     if (!this._removeLabelText) {
       this._removeLabelText = new Text({
         text: '✕  REMOVE',

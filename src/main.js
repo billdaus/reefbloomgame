@@ -1,7 +1,8 @@
 import { Application } from 'pixi.js';
 import { ReefScene }   from './scenes/ReefScene.js';
 import { SCREEN_W, SCREEN_H, IS_PORTRAIT } from './constants.js';
-import { setCurrentSlot, getSlotPreview, clearSlot } from './save.js';
+import { setCurrentSlot, setCurrentBiome, getSlotPreview, clearSlot } from './save.js';
+import { state } from './state.js';
 
 async function main() {
   const app = new Application();
@@ -32,9 +33,11 @@ async function main() {
   // 1. Start page → Begin
   await waitForBegin();
 
-  // 2. Slot selection → choose a slot
-  const slotIdx = await waitForSlotChoice();
+  // 2. Slot selection → choose a slot + biome
+  const { slotIdx, biome } = await waitForSlotChoice();
   setCurrentSlot(slotIdx);
+  setCurrentBiome(biome);
+  state.biome = biome;
 
   // 3. Boot game
   await initPromise;
@@ -76,7 +79,7 @@ function openSlotPage() {
 
 function waitForSlotChoice() {
   return new Promise(resolve => {
-    buildSlotCards(resolve);
+    buildSlotCards((slotIdx, biome) => resolve({ slotIdx, biome }));
 
     const back = document.getElementById('slp-back');
     if (back) back.addEventListener('click', () => window.location.reload(), { once: true });
@@ -115,7 +118,7 @@ function buildSlotCards(onChoose) {
     playBtn.addEventListener('click', () => {
       const pg = document.getElementById('slot-page');
       if (pg) { pg.classList.add('fade-out'); setTimeout(() => pg.remove(), 520); }
-      onChoose(i);
+      onChoose(i, 'coral');
     });
     btnRow.appendChild(playBtn);
 
@@ -145,17 +148,19 @@ function buildSlotCards(onChoose) {
 
     card.appendChild(btnRow);
 
-    // Biome chips
+    // Biome chips — each launches the game in that biome
     const biomesRow = el('div', 'slp-biomes');
     const coralChip = el('button', 'slp-biome-chip', '🪸 Coral Reef');
-    coralChip.addEventListener('click', e => {
-      e.stopPropagation();
-      // Coral biome overview: future — for now just a note
+    coralChip.addEventListener('click', () => {
+      const pg = document.getElementById('slot-page');
+      if (pg) { pg.classList.add('fade-out'); setTimeout(() => pg.remove(), 520); }
+      onChoose(i, 'coral');
     });
     const seagrassChip = el('button', 'slp-biome-chip', '🌿 Seagrass Basin');
-    seagrassChip.addEventListener('click', e => {
-      e.stopPropagation();
-      openBiome('seagrass');
+    seagrassChip.addEventListener('click', () => {
+      const pg = document.getElementById('slot-page');
+      if (pg) { pg.classList.add('fade-out'); setTimeout(() => pg.remove(), 520); }
+      onChoose(i, 'seagrass');
     });
     biomesRow.appendChild(coralChip);
     biomesRow.appendChild(seagrassChip);
