@@ -1,6 +1,6 @@
-import { Container, ColorMatrixFilter } from 'pixi.js';
+import { Container, ColorMatrixFilter, Graphics, Text } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, COLORS } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -82,10 +82,37 @@ export class ReefScene {
     this._menu = new PlacementMenu(
       (id) => this._onCoralSelected(id),
       (id) => this._onFishSelected(id),
-      () => this._travelModal.show((biome) => this._travelToBiome(biome)),
     );
+
+    // Travel button — built here on _uiContainer so it's a direct sibling of HUD (same depth that works)
+    const FONT   = 'system-ui, -apple-system, sans-serif';
+    const btnW   = 60, btnH = 20;
+    const btnX   = PANEL_X + PANEL_W - btnW - 6;
+    const btnY   = PANEL_Y + 4;
+    const tBg    = new Graphics();
+    const drawTBg = (hover) => {
+      tBg.clear();
+      tBg.roundRect(0, 0, btnW, btnH, 4).fill({ color: COLORS.panel_border, alpha: hover ? 0.9 : 0.6 });
+    };
+    drawTBg(false);
+    const tLabel = new Text({ text: '🗺  Travel', style: { fontSize: 8.5, fill: COLORS.text_secondary, fontFamily: FONT } });
+    tLabel.anchor.set(0.5, 0.5);
+    tLabel.x = btnW / 2;
+    tLabel.y = btnH / 2;
+    this._travelBtn = new Container();
+    this._travelBtn.addChild(tBg);
+    this._travelBtn.addChild(tLabel);
+    this._travelBtn.x = btnX;
+    this._travelBtn.y = btnY;
+    this._travelBtn.interactive = true;
+    this._travelBtn.cursor = 'pointer';
+    this._travelBtn.on('pointerover',  () => drawTBg(true));
+    this._travelBtn.on('pointerout',   () => drawTBg(false));
+    this._travelBtn.on('pointerdown',  () => this._travelModal.show((biome) => this._travelToBiome(biome)));
+
     this._uiContainer.addChild(this._menu.container);
     this._uiContainer.addChild(this._hud.container);
+    this._uiContainer.addChild(this._travelBtn);
     this._uiContainer.addChild(this._rewardModal.container);
     this._uiContainer.addChild(this._shopModal.container);
     this._uiContainer.addChild(this._travelModal.container);

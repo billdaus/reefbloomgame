@@ -39,11 +39,10 @@ const SCROLL_AREA_H  = PANEL_H - BIOME_HEADER_H - 4 - REMOVE_BTN_H - 6;
  *   - Tap (< 8px movement) selects a row
  */
 export class PlacementMenu {
-  constructor(onCoralSelect, onFishSelect, onTravel) {
+  constructor(onCoralSelect, onFishSelect) {
     this.container     = new Container();
     this.onCoralSelect = onCoralSelect;
     this.onFishSelect  = onFishSelect;
-    this._onTravel     = onTravel;
 
     this._rows         = [];   // { type, id, rowY, hl, lockText, lockDim, unlockLevel }
     this._scrollY      = 0;
@@ -157,39 +156,7 @@ export class PlacementMenu {
     currLabel.y = PANEL_Y + (BIOME_HEADER_H - currLabel.height) / 2;
     this._headerC.addChild(currLabel);
 
-    // Travel button (right) — positioned Container with local-coord graphics (same pattern as HUD buttons)
-    const btnW  = 60;
-    const btnH  = BIOME_HEADER_H - 8;
-    const btnX  = PANEL_X + PANEL_W - btnW - 6;
-    const btnY  = PANEL_Y + 4;
-
-    const travelBtnBg = new Graphics();
-    const drawTravelBg = (hover) => {
-      travelBtnBg.clear();
-      travelBtnBg.roundRect(0, 0, btnW, btnH, 4)
-        .fill({ color: COLORS.panel_border, alpha: hover ? 0.85 : 0.55 });
-    };
-    drawTravelBg(false);
-
-    const travelLabel = new Text({
-      text: '🗺  Travel',
-      style: { fontSize: 8.5, fill: COLORS.text_secondary, fontFamily: FONT },
-    });
-    travelLabel.anchor.set(0.5, 0.5);
-    travelLabel.x = btnW / 2;
-    travelLabel.y = btnH / 2;
-
-    const travelBtn = new Container();
-    travelBtn.addChild(travelBtnBg);
-    travelBtn.addChild(travelLabel);
-    travelBtn.x = btnX;
-    travelBtn.y = btnY;
-    travelBtn.interactive = true;
-    travelBtn.cursor = 'pointer';
-    travelBtn.on('pointerover',  () => drawTravelBg(true));
-    travelBtn.on('pointerout',   () => drawTravelBg(false));
-    travelBtn.on('pointerdown',  () => this._onTravel?.());
-    this._headerC.addChild(travelBtn);
+    // Travel button is built externally and added to _uiContainer directly (see ReefScene)
   }
 
   _buildContent() {
