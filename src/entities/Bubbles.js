@@ -41,6 +41,23 @@ const LINES = {
     "Observation mode. I'm also observing. I'm not sure what I'm looking for.",
     "Stillness bonus earned. The reef appreciates your attention. Probably.",
   ],
+  tapped: [
+    "Excuse me. I have sensors.",
+    "That was unnecessary.",
+    "I felt that. Emotionally.",
+    "Please don't.",
+    "I'm working.",
+    "Was that meant to be helpful? It wasn't.",
+    "Noted. Unappreciated.",
+    "I have a log entry for this now.",
+    "My personal space is a 40px radius. You were inside it.",
+    "I don't complain. I observe. This is an observation.",
+    "You do realize I can see you, right?",
+    "Bold move. Unclear payoff.",
+    "I'm choosing not to react. This is me not reacting.",
+    "I have three hearts. You stressed all of them. Wait, that's octopuses.",
+    "Fine. It's fine. Everything is fine.",
+  ],
   flavor: [
     "Everything looks good! I have no idea what I'm looking for.",
     "I keep a detailed log of this reef. I lost it. The log.",
@@ -136,6 +153,12 @@ export class Bubbles {
     this.container.x = this.x;
     this.container.y = this.y;
     this.container.alpha = 0.92;
+
+    // Clickable — Bubbles sasses back
+    this.container.eventMode = 'static';
+    this.container.cursor = 'pointer';
+    this.container.hitArea = { contains: (x, y) => Math.abs(x) < 36 && Math.abs(y) < 22 };
+    this.container.on('pointertap', () => this.trigger('tapped'));
   }
 
   _showBubble(text) {
