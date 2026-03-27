@@ -97,13 +97,22 @@ export class HUD {
 
     this._harmonyText = new Text({
       text: `${state.harmony}`,
-      style: { fontSize: 13, fill: COLORS.harmony_fill, fontFamily: FONT, fontWeight: 'bold' },
+      style: {
+        fontSize: IS_PORTRAIT ? 9 : 13,
+        fill: COLORS.harmony_fill,
+        fontFamily: FONT,
+        fontWeight: 'bold',
+      },
     });
-    if (!IS_PORTRAIT) {
+    if (IS_PORTRAIT) {
+      // Show value as a tiny label below the compact bar
+      this._harmonyText.x = 155;
+      this._harmonyText.y = HUD_H / 2 + 4;
+    } else {
       this._harmonyText.x = 200;
       this._harmonyText.y = HUD_H / 2 + 4;
-      this.container.addChild(this._harmonyText);
     }
+    this.container.addChild(this._harmonyText);
 
     // ── Level section ────────────────────────────────────────────────────────
     const lvlLabel = new Text({
@@ -150,9 +159,11 @@ export class HUD {
   }
 
   _buildMarketBtn() {
-    if (IS_PORTRAIT) return;           // on portrait, tap 💎 to open shop
-    const W = 80, H = 30, R = 8;
-    const bx = 530;
+    const W  = IS_PORTRAIT ? 36 : 80;
+    const H  = IS_PORTRAIT ? 26 : 30;
+    const R  = 8;
+    // Portrait: sits between harmony bar (ends ~215) and home button
+    const bx = IS_PORTRAIT ? SCREEN_W - 90 - W - 6 : 530;
     const by = (HUD_H - H) / 2;
 
     const bg = new Graphics();
@@ -166,8 +177,8 @@ export class HUD {
     drawBg(false);
 
     const label = new Text({
-      text: '💎 Market',
-      style: { fontSize: 11, fill: 0xc8e6a0, fontFamily: FONT, fontWeight: '600' },
+      text: IS_PORTRAIT ? '💎' : '💎 Market',
+      style: { fontSize: IS_PORTRAIT ? 14 : 11, fill: 0xc8e6a0, fontFamily: FONT, fontWeight: '600' },
     });
     label.x = (W - label.width) / 2;
     label.y = (H - label.height) / 2;
@@ -250,10 +261,10 @@ export class HUD {
 
   _drawHarmonyBar() {
     const g   = this._harmonyBar;
-    const bx  = IS_PORTRAIT ? 158 : 200;
-    const by  = HUD_H / 2 - (IS_PORTRAIT ? 4 : 6);
-    const bw  = IS_PORTRAIT ? 88  : 300;
-    const bh  = IS_PORTRAIT ? 7   : 10;
+    const bx  = IS_PORTRAIT ? 155 : 200;
+    const by  = HUD_H / 2 - (IS_PORTRAIT ? 3 : 6);
+    const bw  = IS_PORTRAIT ? 60  : 300;
+    const bh  = IS_PORTRAIT ? 6   : 10;
     const pct = state.harmony / 100;
 
     g.clear();
