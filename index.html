@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Reef Bloom</title>
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-YF2KCE7JPP"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-YF2KCE7JPP');
+  </script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a3a6a;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      touch-action: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    canvas.visible { opacity: 1; }
+
+    /* ── Shared overlay base ────────────────────────────────────────────────── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(175deg, #70d4f8 0%, #28a0e0 30%, #1468b0 65%, #0a3050 100%);
+      z-index: 200;
+      overflow: hidden;
+      transition: opacity 0.5s ease;
+    }
+    .overlay.hidden      { display: none; }
+    .overlay.fade-out    { opacity: 0; pointer-events: none; }
+
+    /* Animated rising bubbles (shared) */
+    .bg-bubbles { position: absolute; inset: 0; pointer-events: none; }
+    .bg-bubble {
+      position: absolute;
+      bottom: -40px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.55), rgba(160,220,255,0.1));
+      border: 1px solid rgba(255,255,255,0.25);
+      animation: rise linear infinite;
+    }
+    @keyframes rise {
+      0%   { transform: translateY(0)      scale(1);   opacity: 0.7; }
+      80%  { opacity: 0.4; }
+      100% { transform: translateY(-115vh) scale(0.8); opacity: 0;   }
+    }
+
+    /* Coral silhouette at page bottom */
+    .reef-silhouette {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 130px;
+      background: linear-gradient(180deg, transparent 0%, rgba(5,20,45,0.55) 35%, rgba(4,15,32,0.96) 100%);
+      clip-path: polygon(
+        0% 58%, 3% 38%, 6% 54%, 9% 28%, 12% 46%,
+        15% 22%, 18% 40%, 21% 18%, 24% 36%, 27% 12%,
+        30% 32%, 33%  8%, 36% 26%, 39%  6%, 42% 20%,
+        45%  4%, 48% 16%, 51%  2%, 54% 14%, 57%  5%,
+        60% 18%, 63%  7%, 66% 24%, 69% 10%, 72% 28%,
+        75% 16%, 78% 33%, 81% 20%, 84% 38%, 87% 26%,
+        90% 43%, 93% 30%, 96% 48%, 100% 33%, 100% 100%, 0% 100%
+      );
+    }
+
+    /* ── Start page ─────────────────────────────────────────────────────────── */
+    #start-page { z-index: 210; }
+
+    .sp-content {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 70px;
+    }
+    .sp-eyebrow {
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 5px; text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+    }
+    .sp-title {
+      font-size: 72px; font-weight: 800;
+      color: #fff; letter-spacing: 3px; line-height: 1;
+      text-shadow: 0 0 60px rgba(100,200,255,0.55), 0 4px 40px rgba(0,60,120,0.5);
+    }
+    .sp-sub {
+      font-size: 15px; color: rgba(255,255,255,0.55); letter-spacing: 1px;
+    }
+    .sp-btn {
+      margin-top: 30px;
+      padding: 16px 60px;
+      font-size: 18px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: #0a3050; background: #fff;
+      border: none; border-radius: 40px; cursor: pointer;
+      box-shadow: 0 4px 32px rgba(0,100,200,0.4);
+      transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+    }
+    .sp-btn:hover  { background: #d0f0ff; transform: scale(1.04); }
+    .sp-btn:active { transform: scale(0.97); }
+
+    /* ── Slot selection page ────────────────────────────────────────────────── */
+    #slot-page { z-index: 205; opacity: 0; }
+    #slot-page.visible { opacity: 1; }
+
+    .slp-title {
+      position: relative;
+      font-size: 22px; font-weight: 700;
+      letter-spacing: 5px; text-transform: uppercase;
+      color: rgba(255,255,255,0.85);
+      margin-bottom: 36px;
+    }
+    .slp-cards {
+      position: relative;
+      display: flex;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .slp-card {
+      position: relative;
+      width: 190px;
+      background: rgba(4, 18, 50, 0.72);
+      border: 1px solid rgba(100,200,255,0.25);
+      border-radius: 18px;
+      padding: 22px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(10px);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .slp-card:hover { border-color: rgba(100,200,255,0.6); transform: translateY(-4px); }
+
+    .slp-card-header {
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 4px; text-transform: uppercase;
+      color: rgba(140,210,255,0.7);
+    }
+    .slp-card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 64px;
+    }
+    .slp-empty {
+      font-size: 13px;
+      color: rgba(255,255,255,0.28);
+      font-style: italic;
+    }
+    .slp-stat-level {
+      font-size: 26px; font-weight: 800; color: #fff;
+    }
+    .slp-stat-row {
+      display: flex; gap: 10px;
+      font-size: 11px;
+      color: rgba(150,215,255,0.65);
+    }
+    .slp-play-btn {
+      padding: 10px 28px;
+      background: #fff; color: #0a3050;
+      border: none; border-radius: 24px;
+      font-weight: 700; font-size: 13px;
+      letter-spacing: 1px; cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .slp-play-btn:hover  { background: #d0f0ff; transform: scale(1.04); }
+    .slp-play-btn:active { transform: scale(0.97); }
+
+.slp-back-btn {
+      position: relative;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.25);
+      color: rgba(255,255,255,0.5);
+      padding: 10px 26px;
+      border-radius: 24px;
+      font-size: 13px; cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+    }
+    .slp-back-btn:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.55); }
+
+    .slp-btn-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .slp-erase-btn {
+      padding: 10px 18px;
+      background: rgba(180,30,30,0.18);
+      color: rgba(255,130,130,0.85);
+      border: 1px solid rgba(200,70,70,0.35);
+      border-radius: 24px;
+      font-weight: 700; font-size: 12px;
+      letter-spacing: 0.5px; cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .slp-erase-btn:hover { background: rgba(210,40,40,0.45); color: #fff; border-color: rgba(230,80,80,0.7); }
+    .slp-erase-btn.confirming { background: rgba(220,40,40,0.7); color: #fff; border-color: rgba(240,80,80,0.9); }
+  </style>
+</head>
+<body>
+
+  <!-- ── Start page ─────────────────────────────────────────────────────────── -->
+  <div id="start-page" class="overlay">
+    <div class="bg-bubbles" id="sp-bubbles"></div>
+    <div class="reef-silhouette"></div>
+    <div class="sp-content">
+      <div class="sp-eyebrow">A coral reef, yours to grow</div>
+      <div class="sp-title">Reef Bloom</div>
+      <div class="sp-sub">Place coral. Hatch fish. Watch life flourish.</div>
+      <button class="sp-btn" id="start-btn">Begin</button>
+    </div>
+  </div>
+
+  <!-- ── Slot selection page ────────────────────────────────────────────────── -->
+  <div id="slot-page" class="overlay hidden">
+    <div class="bg-bubbles" id="slp-bubbles"></div>
+    <div class="reef-silhouette"></div>
+    <div class="slp-title">Choose Your Reef</div>
+    <div class="slp-cards" id="slp-cards"><!-- populated by JS --></div>
+    <button class="slp-back-btn" id="slp-back">← Back</button>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+
+  <!-- Spawn animated bubbles for both pages -->
+  <script>
+    function spawnBubbles(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      for (let i = 0; i < 20; i++) {
+        const b = document.createElement('div');
+        b.className = 'bg-bubble';
+        const sz = 8 + Math.random() * 26;
+        b.style.cssText = `
+          left:${Math.random()*100}%;
+          width:${sz}px; height:${sz}px;
+          animation-duration:${6+Math.random()*10}s;
+          animation-delay:${-Math.random()*14}s;
+        `;
+        el.appendChild(b);
+      }
+    }
+    spawnBubbles('sp-bubbles');
+    spawnBubbles('slp-bubbles');
+  </script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+import { Container, Graphics, Text } from 'pixi.js';
+import { SCREEN_W, HUD_H, COLORS } from '../constants.js';
+import { state } from '../state.js';
+
+const FONT = 'system-ui, -apple-system, sans-serif';
+
+/**
+ * HUD — top bar showing BE, Harmony bar, and Level.
+ */
+export class HUD {
+  constructor(onHome) {
+    this._onHome  = onHome;
+    this.container = new Container();
+    this._bg       = new Graphics();
+    this._beText   = null;
+    this._bonusText = null;
+    this._bonusTimer = 0;
+    this._harmonyBar  = new Graphics();
+    this._harmonyText = null;
+    this._levelText   = null;
+    this._lvlUpBanner = null;
+    this._lvlUpTimer  = 0;
+
+    this._build();
+  }
+
+  _build() {
+    const g = this._bg;
+    g.rect(0, 0, SCREEN_W, HUD_H).fill({ color: COLORS.hud_bg, alpha: 0.92 });
+    // thin bottom border
+    g.rect(0, HUD_H - 1, SCREEN_W, 1).fill({ color: COLORS.panel_border, alpha: 1 });
+    this.container.addChild(g);
+
+    // ── BE section ──────────────────────────────────────────────────────────
+    const beLabel = new Text({ text: '🫧', style: { fontSize: 22, fill: COLORS.be_icon } });
+    beLabel.x = 18;
+    beLabel.y = HUD_H / 2 - 14;
+    this.container.addChild(beLabel);
+
+    this._beText = new Text({
+      text: String(state.be),
+      style: { fontSize: 22, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: 'bold' },
+    });
+    this._beText.x = 48;
+    this._beText.y = HUD_H / 2 - 14;
+    this.container.addChild(this._beText);
+
+    // Bonus flash label
+    this._bonusText = new Text({
+      text: '',
+      style: { fontSize: 13, fill: COLORS.be_icon, fontFamily: FONT },
+    });
+    this._bonusText.x = 48;
+    this._bonusText.y = HUD_H / 2 + 8;
+    this._bonusText.alpha = 0;
+    this.container.addChild(this._bonusText);
+
+    // ── Harmony section ──────────────────────────────────────────────────────
+    const hmLabel = new Text({
+      text: 'HARMONY',
+      style: { fontSize: 10, fill: COLORS.text_secondary, fontFamily: FONT, letterSpacing: 2 },
+    });
+    hmLabel.x = 200;
+    hmLabel.y = HUD_H / 2 - 22;
+    this.container.addChild(hmLabel);
+
+    this.container.addChild(this._harmonyBar);
+
+    this._harmonyText = new Text({
+      text: `${state.harmony}`,
+      style: { fontSize: 13, fill: COLORS.harmony_fill, fontFamily: FONT, fontWeight: 'bold' },
+    });
+    this._harmonyText.x = 200;
+    this._harmonyText.y = HUD_H / 2 + 4;
+    this.container.addChild(this._harmonyText);
+
+    // ── Level section ────────────────────────────────────────────────────────
+    const lvlLabel = new Text({
+      text: 'LEVEL',
+      style: { fontSize: 10, fill: COLORS.text_secondary, fontFamily: FONT, letterSpacing: 2 },
+    });
+    lvlLabel.x = SCREEN_W - 90;
+    lvlLabel.y = HUD_H / 2 - 22;
+    this.container.addChild(lvlLabel);
+
+    this._levelText = new Text({
+      text: String(state.level),
+      style: { fontSize: 28, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: 'bold' },
+    });
+    this._levelText.x = SCREEN_W - 70;
+    this._levelText.y = HUD_H / 2 - 16;
+    this.container.addChild(this._levelText);
+
+    // ── Home button ──────────────────────────────────────────────────────────
+    this._buildHomeBtn();
+
+    // ── Level-up banner ──────────────────────────────────────────────────────
+    this._lvlUpBanner = new Container();
+    this._lvlUpBanner.visible = false;
+
+    const bannerGfx = new Graphics();
+    bannerGfx.roundRect(-120, -22, 240, 44, 10)
+             .fill({ color: COLORS.selected_hl, alpha: 0.95 });
+    this._lvlUpBanner.addChild(bannerGfx);
+
+    this._lvlUpText = new Text({
+      text: '',
+      style: { fontSize: 16, fill: 0x000000, fontFamily: FONT, fontWeight: 'bold' },
+    });
+    this._lvlUpText.anchor.set(0.5, 0.5);
+    this._lvlUpBanner.addChild(this._lvlUpText);
+
+    this._lvlUpBanner.x = SCREEN_W / 2;
+    this._lvlUpBanner.y = HUD_H / 2;
+    this.container.addChild(this._lvlUpBanner);
+  }
+
+  _buildHomeBtn() {
+    const W = 64, H = 30, R = 8;
+    const bx = SCREEN_W - 148;   // sits left of the Level section
+    const by = (HUD_H - H) / 2;
+
+    const bg = new Graphics();
+    const drawBg = (hover) => {
+      bg.clear();
+      bg.roundRect(0, 0, W, H, R)
+        .fill({ color: hover ? 0x2a4a6a : 0x142438, alpha: hover ? 1 : 0.85 });
+      bg.roundRect(0, 0, W, H, R)
+        .stroke({ color: COLORS.panel_border, width: 1, alpha: 0.8 });
+    };
+    drawBg(false);
+
+    const label = new Text({
+      text: '⌂ Menu',
+      style: { fontSize: 11, fill: COLORS.text_secondary, fontFamily: FONT, fontWeight: '600' },
+    });
+    label.x = 10;
+    label.y = (H - label.height) / 2;
+
+    const btn = new Container();
+    btn.addChild(bg);
+    btn.addChild(label);
+    btn.x = bx;
+    btn.y = by;
+    btn.interactive = true;
+    btn.cursor = 'pointer';
+    btn.on('pointerover',  () => { drawBg(true);  label.style.fill = COLORS.text_primary; });
+    btn.on('pointerout',   () => { drawBg(false); label.style.fill = COLORS.text_secondary; });
+    btn.on('pointerdown',  () => { if (this._onHome) this._onHome(); });
+
+    this.container.addChild(btn);
+  }
+
+  // ── Update ─────────────────────────────────────────────────────────────────
+
+  /** Call every frame. deltaMS from PixiJS ticker. */
+  update(deltaMS) {
+    this._beText.text = String(Math.floor(state.be));
+    this._levelText.text = String(state.level);
+    this._harmonyText.text = String(Math.round(state.harmony));
+    this._drawHarmonyBar();
+
+    // Level-up banner fade
+    if (this._lvlUpTimer > 0) {
+      this._lvlUpTimer -= deltaMS;
+      this._lvlUpBanner.alpha = Math.min(1, this._lvlUpTimer / 400);
+      if (this._lvlUpTimer <= 0) this._lvlUpBanner.visible = false;
+    }
+
+    // Fade out bonus flash
+    if (this._bonusTimer > 0) {
+      this._bonusTimer -= deltaMS;
+      this._bonusText.alpha = Math.min(1, this._bonusTimer / 600);
+    } else {
+      this._bonusText.alpha = 0;
+    }
+  }
+
+  _drawHarmonyBar() {
+    const g   = this._harmonyBar;
+    const bx  = 200;
+    const by  = HUD_H / 2 - 6;
+    const bw  = 300;
+    const bh  = 10;
+    const pct = state.harmony / 100;
+
+    g.clear();
+    // Track
+    g.roundRect(bx, by, bw, bh, 5).fill(COLORS.harmony_empty);
+    // Fill
+    if (pct > 0) {
+      g.roundRect(bx, by, bw * pct, bh, 5).fill(COLORS.harmony_fill);
+    }
+  }
+
+  /** Show a transient bonus message next to the BE counter. */
+  showBonus(msg) {
+    this._bonusText.text  = msg;
+    this._bonusTimer      = 2000;
+    this._bonusText.alpha = 1;
+  }
+
+  /** Flash a level-up banner in the HUD. */
+  showLevelUp(level) {
+    this._lvlUpText.text   = `LEVEL ${level}  ✦  Reef Evolved`;
+    this._lvlUpTimer       = 3000;
+    this._lvlUpBanner.alpha  = 1;
+    this._lvlUpBanner.visible = true;
+  }
+}
