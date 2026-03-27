@@ -445,8 +445,9 @@ export class ReefScene {
     state.biome = biome;
     setCurrentBiome(biome);
 
-    // Tint the water differently per biome
+    // Switch water color + background theme
     this.app.renderer.background.color = BIOMES[biome]?.bgColor ?? 0x1878c8;
+    this._bg.setTheme(biome);
 
     // Load and restore the new biome's saved state
     const saved = loadGame();
