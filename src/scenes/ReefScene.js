@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, BE_PER_TICK } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -20,7 +20,7 @@ import { Clam } from '../entities/Clam.js';
 import { ClamRewardModal } from '../ui/ClamRewardModal.js';
 import { PearlShopModal }  from '../ui/PearlShopModal.js';
 import { tileCenter } from '../utils/grid.js';
-import { saveGame, loadGame, setCurrentBiome } from '../save.js';
+import { saveGame, loadGame, setCurrentBiome, getOtherBiomePlacedCoral } from '../save.js';
 
 export class ReefScene {
   constructor(app) {
@@ -393,6 +393,18 @@ export class ReefScene {
     state._nextUid = Math.max(state._nextUid, maxUid + 1);
 
     this._menu.updateLevel();
+
+    // Compute passive income from the other biome's saved entities
+    this._refreshPassiveIncome();
+  }
+
+  /** Compute BE/tick from the other biome's saved coral and cache it in state. */
+  _refreshPassiveIncome() {
+    const other = getOtherBiomePlacedCoral();
+    state.passiveBEPerTick = other.reduce((sum, { speciesId }) => {
+      const spec = CORAL_SPECIES[speciesId];
+      return sum + (spec ? (BE_PER_TICK[spec.tier] ?? 0) : 0);
+    }, 0);
   }
 
   // ── Biome travel ───────────────────────────────────────────────────────────

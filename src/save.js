@@ -151,6 +151,25 @@ export function clearSlot(idx) {
   try { localStorage.removeItem(SLOT_KEYS[idx]); } catch { /* ignore */ }
 }
 
+/**
+ * Returns the placedCoral array of the biome NOT currently active.
+ * Used to compute passive BE production from the other biome.
+ */
+export function getOtherBiomePlacedCoral() {
+  try {
+    const full = _readRaw();
+    if (!full) return [];
+    const other = _currentBiome === 'coral' ? 'seagrass' : 'coral';
+    if (full.grid) {
+      // Old flat-format save — only coral data exists at top level
+      return other === 'coral' ? (full.placedCoral ?? []) : [];
+    }
+    return full[other]?.placedCoral ?? [];
+  } catch {
+    return [];
+  }
+}
+
 // ── Internal ─────────────────────────────────────────────────────────────────
 
 function _readRaw() {

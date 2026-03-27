@@ -25,7 +25,8 @@ export function tickEconomy(deltaMS) {
 }
 
 function _applyCoralTick() {
-  let earned = 0;
+  // Start with passive income from the inactive biome
+  let earned = state.passiveBEPerTick ?? 0;
   state.placedCoral.forEach(({ speciesId }) => {
     const spec = CORAL_SPECIES[speciesId];
     if (!spec) return;

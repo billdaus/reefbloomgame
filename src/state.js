@@ -46,6 +46,10 @@ export const state = {
   // ── Harmony display (smoothed, for saturation filter) ─────────────────────
   harmonySmoothed: START_HARMONY,
 
+  // ── Cross-biome passive income ─────────────────────────────────────────────
+  // BE/tick contributed by entities in the currently inactive biome
+  passiveBEPerTick: 0,
+
   // ── UID counter ────────────────────────────────────────────────────────────
   _nextUid: 1,
   nextUid() { return this._nextUid++; },
