@@ -1,7 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import {
   PANEL_X, PANEL_Y, PANEL_W, PANEL_H,
-  COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST,
+  COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
 } from '../constants.js';
 import { state } from '../state.js';
 import { recordInteraction } from '../systems/BEEconomy.js';
@@ -151,11 +151,13 @@ export class PlacementMenu {
     name.y = ROW_H / 2 - 12;
     row.addChild(name);
 
-    // Cost
-    const cost = type === 'coral' ? CORAL_COST[spec.tier] : FISH_COST[spec.tier];
+    // Cost — pearl species show 💎 instead of 🫧
+    const isPearl = !!spec.pearlCost;
+    const cost    = isPearl ? spec.pearlCost
+                            : (type === 'coral' ? CORAL_COST[spec.tier] : FISH_COST[spec.tier]);
     const costTxt = new Text({
-      text: `${cost} 🫧`,
-      style: { fontSize: 10, fill: COLORS.text_secondary, fontFamily: FONT },
+      text: isPearl ? `${cost} 💎` : `${cost} 🫧`,
+      style: { fontSize: 10, fill: isPearl ? 0xb0bec5 : COLORS.text_secondary, fontFamily: FONT },
     });
     costTxt.x = PAD + ICON_SZ + 8;
     costTxt.y = ROW_H / 2 + 1;
@@ -163,7 +165,7 @@ export class PlacementMenu {
 
     // Rarity label (right side, tier color)
     const tierLabel = new Text({
-      text: spec.tier.toUpperCase(),
+      text: TIER_LABEL[spec.tier] ?? spec.tier.toUpperCase(),
       style: { fontSize: 8, fill: tierColor, fontFamily: FONT, letterSpacing: 1 },
     });
     tierLabel.x = PANEL_W - 56;

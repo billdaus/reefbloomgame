@@ -47,15 +47,31 @@ export class Fish {
     g.clear();
 
     switch (id) {
-      case 'clownfish':     this._drawOvalFish(g, sz, c, ac, true);  break;
-      case 'chromis':       this._drawOvalFish(g, sz, c, ac, false); break;
-      case 'moorishIdol':   this._drawIdol(g, sz, c, ac);            break;
-      case 'yellowTang':    this._drawDiscFish(g, sz, c, ac);        break;
-      case 'butterflyfish': this._drawDiscFish(g, sz, c, 0xffcc02);  break;
-      case 'seahorse':      this._drawSeahorse(g, sz, c, ac);        break;
-      case 'cuttlefish':    this._drawCuttlefish(g, sz, c, ac);      break;
-      case 'morayEel':      this._drawEel(g, sz, c, ac);             break;
-      default:              this._drawOvalFish(g, sz, c, ac, false); break;
+      // Common
+      case 'blueChromis':       this._drawOvalFish(g, sz, c, ac, false);  break;
+      case 'chromis':           this._drawOvalFish(g, sz, c, ac, false);  break;
+      // Uncommon
+      case 'zebraGoby':         this._drawZebraGoby(g, sz, c, ac);        break;
+      case 'cardinalfish':      this._drawOvalFish(g, sz, c, ac, false);  break;
+      // Rare
+      case 'clownfish':         this._drawOvalFish(g, sz, c, ac, true);   break;
+      case 'yellowTang':        this._drawDiscFish(g, sz, c, ac);         break;
+      case 'blueTang':          this._drawDiscFish(g, sz, c, ac);         break;
+      // Super Rare
+      case 'moorishIdol':       this._drawIdol(g, sz, c, ac);             break;
+      case 'butterflyfish':     this._drawDiscFish(g, sz, c, 0xffcc02);   break;
+      case 'zebrafish':         this._drawZebrafish(g, sz, c, ac);        break;
+      case 'seahorse':          this._drawSeahorse(g, sz, c, ac);         break;
+      // Epic
+      case 'cuttlefish':        this._drawCuttlefish(g, sz, c, ac);       break;
+      case 'morayEel':          this._drawEel(g, sz, c, ac);              break;
+      // Pearl
+      case 'rainbowGoby':       this._drawOvalFish(g, sz, c, ac, false);  break;
+      case 'glowfinAngelfish':  this._drawGlowfinAngel(g, sz, c, ac);     break;
+      case 'neonSeahorse':      this._drawSeahorse(g, sz, c, ac);         break;
+      case 'sunburstWrasse':    this._drawOvalFish(g, sz, c, ac, false);  break;
+      case 'phantomLionfish':   this._drawLionfish(g, sz, c, ac);         break;
+      default:                  this._drawOvalFish(g, sz, c, ac, false);  break;
     }
   }
 
@@ -239,6 +255,125 @@ export class Fish {
      .fill(this._darken(bodyColor, 0.3));
     g.circle(len / 2 - sz * 0.15, -th * 0.2, sz * 0.09).fill(0xffffff);
     g.circle(len / 2 - sz * 0.13, -th * 0.18, sz * 0.05).fill(0x111111);
+  }
+
+  /** Zebra goby — oval body with 3 vertical dark stripes. */
+  _drawZebraGoby(g, sz, bodyColor, accentColor) {
+    const hw = sz;
+    const hh = sz * 0.5;
+
+    g.moveTo(-hw * 0.6, 0)
+     .lineTo(-hw * 1.2, -hh * 0.8)
+     .lineTo(-hw * 1.2,  hh * 0.8)
+     .closePath().fill(bodyColor);
+
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+
+    // vertical dark stripes
+    [-hw * 0.3, 0, hw * 0.3].forEach(sx => {
+      g.rect(sx - hw * 0.07, -hh + 2, hw * 0.14, hh * 2 - 4).fill(accentColor);
+    });
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill({ color: bodyColor, alpha: 0.2 });
+
+    g.circle(hw * 0.5, -hh * 0.1, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.52, -hh * 0.09, sz * 0.07).fill(0x111111);
+  }
+
+  /** Zebrafish — elongated body with horizontal dark stripes. */
+  _drawZebrafish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.1;
+    const hh = sz * 0.4;
+
+    g.moveTo(-hw * 0.75, 0)
+     .lineTo(-hw * 1.35, -hh * 0.9)
+     .lineTo(-hw * 1.35,  hh * 0.9)
+     .closePath().fill(accentColor);
+
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+
+    // horizontal stripes
+    [-hh * 0.5, -hh * 0.1, hh * 0.3].forEach(sy => {
+      g.rect(-hw * 0.7, sy - hh * 0.12, hw * 1.4, hh * 0.24).fill(accentColor);
+    });
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill({ color: bodyColor, alpha: 0.15 });
+
+    g.circle(hw * 0.56, -hh * 0.1, sz * 0.1).fill(0xffffff);
+    g.circle(hw * 0.58, -hh * 0.08, sz * 0.06).fill(0x111111);
+  }
+
+  /** Glowfin angelfish — disc body with elongated trailing fins. */
+  _drawGlowfinAngel(g, sz, bodyColor, accentColor) {
+    const hw = sz;
+    const hh = sz * 0.8;
+
+    // Trailing fin (elongated)
+    g.moveTo(-hw * 0.5, 0)
+     .lineTo(-hw * 1.8, -hh * 0.5)
+     .lineTo(-hw * 1.8,  hh * 0.5)
+     .closePath().fill({ color: accentColor, alpha: 0.7 });
+
+    // Body disc
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+
+    // Glowing dorsal fin
+    g.moveTo(-hw * 0.2, -hh)
+     .lineTo( hw * 0.1, -hh - sz * 0.6)
+     .lineTo( hw * 0.6, -hh)
+     .closePath().fill({ color: accentColor, alpha: 0.85 });
+
+    // Ventral fin
+    g.moveTo(-hw * 0.1, hh)
+     .lineTo( hw * 0.1, hh + sz * 0.4)
+     .lineTo( hw * 0.5, hh)
+     .closePath().fill({ color: accentColor, alpha: 0.7 });
+
+    g.circle(hw * 0.56, -hh * 0.15, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.58, -hh * 0.13, sz * 0.07).fill(0x111111);
+  }
+
+  /** Phantom lionfish — stocky body with spiky dorsal fan. */
+  _drawLionfish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 0.85;
+    const hh = sz * 0.65;
+
+    // Tail
+    g.moveTo(-hw * 0.65, 0)
+     .lineTo(-hw * 1.25, -hh * 0.8)
+     .lineTo(-hw * 1.25,  hh * 0.8)
+     .closePath().fill(bodyColor);
+
+    // Body
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+
+    // Spiky dorsal fan (5 spines)
+    for (let i = 0; i < 5; i++) {
+      const sx = -hw * 0.3 + i * hw * 0.15;
+      const tipY = -hh - sz * (0.55 + (i % 2) * 0.25);
+      g.moveTo(sx, -hh)
+       .lineTo(sx + sz * 0.04, tipY)
+       .stroke({ color: accentColor, width: 2.5, cap: 'round' });
+    }
+
+    // Pectoral fin spread
+    g.moveTo(hw * 0.2, 0)
+     .lineTo(hw * 0.85, -hh * 0.9)
+     .lineTo(hw * 0.95, 0)
+     .lineTo(hw * 0.85,  hh * 0.9)
+     .closePath().fill({ color: accentColor, alpha: 0.55 });
+
+    // Stripe bands
+    [-hw * 0.2, hw * 0.15].forEach(bx => {
+      g.rect(bx - hw * 0.07, -hh + 4, hw * 0.14, hh * 2 - 8).fill({ color: accentColor, alpha: 0.35 });
+    });
+
+    g.circle(hw * 0.44, -hh * 0.22, sz * 0.13).fill(0xffffff);
+    g.circle(hw * 0.46, -hh * 0.20, sz * 0.08).fill(0x111111);
   }
 
   _darken(hex, amount) {

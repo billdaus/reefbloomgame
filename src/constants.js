@@ -20,19 +20,25 @@ export const PANEL_Y = GRID_Y;                              // 80
 export const PANEL_W = SCREEN_W - PANEL_X - 8;            // 384
 export const PANEL_H = GRID_H;                             // 600
 
-// ─── Economy (prototype-tuned; final values from designer) ───────────────────
+// ─── Economy ─────────────────────────────────────────────────────────────────
 export const TICK_MS          = 5000;   // BE tick every 5 s
 export const IDLE_STREAK_MS   = 20000;  // 20 s without touch = idle streak
 export const IDLE_BONUS_BASE  = 12;     // BE awarded on idle streak
 
-// Per-tick BE output by tier
-export const BE_PER_TICK = { common: 1, rare: 2, epic: 3 };
+// Per-tick BE output by tier (coral)
+export const BE_PER_TICK = {
+  common: 1, uncommon: 2, rare: 3, superRare: 4, epic: 5, legendary: 6, mythic: 7,
+};
 
-// Coral placement cost by tier
-export const CORAL_COST = { common: 5, rare: 20, epic: 50 };
+// Coral placement cost by tier (BE) — legendary/mythic use pearls, not listed here
+export const CORAL_COST = {
+  common: 5, uncommon: 10, rare: 20, superRare: 25, epic: 60,
+};
 
-// Fish hatch cost by tier
-export const FISH_COST = { common: 10, rare: 25, epic: 60 };
+// Fish hatch cost by tier (BE) — pearl species carry pearlCost on the spec instead
+export const FISH_COST = {
+  common: 2, uncommon: 5, rare: 10, superRare: 25, epic: 60, legendary: 150, mythic: 300,
+};
 
 // Starting resources
 export const START_BE      = 20;
@@ -40,7 +46,26 @@ export const START_HARMONY = 50;
 export const START_LEVEL   = 1;
 
 // ─── Tier enum ───────────────────────────────────────────────────────────────
-export const TIER = { COMMON: 'common', RARE: 'rare', EPIC: 'epic' };
+export const TIER = {
+  COMMON:     'common',
+  UNCOMMON:   'uncommon',
+  RARE:       'rare',
+  SUPER_RARE: 'superRare',
+  EPIC:       'epic',
+  LEGENDARY:  'legendary',
+  MYTHIC:     'mythic',
+};
+
+// Short display labels for each tier
+export const TIER_LABEL = {
+  common:    'COMMON',
+  uncommon:  'UNCOMMON',
+  rare:      'RARE',
+  superRare: 'S.RARE',
+  epic:      'EPIC',
+  legendary: 'LEGEND',
+  mythic:    'MYTHIC',
+};
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 export const COLORS = {
@@ -61,9 +86,14 @@ export const COLORS = {
   be_icon:        0x64b5f6,
   harmony_fill:   0x81c784,
   harmony_empty:  0x1a3a1a,
-  tier_common:    0x42a5f5,
-  tier_rare:      0x66bb6a,
-  tier_epic:      0xef5350,
+  // Tier colors (matching rarity emojis: ⬜ 🟪 🟦 🟩 🟨 🟧 🟥)
+  tier_common:    0xb0bec5,
+  tier_uncommon:  0xab47bc,
+  tier_rare:      0x42a5f5,
+  tier_superRare: 0x66bb6a,
+  tier_epic:      0xffd54f,
+  tier_legendary: 0xff7043,
+  tier_mythic:    0xef5350,
   selected_hl:    0xffd740,
   bubble_color:   0x7ecce8,
   rocky_outcrop:  0x2a3a2e,
@@ -71,98 +101,195 @@ export const COLORS = {
 
 // ─── Coral species ───────────────────────────────────────────────────────────
 export const CORAL_SPECIES = {
+  // ── Common ──────────────────────────────────────────────────────────────────
+  starter: {
+    id: 'starter', name: 'Starter Coral', scientific: '',
+    tier: TIER.COMMON, tall: false, color: 0x80cbc4, unlockLevel: 1,
+  },
+  // ── Uncommon ────────────────────────────────────────────────────────────────
+  firetip: {
+    id: 'firetip', name: 'Firetip Coral', scientific: '',
+    tier: TIER.UNCOMMON, tall: true, color: 0xff8a65, unlockLevel: 2,
+  },
+  ghost: {
+    id: 'ghost', name: 'Ghost Coral', scientific: '',
+    tier: TIER.UNCOMMON, tall: false, color: 0xe0e0e0, unlockLevel: 2,
+  },
+  // ── Rare ────────────────────────────────────────────────────────────────────
   staghorn: {
     id: 'staghorn', name: 'Staghorn Coral', scientific: 'Acropora cervicornis',
-    tier: TIER.COMMON,   tall: true,  color: 0x00d4e8, unlockLevel: 1,
+    tier: TIER.RARE, tall: true, color: 0x00d4e8, unlockLevel: 3,
   },
   finger: {
-    id: 'finger',   name: 'Finger Coral',  scientific: 'Porites compressa',
-    tier: TIER.COMMON,   tall: true,  color: 0xe040fb, unlockLevel: 1,
+    id: 'finger', name: 'Finger Coral', scientific: 'Porites compressa',
+    tier: TIER.RARE, tall: true, color: 0xe040fb, unlockLevel: 3,
   },
   brain: {
-    id: 'brain',    name: 'Brain Coral',   scientific: 'Platygyra spp.',
-    tier: TIER.COMMON,   tall: false, color: 0xff6b35, unlockLevel: 1,
+    id: 'brain', name: 'Brain Coral', scientific: 'Platygyra spp.',
+    tier: TIER.RARE, tall: false, color: 0xff6b35, unlockLevel: 3,
   },
   lettuce: {
-    id: 'lettuce',  name: 'Lettuce Coral', scientific: 'Agaricia spp.',
-    tier: TIER.COMMON,   tall: false, color: 0x8bc34a, unlockLevel: 1,
+    id: 'lettuce', name: 'Lettuce Coral', scientific: 'Agaricia spp.',
+    tier: TIER.RARE, tall: false, color: 0x8bc34a, unlockLevel: 3,
   },
   star: {
-    id: 'star',     name: 'Star Coral',    scientific: 'Orbicella spp.',
-    tier: TIER.COMMON,   tall: false, color: 0xffd54f, unlockLevel: 1,
+    id: 'star', name: 'Star Coral', scientific: 'Orbicella spp.',
+    tier: TIER.RARE, tall: false, color: 0xffd54f, unlockLevel: 3,
   },
+  // ── Super Rare ───────────────────────────────────────────────────────────────
   bubble: {
-    id: 'bubble',   name: 'Bubble Coral',  scientific: 'Physogyra lichtensteini',
-    tier: TIER.RARE, tall: false, color: 0x80deea, unlockLevel: 3,
+    id: 'bubble', name: 'Bubble Coral', scientific: 'Physogyra lichtensteini',
+    tier: TIER.SUPER_RARE, tall: false, color: 0x80deea, unlockLevel: 5,
   },
   candycane: {
     id: 'candycane', name: 'Candy Cane Coral', scientific: 'Caulastrea furcata',
-    tier: TIER.RARE, tall: true,  color: 0xf48fb1, unlockLevel: 3,
+    tier: TIER.SUPER_RARE, tall: true, color: 0xf48fb1, unlockLevel: 5,
   },
   toadstool: {
     id: 'toadstool', name: 'Toadstool Leather', scientific: 'Sarcophyton spp.',
-    tier: TIER.RARE, tall: false, color: 0xa5d6a7, unlockLevel: 3,
+    tier: TIER.SUPER_RARE, tall: false, color: 0xa5d6a7, unlockLevel: 5,
   },
+  // ── Epic ────────────────────────────────────────────────────────────────────
   elkhorn: {
-    id: 'elkhorn',  name: 'Elkhorn Coral', scientific: 'Acropora palmata',
-    tier: TIER.EPIC,     tall: true,  blocksB: true,  color: 0x4dd0e1, unlockLevel: 5,
+    id: 'elkhorn', name: 'Elkhorn Coral', scientific: 'Acropora palmata',
+    tier: TIER.EPIC, tall: true, blocksB: true, color: 0x4dd0e1, unlockLevel: 7,
   },
   pillar: {
-    id: 'pillar',   name: 'Pillar Coral',  scientific: 'Dendrogyra cylindrus',
-    tier: TIER.EPIC,     tall: true,  blocksB: true,  color: 0xffcc02, unlockLevel: 5,
+    id: 'pillar', name: 'Pillar Coral', scientific: 'Dendrogyra cylindrus',
+    tier: TIER.EPIC, tall: true, blocksB: true, color: 0xffcc02, unlockLevel: 7,
+  },
+  // ── Legendary (pearl) ────────────────────────────────────────────────────────
+  table: {
+    id: 'table', name: 'Table Coral', scientific: '',
+    tier: TIER.LEGENDARY, tall: false, blocksB: true, color: 0x26c6da, unlockLevel: 10,
+    pearlCost: 50,
+  },
+  // ── Mythic (pearl) ───────────────────────────────────────────────────────────
+  rainbowCoral: {
+    id: 'rainbowCoral', name: 'Rainbow Coral', scientific: '',
+    tier: TIER.MYTHIC, tall: false, color: 0xff4081, unlockLevel: 12,
+    pearlCost: 60,
+  },
+  sunfire: {
+    id: 'sunfire', name: 'Sunfire Coral', scientific: '',
+    tier: TIER.MYTHIC, tall: true, blocksB: true, color: 0xffa726, unlockLevel: 12,
+    pearlCost: 60,
   },
 };
 
 // ─── Fish species ─────────────────────────────────────────────────────────────
 export const FISH_SPECIES = {
-  clownfish: {
-    id: 'clownfish',  name: 'Clownfish',     scientific: 'Amphiprion ocellaris',
-    tier: TIER.COMMON, layer: 'A', color: 0xff6b00, accentColor: 0xffffff,
-    size: 16, speed: 1.2, unlockLevel: 1,
+  // ── Common ──────────────────────────────────────────────────────────────────
+  blueChromis: {
+    id: 'blueChromis', name: 'Blue Chromis', scientific: '',
+    tier: TIER.COMMON, layer: 'A', color: 0x29b6f6, accentColor: 0xb3e5fc,
+    size: 12, speed: 1.8, unlockLevel: 1,
   },
   chromis: {
-    id: 'chromis',    name: 'Green Chromis', scientific: 'Chromis viridis',
+    id: 'chromis', name: 'Green Chromis', scientific: 'Chromis viridis',
     tier: TIER.COMMON, layer: 'A', color: 0x4caf50, accentColor: 0xb5e7b5,
     size: 12, speed: 1.8, unlockLevel: 1,
   },
-  moorishIdol: {
-    id: 'moorishIdol', name: 'Moorish Idol', scientific: 'Zanclus cornutus',
-    tier: TIER.COMMON, layer: 'B', color: 0xfafafa, accentColor: 0xffeb3b,
-    size: 20, speed: 0.9, unlockLevel: 2,
+  // ── Uncommon ────────────────────────────────────────────────────────────────
+  zebraGoby: {
+    id: 'zebraGoby', name: 'Zebra Goby', scientific: '',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0xffd54f, accentColor: 0x212121,
+    size: 11, speed: 1.5, unlockLevel: 2,
+  },
+  cardinalfish: {
+    id: 'cardinalfish', name: 'Cardinalfish', scientific: '',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0xef9a9a, accentColor: 0xb71c1c,
+    size: 13, speed: 1.2, unlockLevel: 2,
+  },
+  // ── Rare ────────────────────────────────────────────────────────────────────
+  clownfish: {
+    id: 'clownfish', name: 'Clownfish', scientific: 'Amphiprion ocellaris',
+    tier: TIER.RARE, layer: 'A', color: 0xff6b00, accentColor: 0xffffff,
+    size: 16, speed: 1.2, unlockLevel: 3,
   },
   yellowTang: {
-    id: 'yellowTang', name: 'Yellow Tang',   scientific: 'Zebrasoma flavescens',
-    tier: TIER.COMMON, layer: 'B', color: 0xffeb3b, accentColor: 0xfff9c4,
-    size: 18, speed: 1.1, unlockLevel: 2,
+    id: 'yellowTang', name: 'Yellow Tang', scientific: 'Zebrasoma flavescens',
+    tier: TIER.RARE, layer: 'B', color: 0xffeb3b, accentColor: 0xfff9c4,
+    size: 18, speed: 1.1, unlockLevel: 3,
+  },
+  blueTang: {
+    id: 'blueTang', name: 'Blue Tang', scientific: '',
+    tier: TIER.RARE, layer: 'B', color: 0x1565c0, accentColor: 0x29b6f6,
+    size: 18, speed: 1.1, unlockLevel: 3,
+  },
+  // ── Super Rare ───────────────────────────────────────────────────────────────
+  moorishIdol: {
+    id: 'moorishIdol', name: 'Moorish Idol', scientific: 'Zanclus cornutus',
+    tier: TIER.SUPER_RARE, layer: 'B', color: 0xfafafa, accentColor: 0xffeb3b,
+    size: 20, speed: 0.9, unlockLevel: 5,
   },
   butterflyfish: {
     id: 'butterflyfish', name: 'Butterflyfish', scientific: 'Chaetodon spp.',
-    tier: TIER.RARE, layer: 'A', color: 0xfafafa, accentColor: 0xffcc02,
-    size: 16, speed: 1.0, unlockLevel: 3,
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0xfafafa, accentColor: 0xffcc02,
+    size: 16, speed: 1.0, unlockLevel: 5,
+  },
+  zebrafish: {
+    id: 'zebrafish', name: 'Zebrafish', scientific: 'Danio rerio',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0xf5f5f5, accentColor: 0x1a237e,
+    size: 12, speed: 1.6, unlockLevel: 5,
   },
   seahorse: {
-    id: 'seahorse',   name: 'Seahorse',      scientific: 'Hippocampus spp.',
-    tier: TIER.RARE, layer: 'A', color: 0xffb74d, accentColor: 0xff8f00,
-    size: 14, speed: 0.4, unlockLevel: 3,
+    id: 'seahorse', name: 'Seahorse', scientific: 'Hippocampus spp.',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0xffb74d, accentColor: 0xff8f00,
+    size: 14, speed: 0.4, unlockLevel: 5,
   },
+  // ── Epic ────────────────────────────────────────────────────────────────────
   cuttlefish: {
-    id: 'cuttlefish', name: 'Cuttlefish',    scientific: 'Sepia spp.',
-    tier: TIER.EPIC,  layer: 'B', color: 0xce93d8, accentColor: 0x9c27b0,
-    size: 26, speed: 0.8, unlockLevel: 4,
+    id: 'cuttlefish', name: 'Cuttlefish', scientific: 'Sepia spp.',
+    tier: TIER.EPIC, layer: 'B', color: 0xce93d8, accentColor: 0x9c27b0,
+    size: 26, speed: 0.8, unlockLevel: 7,
   },
   morayEel: {
-    id: 'morayEel',   name: 'Moray Eel',     scientific: 'Gymnothorax spp.',
-    tier: TIER.EPIC,  layer: 'B', color: 0xa1887f, accentColor: 0x5d4037,
-    size: 30, speed: 0.7, unlockLevel: 4,
+    id: 'morayEel', name: 'Moray Eel', scientific: 'Gymnothorax spp.',
+    tier: TIER.EPIC, layer: 'B', color: 0xa1887f, accentColor: 0x5d4037,
+    size: 30, speed: 0.7, unlockLevel: 7,
   },
+  // ── Legendary ────────────────────────────────────────────────────────────────
   dolphin: {
-    id: 'dolphin',    name: 'Dolphin',       scientific: 'Tursiops truncatus',
-    tier: TIER.EPIC,  layer: 'B', color: 0x78909c, accentColor: 0xcfd8dc,
-    size: 36, speed: 1.6, unlockLevel: 5,
+    id: 'dolphin', name: 'Dolphin', scientific: 'Tursiops truncatus',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x78909c, accentColor: 0xcfd8dc,
+    size: 36, speed: 1.6, unlockLevel: 10,
   },
+  // ── Mythic ───────────────────────────────────────────────────────────────────
   shark: {
-    id: 'shark',      name: 'Reef Shark',    scientific: 'Carcharhinus amblyrhynchos',
-    tier: TIER.EPIC,  layer: 'B', color: 0x546e7a, accentColor: 0xeceff1,
-    size: 40, speed: 1.3, unlockLevel: 5,
+    id: 'shark', name: 'Reef Shark', scientific: 'Carcharhinus amblyrhynchos',
+    tier: TIER.MYTHIC, layer: 'B', color: 0x546e7a, accentColor: 0xeceff1,
+    size: 40, speed: 1.3, unlockLevel: 12,
+  },
+  // ── Pearl (premium) ──────────────────────────────────────────────────────────
+  rainbowGoby: {
+    id: 'rainbowGoby', name: 'Rainbow Goby', scientific: '',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0x69f0ae, accentColor: 0xff6d00,
+    size: 14, speed: 1.4, unlockLevel: 5,
+    pearlCost: 15,
+  },
+  glowfinAngelfish: {
+    id: 'glowfinAngelfish', name: 'Glowfin Angelfish', scientific: '',
+    tier: TIER.EPIC, layer: 'B', color: 0xff6b9d, accentColor: 0xffe082,
+    size: 19, speed: 0.9, unlockLevel: 7,
+    pearlCost: 20,
+  },
+  neonSeahorse: {
+    id: 'neonSeahorse', name: 'Neon Seahorse', scientific: '',
+    tier: TIER.EPIC, layer: 'A', color: 0x00e5ff, accentColor: 0xff6d00,
+    size: 14, speed: 0.4, unlockLevel: 7,
+    pearlCost: 25,
+  },
+  sunburstWrasse: {
+    id: 'sunburstWrasse', name: 'Sunburst Wrasse', scientific: '',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0xff8f00, accentColor: 0xffff00,
+    size: 20, speed: 1.3, unlockLevel: 10,
+    pearlCost: 50,
+  },
+  phantomLionfish: {
+    id: 'phantomLionfish', name: 'Phantom Lionfish', scientific: '',
+    tier: TIER.MYTHIC, layer: 'B', color: 0x7c4dff, accentColor: 0xff4081,
+    size: 28, speed: 0.6, unlockLevel: 12,
+    pearlCost: 60,
   },
 };

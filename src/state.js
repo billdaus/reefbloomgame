@@ -27,11 +27,11 @@ export const state = {
 
   // ── Stats (for Harmony calculation) ───────────────────────────────────────
   coralCount:      0,
-  coralTierCounts: { common: 0, rare: 0, epic: 0 },
+  coralTierCounts: { common: 0, uncommon: 0, rare: 0, superRare: 0, epic: 0, legendary: 0, mythic: 0 },
   coralTypesSeen:  new Set(),   // unique speciesIds placed
 
   fishCount:      0,
-  fishTierCounts: { common: 0, rare: 0, epic: 0 },
+  fishTierCounts: { common: 0, uncommon: 0, rare: 0, superRare: 0, epic: 0, legendary: 0, mythic: 0 },
   fishLayerCounts: { A: 0, B: 0 },
   fishTypesSeen:  new Set(),
 

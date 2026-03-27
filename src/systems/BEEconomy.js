@@ -60,6 +60,7 @@ export function recordInteraction() {
 export function spendForCoral(speciesId) {
   const spec = CORAL_SPECIES[speciesId];
   if (!spec) return false;
+  if (spec.pearlCost) return false;  // pearl species not purchasable with BE
   const cost = CORAL_COST[spec.tier] ?? 0;
   if (state.be < cost) return false;
   state.be -= cost;
@@ -74,6 +75,7 @@ export function spendForCoral(speciesId) {
 export function spendForFish(speciesId) {
   const spec = FISH_SPECIES[speciesId];
   if (!spec) return false;
+  if (spec.pearlCost) return false;  // pearl species not purchasable with BE
   const cost = FISH_COST[spec.tier] ?? 0;
   if (state.be < cost) return false;
   state.be -= cost;
@@ -84,7 +86,7 @@ export function spendForFish(speciesId) {
 /** Refund 50% of placement cost when removing coral. */
 export function refundCoral(speciesId) {
   const spec = CORAL_SPECIES[speciesId];
-  if (!spec) return 0;
+  if (!spec || spec.pearlCost) return 0;
   const refund = Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
   state.be += refund;
   onBEChange?.(state.be, null);
@@ -94,7 +96,7 @@ export function refundCoral(speciesId) {
 /** Refund 50% of hatch cost when removing fish. */
 export function refundFish(speciesId) {
   const spec = FISH_SPECIES[speciesId];
-  if (!spec) return 0;
+  if (!spec || spec.pearlCost) return 0;
   const refund = Math.floor((FISH_COST[spec.tier] ?? 0) / 2);
   state.be += refund;
   onBEChange?.(state.be, null);

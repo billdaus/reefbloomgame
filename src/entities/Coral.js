@@ -25,17 +25,23 @@ export class Coral {
     g.clear();
 
     switch (id) {
-      case 'staghorn':   this._drawStaghorn(g, s, c);   break;
-      case 'finger':     this._drawFinger(g, s, c);     break;
-      case 'brain':      this._drawBrain(g, s, c);      break;
-      case 'lettuce':    this._drawLettuce(g, s, c);    break;
-      case 'star':       this._drawStar(g, s, c);       break;
-      case 'bubble':     this._drawBubble(g, s, c);     break;
-      case 'candycane':  this._drawCandyCane(g, s, c);  break;
-      case 'toadstool':  this._drawToadstool(g, s, c);  break;
-      case 'elkhorn':    this._drawElkhorn(g, s, c);    break;
-      case 'pillar':     this._drawPillar(g, s, c);     break;
-      default:           this._drawGeneric(g, s, c);    break;
+      case 'starter':      this._drawStarter(g, s, c);     break;
+      case 'firetip':      this._drawFiretip(g, s, c);     break;
+      case 'ghost':        this._drawGhost(g, s, c);       break;
+      case 'staghorn':     this._drawStaghorn(g, s, c);    break;
+      case 'finger':       this._drawFinger(g, s, c);      break;
+      case 'brain':        this._drawBrain(g, s, c);       break;
+      case 'lettuce':      this._drawLettuce(g, s, c);     break;
+      case 'star':         this._drawStar(g, s, c);        break;
+      case 'bubble':       this._drawBubble(g, s, c);      break;
+      case 'candycane':    this._drawCandyCane(g, s, c);   break;
+      case 'toadstool':    this._drawToadstool(g, s, c);   break;
+      case 'elkhorn':      this._drawElkhorn(g, s, c);     break;
+      case 'pillar':       this._drawPillar(g, s, c);      break;
+      case 'table':        this._drawTable(g, s, c);       break;
+      case 'rainbowCoral': this._drawRainbowCoral(g, s, c); break;
+      case 'sunfire':      this._drawSunfire(g, s, c);     break;
+      default:             this._drawGeneric(g, s, c);     break;
     }
   }
 
@@ -210,6 +216,90 @@ export class Coral {
     for (let y = s * 0.12; y < s * 0.88; y += 9) {
       g.moveTo(mid - 10, y).lineTo(mid + 10, y).stroke({ color: dark, width: 1.5 });
     }
+  }
+
+  // ── Starter coral — simple dome with polyp dots ───────────────────────────
+  _drawStarter(g, s, c) {
+    const mid = s / 2;
+    g.circle(mid, s * 0.65, s * 0.22).fill(c);
+    const light = this._lighten(c, 0.5);
+    [[-0.12, -0.08], [0.12, -0.08], [0, -0.18], [0, 0.02]].forEach(([dx, dy]) => {
+      g.circle(mid + dx * s, s * 0.65 + dy * s, 3.5).fill(light);
+    });
+  }
+
+  // ── Firetip coral — branching with bright orange tips ─────────────────────
+  _drawFiretip(g, s, c) {
+    const mid = s / 2;
+    const tip = 0xff5722;
+    g.moveTo(mid, s - 4).lineTo(mid, s * 0.52)
+     .stroke({ color: c, width: 5, cap: 'round' });
+    [[-0.24, 0.18], [0, 0.08], [0.24, 0.18]].forEach(([dx, topY]) => {
+      g.moveTo(mid, s * 0.52)
+       .lineTo(mid + dx * s, s * topY)
+       .stroke({ color: c, width: 4, cap: 'round' });
+      g.circle(mid + dx * s, s * topY, 5).fill(tip);
+      g.circle(mid + dx * s, s * topY, 2.5).fill(0xffccbc);
+    });
+  }
+
+  // ── Ghost coral — pale translucent fan ────────────────────────────────────
+  _drawGhost(g, s, c) {
+    const mid = s / 2;
+    const base = s * 0.75;
+    const dark = this._darken(c, 0.15);
+    for (let i = -3; i <= 3; i++) {
+      const angle = Math.PI * 0.5 + i * 0.22;
+      const len   = i === 0 ? s * 0.5 : s * (0.36 + Math.abs(i) * 0.02);
+      g.moveTo(mid, base)
+       .lineTo(mid + Math.cos(Math.PI - angle) * len, base - Math.sin(angle) * len)
+       .stroke({ color: i % 2 === 0 ? c : dark, width: 2, cap: 'round' });
+    }
+    g.circle(mid, base, 5).fill(dark);
+  }
+
+  // ── Table coral — flat horizontal shelf on a stalk ────────────────────────
+  _drawTable(g, s, c) {
+    const mid  = s / 2;
+    const dark = this._darken(c, 0.2);
+    // Stalk
+    g.roundRect(mid - 5, s * 0.42, 10, s * 0.5, 4).fill(dark);
+    // Flat table top
+    g.roundRect(s * 0.08, s * 0.26, s * 0.84, s * 0.16, 6).fill(c);
+    // Rim highlight
+    const light = this._lighten(c, 0.4);
+    g.roundRect(s * 0.08, s * 0.26, s * 0.84, 3, 6).fill(light);
+    // Polyp dots on surface
+    for (let i = 0; i < 5; i++) {
+      g.circle(s * 0.18 + i * s * 0.16, s * 0.34, 2.5).fill(dark);
+    }
+  }
+
+  // ── Rainbow coral — colourful dome with banded polyps ─────────────────────
+  _drawRainbowCoral(g, s, c) {
+    const mid = s / 2;
+    const r   = s * 0.38;
+    g.circle(mid, s * 0.56, r).fill(c);
+    const bands = [0xff5252, 0xff9800, 0xffeb3b, 0x66bb6a, 0x42a5f5, 0xab47bc];
+    bands.forEach((bc, i) => {
+      g.circle(mid + (i - 2.5) * r * 0.3, s * 0.56, r * 0.1).fill(bc);
+    });
+  }
+
+  // ── Sunfire coral — radial spiky structure ────────────────────────────────
+  _drawSunfire(g, s, c) {
+    const mid    = s / 2;
+    const coreY  = s * 0.58;
+    const bright = 0xffeb3b;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 - Math.PI / 2;
+      const len   = i % 2 === 0 ? s * 0.34 : s * 0.22;
+      g.moveTo(mid, coreY)
+       .lineTo(mid + Math.cos(angle) * len, coreY + Math.sin(angle) * len)
+       .stroke({ color: i % 2 === 0 ? bright : c, width: i % 2 === 0 ? 4 : 3, cap: 'round' });
+    }
+    g.circle(mid, coreY, s * 0.1).fill(bright);
+    g.circle(mid, coreY, s * 0.05).fill(0xffffff);
   }
 
   // ── Generic fallback ──────────────────────────────────────────────────────
