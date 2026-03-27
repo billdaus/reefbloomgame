@@ -157,30 +157,39 @@ export class PlacementMenu {
     currLabel.y = PANEL_Y + (BIOME_HEADER_H - currLabel.height) / 2;
     this._headerC.addChild(currLabel);
 
-    // Travel button (right)
+    // Travel button (right) — positioned Container with local-coord graphics (same pattern as HUD buttons)
     const btnW  = 60;
+    const btnH  = BIOME_HEADER_H - 8;
     const btnX  = PANEL_X + PANEL_W - btnW - 6;
     const btnY  = PANEL_Y + 4;
-    const btnH  = BIOME_HEADER_H - 8;
 
-    const btnBg = new Graphics();
-    btnBg.roundRect(btnX, btnY, btnW, btnH, 4)
-         .fill({ color: COLORS.panel_border, alpha: 0.55 });
-    btnBg.eventMode = 'static';
-    btnBg.cursor = 'pointer';
-    btnBg.on('pointerover', () => { btnBg.tint = 0xbbddff; });
-    btnBg.on('pointerout',  () => { btnBg.tint = 0xffffff; });
-    btnBg.on('pointerdown', () => this._onTravel?.());
-    this._headerC.addChild(btnBg);
+    const travelBtnBg = new Graphics();
+    const drawTravelBg = (hover) => {
+      travelBtnBg.clear();
+      travelBtnBg.roundRect(0, 0, btnW, btnH, 4)
+        .fill({ color: COLORS.panel_border, alpha: hover ? 0.85 : 0.55 });
+    };
+    drawTravelBg(false);
 
-    const btnLabel = new Text({
+    const travelLabel = new Text({
       text: '🗺  Travel',
       style: { fontSize: 8.5, fill: COLORS.text_secondary, fontFamily: FONT },
     });
-    btnLabel.anchor.set(0.5, 0.5);
-    btnLabel.x = btnX + btnW / 2;
-    btnLabel.y = btnY + btnH / 2;
-    this._headerC.addChild(btnLabel);
+    travelLabel.anchor.set(0.5, 0.5);
+    travelLabel.x = btnW / 2;
+    travelLabel.y = btnH / 2;
+
+    const travelBtn = new Container();
+    travelBtn.addChild(travelBtnBg);
+    travelBtn.addChild(travelLabel);
+    travelBtn.x = btnX;
+    travelBtn.y = btnY;
+    travelBtn.interactive = true;
+    travelBtn.cursor = 'pointer';
+    travelBtn.on('pointerover',  () => drawTravelBg(true));
+    travelBtn.on('pointerout',   () => drawTravelBg(false));
+    travelBtn.on('pointerdown',  () => this._onTravel?.());
+    this._headerC.addChild(travelBtn);
   }
 
   _buildContent() {
