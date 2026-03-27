@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Reef Bloom</title>
   <!-- Google Analytics -->
@@ -223,6 +223,102 @@
     }
     .slp-erase-btn:hover { background: rgba(210,40,40,0.45); color: #fff; border-color: rgba(230,80,80,0.7); }
     .slp-erase-btn.confirming { background: rgba(220,40,40,0.7); color: #fff; border-color: rgba(240,80,80,0.9); }
+
+    /* ── Legal modals ────────────────────────────────────────────────────────── */
+    .legal-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      background: rgba(4, 15, 40, 0.78);
+      backdrop-filter: blur(6px);
+      padding: 20px;
+    }
+    .legal-modal.open { display: flex; }
+    .legal-box {
+      background: linear-gradient(175deg, #1468b0 0%, #0a3050 100%);
+      border: 1px solid rgba(100,200,255,0.22);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 640px;
+      max-height: 82vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+      overflow: hidden;
+    }
+    .legal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid rgba(100,200,255,0.15);
+      flex-shrink: 0;
+    }
+    .legal-header h2 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 1px;
+    }
+    .legal-close {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.7);
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .legal-close:hover { background: rgba(255,255,255,0.22); color: #fff; }
+    .legal-body {
+      overflow-y: auto;
+      padding: 20px 24px 28px;
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
+    }
+    .legal-body .effective {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+    .legal-body h3 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(140,210,255,0.85);
+      margin: 24px 0 8px;
+    }
+    .legal-body p, .legal-body li {
+      font-size: 13px;
+      line-height: 1.75;
+      color: rgba(255,255,255,0.72);
+    }
+    .legal-body ul { padding-left: 18px; margin-top: 4px; }
+    .legal-body li { margin-bottom: 3px; }
+    .legal-body a { color: rgba(140,210,255,0.9); }
+
+    /* footer link style */
+    .legal-link {
+      background: none;
+      border: none;
+      color: rgba(140,210,255,0.55);
+      font-size: 11px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      padding: 0 10px;
+      font-family: inherit;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .legal-link:hover { color: #fff; }
   </style>
 </head>
 <body>
@@ -238,9 +334,91 @@
       <button class="sp-btn" id="start-btn">Begin</button>
     </div>
     <div style="position:relative;z-index:1;font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-bottom:18px;">
-      <a href="/privacy.html" style="color:rgba(140,210,255,0.55);text-decoration:none;margin:0 10px;">Privacy Policy</a>
+      <button class="legal-link" onclick="openLegal('privacy')">Privacy Policy</button>
       ·
-      <a href="/terms.html"   style="color:rgba(140,210,255,0.55);text-decoration:none;margin:0 10px;">Terms of Service</a>
+      <button class="legal-link" onclick="openLegal('terms')">Terms of Service</button>
+    </div>
+  </div>
+
+  <!-- ── Privacy Policy Modal ───────────────────────────────────────────────── -->
+  <div id="modal-privacy" class="legal-modal" onclick="closeLegalOnBackdrop(event,this)">
+    <div class="legal-box">
+      <div class="legal-header">
+        <h2>PRIVACY POLICY</h2>
+        <button class="legal-close" onclick="closeLegal('privacy')">✕</button>
+      </div>
+      <div class="legal-body">
+        <p class="effective">EFFECTIVE DATE: MARCH 27, 2026</p>
+
+        <h3>Overview</h3>
+        <p>Reef Bloom is a free browser game. We are committed to protecting your privacy. This policy explains what data, if any, is collected when you play.</p>
+
+        <h3>Data We Collect</h3>
+        <p>Reef Bloom stores your game progress (reef state, coral, fish, currency) locally in your browser using <strong>localStorage</strong>. This data never leaves your device and is not transmitted to any server.</p>
+
+        <h3>Advertising</h3>
+        <p>Reef Bloom may display third-party advertisements (e.g. rewarded video ads). Ad networks may collect anonymized data such as your device type, IP address, and ad interactions in accordance with their own privacy policies. We do not control and are not responsible for third-party data practices.</p>
+
+        <h3>Analytics</h3>
+        <p>We do not currently use any analytics or tracking services. If this changes, this policy will be updated.</p>
+
+        <h3>Cookies</h3>
+        <p>Reef Bloom itself does not set cookies. Third-party ad networks may set cookies subject to their own policies.</p>
+
+        <h3>Children</h3>
+        <p>Reef Bloom is intended for general audiences. We do not knowingly collect personal information from children under 13.</p>
+
+        <h3>Changes</h3>
+        <p>We may update this policy from time to time. Continued use of the game after changes constitutes acceptance of the updated policy.</p>
+
+        <h3>Contact</h3>
+        <p>Questions? Reach out via the project's GitHub page.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Terms of Service Modal ─────────────────────────────────────────────── -->
+  <div id="modal-terms" class="legal-modal" onclick="closeLegalOnBackdrop(event,this)">
+    <div class="legal-box">
+      <div class="legal-header">
+        <h2>TERMS OF SERVICE</h2>
+        <button class="legal-close" onclick="closeLegal('terms')">✕</button>
+      </div>
+      <div class="legal-body">
+        <p class="effective">EFFECTIVE DATE: MARCH 27, 2026</p>
+
+        <h3>Acceptance</h3>
+        <p>By playing Reef Bloom you agree to these Terms. If you do not agree, please do not use the game.</p>
+
+        <h3>License</h3>
+        <p>Reef Bloom grants you a limited, non-exclusive, non-transferable license to play the game for personal, non-commercial purposes.</p>
+
+        <h3>Virtual Currency &amp; Items</h3>
+        <p>Pearls and other in-game items are virtual goods with no real-world monetary value. They cannot be transferred, sold, or exchanged outside the game. We reserve the right to modify, reset, or remove virtual items at any time.</p>
+
+        <h3>Acceptable Use</h3>
+        <p>You agree not to:</p>
+        <ul>
+          <li>Cheat, exploit bugs, or use automation tools to gain an unfair advantage</li>
+          <li>Attempt to reverse-engineer, decompile, or modify the game</li>
+          <li>Use the game in any way that violates applicable law</li>
+        </ul>
+
+        <h3>Advertisements</h3>
+        <p>Reef Bloom is free to play and supported by optional rewarded advertisements. You may choose to watch ads to earn in-game currency. Ad availability is not guaranteed.</p>
+
+        <h3>Disclaimer of Warranties</h3>
+        <p>Reef Bloom is provided "as is" without warranties of any kind. We do not guarantee uninterrupted or error-free operation.</p>
+
+        <h3>Limitation of Liability</h3>
+        <p>To the fullest extent permitted by law, we are not liable for any indirect, incidental, or consequential damages arising from your use of the game, including loss of game progress.</p>
+
+        <h3>Changes</h3>
+        <p>We may update these Terms at any time. Continued use of the game constitutes acceptance of updated Terms.</p>
+
+        <h3>Contact</h3>
+        <p>Questions? Reach out via the project's GitHub page.</p>
+      </div>
     </div>
   </div>
 
@@ -275,6 +453,21 @@
     }
     spawnBubbles('sp-bubbles');
     spawnBubbles('slp-bubbles');
+
+    function openLegal(which) {
+      document.getElementById('modal-' + which).classList.add('open');
+    }
+    function closeLegal(which) {
+      document.getElementById('modal-' + which).classList.remove('open');
+    }
+    function closeLegalOnBackdrop(e, modal) {
+      if (e.target === modal) modal.classList.remove('open');
+    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.legal-modal.open').forEach(m => m.classList.remove('open'));
+      }
+    });
   </script>
 </body>
 </html>
