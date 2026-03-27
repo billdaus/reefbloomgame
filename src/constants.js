@@ -317,7 +317,7 @@ export const FISH_SPECIES = {
   seaTurtle: {
     id: 'seaTurtle', name: 'Sea Turtle', scientific: 'Chelonia mydas',
     tier: TIER.MYTHIC, layer: 'B', color: 0x4e7c50, accentColor: 0x7b5230,
-    size: 26, speed: 0.7, unlockLevel: 11, biome: 'seagrass',
+    size: 26, speed: 0.7, unlockLevel: 11, biome: 'both',
   },
   // ── Pearl (premium) ──────────────────────────────────────────────────────────
   rainbowGoby: {
