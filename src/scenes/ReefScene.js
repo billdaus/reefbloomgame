@@ -14,6 +14,7 @@ import {
   recordInteraction, refundCoral, refundFish,
 } from '../systems/BEEconomy.js';
 import { initQuests, recordQuestEvent, checkSnapshotQuests, getQuestStatus } from '../systems/QuestSystem.js';
+import { initJournal, unlockEntry } from '../systems/JournalSystem.js';
 import { updateHarmonyFilter } from '../systems/HarmonySystem.js';
 import { initLevelSystem, checkLevelUp } from '../systems/LevelSystem.js';
 import { initClamSystem, tickClamSystem, canWatch, collectAdReward, despawnClam } from '../systems/ClamSystem.js';
@@ -22,6 +23,7 @@ import { QuestClam } from '../entities/QuestClam.js';
 import { ClamRewardModal }    from '../ui/ClamRewardModal.js';
 import { PearlShopModal }     from '../ui/PearlShopModal.js';
 import { DailyQuestModal }    from '../ui/DailyQuestModal.js';
+import JournalModal           from '../ui/JournalModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 
@@ -81,13 +83,19 @@ export class ReefScene {
     this._uiContainer   = new Container();
     this._rewardModal   = new ClamRewardModal();
     this._shopModal     = new PearlShopModal();
+    this._journalModal  = new JournalModal();
     this._questModal    = new DailyQuestModal(
-      () => { this._refreshQuestClam(); saveGame(); },   // onAccept
-      () => { this._removeQuestClam(); saveGame(); },    // onClaim
+      () => { unlockEntry('event:quest_accept'); this._refreshQuestClam(); saveGame(); },   // onAccept
+      () => {                                                                                // onClaim
+        unlockEntry('event:quest_complete');
+        if (state.quest?.reward?.pearls > 0) unlockEntry('resource:pearls');
+        this._removeQuestClam(); saveGame();
+      },
     );
     this._hud  = new HUD(
       () => { saveGame(); window.location.reload(); },
       () => this._shopModal.show(),
+      () => this._journalModal.show(),
     );
     this._menu = new PlacementMenu(
       (id) => this._onCoralSelected(id),
@@ -99,6 +107,7 @@ export class ReefScene {
     this._uiContainer.addChild(this._rewardModal.container);
     this._uiContainer.addChild(this._shopModal.container);
     this._uiContainer.addChild(this._questModal.container);
+    this._uiContainer.addChild(this._journalModal.container);
 
     // Expose layout + travel callback for DOM travel button/modal (see index.html)
     window._rfLayout   = { PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H };
@@ -111,19 +120,23 @@ export class ReefScene {
     app.stage.addChild(this._uiContainer);
 
     // ── Systems ──────────────────────────────────────────────────────────────
-    initQuests(() => { this._questModal.refresh(); this._refreshQuestClam(); saveGame(); });
+    // Journal init first — cross-slot, no save interaction
+    initJournal();
 
     initEconomy((newBE, bonusMsg) => {
       if (bonusMsg) {
         this._hud.showBonus(bonusMsg);
         if (bonusMsg.includes('watching')) {
+          unlockEntry('event:idle_streak');
           this._bubbles.trigger('idleStreak');
         }
       }
+      if (newBE >= BE_MAX) unlockEntry('event:be_max');
       this._checkLowBE(newBE);
     });
 
     initLevelSystem((newLevel) => {
+      unlockEntry('event:level_up');
       this._hud.showLevelUp(newLevel);
       this._menu.updateLevel();
       this._bubbles.trigger('levelUp');
@@ -150,6 +163,10 @@ export class ReefScene {
     // ── Restore save ─────────────────────────────────────────────────────────
     const saved = loadGame();
     if (saved) this._restoreFromSave(saved);
+
+    // initQuests MUST come after _restoreFromSave — its onChange fires saveGame()
+    // immediately if today's date is new, and state must be fully populated first.
+    initQuests(() => { this._questModal.refresh(); this._refreshQuestClam(); saveGame(); });
   }
 
   // ── Game loop ──────────────────────────────────────────────────────────────
@@ -224,6 +241,9 @@ export class ReefScene {
 
     this._grid.placeCoral(spec, col, row, uid);
 
+    unlockEntry(`coral:${speciesId}`);
+    unlockEntry('resource:harmony');
+
     // Bubbles events
     if (state.coralCount === 1) this._bubbles.trigger('firstCoral');
 
@@ -249,6 +269,8 @@ export class ReefScene {
     state.fishTierCounts[spec.tier]++;
     state.fishTypesSeen.add(speciesId);
     state.fishLayerCounts[spec.layer]++;
+
+    unlockEntry(`fish:${speciesId}`);
 
     // Make fish tappable for removal in remove mode
     fish.container.interactive = true;
@@ -303,6 +325,7 @@ export class ReefScene {
     this._grid.removeCoral(entry.uid);
 
     if (refund > 0) this._hud.showBonus(`+${refund} 🫧`);
+    unlockEntry('event:remove');
 
     saveGame();
   }
@@ -326,6 +349,7 @@ export class ReefScene {
     fish.container.destroy({ children: true });
 
     if (refund > 0) this._hud.showBonus(`+${refund} 🫧`);
+    unlockEntry('event:remove');
 
     saveGame();
   }
@@ -341,6 +365,8 @@ export class ReefScene {
     // Apply BE and pearl rewards immediately
     state.be     = Math.min(state.be + rewards.be, BE_MAX);
     state.pearls += rewards.pearls;
+    unlockEntry('event:clam');
+    if (rewards.pearls > 0) unlockEntry('resource:pearls');
     this._hud.showBonus(`+${rewards.be} 🫧  +${rewards.pearls} 💎`);
 
     // Spawn fish reward at a random reef position
@@ -419,6 +445,19 @@ export class ReefScene {
 
     // Ensure UID counter doesn't collide with restored UIDs
     state._nextUid = Math.max(state._nextUid, maxUid + 1);
+
+    // Backfill journal unlocks from restored save data
+    unlockEntry(`biome:${state.biome}`);
+    if (state.harmony > 0 || state.coralCount > 0) unlockEntry('resource:harmony');
+    if (state.pearls > 0) unlockEntry('resource:pearls');
+    state.coralTypesSeen.forEach(id => unlockEntry(`coral:${id}`));
+    state.fishTypesSeen.forEach(id => unlockEntry(`fish:${id}`));
+    if (state.quest?.status === 'active' || state.quest?.status === 'complete' || state.quest?.status === 'claimed') {
+      unlockEntry('event:quest_accept');
+    }
+    if (state.quest?.status === 'complete' || state.quest?.status === 'claimed') {
+      unlockEntry('event:quest_complete');
+    }
 
     this._menu.updateLevel();
 
@@ -511,6 +550,7 @@ export class ReefScene {
     // Switch active biome
     state.biome = biome;
     setCurrentBiome(biome);
+    unlockEntry(`biome:${biome}`);
 
     // Switch water color + background theme
     this.app.renderer.background.color = BIOMES[biome]?.bgColor ?? 0x1878c8;

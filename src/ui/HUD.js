@@ -8,9 +8,10 @@ const FONT = 'system-ui, -apple-system, sans-serif';
  * HUD — top bar showing BE, Harmony bar, and Level.
  */
 export class HUD {
-  constructor(onHome, onPearlShop) {
+  constructor(onHome, onPearlShop, onJournal) {
     this._onHome      = onHome;
     this._onPearlShop = onPearlShop;
+    this._onJournal   = onJournal;
     this.container = new Container();
     this._bg          = new Graphics();
     this._beText      = null;
@@ -134,6 +135,9 @@ export class HUD {
     // ── Pearl Market button ───────────────────────────────────────────────────
     this._buildMarketBtn();
 
+    // ── Journal button ───────────────────────────────────────────────────────
+    this._buildJournalBtn();
+
     // ── Home button ──────────────────────────────────────────────────────────
     this._buildHomeBtn();
 
@@ -193,6 +197,44 @@ export class HUD {
     btn.on('pointerover',  () => { drawBg(true);  label.style.fill = 0xffffff; });
     btn.on('pointerout',   () => { drawBg(false); label.style.fill = 0xc8e6a0; });
     btn.on('pointerdown',  () => this._onPearlShop?.());
+
+    this.container.addChild(btn);
+  }
+
+  _buildJournalBtn() {
+    const W  = IS_PORTRAIT ? 30 : 70;
+    const H  = IS_PORTRAIT ? 26 : 30;
+    const R  = 8;
+    const bx = IS_PORTRAIT ? 218 : 622;
+    const by = (HUD_H - H) / 2;
+
+    const bg = new Graphics();
+    const drawBg = (hover) => {
+      bg.clear();
+      bg.roundRect(0, 0, W, H, R)
+        .fill({ color: hover ? 0x2a3a5a : 0x10203a, alpha: hover ? 1 : 0.85 });
+      bg.roundRect(0, 0, W, H, R)
+        .stroke({ color: 0x3a5a8a, width: 1.5, alpha: 0.9 });
+    };
+    drawBg(false);
+
+    const label = new Text({
+      text: IS_PORTRAIT ? '📖' : '📖 Journal',
+      style: { fontSize: IS_PORTRAIT ? 14 : 11, fill: 0xa8c8f0, fontFamily: FONT, fontWeight: '600' },
+    });
+    label.x = (W - label.width) / 2;
+    label.y = (H - label.height) / 2;
+
+    const btn = new Container();
+    btn.addChild(bg);
+    btn.addChild(label);
+    btn.x = bx;
+    btn.y = by;
+    btn.interactive = true;
+    btn.cursor = 'pointer';
+    btn.on('pointerover',  () => { drawBg(true);  label.style.fill = 0xffffff; });
+    btn.on('pointerout',   () => { drawBg(false); label.style.fill = 0xa8c8f0; });
+    btn.on('pointerdown',  () => this._onJournal?.());
 
     this.container.addChild(btn);
   }
