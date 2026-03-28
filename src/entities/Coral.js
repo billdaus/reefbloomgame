@@ -41,7 +41,9 @@ export class Coral {
       case 'table':        this._drawTable(g, s, c);       break;
       case 'rainbowCoral': this._drawRainbowCoral(g, s, c); break;
       case 'sunfire':      this._drawSunfire(g, s, c);     break;
+      case 'seaweed':      this._drawSeaweed(g, s, c);       break;
       case 'seagrass':     this._drawSeagrass(g, s, c);      break;
+      case 'kelp':         this._drawKelp(g, s, c);          break;
       case 'twilightBrain': this._drawTwilightBrain(g, s, c); break;
       case 'phantomPolyp': this._drawPhantomPolyp(g, s, c); break;
       case 'midnightTable': this._drawMidnightTable(g, s, c); break;
@@ -337,6 +339,83 @@ export class Coral {
     });
     // substrate base line
     g.rect(s * 0.06, s - 4, s * 0.88, 4).fill(dark);
+  }
+
+  // ── Seaweed — bushy wavy fronds growing from base ────────────────────────
+  _drawSeaweed(g, s, c) {
+    const dark  = this._darken(c, 0.3);
+    const light = this._lighten(c, 0.25);
+    // Four wavy frond stalks
+    const fronds = [
+      { x: s * 0.22, lean: -0.18, h: s * 0.62 },
+      { x: s * 0.40, lean:  0.14, h: s * 0.74 },
+      { x: s * 0.60, lean: -0.10, h: s * 0.68 },
+      { x: s * 0.78, lean:  0.16, h: s * 0.58 },
+    ];
+    fronds.forEach(({ x, lean, h }, i) => {
+      const base  = s - 2;
+      const tipX  = x + lean * s;
+      const tipY  = base - h;
+      const midX  = x + lean * s * 0.5;
+      const midY  = base - h * 0.5;
+      const col   = i % 2 === 0 ? c : dark;
+      // Wavy stalk using a quadratic bezier approximated by 3 segments
+      g.moveTo(x, base)
+       .lineTo(midX + (lean > 0 ? -6 : 6), midY)
+       .lineTo(tipX, tipY)
+       .stroke({ color: col, width: 3, cap: 'round' });
+      // Small oval leaf at tip
+      g.circle(tipX, tipY, 4).fill(light);
+      // Two side leaflets along the stalk
+      const lx1 = x + lean * s * 0.28; const ly1 = base - h * 0.28;
+      const lx2 = x + lean * s * 0.60; const ly2 = base - h * 0.60;
+      [{ lx: lx1, ly: ly1 }, { lx: lx2, ly: ly2 }].forEach(({ lx, ly }) => {
+        g.moveTo(lx, ly).lineTo(lx + (i % 2 === 0 ? 8 : -8), ly - 5)
+         .stroke({ color: light, width: 2, cap: 'round' });
+      });
+    });
+    g.rect(s * 0.08, s - 4, s * 0.84, 4).fill(dark);
+  }
+
+  // ── Giant Kelp — tall ribbed stipe with broad paired fronds ──────────────
+  _drawKelp(g, s, c) {
+    const dark  = this._darken(c, 0.3);
+    const light = this._lighten(c, 0.35);
+    const mid   = s / 2;
+    // Central stipe (slightly wavy)
+    g.moveTo(mid + 2, s - 2)
+     .lineTo(mid - 3, s * 0.65)
+     .lineTo(mid + 3, s * 0.35)
+     .lineTo(mid - 1, s * 0.05)
+     .stroke({ color: dark, width: 4, cap: 'round', join: 'round' });
+    // Paired blade fronds at three heights
+    const bladeRows = [
+      { y: s * 0.68, w: s * 0.30, h: s * 0.12, stipeOff:  2 },
+      { y: s * 0.42, w: s * 0.26, h: s * 0.10, stipeOff: -2 },
+      { y: s * 0.18, w: s * 0.20, h: s * 0.08, stipeOff:  2 },
+    ];
+    bladeRows.forEach(({ y, w, h, stipeOff }) => {
+      const sx = mid + stipeOff;
+      // Left blade
+      g.moveTo(sx, y)
+       .lineTo(sx - w, y - h * 0.4)
+       .lineTo(sx - w * 0.6, y + h)
+       .closePath().fill(c);
+      // Right blade
+      g.moveTo(sx, y)
+       .lineTo(sx + w, y - h * 0.4)
+       .lineTo(sx + w * 0.6, y + h)
+       .closePath().fill(c);
+      // Midrib on each blade
+      g.moveTo(sx, y).lineTo(sx - w * 0.75, y - h * 0.2)
+       .stroke({ color: light, width: 1, alpha: 0.6 });
+      g.moveTo(sx, y).lineTo(sx + w * 0.75, y - h * 0.2)
+       .stroke({ color: light, width: 1, alpha: 0.6 });
+    });
+    // Float bladders — small ovals at blade attachment points
+    bladeRows.forEach(({ y, stipeOff }) => {
+      g.circle(mid + stipeOff, y, 3.5).fill(light);
+    });
   }
 
   // ── Twilight Brain Coral — glowing dome with labyrinthine grooves ─────────

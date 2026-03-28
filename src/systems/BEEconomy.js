@@ -4,6 +4,7 @@ import {
   BE_PER_TICK, CORAL_COST, FISH_COST, TIER,
   CORAL_SPECIES, FISH_SPECIES,
 } from '../constants.js';
+import { recordQuestEvent } from './QuestSystem.js';
 
 let tickAccum  = 0;
 let onBEChange = null;  // callback(newBE)
@@ -35,6 +36,7 @@ function _applyCoralTick() {
   if (earned > 0) {
     state.be = Math.min(state.be + earned, BE_MAX);
     onBEChange?.(state.be, `+${earned} 🫧`);
+    recordQuestEvent('earn_be', earned);
   }
 }
 
@@ -45,6 +47,7 @@ function _checkIdleStreak() {
     const bonus = IDLE_BONUS_BASE + Math.floor(state.coralCount * 0.5);
     state.be = Math.min(state.be + bonus, BE_MAX);
     onBEChange?.(state.be, `+${bonus} 🫧 (watching...)`);
+    recordQuestEvent('idle_streak', 1);
   }
 }
 

@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -13,12 +13,15 @@ import {
   spendForCoral, spendForFish, spendForCoralPearl, spendForFishPearl,
   recordInteraction, refundCoral, refundFish,
 } from '../systems/BEEconomy.js';
+import { initQuests, recordQuestEvent, checkSnapshotQuests, getQuestStatus } from '../systems/QuestSystem.js';
 import { updateHarmonyFilter } from '../systems/HarmonySystem.js';
 import { initLevelSystem, checkLevelUp } from '../systems/LevelSystem.js';
 import { initClamSystem, tickClamSystem, canWatch, collectAdReward, despawnClam } from '../systems/ClamSystem.js';
 import { Clam } from '../entities/Clam.js';
+import { QuestClam } from '../entities/QuestClam.js';
 import { ClamRewardModal }    from '../ui/ClamRewardModal.js';
 import { PearlShopModal }     from '../ui/PearlShopModal.js';
+import { DailyQuestModal }    from '../ui/DailyQuestModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 
@@ -39,6 +42,10 @@ export class ReefScene {
     this._clamContainer = new Container();
     this._clamEntity    = null;
 
+    // ── Quest clam ────────────────────────────────────────────────────────────
+    this._questClamContainer = new Container();
+    this._questClamEntity    = null;
+
     // ── Layers ───────────────────────────────────────────────────────────────
     this._bg         = new BackgroundLayer();
     this._grid       = new GridLayer((tile) => this._onTileTap(tile));
@@ -54,8 +61,9 @@ export class ReefScene {
     this.worldContainer.addChild(this._grid.container);
     // 3. Short/flat coral — fish Layer A swims over these
     this.worldContainer.addChild(this._grid.shortCoralContainer);
-    // 3b. Clam sits on the reef floor (above short coral, below fish)
+    // 3b. Clam + quest clam sit on the reef floor (above short coral, below fish)
     this.worldContainer.addChild(this._clamContainer);
+    this.worldContainer.addChild(this._questClamContainer);
     // 4. Fish Layer A (clownfish, chromis, butterflyfish, seahorse)
     this.worldContainer.addChild(this._fishContainerA);
     // 5. Tall coral — renders in front of Layer-A fish
@@ -73,6 +81,10 @@ export class ReefScene {
     this._uiContainer   = new Container();
     this._rewardModal   = new ClamRewardModal();
     this._shopModal     = new PearlShopModal();
+    this._questModal    = new DailyQuestModal(
+      () => { this._refreshQuestClam(); saveGame(); },   // onAccept
+      () => { this._removeQuestClam(); saveGame(); },    // onClaim
+    );
     this._hud  = new HUD(
       () => { saveGame(); window.location.reload(); },
       () => this._shopModal.show(),
@@ -86,6 +98,7 @@ export class ReefScene {
     this._uiContainer.addChild(this._hud.container);
     this._uiContainer.addChild(this._rewardModal.container);
     this._uiContainer.addChild(this._shopModal.container);
+    this._uiContainer.addChild(this._questModal.container);
 
     // Expose layout + travel callback for DOM travel button/modal (see index.html)
     window._rfLayout   = { PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H };
@@ -98,6 +111,8 @@ export class ReefScene {
     app.stage.addChild(this._uiContainer);
 
     // ── Systems ──────────────────────────────────────────────────────────────
+    initQuests(() => { this._questModal.refresh(); this._refreshQuestClam(); saveGame(); });
+
     initEconomy((newBE, bonusMsg) => {
       if (bonusMsg) {
         this._hud.showBonus(bonusMsg);
@@ -154,7 +169,8 @@ export class ReefScene {
     updateHarmonyFilter(this.worldContainer);
     checkLevelUp();
 
-    if (this._clamEntity) this._clamEntity.update(dms);
+    if (this._clamEntity)      this._clamEntity.update(dms);
+    if (this._questClamEntity) this._questClamEntity.update(dms);
     this._rewardModal.update(dms);
 
     state.fish.forEach(fish => fish.update(dt, state.grid, CORAL_SPECIES));
@@ -211,6 +227,8 @@ export class ReefScene {
     // Bubbles events
     if (state.coralCount === 1) this._bubbles.trigger('firstCoral');
 
+    recordQuestEvent('place_coral', 1);
+    checkSnapshotQuests();
     checkLevelUp();
     saveGame();
   }
@@ -253,6 +271,8 @@ export class ReefScene {
 
     if (state.fishCount === 1) this._bubbles.trigger('firstFish');
 
+    recordQuestEvent('hatch_fish', 1);
+    checkSnapshotQuests();
     checkLevelUp();
     saveGame();
   }
@@ -348,6 +368,7 @@ export class ReefScene {
     state.pearls         = data.pearls  ?? state.pearls;
     state.clamWatchCount = data.clamWatchCount ?? 0;
     state.clamWatchDate  = data.clamWatchDate  ?? '';
+    state.quest          = data.quest ?? null;
     state.harmonySmoothed = state.harmony;
 
     state.coralTypesSeen = new Set(data.coralTypesSeen ?? []);
@@ -403,6 +424,45 @@ export class ReefScene {
 
     // Compute passive income from the other biome's saved entities
     this._refreshPassiveIncome();
+
+    // Re-evaluate snapshot quests now that coral/fish counts are restored
+    checkSnapshotQuests();
+
+    // Spawn quest clam if today's quest is not yet claimed
+    this._refreshQuestClam();
+  }
+
+  // ── Quest clam ─────────────────────────────────────────────────────────────
+
+  _refreshQuestClam() {
+    const status = getQuestStatus();
+
+    // No clam needed if claimed or no quest
+    if (!status || status === 'claimed') {
+      this._removeQuestClam();
+      return;
+    }
+
+    if (!this._questClamEntity) {
+      // Spawn in the lower-left area so it doesn't overlap the ad clam
+      const x = GRID_X + 60 + Math.random() * (GRID_W * 0.35);
+      const y = GRID_Y + GRID_H * 0.60 + Math.random() * (GRID_H * 0.25);
+      this._questClamEntity = new QuestClam(x, y, () => this._onQuestClamTap());
+      this._questClamContainer.addChild(this._questClamEntity.container);
+    }
+
+    this._questClamEntity.setStatus(status);
+  }
+
+  _removeQuestClam() {
+    if (!this._questClamEntity) return;
+    this._questClamContainer.removeChild(this._questClamEntity.container);
+    this._questClamEntity.container.destroy({ children: true });
+    this._questClamEntity = null;
+  }
+
+  _onQuestClamTap() {
+    this._questModal.show();
   }
 
   /** Compute BE/tick from all inactive biomes' saved coral and cache it in state. */

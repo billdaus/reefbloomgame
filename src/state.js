@@ -17,6 +17,9 @@ export const state = {
   clamWatchCount: 0,           // watches used today
   clamWatchDate:  '',          // date string — resets count when day changes
 
+  // ── Daily quest ────────────────────────────────────────────────────────────
+  quest: null,      // { date, status, challenges, reward } — regenerated each day
+
   // ── Selection (placement mode) ─────────────────────────────────────────────
   selectedType: null,   // 'coral' | 'fish' | null
   selectedId:   null,   // species id string

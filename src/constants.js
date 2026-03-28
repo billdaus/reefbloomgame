@@ -183,9 +183,19 @@ export const CORAL_SPECIES = {
   },
 
   // ── Seagrass biome vegetation ─────────────────────────────────────────────
+  seaweed: {
+    id: 'seaweed', name: 'Seaweed', scientific: 'Ulva sp.',
+    tier: TIER.UNCOMMON, tall: false, blocksB: false, color: 0x388e3c, unlockLevel: 1,
+    biome: 'seagrass',
+  },
   seagrass: {
     id: 'seagrass', name: 'Seagrass', scientific: 'Halophila sp.',
     tier: TIER.RARE, tall: false, blocksB: false, color: 0x4caf50, unlockLevel: 3,
+    biome: 'seagrass',
+  },
+  kelp: {
+    id: 'kelp', name: 'Giant Kelp', scientific: 'Macrocystis pyrifera',
+    tier: TIER.SUPER_RARE, tall: true, blocksB: true, color: 0x8bc34a, unlockLevel: 5,
     biome: 'seagrass',
   },
 

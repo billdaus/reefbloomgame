@@ -243,6 +243,7 @@ export class HUD {
     this._harmonyText.text = String(Math.round(state.harmony));
     this._drawHarmonyBar();
 
+
     // Level-up banner fade
     if (this._lvlUpTimer > 0) {
       this._lvlUpTimer -= deltaMS;
