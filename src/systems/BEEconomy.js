@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import {
-  TICK_MS, IDLE_STREAK_MS, IDLE_BONUS_BASE,
+  TICK_MS, IDLE_STREAK_MS, IDLE_BONUS_BASE, BE_MAX,
   BE_PER_TICK, CORAL_COST, FISH_COST, TIER,
   CORAL_SPECIES, FISH_SPECIES,
 } from '../constants.js';
@@ -33,7 +33,7 @@ function _applyCoralTick() {
     earned += BE_PER_TICK[spec.tier] ?? 0;
   });
   if (earned > 0) {
-    state.be += earned;
+    state.be = Math.min(state.be + earned, BE_MAX);
     onBEChange?.(state.be, `+${earned} 🫧`);
   }
 }
@@ -43,7 +43,7 @@ function _checkIdleStreak() {
   if (idle >= IDLE_STREAK_MS && !state.idleStreakActive) {
     state.idleStreakActive = true;
     const bonus = IDLE_BONUS_BASE + Math.floor(state.coralCount * 0.5);
-    state.be += bonus;
+    state.be = Math.min(state.be + bonus, BE_MAX);
     onBEChange?.(state.be, `+${bonus} 🫧 (watching...)`);
   }
 }
@@ -89,7 +89,7 @@ export function refundCoral(speciesId) {
   const spec = CORAL_SPECIES[speciesId];
   if (!spec || spec.pearlCost) return 0;
   const refund = Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
-  state.be += refund;
+  state.be = Math.min(state.be + refund, BE_MAX);
   onBEChange?.(state.be, null);
   return refund;
 }
@@ -99,7 +99,7 @@ export function refundFish(speciesId) {
   const spec = FISH_SPECIES[speciesId];
   if (!spec || spec.pearlCost) return 0;
   const refund = Math.floor((FISH_COST[spec.tier] ?? 0) / 2);
-  state.be += refund;
+  state.be = Math.min(state.be + refund, BE_MAX);
   onBEChange?.(state.be, null);
   return refund;
 }

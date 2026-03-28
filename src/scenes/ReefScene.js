@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -319,7 +319,7 @@ export class ReefScene {
     const rewards = collectAdReward();
 
     // Apply BE and pearl rewards immediately
-    state.be     += rewards.be;
+    state.be     = Math.min(state.be + rewards.be, BE_MAX);
     state.pearls += rewards.pearls;
     this._hud.showBonus(`+${rewards.be} 🫧  +${rewards.pearls} 💎`);
 
