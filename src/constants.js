@@ -374,6 +374,36 @@ export const FISH_SPECIES = {
     size: 18, speed: 0.3, unlockLevel: 3, biome: 'seagrass',
   },
   // ── Seagrass Basin — Grazers ─────────────────────────────────────────────────
+  pipefish: {
+    id: 'pipefish', name: 'Pipefish', scientific: 'Syngnathus spp.',
+    tier: TIER.COMMON, layer: 'A', color: 0x558b2f, accentColor: 0xc5e1a5,
+    size: 14, speed: 0.9, unlockLevel: 1, biome: 'seagrass', grazer: true,
+  },
+  sandDollar: {
+    id: 'sandDollar', name: 'Sand Dollar', scientific: 'Echinarachnius parma',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0xf0e68c, accentColor: 0x9e9e9e,
+    size: 14, speed: 0.15, unlockLevel: 2, biome: 'seagrass', grazer: true,
+  },
+  conch: {
+    id: 'conch', name: 'Queen Conch', scientific: 'Aliger gigas',
+    tier: TIER.RARE, layer: 'A', color: 0xd4956a, accentColor: 0xff8a65,
+    size: 16, speed: 0.2, unlockLevel: 4, biome: 'seagrass', grazer: true,
+  },
+  pufferfish: {
+    id: 'pufferfish', name: 'Pufferfish', scientific: 'Tetraodontidae spp.',
+    tier: TIER.SUPER_RARE, layer: 'B', color: 0xf9a825, accentColor: 0x4e342e,
+    size: 16, speed: 0.65, unlockLevel: 5, biome: 'seagrass', grazer: true,
+  },
+  spottedEagleRay: {
+    id: 'spottedEagleRay', name: 'Spotted Eagle Ray', scientific: 'Aetobatus narinari',
+    tier: TIER.EPIC, layer: 'B', color: 0x1a237e, accentColor: 0xffffff,
+    size: 28, speed: 1.3, unlockLevel: 7, biome: 'seagrass',
+  },
+  dugong: {
+    id: 'dugong', name: 'Dugong', scientific: 'Dugong dugon',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x78909c, accentColor: 0xcfd8dc,
+    size: 32, speed: 0.5, unlockLevel: 9, biome: 'seagrass', grazer: true,
+  },
   tropicBlenny: {
     id: 'tropicBlenny', name: 'Tropic Blenny', scientific: '',
     tier: TIER.UNCOMMON, layer: 'A', color: 0x558b2f, accentColor: 0xaed581,

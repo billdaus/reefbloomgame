@@ -59,6 +59,12 @@ export class Fish {
       case 'blueTang':          this._drawDiscFish(g, sz, c, ac);         break;
       case 'octopus':           this._drawOctopus(g, sz, c, ac);          break;
       case 'horseshoeCrab':   this._drawHorseshoeCrab(g, sz, c, ac);   break;
+      case 'pipefish':        this._drawPipefish(g, sz, c, ac);        break;
+      case 'sandDollar':      this._drawSandDollar(g, sz, c, ac);      break;
+      case 'conch':           this._drawConch(g, sz, c, ac);           break;
+      case 'pufferfish':      this._drawPufferfish(g, sz, c, ac);      break;
+      case 'spottedEagleRay': this._drawSpottedEagleRay(g, sz, c, ac); break;
+      case 'dugong':          this._drawDugong(g, sz, c, ac);          break;
       case 'tropicBlenny':    this._drawTropicBlenny(g, sz, c, ac);    break;
       case 'seaUrchin':       this._drawSeaUrchin(g, sz, c, ac);       break;
       case 'parrotfish':      this._drawParrotfish(g, sz, c, ac);      break;
@@ -552,6 +558,142 @@ export class Fish {
     g.circle(-mw * 0.34, -mh * 0.04, sz * 0.09).fill(0x111111);
     g.circle( mw * 0.35, -mh * 0.05, sz * 0.14).fill(0xffffff);
     g.circle( mw * 0.34, -mh * 0.04, sz * 0.09).fill(0x111111);
+  }
+
+  /** Pipefish — very thin segmented body, small dorsal fin, tubular snout. */
+  _drawPipefish(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.2, th = sz * 0.18;
+    g.roundRect(-len / 2, -th / 2, len, th, th / 2).fill(bodyColor);
+    // Segment rings
+    for (let i = 0; i < 8; i++) {
+      const rx = -len * 0.38 + i * len * 0.1;
+      g.moveTo(rx, -th * 0.5).lineTo(rx, th * 0.5)
+       .stroke({ color: accentColor, width: 1, cap: 'round' });
+    }
+    // Small dorsal fin
+    g.moveTo(len * 0.08, -th * 0.5).lineTo(len * 0.18, -th * 1.4).lineTo(len * 0.34, -th * 0.5)
+     .closePath().fill({ color: accentColor, alpha: 0.65 });
+    // Tubular snout
+    g.moveTo(len * 0.5, -th * 0.28).lineTo(len * 0.5 + sz * 0.38, 0).lineTo(len * 0.5, th * 0.28)
+     .closePath().fill(bodyColor);
+    g.circle(len * 0.42, -th * 0.1, sz * 0.09).fill(0xffffff);
+    g.circle(len * 0.43, -th * 0.08, sz * 0.055).fill(0x111111);
+  }
+
+  /** Sand Dollar — flat disc with 5-petal poriferous pattern. */
+  _drawSandDollar(g, sz, bodyColor, accentColor) {
+    const r = sz * 0.85;
+    this._ellipse(g, 0, 0, r, r * 0.85);
+    g.fill(bodyColor);
+    // 5-petal petaloid ambulacra
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      const px = Math.cos(angle) * r * 0.38, py = Math.sin(angle) * r * 0.34;
+      this._ellipse(g, px, py, r * 0.22, r * 0.1);
+      g.fill({ color: accentColor, alpha: 0.6 });
+    }
+    g.circle(0, 0, sz * 0.08).fill({ color: accentColor, alpha: 0.5 });
+    this._ellipse(g, 0, 0, r * 0.96, r * 0.82);
+    g.fill({ color: accentColor, alpha: 0.12 });
+  }
+
+  /** Queen Conch — coiled shell with flaring lip and spire. */
+  _drawConch(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.0, hh = sz * 0.72;
+    // Shell body
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Spiral whorls
+    this._ellipse(g, hw * 0.15, 0, hw * 0.6, hh * 0.68);
+    g.fill(accentColor);
+    this._ellipse(g, hw * 0.22, 0, hw * 0.36, hh * 0.46);
+    g.fill(bodyColor);
+    this._ellipse(g, hw * 0.26, 0, hw * 0.18, hh * 0.26);
+    g.fill({ color: accentColor, alpha: 0.7 });
+    // Flaring outer lip
+    g.moveTo(hw * 0.55,  hh * 0.48).lineTo(hw * 1.02,  hh * 0.82).lineTo(hw * 0.88, hh * 0.32)
+     .closePath().fill(accentColor);
+    // Spire tip
+    g.moveTo(-hw * 0.68, -hh * 0.48).lineTo(-hw * 0.92, -hh * 0.76).lineTo(-hw * 0.48, -hh * 0.32)
+     .closePath().fill(this._darken(bodyColor, 0.18));
+  }
+
+  /** Pufferfish — round spotted body, short spines, small tail. */
+  _drawPufferfish(g, sz, bodyColor, accentColor) {
+    const r = sz * 0.88;
+    // Tail fin
+    g.moveTo(-r * 0.82, -r * 0.26).lineTo(-r * 1.18, 0).lineTo(-r * 0.82, r * 0.26)
+     .closePath().fill(bodyColor);
+    // Round body
+    this._ellipse(g, 0, 0, r, r * 0.92);
+    g.fill(bodyColor);
+    // Spots
+    [[-r * 0.28, -r * 0.34], [r * 0.12, -r * 0.44], [r * 0.42, -r * 0.18],
+     [-r * 0.44,  r * 0.12], [r * 0.2,   r * 0.32], [-r * 0.12, r * 0.42]].forEach(([cx, cy]) => {
+      g.circle(cx, cy, sz * 0.1).fill(accentColor);
+    });
+    // Spines
+    [[-r*0.5,-r*0.5],[0,-r*0.9],[r*0.55,-r*0.38],[r*0.88,0],[r*0.55,r*0.38],[0,r*0.9],[-r*0.5,r*0.5]].forEach(([sx, sy]) => {
+      const m = 1 / Math.hypot(sx, sy);
+      g.moveTo(sx, sy).lineTo(sx + sx * m * sz * 0.18, sy + sy * m * sz * 0.18)
+       .stroke({ color: this._darken(bodyColor, 0.22), width: 1.5, cap: 'round' });
+    });
+    // Snout & pectoral fin
+    g.moveTo(r * 0.85, -r * 0.12).lineTo(r * 1.1, 0).lineTo(r * 0.85, r * 0.12).closePath().fill(bodyColor);
+    g.moveTo(r * 0.2, r * 0.52).lineTo(r * 0.46, r * 0.9).lineTo(r * 0.62, r * 0.45).closePath().fill({ color: bodyColor, alpha: 0.7 });
+    g.circle(r * 0.55, -r * 0.3, sz * 0.13).fill(0xffffff);
+    g.circle(r * 0.57, -r * 0.28, sz * 0.08).fill(0x111111);
+  }
+
+  /** Spotted Eagle Ray — kite-shaped disc, white spots, long whip tail, duck-bill snout. */
+  _drawSpottedEagleRay(g, sz, bodyColor, accentColor) {
+    const len = sz * 1.6, span = sz * 1.38;
+    // Kite body
+    g.moveTo(-len * 0.5, 0)
+     .lineTo(0, -span)
+     .lineTo( len * 0.52, -span * 0.14)
+     .lineTo( len * 0.72, 0)
+     .lineTo( len * 0.52,  span * 0.14)
+     .lineTo(0,  span)
+     .closePath().fill(bodyColor);
+    // White spots
+    [[-sz*0.1,-sz*0.55],[sz*0.32,-sz*0.4],[sz*0.52,-sz*0.1],
+     [-sz*0.3, sz*0.45],[sz*0.18, sz*0.5],[sz*0.48, sz*0.14]].forEach(([dx, dy]) => {
+      g.circle(dx, dy, sz * 0.1).fill(accentColor);
+    });
+    // Long whip tail
+    g.moveTo(-len * 0.5, 0).lineTo(-len * 1.85, sz * 0.12)
+     .stroke({ color: bodyColor, width: sz * 0.12, cap: 'round' });
+    // Duck-bill snout
+    g.moveTo(len * 0.72, -sz * 0.14).lineTo(len * 0.98, 0).lineTo(len * 0.72, sz * 0.14)
+     .closePath().fill(bodyColor);
+    g.circle(len * 0.52, -sz * 0.1, sz * 0.1).fill(0xffffff);
+    g.circle(len * 0.54, -sz * 0.08, sz * 0.06).fill(0x111111);
+  }
+
+  /** Dugong — torpedo body, forked tail flukes, downward-angled snout, nostrils. */
+  _drawDugong(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.1, th = sz * 0.5;
+    // Forked tail flukes (notched V, unlike manatee paddle)
+    g.moveTo(-len * 0.48, 0).lineTo(-len * 0.62, -sz * 0.54).lineTo(-len * 0.52, -sz * 0.05).closePath().fill(bodyColor);
+    g.moveTo(-len * 0.48, 0).lineTo(-len * 0.62,  sz * 0.54).lineTo(-len * 0.52,  sz * 0.05).closePath().fill(bodyColor);
+    // Body
+    this._ellipse(g, 0, 0, len * 0.5, th);
+    g.fill(bodyColor);
+    // Belly shading
+    this._ellipse(g, len * 0.06, th * 0.26, len * 0.32, th * 0.4);
+    g.fill({ color: accentColor, alpha: 0.6 });
+    // Downward-angled barrel snout
+    g.moveTo(len * 0.46, -th * 0.32).lineTo(len * 0.75, -th * 0.04).lineTo(len * 0.75, th * 0.38)
+     .lineTo(len * 0.46,  th * 0.42).closePath().fill(bodyColor);
+    // Flipper
+    g.moveTo(len * 0.18,  th * 0.3).lineTo(len * 0.32,  th * 0.82).lineTo(len * 0.42,  th * 0.34)
+     .closePath().fill(this._darken(bodyColor, 0.1));
+    // Nostrils
+    g.circle(len * 0.72, -sz * 0.04, sz * 0.07).fill(0x111111);
+    g.circle(len * 0.72,  sz * 0.04, sz * 0.07).fill(0x111111);
+    g.circle(len * 0.42, -th * 0.14, sz * 0.1).fill(0xffffff);
+    g.circle(len * 0.435, -th * 0.12, sz * 0.06).fill(0x111111);
   }
 
   /** Horseshoe Crab — domed prosoma, segmented opisthosoma, long telson spike, paired legs. */
