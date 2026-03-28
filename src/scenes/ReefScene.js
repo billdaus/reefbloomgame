@@ -342,7 +342,7 @@ export class ReefScene {
 
   _restoreFromSave(data) {
     // Restore resources
-    state.be             = data.be      ?? state.be;
+    state.be             = Math.min(data.be ?? state.be, BE_MAX);
     state.harmony        = data.harmony ?? state.harmony;
     state.level          = data.level   ?? state.level;
     state.pearls         = data.pearls  ?? state.pearls;
