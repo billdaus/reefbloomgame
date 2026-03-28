@@ -295,6 +295,77 @@ export const FISH_SPECIES = {
     tier: TIER.MYTHIC, layer: 'B', color: 0x546e7a, accentColor: 0xeceff1,
     size: 40, speed: 1.3, unlockLevel: 12,
   },
+  // ── v0.3 Coral Reef Expansion ────────────────────────────────────────────────
+  neonGoby: {
+    id: 'neonGoby', name: 'Neon Goby', scientific: 'Elacatinus oceanops',
+    tier: TIER.COMMON, layer: 'A', color: 0x0d0d0d, accentColor: 0x00e5ff,
+    size: 10, speed: 1.6, unlockLevel: 1,
+  },
+  firefish: {
+    id: 'firefish', name: 'Firefish', scientific: 'Nemateleotris magnifica',
+    tier: TIER.COMMON, layer: 'A', color: 0xffccbc, accentColor: 0xff3d00,
+    size: 12, speed: 1.4, unlockLevel: 1,
+  },
+  damselfish: {
+    id: 'damselfish', name: 'Damselfish', scientific: 'Pomacentridae spp.',
+    tier: TIER.COMMON, layer: 'A', color: 0x1565c0, accentColor: 0x82b1ff,
+    size: 11, speed: 1.7, unlockLevel: 2,
+  },
+  royalGramma: {
+    id: 'royalGramma', name: 'Royal Gramma', scientific: 'Gramma loreto',
+    tier: TIER.RARE, layer: 'A', color: 0x8e24aa, accentColor: 0xfdd835,
+    size: 13, speed: 1.2, unlockLevel: 3,
+  },
+  pajamaCardinalfish: {
+    id: 'pajamaCardinalfish', name: 'Pajama Cardinalfish', scientific: 'Sphaeramia nematoptera',
+    tier: TIER.RARE, layer: 'A', color: 0xfafafa, accentColor: 0xe53935,
+    size: 12, speed: 1.0, unlockLevel: 4,
+  },
+  shrimpGoby: {
+    id: 'shrimpGoby', name: 'Shrimp Goby', scientific: 'Amblyeleotris spp.',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0xffe0b2, accentColor: 0xff6f00,
+    size: 13, speed: 0.9, unlockLevel: 5,
+  },
+  banggaiCardinalfish: {
+    id: 'banggaiCardinalfish', name: 'Banggai Cardinalfish', scientific: 'Pterapogon kauderni',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0xfafafa, accentColor: 0x212121,
+    size: 14, speed: 0.8, unlockLevel: 5,
+  },
+  cleanerWrasse: {
+    id: 'cleanerWrasse', name: 'Cleaner Wrasse', scientific: 'Labroides dimidiatus',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0x1e88e5, accentColor: 0xffd54f,
+    size: 13, speed: 1.3, unlockLevel: 6,
+  },
+  flameAngelfish: {
+    id: 'flameAngelfish', name: 'Flame Angelfish', scientific: 'Centropyge loricula',
+    tier: TIER.EPIC, layer: 'B', color: 0xff3d00, accentColor: 0x212121,
+    size: 18, speed: 1.0, unlockLevel: 7,
+  },
+  mandarinfish: {
+    id: 'mandarinfish', name: 'Mandarinfish', scientific: 'Synchiropus splendidus',
+    tier: TIER.EPIC, layer: 'A', color: 0x0091ea, accentColor: 0xff6d00,
+    size: 15, speed: 0.7, unlockLevel: 8,
+  },
+  harlequinTuskfish: {
+    id: 'harlequinTuskfish', name: 'Harlequin Tuskfish', scientific: 'Choerodon fasciatus',
+    tier: TIER.EPIC, layer: 'B', color: 0x0288d1, accentColor: 0xff7043,
+    size: 22, speed: 0.9, unlockLevel: 8,
+  },
+  blueRibbonEel: {
+    id: 'blueRibbonEel', name: 'Blue Ribbon Eel', scientific: 'Rhinomuraena quaesita',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x1565c0, accentColor: 0xffff00,
+    size: 30, speed: 0.6, unlockLevel: 10,
+  },
+  napoleonWrasse: {
+    id: 'napoleonWrasse', name: 'Napoleon Wrasse', scientific: 'Cheilinus undulatus',
+    tier: TIER.MYTHIC, layer: 'B', color: 0x5c6bc0, accentColor: 0xa5d6a7,
+    size: 40, speed: 0.8, unlockLevel: 13,
+  },
+  giantMoray: {
+    id: 'giantMoray', name: 'Giant Moray', scientific: 'Gymnothorax javanicus',
+    tier: TIER.MYTHIC, layer: 'B', color: 0x4e342e, accentColor: 0xd7ccc8,
+    size: 44, speed: 0.6, unlockLevel: 14,
+  },
   // ── Seagrass Basin — Grazers ─────────────────────────────────────────────────
   tropicBlenny: {
     id: 'tropicBlenny', name: 'Tropic Blenny', scientific: '',

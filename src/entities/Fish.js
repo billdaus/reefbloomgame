@@ -82,6 +82,21 @@ export class Fish {
       case 'neonSeahorse':      this._drawSeahorse(g, sz, c, ac);         break;
       case 'sunburstWrasse':    this._drawOvalFish(g, sz, c, ac, false);  break;
       case 'phantomLionfish':   this._drawLionfish(g, sz, c, ac);           break;
+      // v0.3 Coral Reef Expansion
+      case 'neonGoby':          this._drawNeonGoby(g, sz, c, ac);          break;
+      case 'firefish':          this._drawFirefish(g, sz, c, ac);          break;
+      case 'damselfish':        this._drawDamselfish(g, sz, c, ac);        break;
+      case 'royalGramma':       this._drawRoyalGramma(g, sz, c, ac);       break;
+      case 'pajamaCardinalfish': this._drawPajamaCardinalfish(g, sz, c, ac); break;
+      case 'shrimpGoby':        this._drawShrimpGoby(g, sz, c, ac);        break;
+      case 'banggaiCardinalfish': this._drawBanggaiCardinalfish(g, sz, c, ac); break;
+      case 'cleanerWrasse':     this._drawCleanerWrasse(g, sz, c, ac);     break;
+      case 'flameAngelfish':    this._drawFlameAngelfish(g, sz, c, ac);    break;
+      case 'mandarinfish':      this._drawMandarinfish(g, sz, c, ac);      break;
+      case 'harlequinTuskfish': this._drawHarlequinTuskfish(g, sz, c, ac); break;
+      case 'blueRibbonEel':     this._drawBlueRibbonEel(g, sz, c, ac);    break;
+      case 'napoleonWrasse':    this._drawNapoleonWrasse(g, sz, c, ac);    break;
+      case 'giantMoray':        this._drawGiantMoray(g, sz, c, ac);        break;
       // Deep Twilight
       case 'lanternfish':       this._drawLanternfish(g, sz, c, ac);       break;
       case 'ghostGoby':         this._drawGhostGoby(g, sz, c, ac);         break;
@@ -1217,6 +1232,286 @@ export class Fish {
     // Eye
     g.circle(len * 0.32, -th * 0.18, sz * 0.12).fill(0xffffff);
     g.circle(len * 0.34, -th * 0.16, sz * 0.07).fill(0x111111);
+  }
+
+  // ── v0.3 Coral Reef Expansion ─────────────────────────────────────────────────
+
+  /** Neon Goby — small dark body with vivid cyan lateral stripe. */
+  _drawNeonGoby(g, sz, bodyColor, accentColor) {
+    const hw = sz * 0.95, hh = sz * 0.38;
+    g.moveTo(-hw * 0.65, 0).lineTo(-hw * 1.2, -hh * 0.8).lineTo(-hw * 1.2, hh * 0.8).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Neon lateral stripe
+    g.rect(-hw * 0.7, -hh * 0.18, hw * 1.4, hh * 0.36).fill(accentColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill({ color: bodyColor, alpha: 0.2 });
+    g.circle(hw * 0.52, -hh * 0.1, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.54, -hh * 0.08, sz * 0.07).fill(0x111111);
+  }
+
+  /** Firefish — cream/red body with tall flagpole dorsal fin. */
+  _drawFirefish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.05, hh = sz * 0.36;
+    g.moveTo(-hw * 0.68, 0).lineTo(-hw * 1.28, -hh * 0.7).lineTo(-hw * 1.28, hh * 0.7).closePath().fill(accentColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Rear fades to accent color
+    this._ellipse(g, -hw * 0.32, 0, hw * 0.7, hh * 0.9);
+    g.fill({ color: accentColor, alpha: 0.65 });
+    // Tall flagpole dorsal fin
+    g.moveTo(-hw * 0.08, -hh)
+     .lineTo( hw * 0.02, -hh - sz * 1.38)
+     .lineTo( hw * 0.42, -hh * 0.88)
+     .closePath().fill({ color: accentColor, alpha: 0.8 });
+    g.circle(hw * 0.55, -hh * 0.15, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.57, -hh * 0.13, sz * 0.07).fill(0x111111);
+  }
+
+  /** Damselfish — small compact oval, bold dorsal fin. */
+  _drawDamselfish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 0.88, hh = sz * 0.62;
+    g.moveTo(-hw * 0.6, 0).lineTo(-hw * 1.18, -hh * 0.78).lineTo(-hw * 1.18, hh * 0.78).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Accent belly patch
+    this._ellipse(g, hw * 0.1, hh * 0.3, hw * 0.55, hh * 0.42);
+    g.fill({ color: accentColor, alpha: 0.5 });
+    g.moveTo(-hw * 0.08, -hh).lineTo(hw * 0.1, -hh - sz * 0.38).lineTo(hw * 0.52, -hh).closePath().fill(bodyColor);
+    g.circle(hw * 0.5, -hh * 0.14, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.52, -hh * 0.12, sz * 0.07).fill(0x111111);
+  }
+
+  /** Royal Gramma — front half yellow, rear half purple, split at mid-body. */
+  _drawRoyalGramma(g, sz, bodyColor, accentColor) {
+    const hw = sz, hh = sz * 0.5;
+    // Tail
+    g.moveTo(-hw * 0.65, 0).lineTo(-hw * 1.25, -hh * 0.85).lineTo(-hw * 1.25, hh * 0.85).closePath().fill(bodyColor);
+    // Full body (purple base)
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Yellow front half
+    this._ellipse(g, hw * 0.32, 0, hw * 0.7, hh * 0.94);
+    g.fill(accentColor);
+    // Soft blend at split
+    this._ellipse(g, -hw * 0.04, 0, hw * 0.16, hh);
+    g.fill({ color: 0xff9800, alpha: 0.55 });
+    // Dorsal fin
+    g.moveTo(-hw * 0.2, -hh).lineTo(hw * 0.08, -hh - sz * 0.4).lineTo(hw * 0.55, -hh).closePath().fill(bodyColor);
+    g.circle(hw * 0.54, -hh * 0.14, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.56, -hh * 0.12, sz * 0.07).fill(0x111111);
+  }
+
+  /** Pajama Cardinalfish — white body, red head, black mid-band, spotted rear. */
+  _drawPajamaCardinalfish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 0.92, hh = sz * 0.5;
+    g.moveTo(-hw * 0.62, 0).lineTo(-hw * 1.18, -hh * 0.8).lineTo(-hw * 1.18, hh * 0.8).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Red-orange head
+    this._ellipse(g, hw * 0.52, 0, hw * 0.5, hh * 0.92);
+    g.fill(accentColor);
+    // Black mid-band
+    g.rect(-hw * 0.1, -hh + 2, hw * 0.18, hh * 2 - 4).fill(0x111111);
+    // Polka dots on rear
+    [[-hw * 0.38, -hh * 0.28], [-hw * 0.52, hh * 0.12], [-hw * 0.25, hh * 0.26], [-hw * 0.6, -hh * 0.08]].forEach(([dx, dy]) => {
+      g.circle(dx, dy, sz * 0.09).fill(0x333333);
+    });
+    g.circle(hw * 0.56, -hh * 0.14, sz * 0.13).fill(0xffffff);
+    g.circle(hw * 0.58, -hh * 0.12, sz * 0.08).fill(0x111111);
+  }
+
+  /** Shrimp Goby — pale banded body with tiny symbiotic shrimp companion. */
+  _drawShrimpGoby(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.02, hh = sz * 0.42;
+    g.moveTo(-hw * 0.65, 0).lineTo(-hw * 1.2, -hh * 0.75).lineTo(-hw * 1.2, hh * 0.75).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    [-hw * 0.2, hw * 0.12, hw * 0.42].forEach(bx => {
+      g.rect(bx - hw * 0.05, -hh + 2, hw * 0.1, hh * 2 - 4).fill({ color: accentColor, alpha: 0.55 });
+    });
+    // Tall first dorsal ray
+    g.moveTo(hw * 0.14, -hh).lineTo(hw * 0.28, -hh - sz * 0.52).lineTo(hw * 0.5, -hh).closePath().fill({ color: accentColor, alpha: 0.7 });
+    g.circle(hw * 0.55, -hh * 0.12, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.57, -hh * 0.1, sz * 0.07).fill(0x111111);
+    // Tiny shrimp companion (below rear)
+    g.roundRect(-hw * 0.55, hh * 0.75, hw * 0.38, hh * 0.38, hh * 0.18).fill(0xff8a65);
+    g.circle(-hw * 0.2, hh * 0.88, sz * 0.06).fill(0xffffff);
+  }
+
+  /** Banggai Cardinalfish — silver disc with 3 bold black stripes and trailing fin lobes. */
+  _drawBanggaiCardinalfish(g, sz, bodyColor, accentColor) {
+    const hw = sz, hh = sz * 0.62;
+    // Long trailing fin lobes
+    g.moveTo(-hw * 0.52, -hh * 0.18).lineTo(-hw * 1.48, -hh * 0.72).lineTo(-hw * 0.62, -hh * 0.08).closePath().fill(bodyColor);
+    g.moveTo(-hw * 0.52,  hh * 0.18).lineTo(-hw * 1.48,  hh * 0.72).lineTo(-hw * 0.62,  hh * 0.08).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // 3 bold black stripes
+    [-hw * 0.14, hw * 0.22, hw * 0.58].forEach(sx => {
+      g.rect(sx - hw * 0.08, -hh + 2, hw * 0.15, hh * 2 - 4).fill(accentColor);
+    });
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill({ color: bodyColor, alpha: 0.15 });
+    // Tall dorsal and matching anal fin
+    g.moveTo(-hw * 0.06, -hh).lineTo(hw * 0.16, -hh - sz * 0.52).lineTo(hw * 0.55, -hh).closePath().fill({ color: accentColor, alpha: 0.6 });
+    g.moveTo(-hw * 0.06,  hh).lineTo(hw * 0.16,  hh + sz * 0.42).lineTo(hw * 0.55,  hh).closePath().fill({ color: accentColor, alpha: 0.4 });
+    g.circle(hw * 0.52, -hh * 0.12, sz * 0.13).fill(0xffffff);
+    g.circle(hw * 0.54, -hh * 0.1, sz * 0.08).fill(0x111111);
+  }
+
+  /** Cleaner Wrasse — blue body with bold black lateral stripe, yellow-white belly. */
+  _drawCleanerWrasse(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.08, hh = sz * 0.38;
+    g.moveTo(-hw * 0.68, 0).lineTo(-hw * 1.28, -hh * 0.78).lineTo(-hw * 1.28, hh * 0.78).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Yellow-white belly
+    this._ellipse(g, 0, hh * 0.24, hw * 0.92, hh * 0.52);
+    g.fill({ color: accentColor, alpha: 0.7 });
+    // Black lateral stripe
+    g.rect(-hw * 0.72, -hh * 0.2, hw * 1.45, hh * 0.36).fill(0x111111);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill({ color: bodyColor, alpha: 0.12 });
+    g.circle(hw * 0.54, -hh * 0.1, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.56, -hh * 0.08, sz * 0.07).fill(0x111111);
+  }
+
+  /** Flame Angelfish — orange-red with 4 black stripes and purple-edged trailing fins. */
+  _drawFlameAngelfish(g, sz, bodyColor, accentColor) {
+    const hw = sz, hh = sz * 0.7;
+    g.moveTo(-hw * 0.58, 0).lineTo(-hw * 1.22, -hh * 0.78).lineTo(-hw * 1.22, hh * 0.78).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // 4 black vertical stripes
+    [-hw * 0.3, -hw * 0.06, hw * 0.18, hw * 0.44].forEach(sx => {
+      g.rect(sx - hw * 0.07, -hh + 2, hw * 0.13, hh * 2 - 4).fill(accentColor);
+    });
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill({ color: bodyColor, alpha: 0.18 });
+    // Dorsal fin with purple trailing edge
+    g.moveTo(-hw * 0.18, -hh).lineTo(hw * 0.1, -hh - sz * 0.45).lineTo(hw * 0.65, -hh).closePath().fill(bodyColor);
+    g.moveTo(hw * 0.38, -hh).lineTo(hw * 0.62, -hh - sz * 0.22).lineTo(hw * 0.65, -hh).closePath().fill(0x7c4dff);
+    // Anal fin with purple edge
+    g.moveTo(-hw * 0.08, hh).lineTo(hw * 0.52, hh + sz * 0.32).lineTo(hw * 0.65, hh).closePath().fill(0x7c4dff);
+    g.circle(hw * 0.54, -hh * 0.18, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.56, -hh * 0.16, sz * 0.07).fill(0x111111);
+  }
+
+  /** Mandarinfish — psychedelic blue body with orange bands and green shimmer spots. */
+  _drawMandarinfish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 0.98, hh = sz * 0.58;
+    g.moveTo(-hw * 0.62, 0).lineTo(-hw * 1.22, -hh * 0.7).lineTo(-hw * 1.22, hh * 0.7).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Orange wavy bands
+    [[-hw * 0.42, -hh * 0.42, hw * 0.2, hh * 0.84], [-hw * 0.08, -hh * 0.5, hw * 0.18, hh], [hw * 0.22, -hh * 0.42, hw * 0.18, hh * 0.84]].forEach(([x, y, w, h]) => {
+      g.roundRect(x, y, w, h, w * 0.35).fill({ color: accentColor, alpha: 0.85 });
+    });
+    // Green shimmer dots
+    [[0, -hh * 0.28], [hw * 0.3, hh * 0.12], [-hw * 0.28, hh * 0.22]].forEach(([dx, dy]) => {
+      g.circle(dx, dy, sz * 0.1).fill({ color: 0x69f0ae, alpha: 0.65 });
+    });
+    // Tall ornate dorsal fin
+    g.moveTo(-hw * 0.14, -hh)
+     .lineTo(-hw * 0.04, -hh - sz * 0.68)
+     .lineTo( hw * 0.18, -hh - sz * 0.52)
+     .lineTo( hw * 0.5,  -hh)
+     .closePath().fill({ color: accentColor, alpha: 0.72 });
+    g.circle(hw * 0.54, -hh * 0.2, sz * 0.13).fill(0xffffff);
+    g.circle(hw * 0.56, -hh * 0.18, sz * 0.08).fill(0x111111);
+  }
+
+  /** Harlequin Tuskfish — teal body with orange/white bands and protruding blue tusks. */
+  _drawHarlequinTuskfish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.08, hh = sz * 0.6;
+    g.moveTo(-hw * 0.65, 0).lineTo(-hw * 1.26, -hh * 0.76).lineTo(-hw * 1.26, hh * 0.76).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Orange/white vertical bands
+    [-hw * 0.36, -hw * 0.08, hw * 0.2, hw * 0.48].forEach(sx => {
+      g.rect(sx - hw * 0.08, -hh + 2, hw * 0.17, hh * 2 - 4).fill(accentColor);
+      g.rect(sx - hw * 0.03, -hh + 4, hw * 0.06, hh * 2 - 8).fill(0xfafafa);
+    });
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill({ color: bodyColor, alpha: 0.15 });
+    // Blue protruding tusks
+    g.moveTo(hw * 0.78,  sz * 0.06).lineTo(hw * 0.98,  sz * 0.04).stroke({ color: 0x1565c0, width: 2.5, cap: 'round' });
+    g.moveTo(hw * 0.76,  sz * 0.16).lineTo(hw * 0.96,  sz * 0.17).stroke({ color: 0x1565c0, width: 2.5, cap: 'round' });
+    g.circle(hw * 0.58, -hh * 0.14, sz * 0.13).fill(0xffffff);
+    g.circle(hw * 0.6,  -hh * 0.12, sz * 0.08).fill(0x111111);
+  }
+
+  /** Blue Ribbon Eel — cobalt blue body, yellow head, wavy dorsal fin, nostril tubes. */
+  _drawBlueRibbonEel(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.4, th = sz * 0.25;
+    g.roundRect(-len / 2, -th / 2, len, th, th / 2).fill(bodyColor);
+    // Wavy dorsal fin
+    g.moveTo(-len * 0.44, -th * 0.5)
+     .lineTo(-len * 0.2,  -th * 1.12)
+     .lineTo( len * 0.08, -th * 0.78)
+     .lineTo( len * 0.38, -th * 1.05)
+     .lineTo( len * 0.5,  -th * 0.5)
+     .closePath().fill({ color: bodyColor, alpha: 0.55 });
+    // Yellow head
+    this._ellipse(g, len * 0.44, 0, len * 0.1, th * 0.82);
+    g.fill(accentColor);
+    // Nostril tubes (signature feature)
+    g.moveTo(len * 0.5, -th * 0.28).lineTo(len * 0.58, -th * 0.68).stroke({ color: accentColor, width: 2, cap: 'round' });
+    g.moveTo(len * 0.5,  th * 0.28).lineTo(len * 0.58,  th * 0.68).stroke({ color: accentColor, width: 2, cap: 'round' });
+    // Open mouth
+    g.moveTo(len * 0.5, -th * 0.14).lineTo(len * 0.58, 0).lineTo(len * 0.5, th * 0.14)
+     .stroke({ color: 0x1a1a1a, width: 1.5, cap: 'round' });
+    g.circle(len * 0.4,  -th * 0.2,  sz * 0.1).fill(0xffffff);
+    g.circle(len * 0.41, -th * 0.18, sz * 0.06).fill(0x111111);
+  }
+
+  /** Napoleon Wrasse — large hump-headed fish with scale pattern and thick lips. */
+  _drawNapoleonWrasse(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.08, hh = sz * 0.8;
+    g.moveTo(-hw * 0.7, 0).lineTo(-hw * 1.32, -hh * 0.65).lineTo(-hw * 1.32, hh * 0.65).closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Scale pattern
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 4; col++) {
+        g.circle(-hw * 0.52 + col * hw * 0.34, -hh * 0.42 + row * hh * 0.4, sz * 0.08)
+         .fill({ color: accentColor, alpha: 0.48 });
+      }
+    }
+    // Nuchal hump (forehead bump)
+    this._ellipse(g, hw * 0.58, -hh * 0.7, hw * 0.32, hh * 0.3);
+    g.fill(bodyColor);
+    this._ellipse(g, hw * 0.58, -hh * 0.7, hw * 0.22, hh * 0.2);
+    g.fill({ color: accentColor, alpha: 0.28 });
+    // Thick lips
+    g.moveTo(hw * 0.76, -sz * 0.1).lineTo(hw * 0.76, sz * 0.1)
+     .stroke({ color: this._darken(bodyColor, 0.22), width: sz * 0.18, cap: 'round' });
+    // Dorsal fin
+    g.moveTo(-hw * 0.22, -hh).lineTo(hw * 0.14, -hh - sz * 0.4).lineTo(hw * 0.65, -hh).closePath().fill(bodyColor);
+    g.circle(hw * 0.56, -hh * 0.22, sz * 0.13).fill(0xffffff);
+    g.circle(hw * 0.58, -hh * 0.2,  sz * 0.08).fill(0x111111);
+  }
+
+  /** Giant Moray — long spotted eel with wide gaping jaw. */
+  _drawGiantMoray(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.6, th = sz * 0.4;
+    g.roundRect(-len / 2, -th / 2, len, th, th / 2).fill(bodyColor);
+    // Spot pattern
+    for (let i = 0; i < 7; i++) {
+      g.circle(-len * 0.36 + i * len * 0.11, (i % 2 === 0 ? -1 : 1) * th * 0.22, sz * 0.1)
+       .fill({ color: accentColor, alpha: 0.6 });
+    }
+    // Dorsal ridge
+    g.moveTo(-len * 0.4, -th * 0.5).lineTo(len * 0.42, -th * 0.52)
+     .stroke({ color: this._darken(bodyColor, 0.18), width: th * 0.35, cap: 'round' });
+    // Wide gaping jaw
+    g.moveTo(len / 2 - 4, -th / 2)
+     .lineTo(len / 2 + sz * 0.38, -th * 0.65)
+     .lineTo(len / 2 - 4,  th / 2)
+     .closePath().fill(this._darken(bodyColor, 0.3));
+    g.circle(len / 2 - sz * 0.2,  -th * 0.22, sz * 0.12).fill(0xffffff);
+    g.circle(len / 2 - sz * 0.18, -th * 0.2,  sz * 0.07).fill(0x111111);
   }
 
   /** Dolphin — streamlined body, falcate dorsal, horizontal flukes, belly countershading. */
