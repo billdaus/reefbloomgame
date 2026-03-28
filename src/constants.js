@@ -367,6 +367,12 @@ export const FISH_SPECIES = {
     tier: TIER.MYTHIC, layer: 'B', color: 0x4e342e, accentColor: 0xd7ccc8,
     size: 44, speed: 0.6, unlockLevel: 14,
   },
+  // ── Seagrass Basin — Benthic ─────────────────────────────────────────────────
+  horseshoeCrab: {
+    id: 'horseshoeCrab', name: 'Horseshoe Crab', scientific: 'Limulus polyphemus',
+    tier: TIER.RARE, layer: 'A', color: 0x6d4c41, accentColor: 0xa1887f,
+    size: 18, speed: 0.3, unlockLevel: 3, biome: 'seagrass',
+  },
   // ── Seagrass Basin — Grazers ─────────────────────────────────────────────────
   tropicBlenny: {
     id: 'tropicBlenny', name: 'Tropic Blenny', scientific: '',

@@ -58,6 +58,7 @@ export class Fish {
       case 'yellowTang':        this._drawDiscFish(g, sz, c, ac);         break;
       case 'blueTang':          this._drawDiscFish(g, sz, c, ac);         break;
       case 'octopus':           this._drawOctopus(g, sz, c, ac);          break;
+      case 'horseshoeCrab':   this._drawHorseshoeCrab(g, sz, c, ac);   break;
       case 'tropicBlenny':    this._drawTropicBlenny(g, sz, c, ac);    break;
       case 'seaUrchin':       this._drawSeaUrchin(g, sz, c, ac);       break;
       case 'parrotfish':      this._drawParrotfish(g, sz, c, ac);      break;
@@ -551,6 +552,54 @@ export class Fish {
     g.circle(-mw * 0.34, -mh * 0.04, sz * 0.09).fill(0x111111);
     g.circle( mw * 0.35, -mh * 0.05, sz * 0.14).fill(0xffffff);
     g.circle( mw * 0.34, -mh * 0.04, sz * 0.09).fill(0x111111);
+  }
+
+  /** Horseshoe Crab — domed prosoma, segmented opisthosoma, long telson spike, paired legs. */
+  _drawHorseshoeCrab(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.1;
+    const hh = sz * 0.82;
+
+    // Telson (tail spike)
+    g.moveTo(-hw * 0.78, -sz * 0.08)
+     .lineTo(-hw * 1.65,  0)
+     .lineTo(-hw * 0.78,  sz * 0.08)
+     .closePath().fill(bodyColor);
+
+    // Opisthosoma (rear segment)
+    g.moveTo(-hw * 0.76, -hh * 0.44)
+     .lineTo(-hw * 0.06, -hh * 0.6)
+     .lineTo(-hw * 0.06,  hh * 0.6)
+     .lineTo(-hw * 0.76,  hh * 0.44)
+     .closePath().fill(bodyColor);
+    // Ridge highlight
+    g.moveTo(-hw * 0.72, -hh * 0.38)
+     .lineTo(-hw * 0.1,  -hh * 0.52)
+     .lineTo(-hw * 0.1,   hh * 0.52)
+     .lineTo(-hw * 0.72,  hh * 0.38)
+     .closePath().fill({ color: accentColor, alpha: 0.35 });
+
+    // Prosoma (large horseshoe-shaped carapace)
+    this._ellipse(g, hw * 0.22, 0, hw * 0.88, hh);
+    g.fill(bodyColor);
+
+    // Concentric shell ridges
+    this._ellipse(g, hw * 0.18, 0, hw * 0.62, hh * 0.7);
+    g.fill({ color: accentColor, alpha: 0.28 });
+    this._ellipse(g, hw * 0.14, 0, hw * 0.34, hh * 0.42);
+    g.fill({ color: accentColor, alpha: 0.22 });
+
+    // Legs (5 pairs along lower/upper carapace edge)
+    for (let i = 0; i < 5; i++) {
+      const lx = hw * 0.58 - i * hw * 0.2;
+      g.moveTo(lx,  hh * 0.78).lineTo(lx - sz * 0.06,  hh * 1.18)
+       .stroke({ color: bodyColor, width: 2, cap: 'round' });
+      g.moveTo(lx, -hh * 0.78).lineTo(lx - sz * 0.06, -hh * 1.18)
+       .stroke({ color: bodyColor, width: 2, cap: 'round' });
+    }
+
+    // Compound eye spots
+    g.circle(hw * 0.7, -hh * 0.3, sz * 0.08).fill(0x111111);
+    g.circle(hw * 0.7,  hh * 0.3, sz * 0.08).fill(0x111111);
   }
 
   /** Tropic Blenny — small elongated blenny with crest and spots. */
