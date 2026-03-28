@@ -67,7 +67,9 @@ export class Fish {
       case 'manatee':         this._drawManatee(g, sz, c, ac);         break;
       case 'seaTurtle':       this._drawSeaTurtle(g, sz, c, ac);       break;
       // Super Rare
-      case 'moorishIdol':       this._drawIdol(g, sz, c, ac);             break;
+      case 'moorishIdol':       this._drawIdol(g, sz, c, ac);              break;
+      case 'dolphin':           this._drawDolphin(g, sz, c, ac);           break;
+      case 'shark':             this._drawReefShark(g, sz, c, ac);         break;
       case 'butterflyfish':     this._drawDiscFish(g, sz, c, 0xffcc02);   break;
       case 'zebrafish':         this._drawZebrafish(g, sz, c, ac);        break;
       case 'seahorse':          this._drawSeahorse(g, sz, c, ac);         break;
@@ -91,6 +93,9 @@ export class Fish {
       case 'barreleye':         this._drawBarreleye(g, sz, c, ac);         break;
       case 'ribbonfish':        this._drawRibbonfish(g, sz, c, ac);        break;
       case 'twilightSeahorse':  this._drawSeahorse(g, sz, c, ac);          break;
+      case 'moonSeahorse':      this._drawMoonSeahorse(g, sz, c, ac);      break;
+      case 'glowEel':           this._drawGlowEel(g, sz, c, ac);           break;
+      case 'anglerfish':        this._drawAnglerfish(g, sz, c, ac);        break;
       case 'gulperEel':         this._drawGulperEel(g, sz, c, ac);         break;
       case 'fangtooth':         this._drawFangtooth(g, sz, c, ac);         break;
       case 'frilledShark':      this._drawFrilledShark(g, sz, c, ac);      break;
@@ -184,44 +189,54 @@ export class Fish {
    * Long white dorsal filament.
    */
   _drawIdol(g, sz, bodyColor, accentColor) {
-    // sz=20, bodyColor=white, accentColor=yellow
-    const bw = sz * 1.3;   // total body width
-    const bh = sz * 1.85;  // total body height (tall disc)
-    const ox = -bw * 0.38; // left edge (tail side)
-    const oy = -bh / 2;    // top edge
+    const bw = sz * 1.15;  // half-width of disc
+    const bh = sz * 1.8;   // total height
 
-    // 1. Tail fan (behind body, black)
-    g.moveTo(ox, 0)
-     .lineTo(ox - sz * 0.7, -sz * 0.8)
-     .lineTo(ox - sz * 0.7,  sz * 0.8)
-     .closePath().fill(0x151515);
+    // Forked tail
+    g.moveTo(-bw, 0)
+     .lineTo(-bw - sz * 0.62, -sz * 0.7)
+     .lineTo(-bw - sz * 0.16, -sz * 0.08)
+     .closePath().fill(0x111111);
+    g.moveTo(-bw, 0)
+     .lineTo(-bw - sz * 0.62,  sz * 0.7)
+     .lineTo(-bw - sz * 0.16,  sz * 0.08)
+     .closePath().fill(0x111111);
 
-    // 2. Full body silhouette — black rounded rect
-    g.roundRect(ox, oy, bw, bh, bw * 0.42).fill(0x151515);
+    // Full disc body (black base)
+    this._ellipse(g, 0, 0, bw, bh / 2);
+    g.fill(0x111111);
 
-    // 3. White front section (right ~62% of body)
-    const wStart = ox + bw * 0.34;
-    const wWidth = bw * 0.62;
-    g.roundRect(wStart, oy + bh * 0.04, wWidth, bh * 0.92, bw * 0.38).fill(bodyColor);
+    // White front section
+    this._ellipse(g, bw * 0.22, 0, bw * 0.78, bh * 0.44);
+    g.fill(bodyColor);
 
-    // 4. Black middle band (narrow vertical stripe dividing black/white)
-    g.rect(ox + bw * 0.3, oy + bh * 0.06, bw * 0.13, bh * 0.88).fill(0x151515);
+    // Black middle band
+    g.rect(-bw * 0.1, -bh * 0.46, bw * 0.22, bh * 0.92).fill(0x111111);
 
-    // 5. Yellow snout (right face portion)
-    const sx = ox + bw * 0.72;
-    g.roundRect(sx, oy + bh * 0.2, bw * 0.34, bh * 0.6, bw * 0.22).fill(accentColor);
+    // Yellow snout
+    this._ellipse(g, bw * 0.72, 0, bw * 0.3, bh * 0.35);
+    g.fill(accentColor);
 
-    // 6. Long dorsal filament (thin white thread rising from top)
-    const filmX = ox + bw * 0.48;
-    g.moveTo(filmX, oy)
-     .lineTo(filmX + sz * 0.12, oy - sz * 1.9)
-     .stroke({ color: 0xe8e8e8, width: 1.5, cap: 'round' });
+    // Dorsal fin base (black)
+    g.moveTo(-bw * 0.18, -bh * 0.5)
+     .lineTo( bw * 0.08, -bh * 0.5)
+     .lineTo( bw * 0.02, -bh * 0.5 - sz * 0.38)
+     .closePath().fill(0x111111);
 
-    // 7. Eye
-    const ex = ox + bw * 0.82;
-    const ey = oy + bh * 0.25;
-    g.circle(ex, ey, sz * 0.11).fill(0xffffff);
-    g.circle(ex + 1, ey + 0.5, sz * 0.065).fill(0x111111);
+    // Long trailing dorsal filament
+    g.moveTo(bw * 0.02, -bh * 0.5 - sz * 0.32)
+     .lineTo(bw * 0.16, -bh * 0.5 - sz * 2.1)
+     .stroke({ color: 0xdedede, width: 1.5, cap: 'round' });
+
+    // Pelvic fin (black, hangs below)
+    g.moveTo(-bw * 0.06, bh * 0.44)
+     .lineTo( bw * 0.1,  bh * 0.5)
+     .lineTo( bw * 0.08, bh * 0.5 + sz * 0.38)
+     .closePath().fill(0x111111);
+
+    // Eye (in white section)
+    g.circle(bw * 0.42, -bh * 0.06, sz * 0.12).fill(0xffffff);
+    g.circle(bw * 0.44, -bh * 0.05, sz * 0.07).fill(0x111111);
   }
 
   /** Seahorse — upright S-curve body. */
@@ -243,28 +258,59 @@ export class Fish {
     g.circle(w * 0.32, -h * 0.28, sz * 0.06).fill(0x111111);
   }
 
-  /** Cuttlefish — wide oval with skirt fringe. */
+  /** Cuttlefish — elongated mantle with undulating lateral fins, arms, and W-pupil eye. */
   _drawCuttlefish(g, sz, bodyColor, accentColor) {
-    const hw = sz * 1.1;
-    const hh = sz * 0.55;
+    const mw = sz * 1.5;   // mantle half-length
+    const mh = sz * 0.52;  // mantle half-height
 
-    // fringe / fin
-    for (let i = 0; i < 8; i++) {
-      const angle = (-Math.PI * 0.8) + i * (Math.PI * 1.6 / 7);
-      const fx = Math.cos(angle) * hw;
-      const fy = Math.sin(angle) * hh;
-      g.moveTo(fx * 0.85, fy * 0.85).lineTo(fx * 1.15, fy * 1.2)
-       .stroke({ color: accentColor, width: 2, cap: 'round' });
-    }
+    // Undulating lateral fins (top and bottom)
+    g.moveTo(-mw * 0.68, -mh * 0.5)
+     .lineTo(-mw * 0.35, -mh * 0.95)
+     .lineTo( mw * 0.0,  -mh * 0.78)
+     .lineTo( mw * 0.35, -mh * 0.92)
+     .lineTo( mw * 0.65, -mh * 0.5)
+     .closePath().fill({ color: accentColor, alpha: 0.5 });
+    g.moveTo(-mw * 0.68,  mh * 0.5)
+     .lineTo(-mw * 0.35,  mh * 0.95)
+     .lineTo( mw * 0.0,   mh * 0.78)
+     .lineTo( mw * 0.35,  mh * 0.92)
+     .lineTo( mw * 0.65,  mh * 0.5)
+     .closePath().fill({ color: accentColor, alpha: 0.5 });
 
-    this._ellipse(g, 0, 0, hw, hh);
+    // Mantle body
+    this._ellipse(g, 0, 0, mw, mh);
     g.fill(bodyColor);
-    // pattern dots
-    for (let i = 0; i < 5; i++) {
-      g.circle(-hw * 0.5 + i * hw * 0.25, 0, sz * 0.08).fill(accentColor);
-    }
-    g.circle(hw * 0.6, -hh * 0.2, sz * 0.13).fill(0xffffff);
-    g.circle(hw * 0.62, -hh * 0.18, sz * 0.08).fill(0x111111);
+
+    // Chromatophore patches
+    [
+      [-mw * 0.45, -mh * 0.22], [-mw * 0.15, -mh * 0.3],
+      [ mw * 0.18, -mh * 0.18], [ mw * 0.42, -mh * 0.24],
+      [-mw * 0.28,  mh * 0.18], [ mw * 0.1,   mh * 0.25],
+      [ mw * 0.38,  mh * 0.18],
+    ].forEach(([cx, cy]) => {
+      g.circle(cx, cy, sz * 0.09).fill({ color: accentColor, alpha: 0.5 });
+    });
+
+    // Arms (8 short)
+    [-mh * 0.3, -mh * 0.1, mh * 0.1, mh * 0.3].forEach(ay => {
+      g.moveTo(mw * 0.68, ay)
+       .lineTo(mw * 0.92, ay * 1.5)
+       .stroke({ color: this._darken(bodyColor, 0.15), width: 2, cap: 'round' });
+    });
+    // 2 longer feeding tentacles
+    g.moveTo(mw * 0.7, -mh * 0.08).lineTo(mw * 1.12, -mh * 0.06)
+     .stroke({ color: bodyColor, width: 2.5, cap: 'round' });
+    g.moveTo(mw * 0.7,  mh * 0.08).lineTo(mw * 1.12,  mh * 0.06)
+     .stroke({ color: bodyColor, width: 2.5, cap: 'round' });
+
+    // Large eye with W-shaped pupil
+    g.circle(mw * 0.55, -mh * 0.15, sz * 0.15).fill(0xe8dfc0);
+    g.moveTo(mw * 0.48, -mh * 0.12)
+     .lineTo(mw * 0.52, -mh * 0.22)
+     .lineTo(mw * 0.56, -mh * 0.1)
+     .lineTo(mw * 0.6,  -mh * 0.22)
+     .lineTo(mw * 0.64, -mh * 0.12)
+     .closePath().fill(0x1a1a0a);
   }
 
   /** Moray eel — long sinuous shape. */
@@ -1124,6 +1170,236 @@ export class Fish {
     // Eye
     g.circle(len * 0.32, -th * 0.18, sz * 0.12).fill(0xffffff);
     g.circle(len * 0.34, -th * 0.16, sz * 0.07).fill(0x111111);
+  }
+
+  /** Dolphin — streamlined body, falcate dorsal, horizontal flukes, belly countershading. */
+  _drawDolphin(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.2;
+    const th  = sz * 0.48;
+
+    // Horizontal tail flukes (two lobes)
+    g.moveTo(-len * 0.48, 0)
+     .lineTo(-len * 0.65, -sz * 0.58)
+     .lineTo(-len * 0.52, -sz * 0.05)
+     .closePath().fill(bodyColor);
+    g.moveTo(-len * 0.48, 0)
+     .lineTo(-len * 0.65,  sz * 0.58)
+     .lineTo(-len * 0.52,  sz * 0.05)
+     .closePath().fill(bodyColor);
+
+    // Streamlined body
+    this._ellipse(g, 0, 0, len * 0.5, th);
+    g.fill(bodyColor);
+
+    // Belly countershading
+    this._ellipse(g, len * 0.08, th * 0.28, len * 0.3, th * 0.38);
+    g.fill({ color: accentColor, alpha: 0.7 });
+
+    // Rostrum (beak)
+    g.moveTo(len * 0.48, -sz * 0.08)
+     .lineTo(len * 0.82,  0)
+     .lineTo(len * 0.48,  sz * 0.08)
+     .closePath().fill(bodyColor);
+
+    // Falcate dorsal fin
+    g.moveTo(len * 0.06, -th)
+     .lineTo(len * 0.16, -th - sz * 0.58)
+     .lineTo(len * 0.36, -th * 0.92)
+     .closePath().fill(bodyColor);
+
+    // Pectoral flipper
+    g.moveTo(len * 0.16,  th * 0.28)
+     .lineTo(len * 0.3,   th * 0.85)
+     .lineTo(len * 0.42,  th * 0.32)
+     .closePath().fill(this._darken(bodyColor, 0.12));
+
+    // Eye
+    g.circle(len * 0.42, -sz * 0.1, sz * 0.1).fill(0xffffff);
+    g.circle(len * 0.435, -sz * 0.09, sz * 0.06).fill(0x111111);
+
+    // Smile line (rostrum seam)
+    g.moveTo(len * 0.5, sz * 0.04)
+     .lineTo(len * 0.78, sz * 0.04)
+     .stroke({ color: this._darken(bodyColor, 0.2), width: 1.5, cap: 'round' });
+  }
+
+  /** Reef Shark — fusiform body, heterocercal tail, black-tipped fins, gill slits. */
+  _drawReefShark(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.6;
+    const th  = sz * 0.42;
+
+    // Upper tail lobe (larger — heterocercal)
+    g.moveTo(-len * 0.5, -th * 0.1)
+     .lineTo(-len * 0.7, -th * 1.35)
+     .lineTo(-len * 0.52, -th * 0.12)
+     .closePath().fill(bodyColor);
+    // Black upper tail tip
+    g.moveTo(-len * 0.7,  -th * 1.35)
+     .lineTo(-len * 0.64, -th * 1.0)
+     .lineTo(-len * 0.58, -th * 1.25)
+     .closePath().fill(0x111111);
+    // Lower tail lobe
+    g.moveTo(-len * 0.5, th * 0.1)
+     .lineTo(-len * 0.62,  th * 0.72)
+     .lineTo(-len * 0.52,  th * 0.12)
+     .closePath().fill(bodyColor);
+
+    // Body
+    this._ellipse(g, 0, 0, len * 0.5, th);
+    g.fill(bodyColor);
+
+    // White belly countershading
+    this._ellipse(g, len * 0.05, th * 0.28, len * 0.35, th * 0.42);
+    g.fill({ color: accentColor, alpha: 0.8 });
+
+    // Snout
+    g.moveTo(len * 0.5, -sz * 0.1)
+     .lineTo(len * 0.64, 0)
+     .lineTo(len * 0.5,  sz * 0.1)
+     .closePath().fill(bodyColor);
+
+    // Dorsal fin
+    g.moveTo(-len * 0.02, -th)
+     .lineTo( len * 0.1,  -th - sz * 0.82)
+     .lineTo( len * 0.28, -th)
+     .closePath().fill(bodyColor);
+    // Black dorsal tip
+    g.moveTo( len * 0.1,  -th - sz * 0.82)
+     .lineTo( len * 0.07, -th - sz * 0.52)
+     .lineTo( len * 0.15, -th - sz * 0.55)
+     .closePath().fill(0x111111);
+
+    // Pectoral fin
+    g.moveTo(len * 0.14,  th * 0.1)
+     .lineTo(len * 0.2,   th * 1.05)
+     .lineTo(len * 0.42,  th * 0.25)
+     .closePath().fill(this._darken(bodyColor, 0.08));
+    // Black pectoral tip
+    g.moveTo(len * 0.2,  th * 1.05)
+     .lineTo(len * 0.24, th * 0.78)
+     .lineTo(len * 0.3,  th * 0.98)
+     .closePath().fill(0x111111);
+
+    // Second dorsal (small)
+    g.moveTo(-len * 0.25, -th * 0.88)
+     .lineTo(-len * 0.18, -th * 0.88 - sz * 0.2)
+     .lineTo(-len * 0.1,  -th * 0.88)
+     .closePath().fill(bodyColor);
+
+    // Gill slits (3)
+    [0.26, 0.31, 0.36].forEach(gx => {
+      g.moveTo(len * gx, -th * 0.38)
+       .lineTo(len * gx,  th * 0.3)
+       .stroke({ color: this._darken(bodyColor, 0.25), width: 1.2, cap: 'round' });
+    });
+
+    // Mouth
+    g.moveTo(len * 0.53, sz * 0.06)
+     .lineTo(len * 0.61, sz * 0.08)
+     .stroke({ color: 0x1a1a1a, width: 1.5, cap: 'round' });
+
+    // Eye
+    g.circle(len * 0.46,  -sz * 0.1,  sz * 0.1).fill(0xffffff);
+    g.circle(len * 0.465, -sz * 0.09, sz * 0.07).fill(0x111111);
+  }
+
+  /** Anglerfish — bulbous body, gaping toothed jaw, bioluminescent lure on illicium stalk. */
+  _drawAnglerfish(g, sz, bodyColor, accentColor) {
+    const hw = sz;
+    const hh = sz * 0.8;
+
+    // Tail
+    g.moveTo(-hw * 0.7, 0)
+     .lineTo(-hw * 1.35, -hh * 0.65)
+     .lineTo(-hw * 1.35,  hh * 0.65)
+     .closePath().fill(bodyColor);
+
+    // Bulbous body
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+
+    // Upper jaw
+    g.moveTo(hw * 0.5, -hh * 0.45)
+     .lineTo(hw * 1.3, -hh * 0.1)
+     .lineTo(hw * 0.5,  hh * 0.05)
+     .closePath().fill(bodyColor);
+
+    // Lower jaw
+    g.moveTo(hw * 0.5,  hh * 0.25)
+     .lineTo(hw * 1.3,  hh * 0.1)
+     .lineTo(hw * 0.5,  hh * 0.65)
+     .closePath().fill(this._darken(bodyColor, 0.25));
+
+    // Teeth
+    [0.6, 0.9, 1.15].forEach(t => {
+      g.moveTo(hw * t, -hh * 0.08)
+       .lineTo(hw * t + sz * 0.04, hh * 0.18)
+       .stroke({ color: 0xe0e0e0, width: 2, cap: 'round' });
+    });
+
+    // Illicium stalk from forehead
+    g.moveTo(hw * 0.25, -hh)
+     .lineTo(hw * 0.5, -hh * 1.5)
+     .stroke({ color: this._darken(bodyColor, 0.1), width: 2, cap: 'butt' });
+
+    // Esca (glowing lure) — outer halo + inner glow
+    g.circle(hw * 0.5, -hh * 1.5, sz * 0.22).fill({ color: accentColor, alpha: 0.2 });
+    g.circle(hw * 0.5, -hh * 1.5, sz * 0.13).fill(accentColor);
+
+    // Eye
+    g.circle(hw * 0.5,  -hh * 0.22, sz * 0.11).fill(0xffffff);
+    g.circle(hw * 0.52, -hh * 0.20, sz * 0.07).fill(0x111111);
+  }
+
+  /** Moon Seahorse — upright body with bioluminescent ring bands and glowing eye. */
+  _drawMoonSeahorse(g, sz, bodyColor, accentColor) {
+    const w = sz * 0.6;
+    const h = sz * 1.4;
+    // Outer glow halo
+    this._ellipse(g, 0, 0, w * 0.85, h * 0.55);
+    g.fill({ color: accentColor, alpha: 0.12 });
+    // Body
+    g.roundRect(-w / 2, -h / 2, w, h, w * 0.4).fill(bodyColor);
+    // Bioluminescent ring bands
+    [-h * 0.28, -h * 0.02, h * 0.24].forEach(ry => {
+      this._ellipse(g, 0, ry, w * 0.42, h * 0.07);
+      g.fill({ color: accentColor, alpha: 0.65 });
+    });
+    // Snout
+    g.rect(w / 2 - 2, -h * 0.3, sz * 0.5, sz * 0.12).fill(accentColor);
+    // Dorsal fin
+    g.moveTo(-w / 2, -h * 0.1)
+     .lineTo(-w / 2 - sz * 0.3, -h * 0.15)
+     .lineTo(-w / 2, -h * 0.3)
+     .closePath()
+     .fill({ color: accentColor, alpha: 0.7 });
+    // Glowing eye
+    g.circle(w * 0.3, -h * 0.3, sz * 0.13).fill(accentColor);
+    g.circle(w * 0.32, -h * 0.28, sz * 0.07).fill(0x080820);
+  }
+
+  /** Glow Eel — slender dark body with vivid bioluminescent crossbands. */
+  _drawGlowEel(g, sz, bodyColor, accentColor) {
+    const len = sz * 2.4;
+    const th  = sz * 0.28;
+    // Body
+    g.roundRect(-len / 2, -th / 2, len, th, th / 2).fill(bodyColor);
+    // Bioluminescent crossbands
+    for (let i = 0; i < 5; i++) {
+      const bx = -len * 0.38 + i * len * 0.17;
+      g.rect(bx, -th * 0.48, len * 0.05, th * 0.96).fill({ color: accentColor, alpha: 0.85 });
+    }
+    // Glowing tail tip
+    g.circle(-len / 2 + 4, 0, sz * 0.14).fill(accentColor);
+    // Jaw
+    g.moveTo(len / 2 - 4, -th / 2)
+     .lineTo(len / 2 + sz * 0.22, -th * 0.38)
+     .lineTo(len / 2 - 4,  th / 2)
+     .closePath()
+     .fill(this._darken(bodyColor, 0.3));
+    // Glowing eye
+    g.circle(len / 2 - sz * 0.18, -th * 0.18, sz * 0.1).fill(accentColor);
+    g.circle(len / 2 - sz * 0.16, -th * 0.16, sz * 0.06).fill(0x080820);
   }
 
   _darken(hex, amount) {

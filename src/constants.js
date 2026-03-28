@@ -420,6 +420,21 @@ export const FISH_SPECIES = {
     tier: TIER.SUPER_RARE, layer: 'A', color: 0x7c4dff, accentColor: 0xe040fb,
     size: 14, speed: 0.4, unlockLevel: 8, biome: 'deepTwilight',
   },
+  moonSeahorse: {
+    id: 'moonSeahorse', name: 'Moon Seahorse', scientific: 'Hippocampus phosphoreus',
+    tier: TIER.RARE, layer: 'A', color: 0xd0d8f8, accentColor: 0x40c4ff,
+    size: 15, speed: 0.3, unlockLevel: 7, biome: 'deepTwilight',
+  },
+  glowEel: {
+    id: 'glowEel', name: 'Glow Eel', scientific: 'Gymnothorax bioluminescens',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0x0d1a0d, accentColor: 0x76ff03,
+    size: 20, speed: 1.1, unlockLevel: 6, biome: 'deepTwilight',
+  },
+  anglerfish: {
+    id: 'anglerfish', name: 'Anglerfish', scientific: 'Melanocetus johnsonii',
+    tier: TIER.EPIC, layer: 'B', color: 0x1a1a2e, accentColor: 0xf9f871,
+    size: 24, speed: 0.5, unlockLevel: 9, biome: 'deepTwilight',
+  },
   gulperEel: {
     id: 'gulperEel', name: 'Gulper Eel', scientific: 'Eurypharynx pelecanoides',
     tier: TIER.EPIC, layer: 'B', color: 0x1a237e, accentColor: 0x00e5ff,
