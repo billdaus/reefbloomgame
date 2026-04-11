@@ -2153,24 +2153,18 @@ export class Fish {
     const top    = GRID_Y + MARGIN;
     const bottom = GRID_Y + GRID_H - MARGIN;
 
-    if (this.x < left)   { this.x = left;   this.vx =  Math.abs(this.vx); }
-    if (this.x > right)  { this.x = right;  this.vx = -Math.abs(this.vx); }
-    if (this.y < top)    { this.y = top;     this.vy =  Math.abs(this.vy); }
-    if (this.y > bottom) { this.y = bottom;  this.vy = -Math.abs(this.vy); }
+    if (this.x < left)   { this.x = left;   this.vx =  Math.abs(this.vx); if (Math.cos(this._angle) < 0) this._angle = Math.PI - this._angle; }
+    if (this.x > right)  { this.x = right;  this.vx = -Math.abs(this.vx); if (Math.cos(this._angle) > 0) this._angle = Math.PI - this._angle; }
+    if (this.y < top)    { this.y = top;     this.vy =  Math.abs(this.vy); if (Math.sin(this._angle) < 0) this._angle = -this._angle; }
+    if (this.y > bottom) { this.y = bottom;  this.vy = -Math.abs(this.vy); if (Math.sin(this._angle) > 0) this._angle = -this._angle; }
 
-    // Re-sync heading after bounce/repulsion so fish don't fight the new direction
-    const postSpd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-    if (postSpd > 0.05) this._angle = Math.atan2(this.vy, this.vx);
-
-    // ── Update sprite ─────────────────────────────────────────────────────
+    // ── Update sprite — driven by _angle, which is always authoritative ────
     this.container.x = this.x;
     this.container.y = this.y;
 
-    if (spd > 0.05) {
-      // Flip to face direction of travel, then tilt body along velocity vector
-      this.container.scale.x  = this.vx >= 0 ? 1 : -1;
-      this.container.rotation = Math.atan2(this.vy, Math.abs(this.vx));
-    }
+    const facingRight = Math.cos(this._angle) >= 0;
+    this.container.scale.x  = facingRight ? 1 : -1;
+    this.container.rotation = facingRight ? this._angle : Math.PI - this._angle;
 
     // Subtle vertical bob
     this.container.scale.y = 1 + Math.sin(Date.now() * 0.003 + this.uid) * 0.04;
