@@ -2,7 +2,8 @@ import { state } from '../state.js';
 import { BE_MAX } from '../constants.js';
 
 // ── Event schedule ─────────────────────────────────────────────────────────────
-// Add future events here. startDate/endDate are ISO date strings (inclusive).
+// Pass tiers unlock as the player completes daily quests after buying the pass.
+// threshold = number of daily quests that must be claimed to unlock that tier.
 
 export const EVENT_SCHEDULE = [
   {
@@ -14,16 +15,18 @@ export const EVENT_SCHEDULE = [
     endDate:     '2026-04-17',
     description: 'The reef awakens in full bloom! Grow your coral and find harmony.',
     challenges: [
-      { type: 'place_coral',   label: 'Place 15 coral',     target: 15 },
-      { type: 'reach_harmony', label: 'Reach 60 Harmony',   target: 60 },
-      { type: 'have_fish',     label: 'Have 10 fish alive',  target: 10 },
+      { type: 'place_coral',   label: 'Place 15 coral',    target: 15 },
+      { type: 'reach_harmony', label: 'Reach 60 Harmony',  target: 60 },
+      { type: 'have_fish',     label: 'Have 10 fish alive', target: 10 },
     ],
     reward: { be: 300, pearls: 75 },
     pass: {
-      pearlCost:     50,
-      bonusReward:   { be: 150, pearls: 20 },
-      exclusiveFish: ['sakuraAnthias'],
-      exclusiveCoral: [],
+      tiers: [
+        { threshold: 1, reward: { be: 100 },              label: '100 🫧'          },
+        { threshold: 2, reward: { pearls: 20 },           label: '20 💎'           },
+        { threshold: 3, reward: { be: 200 },              label: '200 🫧'          },
+        { threshold: 4, reward: { exclusive: 'sakuraAnthias' }, label: '🌸 Sakura Anthias' },
+      ],
     },
   },
   {
@@ -35,16 +38,18 @@ export const EVENT_SCHEDULE = [
     endDate:     '2026-05-07',
     description: 'Schools of rare fish pass through — fill your reef with life!',
     challenges: [
-      { type: 'hatch_fish',  label: 'Hatch 12 fish',          target: 12   },
-      { type: 'earn_be',     label: 'Earn 1,000 🫧',           target: 1000 },
-      { type: 'idle_streak', label: 'Trigger idle bonus 5×',   target: 5    },
+      { type: 'hatch_fish',  label: 'Hatch 12 fish',         target: 12   },
+      { type: 'earn_be',     label: 'Earn 1,000 🫧',          target: 1000 },
+      { type: 'idle_streak', label: 'Trigger idle bonus 5×',  target: 5    },
     ],
     reward: { be: 250, pearls: 50 },
     pass: {
-      pearlCost:     50,
-      bonusReward:   { be: 100, pearls: 15 },
-      exclusiveFish: ['opah'],
-      exclusiveCoral: [],
+      tiers: [
+        { threshold: 1, reward: { be: 75 },               label: '75 🫧'   },
+        { threshold: 2, reward: { pearls: 15 },           label: '15 💎'   },
+        { threshold: 3, reward: { be: 150 },              label: '150 🫧'  },
+        { threshold: 4, reward: { exclusive: 'opah' },    label: '🐟 Opah' },
+      ],
     },
   },
   {
@@ -56,16 +61,17 @@ export const EVENT_SCHEDULE = [
     endDate:     '2026-06-05',
     description: 'A rare tidal surge brings pearls to the surface. Seize the bounty!',
     challenges: [
-      { type: 'place_coral',   label: 'Place 10 coral',      target: 10   },
-      { type: 'earn_be',       label: 'Earn 2,000 🫧',        target: 2000 },
-      { type: 'reach_harmony', label: 'Reach 80 Harmony',    target: 80   },
+      { type: 'place_coral',   label: 'Place 10 coral',   target: 10   },
+      { type: 'earn_be',       label: 'Earn 2,000 🫧',     target: 2000 },
+      { type: 'reach_harmony', label: 'Reach 80 Harmony', target: 80   },
     ],
     reward: { be: 200, pearls: 100 },
     pass: {
-      pearlCost:     50,
-      bonusReward:   { be: 100, pearls: 25 },
-      exclusiveFish: [],
-      exclusiveCoral: ['pearlOrganPipe'],
+      tiers: [
+        { threshold: 1, reward: { be: 75 },                          label: '75 🫧'            },
+        { threshold: 2, reward: { pearls: 30 },                      label: '30 💎'            },
+        { threshold: 3, reward: { exclusive: 'pearlOrganPipe' },     label: '💎 Pearl Organ Pipe' },
+      ],
     },
   },
 ];
@@ -73,7 +79,8 @@ export const EVENT_SCHEDULE = [
 const INCREMENTAL_TYPES = new Set(['place_coral', 'hatch_fish', 'earn_be', 'idle_streak']);
 const SNAPSHOT_TYPES    = new Set(['reach_harmony', 'have_fish', 'have_coral']);
 
-let _onChange = null;
+let _onChange    = null;
+let _onExclusive = null;   // (speciesId: string) => void
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -101,9 +108,13 @@ function _buildFromDef(def) {
     startDate:   def.startDate,
     endDate:     def.endDate,
     status:      'available',   // 'available' | 'active' | 'complete' | 'claimed'
-    passPurchased: false,
-    pass:        def.pass ? { ...def.pass } : null,
-    challenges:  def.challenges.map((c, i) => ({
+    passPurchased:  true,
+    eventTokens:    0,    // tokens earned from quests; each quest gives 1 token
+    tiersUnlocked:  [],   // indices into pass.tiers that have been granted
+    pass: def.pass ? {
+      tiers: def.pass.tiers.map(t => ({ ...t })),
+    } : null,
+    challenges: def.challenges.map((c, i) => ({
       id:       `${c.type}_${i}`,
       type:     c.type,
       label:    c.label,
@@ -113,6 +124,23 @@ function _buildFromDef(def) {
     })),
     reward: { ...def.reward },
   };
+}
+
+/** Check each pass tier and apply rewards for any newly-reached threshold. */
+function _checkTierUnlocks() {
+  const ev = state.event;
+  if (!ev?.pass?.tiers) return;
+  if (!ev.tiersUnlocked) ev.tiersUnlocked = [];
+  const qc = ev.eventTokens ?? 0;
+  for (let i = 0; i < ev.pass.tiers.length; i++) {
+    if (ev.tiersUnlocked.includes(i)) continue;
+    const tier = ev.pass.tiers[i];
+    if (qc < tier.threshold) continue;
+    ev.tiersUnlocked.push(i);
+    if (tier.reward.be)        state.be     = Math.min(state.be + tier.reward.be, BE_MAX);
+    if (tier.reward.pearls)    state.pearls += tier.reward.pearls;
+    if (tier.reward.exclusive) _onExclusive?.(tier.reward.exclusive);
+  }
 }
 
 function _updateStatus() {
@@ -127,24 +155,33 @@ function _updateStatus() {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /** Call once after save is restored. Initialises or resumes the active event. */
-export function initEventSystem(onChange) {
-  _onChange = onChange;
+export function initEventSystem(onChange, onExclusive) {
+  _onChange    = onChange;
+  _onExclusive = onExclusive;
+
   const today = _today();
   const def   = _activeScheduled(today);
 
   if (!def) {
-    // Clear any event whose window has passed
     if (state.event && state.event.endDate < today) state.event = null;
     return;
   }
 
   if (state.event?.id === def.id) {
-    // Resume saved progress for this event
+    // Migrate saves made before the token system was added
+    if (!state.event.pass?.tiers) {
+      state.event.pass         = def.pass ? { tiers: def.pass.tiers.map(t => ({ ...t })) } : null;
+      state.event.eventTokens  = state.event.passQuestsCompleted ?? state.event.eventTokens ?? 0;
+      state.event.tiersUnlocked = state.event.tiersUnlocked ?? [];
+    }
+    state.event.passPurchased = true;
+    if (state.event.eventTokens === undefined) {
+      state.event.eventTokens = state.event.passQuestsCompleted ?? 0;
+    }
     checkEventSnapshots();
     return;
   }
 
-  // A new event just opened — initialise fresh state
   state.event = _buildFromDef(def);
   _onChange?.();
 }
@@ -190,31 +227,24 @@ export function checkEventSnapshots() {
 }
 
 /**
- * Purchase the event pass. Deducts pearls and enables exclusive species.
- * Returns true on success, false if already purchased or insufficient pearls.
+ * Call this whenever the player claims any quest reward (daily or event challenge).
+ * Awards 1 event token and checks for tier unlocks.
  */
-export function purchasePass() {
+export function recordQuestClaimed() {
   const ev = state.event;
-  if (!ev || !ev.pass || ev.passPurchased) return false;
-  if (state.pearls < ev.pass.pearlCost) return false;
-  state.pearls -= ev.pass.pearlCost;
-  ev.passPurchased = true;
+  if (!ev?.pass?.tiers) return;
+  ev.eventTokens = (ev.eventTokens ?? 0) + 1;
+  _checkTierUnlocks();
   _onChange?.();
-  return true;
 }
 
-/** Apply reward (+ pass bonus if applicable) and mark claimed. Returns true on success. */
+/** Apply base event reward and mark claimed. Returns true on success. */
 export function claimEvent() {
   const ev = state.event;
   if (!ev || ev.status !== 'complete') return false;
   ev.status = 'claimed';
   if (ev.reward.be)     state.be     = Math.min(state.be + ev.reward.be, BE_MAX);
   if (ev.reward.pearls) state.pearls += ev.reward.pearls;
-  if (ev.passPurchased && ev.pass?.bonusReward) {
-    const b = ev.pass.bonusReward;
-    if (b.be)     state.be     = Math.min(state.be + b.be, BE_MAX);
-    if (b.pearls) state.pearls += b.pearls;
-  }
   _onChange?.();
   return true;
 }

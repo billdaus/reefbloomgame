@@ -8,13 +8,14 @@ import { HUD }              from '../ui/HUD.js';
 import { PlacementMenu }    from '../ui/PlacementMenu.js';
 import { Fish }             from '../entities/Fish.js';
 import { Bubbles }          from '../entities/Bubbles.js';
+import { SeasonalAmbience } from '../entities/SeasonalAmbience.js';
 import {
   initEconomy, tickEconomy,
   spendForCoral, spendForFish, spendForCoralPearl, spendForFishPearl,
   recordInteraction, refundCoral, refundFish,
 } from '../systems/BEEconomy.js';
 import { initQuests, recordQuestEvent, checkSnapshotQuests, getQuestStatus } from '../systems/QuestSystem.js';
-import { initEventSystem, recordEventProgress, checkEventSnapshots } from '../systems/EventSystem.js';
+import { initEventSystem, recordEventProgress, checkEventSnapshots, recordQuestClaimed } from '../systems/EventSystem.js';
 import { initJournal, unlockEntry } from '../systems/JournalSystem.js';
 import { updateHarmonyFilter } from '../systems/HarmonySystem.js';
 import { initLevelSystem, checkLevelUp } from '../systems/LevelSystem.js';
@@ -59,6 +60,9 @@ export class ReefScene {
     // ── Bubbles drone ────────────────────────────────────────────────────────
     this._bubbles = new Bubbles();
 
+    // ── Seasonal ambience (petals / motes / sparkles) ─────────────────────────
+    this._ambience = new SeasonalAmbience();
+
     // ── Depth-correct render order ───────────────────────────────────────────
     // 1. Background
     this.worldContainer.addChild(this._bg.container);
@@ -77,7 +81,9 @@ export class ReefScene {
     this.worldContainer.addChild(this._fishContainerB);
     // 7. Foreground bubbles
     this.worldContainer.addChild(this._foreground.container);
-    // 8. Bubbles drone (above world, below UI)
+    // 8. Seasonal ambience (petals / motes / sparkles — above fish, below drone)
+    this.worldContainer.addChild(this._ambience.container);
+    // 9. Bubbles drone (above world, below UI)
     this.worldContainer.addChild(this._bubbles.container);
     // 9. Tile hover highlight (always topmost in world)
     this.worldContainer.addChild(this._grid.hoverContainer);
@@ -89,15 +95,15 @@ export class ReefScene {
     this._journalModal  = new JournalModal();
     this._accountModal  = new AccountModal();
     this._eventModal    = new EventModal(
-      () => { saveGame(); },                        // onAccept
-      () => { saveGame(); },                        // onClaim
-      () => { this._menu.rebuild(); saveGame(); },  // onPassPurchased → rebuild placement menu
+      () => { saveGame(); },   // onAccept
+      () => { saveGame(); },   // onClaim
     );
     this._questModal    = new DailyQuestModal(
       () => { unlockEntry('event:quest_accept'); this._refreshQuestClam(); saveGame(); },   // onAccept
       () => {                                                                                // onClaim
         unlockEntry('event:quest_complete');
         if (state.quest?.reward?.pearls > 0) unlockEntry('resource:pearls');
+        recordQuestClaimed();
         this._removeQuestClam(); saveGame();
       },
     );
@@ -180,7 +186,10 @@ export class ReefScene {
     // initQuests MUST come after _restoreFromSave — its onChange fires saveGame()
     // immediately if today's date is new, and state must be fully populated first.
     initQuests(() => { this._questModal.refresh(); this._refreshQuestClam(); saveGame(); });
-    initEventSystem(() => { this._eventModal.refresh(); saveGame(); });
+    initEventSystem(
+      () => { this._eventModal.refresh(); this._ambience.refresh(); saveGame(); },
+      (speciesId) => this._grantExclusiveSpecies(speciesId),
+    );
   }
 
   // ── Game loop ──────────────────────────────────────────────────────────────
@@ -191,6 +200,7 @@ export class ReefScene {
 
     this._bg.update(dms);
     this._foreground.update(dms);
+    this._ambience.update(dms);
     this._bubbles.update(dms);
     this._hud.update(dms);
     this._menu.update(dms);
@@ -488,6 +498,9 @@ export class ReefScene {
     checkSnapshotQuests();
     checkEventSnapshots();
 
+    // Activate seasonal ambience for any in-progress event
+    this._ambience?.refresh();
+
     // Spawn quest clam if today's quest is not yet claimed
     this._refreshQuestClam();
   }
@@ -523,6 +536,42 @@ export class ReefScene {
 
   _onQuestClamTap() {
     this._questModal.show();
+  }
+
+  // ── Exclusive species grant (event pass tier reward) ───────────────────────
+
+  _grantExclusiveSpecies(speciesId) {
+    const fishSpec  = FISH_SPECIES[speciesId];
+    const coralSpec = CORAL_SPECIES[speciesId];
+
+    if (fishSpec) {
+      const col = 1 + Math.floor(Math.random() * (GRID_COLS - 2));
+      const row = 1 + Math.floor(Math.random() * (GRID_ROWS - 2));
+      this._spawnFish(speciesId, fishSpec, col, row);
+      this._hud.showBonus(`${fishSpec.name} unlocked! 🎉`);
+    } else if (coralSpec) {
+      // Find a free tile
+      let placed = false;
+      for (let attempt = 0; attempt < 40 && !placed; attempt++) {
+        const col = Math.floor(Math.random() * GRID_COLS);
+        const row = Math.floor(Math.random() * GRID_ROWS);
+        if (state.grid[row][col] !== null) continue;
+        const uid = state.nextUid();
+        state.grid[row][col] = speciesId;
+        state.placedCoral.push({ uid, col, row, speciesId });
+        state.coralCount++;
+        state.coralTierCounts[coralSpec.tier]++;
+        state.coralTypesSeen.add(speciesId);
+        this._grid.placeCoral(coralSpec, col, row, uid);
+        unlockEntry(`coral:${speciesId}`);
+        checkSnapshotQuests();
+        checkEventSnapshots();
+        checkLevelUp();
+        placed = true;
+      }
+      this._hud.showBonus(`${coralSpec.name} unlocked! 🎉`);
+      saveGame();
+    }
   }
 
   /** Compute BE/tick from all inactive biomes' saved coral and cache it in state. */

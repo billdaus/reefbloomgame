@@ -2,7 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { SCREEN_W, SCREEN_H, COLORS, FISH_SPECIES } from '../constants.js';
 
 const FONT      = 'system-ui, -apple-system, sans-serif';
-const WATCH_MS  = 15000;  // placeholder ad duration before rewards shown
+const WATCH_MS  = 30000;  // ad viewing duration before rewards shown
 const LINGER_MS = 4000;   // auto-dismiss after this long in rewards phase
 
 /**
@@ -22,12 +22,10 @@ export class ClamRewardModal {
 
     this._overlay  = new Graphics();
     this._panel    = new Graphics();
-    this._bar      = new Graphics();
     this._texts    = new Container();
 
     this.container.addChild(this._overlay);
     this.container.addChild(this._panel);
-    this.container.addChild(this._bar);
     this.container.addChild(this._texts);
 
     // Tap to dismiss during rewards phase
@@ -44,6 +42,7 @@ export class ClamRewardModal {
     this._phase    = 'watching';
     this._timer    = 0;
     this.container.visible = true;
+    window._rfShowAdOverlay?.(WATCH_MS);
     this._render();
   }
 
@@ -52,8 +51,11 @@ export class ClamRewardModal {
     this._timer += deltaMS;
 
     if (this._phase === 'watching') {
-      this._drawBar();
+      // Keep the HTML timer bar in sync with the actual elapsed time
+      const bar = document.getElementById('ad-timer-bar');
+      if (bar) bar.style.width = Math.min(100, (this._timer / WATCH_MS) * 100) + '%';
       if (this._timer >= WATCH_MS) {
+        window._rfHideAdOverlay?.();
         this._phase = 'rewards';
         this._timer = 0;
         this._render();
@@ -73,97 +75,27 @@ export class ClamRewardModal {
   }
 
   _render() {
+    // During watching the real ad is in the HTML overlay; only draw a minimal
+    // canvas backdrop so the game behind is dimmed / non-interactive.
     this._overlay.clear();
-    this._overlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0x000000, alpha: 0.55 });
+    this._overlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0x000000, alpha: this._phase === 'watching' ? 0 : 0.55 });
 
-    const pw = 320, ph = this._phase === 'watching' ? 240 : 200;
+    this._panel.clear();
+    this._texts.removeChildren();
+
+    if (this._phase === 'watching') {
+      // Minimal backing — real ad is rendered in the HTML layer above the canvas
+      return;
+    }
+
+    const pw = 320, ph = 200;
     const px = SCREEN_W / 2 - pw / 2;
     const py = SCREEN_H / 2 - ph / 2;
 
-    this._panel.clear();
     this._panel.roundRect(px, py, pw, ph, 14).fill({ color: 0x080e18, alpha: 0.97 });
     this._panel.roundRect(px, py, pw, ph, 14).stroke({ color: COLORS.panel_border, width: 2 });
 
-    if (this._phase === 'watching') {
-      // Ad placeholder box
-      const adBx = px + 16, adBy = py + 16, adBw = pw - 32, adBh = 110;
-      this._panel.roundRect(adBx, adBy, adBw, adBh, 6).fill({ color: 0x111b2a });
-      this._panel.roundRect(adBx, adBy, adBw, adBh, 6).stroke({ color: COLORS.panel_border, width: 1 });
-    }
-
-    this._texts.removeChildren();
-    this._bar.clear();
-
-    if (this._phase === 'watching') this._buildWatchingUI(px, py, pw, ph);
-    else                            this._buildRewardsUI(px, py, pw, ph);
-  }
-
-  _drawBar() {
-    if (this._phase !== 'watching') return;
-    const pw = 320, ph = 240;
-    const px = SCREEN_W / 2 - pw / 2;
-    const py = SCREEN_H / 2 - ph / 2;
-    const bx = px + 30, by = py + ph - 40, bw = pw - 60;
-    const pct = Math.min(1, this._timer / WATCH_MS);
-
-    this._bar.clear();
-    this._bar.roundRect(bx, by, bw, 8, 4).fill(COLORS.harmony_empty);
-    if (pct > 0) this._bar.roundRect(bx, by, bw * pct, 8, 4).fill(COLORS.be_icon);
-  }
-
-  _buildWatchingUI(px, py, pw, ph) {
-    const cx = px + pw / 2;
-    const adBx = px + 16, adBy = py + 16, adBw = pw - 32, adBh = 110;
-
-    // Play icon centered in the ad box
-    const play = new Text({
-      text: '▶',
-      style: { fontSize: 40, fill: 0x2a3f5f, fontFamily: FONT },
-    });
-    play.anchor.set(0.5, 0.5);
-    play.x = adBx + adBw / 2;
-    play.y = adBy + adBh / 2 - 8;
-    this._texts.addChild(play);
-
-    // "Ad" badge top-left (Google Ads standard label)
-    const adBadge = new Text({
-      text: 'Ad',
-      style: { fontSize: 9, fill: COLORS.text_dim, fontFamily: FONT, fontWeight: 'bold' },
-    });
-    adBadge.anchor.set(0, 0);
-    adBadge.x = adBx + 6;
-    adBadge.y = adBy + 5;
-    this._texts.addChild(adBadge);
-
-    // Google Ads branding bottom of placeholder box
-    const googleLabel = new Text({
-      text: 'Google Ads',
-      style: { fontSize: 10, fill: COLORS.text_dim, fontFamily: FONT },
-    });
-    googleLabel.anchor.set(0.5, 1);
-    googleLabel.x = adBx + adBw / 2;
-    googleLabel.y = adBy + adBh - 6;
-    this._texts.addChild(googleLabel);
-
-    const title = new Text({
-      text: 'Ad Watching...',
-      style: { fontSize: 14, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: 'bold' },
-    });
-    title.anchor.set(0.5, 0);
-    title.x = cx;
-    title.y = py + 138;
-    this._texts.addChild(title);
-
-    const sub = new Text({
-      text: 'Thanks for supporting Reef Bloom!',
-      style: { fontSize: 11, fill: COLORS.text_secondary, fontFamily: FONT },
-    });
-    sub.anchor.set(0.5, 0);
-    sub.x = cx;
-    sub.y = py + 160;
-    this._texts.addChild(sub);
-
-    // Bar drawn separately each frame in _drawBar()
+    this._buildRewardsUI(px, py, pw, ph);
   }
 
   _buildRewardsUI(px, py, pw, ph) {
