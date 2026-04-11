@@ -122,18 +122,28 @@ export class ClamRewardModal {
     });
     play.anchor.set(0.5, 0.5);
     play.x = adBx + adBw / 2;
-    play.y = adBy + adBh / 2;
+    play.y = adBy + adBh / 2 - 8;
     this._texts.addChild(play);
 
-    // "AD" badge top-left of box
+    // "Ad" badge top-left (Google Ads standard label)
     const adBadge = new Text({
-      text: 'AD',
+      text: 'Ad',
       style: { fontSize: 9, fill: COLORS.text_dim, fontFamily: FONT, fontWeight: 'bold' },
     });
     adBadge.anchor.set(0, 0);
     adBadge.x = adBx + 6;
     adBadge.y = adBy + 5;
     this._texts.addChild(adBadge);
+
+    // Google Ads branding bottom of placeholder box
+    const googleLabel = new Text({
+      text: 'Google Ads',
+      style: { fontSize: 10, fill: COLORS.text_dim, fontFamily: FONT },
+    });
+    googleLabel.anchor.set(0.5, 1);
+    googleLabel.x = adBx + adBw / 2;
+    googleLabel.y = adBy + adBh - 6;
+    this._texts.addChild(googleLabel);
 
     const title = new Text({
       text: 'Ad Watching...',
