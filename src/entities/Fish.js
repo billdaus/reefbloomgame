@@ -2098,14 +2098,16 @@ export class Fish {
     }
 
     // Rotate heading toward target, capped to prevent instant reversals
+    // Floor ensures slow fish (sand dollar etc.) still turn in reasonable time
     let da = Math.atan2(dy, dx) - this._angle;
     if (da >  Math.PI) da -= Math.PI * 2;
     if (da < -Math.PI) da += Math.PI * 2;
-    this._angle += Math.sign(da) * Math.min(Math.abs(da), 0.016 * speed * dt);
+    this._angle += Math.sign(da) * Math.min(Math.abs(da), Math.max(0.025, 0.02 * speed) * dt);
 
-    // Always drive forward along current heading
-    this.vx = Math.cos(this._angle) * speed;
-    this.vy = Math.sin(this._angle) * speed * 0.55;
+    // Always drive forward along current heading at full intended speed
+    // Multiply by 2 to match pre-refactor terminal velocity
+    this.vx = Math.cos(this._angle) * speed * 2.0;
+    this.vy = Math.sin(this._angle) * speed * 2.0;
 
     // ── Coral repulsion ───────────────────────────────────────────────────
     for (let r = 0; r < 10; r++) {
@@ -2137,7 +2139,7 @@ export class Fish {
     this.vy *= DAMPEN;
 
     const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-    const maxSpd = speed * 2;
+    const maxSpd = speed * 4;
     if (spd > maxSpd) {
       this.vx = (this.vx / spd) * maxSpd;
       this.vy = (this.vy / spd) * maxSpd;
