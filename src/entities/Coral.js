@@ -48,8 +48,10 @@ export class Coral {
       case 'kelp':         this._drawKelp(g, s, c);          break;
       case 'twilightBrain': this._drawTwilightBrain(g, s, c); break;
       case 'phantomPolyp': this._drawPhantomPolyp(g, s, c); break;
-      case 'midnightTable': this._drawMidnightTable(g, s, c); break;
-      default:             this._drawGeneric(g, s, c);     break;
+      case 'midnightTable':   this._drawMidnightTable(g, s, c);   break;
+      // Event pass exclusives
+      case 'pearlOrganPipe':  this._drawPearlOrganPipe(g, s, c);  break;
+      default:                this._drawGeneric(g, s, c);          break;
     }
   }
 
@@ -577,6 +579,70 @@ export class Coral {
     const g = Math.min(255, Math.floor(((hex >> 8)  & 0xff) + (255 - ((hex >> 8)  & 0xff)) * amount));
     const b = Math.min(255, Math.floor((hex & 0xff)          + (255 - (hex & 0xff))          * amount));
     return (r << 16) | (g << 8) | b;
+  }
+
+  // ── Event pass exclusives ──────────────────────────────────────────────────
+
+  /**
+   * Pearl Organ Pipe — a cluster of tall ivory tubes with iridescent nacre tips
+   * and small star-shaped polyps at each opening.
+   */
+  _drawPearlOrganPipe(g, s, c) {
+    const w = s * 0.45;
+    const h = s * 0.9;
+    // Tube layout: 5 tubes of varying heights in a tight cluster
+    const tubes = [
+      { ox: -w * 0.58, h: h * 0.72, r: w * 0.22 },
+      { ox: -w * 0.22, h: h * 0.92, r: w * 0.25 },
+      { ox:  w * 0.15, h: h * 1.0,  r: w * 0.28 },
+      { ox:  w * 0.50, h: h * 0.80, r: w * 0.22 },
+      { ox:  w * 0.82, h: h * 0.62, r: w * 0.20 },
+    ];
+
+    // Draw tube bodies
+    tubes.forEach(({ ox, h: th, r }) => {
+      // Tube wall (rounded rect)
+      g.roundRect(ox - r, -th, r * 2, th, r * 0.9)
+       .fill({ color: c, alpha: 0.95 });
+      // Inner shadow / hollow depth
+      g.roundRect(ox - r * 0.55, -th + r * 0.5, r * 1.1, th - r * 0.6, r * 0.5)
+       .fill({ color: 0x8a7060, alpha: 0.35 });
+      // Tube ridge lines (longitudinal)
+      for (let ridgeX = -r * 0.4; ridgeX <= r * 0.4; ridgeX += r * 0.4) {
+        g.rect(ox + ridgeX, -th + 4, 1.5, th - 8)
+         .fill({ color: 0xffffff, alpha: 0.18 });
+      }
+    });
+
+    // Draw nacre / iridescent rim at each tube opening
+    tubes.forEach(({ ox, h: th, r }) => {
+      g.circle(ox, -th, r * 1.05)
+       .fill({ color: 0xd4c5b0, alpha: 0.9 });
+      g.circle(ox, -th, r * 0.78)
+       .fill({ color: 0x8a7060, alpha: 0.8 });   // opening depth
+      // Pearlescent highlight arc (top-left quadrant)
+      g.poly([
+        ox - r * 0.8, -th - r * 0.3,
+        ox - r * 0.15, -th - r * 0.85,
+        ox + r * 0.15, -th - r * 0.65,
+        ox - r * 0.35, -th - r * 0.2,
+      ]).fill({ color: 0xffffff, alpha: 0.45 });
+
+      // 8-pointed polyp star
+      const starPts = [];
+      for (let i = 0; i < 8; i++) {
+        const a    = (i / 8) * Math.PI * 2 - Math.PI / 2;
+        const rStar = i % 2 === 0 ? r * 0.55 : r * 0.28;
+        starPts.push(ox + Math.cos(a) * rStar, -th + Math.sin(a) * rStar);
+      }
+      g.poly(starPts).fill({ color: 0xffe8d8, alpha: 0.85 });
+    });
+
+    // Encrusting base connecting the tubes
+    g.roundRect(-w * 0.75, -s * 0.12, w * 1.68, s * 0.14, 4)
+     .fill({ color: c, alpha: 0.75 });
+    g.roundRect(-w * 0.75, -s * 0.12, w * 1.68, s * 0.14, 4)
+     .stroke({ color: 0xd4c5b0, width: 1 });
   }
 
   // ── Helper: polygon ellipse (g.ellipse unreliable in PixiJS v8) ────────────

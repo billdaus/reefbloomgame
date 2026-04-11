@@ -12,6 +12,7 @@ const FONT           = 'system-ui, -apple-system, sans-serif';
 
 /** Returns true if the species belongs to the given biome. */
 function _matchesBiome(spec, biome) {
+  if (spec.eventId) return false;    // event exclusives handled separately
   const b = spec.biome;
   if (!b || b === 'coral')      return biome === 'coral';
   if (b === 'seagrass')         return biome === 'seagrass';
@@ -19,6 +20,13 @@ function _matchesBiome(spec, biome) {
   if (b === 'both')             return biome === 'coral' || biome === 'seagrass';
   if (Array.isArray(b))         return b.includes(biome);
   return false;
+}
+
+/** Returns true if there are event exclusives unlocked via pass right now. */
+function _hasActiveExclusives() {
+  const ev = state.event;
+  if (!ev || !ev.passPurchased) return false;
+  return ev.status === 'active' || ev.status === 'complete' || ev.status === 'claimed';
 }
 const ROW_H          = 48;
 const ICON_SZ        = 30;
@@ -163,6 +171,19 @@ export class PlacementMenu {
     let cursor = PAD;
     const biome = state.biome;
 
+    // ── Event exclusives (top of menu, any biome, when pass is active) ────────
+    if (_hasActiveExclusives()) {
+      const ev = state.event;
+      const exclusiveCoral = Object.values(CORAL_SPECIES).filter(s => s.eventId === ev.id);
+      const exclusiveFish  = Object.values(FISH_SPECIES).filter(s => s.eventId === ev.id);
+      if (exclusiveCoral.length || exclusiveFish.length) {
+        cursor = this._eventSectionLabel(`${ev.icon}  EVENT EXCLUSIVES`, ev.theme ?? 0xff8fab, cursor);
+        exclusiveCoral.forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
+        exclusiveFish.forEach(spec  => { cursor = this._addRow('fish',  spec, cursor); });
+        cursor += PAD * 2;
+      }
+    }
+
     if (biome === 'seagrass') {
       cursor = this._sectionLabel('SEAGRASS', cursor);
       Object.values(CORAL_SPECIES)
@@ -210,6 +231,23 @@ export class PlacementMenu {
     t.y = y;
     this._scrollContent.addChild(t);
     return y + 20;
+  }
+
+  _eventSectionLabel(text, color, y) {
+    // Glowing accent bar
+    const bar = new Graphics();
+    bar.roundRect(PAD - 2, y + 2, PANEL_W - 20, 18, 4)
+       .fill({ color, alpha: 0.12 });
+    this._scrollContent.addChild(bar);
+
+    const t = new Text({
+      text,
+      style: { fontSize: 9, fill: color, fontFamily: FONT, fontWeight: '700', letterSpacing: 2 },
+    });
+    t.x = PAD + 4;
+    t.y = y + 4;
+    this._scrollContent.addChild(t);
+    return y + 26;
   }
 
   _addRow(type, spec, y) {

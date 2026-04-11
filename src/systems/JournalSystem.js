@@ -29,7 +29,8 @@ const CORAL_LORE = {
   kelp:          'Giant kelp can grow 30 cm per day, forming underwater forests 50 m tall. Pneumatocysts — hollow gas bladders — keep its fronds oriented toward the sunlight above.',
   twilightBrain: 'A deep-adapted variant whose zooxanthellae have been replaced by bioluminescent bacteria. It pulses with cold blue light visible from 30 metres away in the abyss.',
   phantomPolyp:  'Translucent columns of azooxanthellate coral that feed entirely on passing zooplankton. No sunlight reaches this depth — every calorie comes from the water column.',
-  midnightTable: 'A deep-sea table coral that uses bioluminescent lure patterns on its underside to attract and harvest zooplankton drifting through the twilight zone.',
+  midnightTable:  'A deep-sea table coral that uses bioluminescent lure patterns on its underside to attract and harvest zooplankton drifting through the twilight zone.',
+  pearlOrganPipe: 'A rare colour morph of Tubipora musica whose skeletal tubes are saturated with nacre, producing a lustrous pearl sheen. Colonies grow in tight clusters — each tube opening bears eight ivory polyp arms that retract at the slightest shadow.',
 };
 
 const FISH_LORE = {
@@ -103,6 +104,8 @@ const FISH_LORE = {
   abyssalRay:          'This deep-water ray glides just above the sediment, detecting buried prey through electroreception. Its slow wingbeats stir billowing clouds of sediment undisturbed for centuries.',
   oarfish:             'The longest bony fish on Earth, reaching 11 m. Oarfish surface only when dying or disoriented — their rare appearances near beaches have fuelled sea-serpent myths for millennia.',
   twilightWhaleShark:  'A twilight-adapted filter-feeder whose bioluminescent spots pulse in slow rhythmic waves. Visible from 20 metres away, drawing clouds of zooplankton toward its open mouth.',
+  sakuraAnthias:       'Female Pseudanthias sakura live in harems of up to 12 individuals. If the dominant male disappears, the largest female transforms into a male within days — changing both behaviour and the brilliant rose-pink of her elongated third dorsal spine.',
+  opah:                'The only known fully warm-blooded fish. Lampris guttatus heats its blood by rapidly flapping its pectoral fins, maintaining brain and muscle temperature up to 5 °C above the surrounding water — giving it reflexes no cold-blooded fish can match.',
 };
 
 // ─── Static resource entries ──────────────────────────────────────────────────

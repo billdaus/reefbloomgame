@@ -126,6 +126,9 @@ export class Fish {
       case 'abyssalRay':        this._drawAbyssalRay(g, sz, c, ac);        break;
       case 'oarfish':           this._drawOarfish(g, sz, c, ac);           break;
       case 'twilightWhaleShark': this._drawTwilightWhaleShark(g, sz, c, ac); break;
+      // Event pass exclusives
+      case 'sakuraAnthias':     this._drawSakuraAnthias(g, sz, c, ac);     break;
+      case 'opah':              this._drawOpah(g, sz, c, ac);              break;
       default:                  this._drawOvalFish(g, sz, c, ac, false);   break;
     }
   }
@@ -2189,5 +2192,124 @@ export class Fish {
     }
 
     this.pickTargetCooldown = 30 + Math.random() * 60;
+  }
+
+  // ── Event pass exclusives ──────────────────────────────────────────────────
+
+  /** Sakura Anthias — deep pink anthias with flowing dorsal spine and blossom markings. */
+  _drawSakuraAnthias(g, sz, c, ac) {
+    const hw = sz;
+    const hh = sz * 0.52;
+
+    // Flowing forked tail (lyretail characteristic of anthias)
+    g.moveTo(-hw * 0.6, 0)
+     .lineTo(-hw * 1.4, -hh * 1.1)
+     .lineTo(-hw * 0.9,  0)
+     .lineTo(-hw * 1.4,  hh * 1.1)
+     .closePath().fill(c);
+
+    // Body oval
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(c);
+
+    // Pale belly
+    this._ellipse(g, hw * 0.1, hh * 0.25, hw * 0.55, hh * 0.38);
+    g.fill({ color: ac, alpha: 0.55 });
+
+    // Extended 3rd dorsal spine (hallmark of anthias)
+    g.moveTo(-hw * 0.1, -hh)
+     .lineTo( hw * 0.05, -hh - sz * 0.9)   // tall single spine
+     .lineTo( hw * 0.12, -hh - sz * 0.3)
+     .lineTo( hw * 0.5,  -hh)
+     .closePath().fill(c);
+    // Spine highlight
+    g.moveTo(hw * 0.05,  -hh - sz * 0.9)
+     .lineTo(hw * 0.08,  -hh - sz * 0.9)
+     .lineTo(hw * 0.14,  -hh - sz * 0.3)
+     .lineTo(hw * 0.10,  -hh - sz * 0.3)
+     .closePath().fill({ color: ac, alpha: 0.6 });
+
+    // Soft anal fin
+    g.moveTo(-hw * 0.05, hh)
+     .lineTo( hw * 0.25, hh + sz * 0.32)
+     .lineTo( hw * 0.45, hh)
+     .closePath().fill(c);
+
+    // Pectoral fin
+    g.moveTo(hw * 0.25, -hh * 0.1)
+     .lineTo(hw * 0.55,  hh * 0.7)
+     .lineTo(hw * 0.4,   hh * 0.55)
+     .closePath().fill({ color: ac, alpha: 0.5 });
+
+    // Cheek blush — soft pink patch
+    this._ellipse(g, hw * 0.52, hh * 0.05, sz * 0.2, sz * 0.12);
+    g.fill({ color: 0xff4081, alpha: 0.35 });
+
+    // Eye
+    g.circle(hw * 0.52, -hh * 0.14, sz * 0.14).fill(0xffffff);
+    g.circle(hw * 0.53, -hh * 0.13, sz * 0.09).fill(0x220011);
+    g.circle(hw * 0.55, -hh * 0.16, sz * 0.03).fill(0xffffff);
+  }
+
+  /** Opah (Moonfish) — large iridescent disc body with crimson fins and orange spots. */
+  _drawOpah(g, sz, c, ac) {
+    const hw = sz * 0.85;
+    const hh = sz * 0.90;   // nearly circular disc
+
+    // Tail — small crescent behind body
+    g.moveTo(-hw * 0.78, -hh * 0.12)
+     .lineTo(-hw * 1.18, -hh * 0.58)
+     .lineTo(-hw * 1.05, -hh * 0.05)
+     .lineTo(-hw * 1.18,  hh * 0.58)
+     .lineTo(-hw * 0.78,  hh * 0.12)
+     .closePath().fill(ac);
+
+    // Main disc body
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(c);
+
+    // Iridescent sheen — lighter patch on upper body
+    this._ellipse(g, -hw * 0.1, -hh * 0.2, hw * 0.55, hh * 0.42);
+    g.fill({ color: 0x7ba7bc, alpha: 0.35 });
+
+    // White spot pattern across body (distinctive opah spots)
+    for (const [ox, oy, r] of [
+      [-0.3, -0.4, 0.08], [ 0.1, -0.55, 0.065], [ 0.4, -0.3, 0.07],
+      [-0.2,  0.3, 0.07], [ 0.3,  0.45, 0.065], [-0.55, 0.1, 0.06],
+      [ 0.1,  0.1, 0.08], [-0.5, -0.3, 0.055],
+    ]) {
+      g.circle(hw * ox, hh * oy, sz * r).fill({ color: 0xffffff, alpha: 0.65 });
+    }
+
+    // Large crimson-orange pectoral fin (distinctive opah feature)
+    g.moveTo(hw * 0.1, -hh * 0.3)
+     .lineTo(hw * 0.7, -hh * 1.1)
+     .lineTo(hw * 0.85, -hh * 0.65)
+     .lineTo(hw * 0.7, -hh * 0.1)
+     .closePath().fill(ac);
+
+    // Ventral fin
+    g.moveTo(hw * 0.1, hh * 0.35)
+     .lineTo(hw * 0.5, hh * 0.95)
+     .lineTo(hw * 0.65, hh * 0.55)
+     .closePath().fill(ac);
+
+    // Short dorsal ridge
+    g.moveTo(-hw * 0.3, -hh * 0.88)
+     .lineTo( hw * 0.05, -hh * 1.05)
+     .lineTo( hw * 0.5,  -hh * 0.88)
+     .closePath().fill({ color: ac, alpha: 0.8 });
+
+    // Golden eye ring (opah signature)
+    g.circle(hw * 0.48, -hh * 0.18, sz * 0.20).fill(0xffd740);
+    g.circle(hw * 0.48, -hh * 0.18, sz * 0.14).fill(0xffffff);
+    g.circle(hw * 0.49, -hh * 0.17, sz * 0.09).fill(0x1a0808);
+    g.circle(hw * 0.51, -hh * 0.20, sz * 0.03).fill(0xffffff);
+
+    // Red mouth tip
+    g.moveTo(hw * 0.82, -hh * 0.06)
+     .lineTo(hw * 1.0,   0)
+     .lineTo(hw * 0.82,  hh * 0.06)
+     .closePath().fill(ac);
   }
 }

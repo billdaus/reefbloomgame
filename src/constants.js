@@ -225,6 +225,13 @@ export const CORAL_SPECIES = {
     tier: TIER.LEGENDARY, tall: false, blocksB: true, color: 0x3d5afe, unlockLevel: 12,
     pearlCost: 50, biome: 'deepTwilight',
   },
+
+  // ── Event pass exclusives ─────────────────────────────────────────────────
+  pearlOrganPipe: {
+    id: 'pearlOrganPipe', name: 'Pearl Organ Pipe', scientific: 'Tubipora musica (pearl form)',
+    tier: TIER.LEGENDARY, tall: true, blocksB: false, color: 0xf0e6d3, unlockLevel: 1,
+    eventId: 'pearl_tide_2026',
+  },
 };
 
 // ─── Fish species ─────────────────────────────────────────────────────────────
@@ -599,6 +606,20 @@ export const FISH_SPECIES = {
     tier: TIER.MYTHIC, layer: 'B', color: 0x1565c0, accentColor: 0x00e5ff,
     size: 46, speed: 0.6, unlockLevel: 14, biome: 'deepTwilight',
     pearlCost: 80,
+  },
+
+  // ── Event pass exclusives ─────────────────────────────────────────────────
+  sakuraAnthias: {
+    id: 'sakuraAnthias', name: 'Sakura Anthias', scientific: 'Pseudanthias sakura',
+    tier: TIER.LEGENDARY, layer: 'A', color: 0xff80ab, accentColor: 0xffd6e8,
+    size: 17, speed: 1.1, unlockLevel: 1,
+    eventId: 'coral_bloom_2026',
+  },
+  opah: {
+    id: 'opah', name: 'Opah', scientific: 'Lampris guttatus',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x546e7a, accentColor: 0xff5722,
+    size: 38, speed: 0.75, unlockLevel: 1,
+    eventId: 'moonfish_migration_2026',
   },
 };
 

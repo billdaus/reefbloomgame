@@ -89,8 +89,9 @@ export class ReefScene {
     this._journalModal  = new JournalModal();
     this._accountModal  = new AccountModal();
     this._eventModal    = new EventModal(
-      () => { saveGame(); },       // onAccept
-      () => { saveGame(); },       // onClaim
+      () => { saveGame(); },                        // onAccept
+      () => { saveGame(); },                        // onClaim
+      () => { this._menu.rebuild(); saveGame(); },  // onPassPurchased → rebuild placement menu
     );
     this._questModal    = new DailyQuestModal(
       () => { unlockEntry('event:quest_accept'); this._refreshQuestClam(); saveGame(); },   // onAccept

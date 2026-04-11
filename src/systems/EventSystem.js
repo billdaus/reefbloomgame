@@ -19,6 +19,12 @@ export const EVENT_SCHEDULE = [
       { type: 'have_fish',     label: 'Have 10 fish alive',  target: 10 },
     ],
     reward: { be: 300, pearls: 75 },
+    pass: {
+      pearlCost:     50,
+      bonusReward:   { be: 150, pearls: 20 },
+      exclusiveFish: ['sakuraAnthias'],
+      exclusiveCoral: [],
+    },
   },
   {
     id:          'moonfish_migration_2026',
@@ -34,6 +40,12 @@ export const EVENT_SCHEDULE = [
       { type: 'idle_streak', label: 'Trigger idle bonus 5×',   target: 5    },
     ],
     reward: { be: 250, pearls: 50 },
+    pass: {
+      pearlCost:     50,
+      bonusReward:   { be: 100, pearls: 15 },
+      exclusiveFish: ['opah'],
+      exclusiveCoral: [],
+    },
   },
   {
     id:          'pearl_tide_2026',
@@ -49,6 +61,12 @@ export const EVENT_SCHEDULE = [
       { type: 'reach_harmony', label: 'Reach 80 Harmony',    target: 80   },
     ],
     reward: { be: 200, pearls: 100 },
+    pass: {
+      pearlCost:     50,
+      bonusReward:   { be: 100, pearls: 25 },
+      exclusiveFish: [],
+      exclusiveCoral: ['pearlOrganPipe'],
+    },
   },
 ];
 
@@ -83,6 +101,8 @@ function _buildFromDef(def) {
     startDate:   def.startDate,
     endDate:     def.endDate,
     status:      'available',   // 'available' | 'active' | 'complete' | 'claimed'
+    passPurchased: false,
+    pass:        def.pass ? { ...def.pass } : null,
     challenges:  def.challenges.map((c, i) => ({
       id:       `${c.type}_${i}`,
       type:     c.type,
@@ -169,13 +189,32 @@ export function checkEventSnapshots() {
   if (changed) { _updateStatus(); _onChange?.(); }
 }
 
-/** Apply reward and mark claimed. Returns true on success. */
+/**
+ * Purchase the event pass. Deducts pearls and enables exclusive species.
+ * Returns true on success, false if already purchased or insufficient pearls.
+ */
+export function purchasePass() {
+  const ev = state.event;
+  if (!ev || !ev.pass || ev.passPurchased) return false;
+  if (state.pearls < ev.pass.pearlCost) return false;
+  state.pearls -= ev.pass.pearlCost;
+  ev.passPurchased = true;
+  _onChange?.();
+  return true;
+}
+
+/** Apply reward (+ pass bonus if applicable) and mark claimed. Returns true on success. */
 export function claimEvent() {
   const ev = state.event;
   if (!ev || ev.status !== 'complete') return false;
   ev.status = 'claimed';
   if (ev.reward.be)     state.be     = Math.min(state.be + ev.reward.be, BE_MAX);
   if (ev.reward.pearls) state.pearls += ev.reward.pearls;
+  if (ev.passPurchased && ev.pass?.bonusReward) {
+    const b = ev.pass.bonusReward;
+    if (b.be)     state.be     = Math.min(state.be + b.be, BE_MAX);
+    if (b.pearls) state.pearls += b.pearls;
+  }
   _onChange?.();
   return true;
 }
