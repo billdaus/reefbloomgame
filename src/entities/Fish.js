@@ -2104,8 +2104,8 @@ export class Fish {
     if (da < -Math.PI) da += Math.PI * 2;
     this._angle += Math.sign(da) * Math.min(Math.abs(da), Math.max(0.06, 0.05 * speed) * dt);
 
-    this.vx = Math.cos(this._angle) * speed * 4.0;
-    this.vy = Math.sin(this._angle) * speed * 4.0;
+    this.vx = Math.cos(this._angle) * speed * 3.0;
+    this.vy = Math.sin(this._angle) * speed * 3.0;
 
     // ── Coral repulsion ───────────────────────────────────────────────────
     for (let r = 0; r < 10; r++) {
