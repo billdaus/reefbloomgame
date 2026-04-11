@@ -294,8 +294,8 @@ export class Fish {
     });
 
     // ── Spiral tail ─────────────────────────────────────────────────────
-    const scx = bw * 0.28, scy = bh * 0.50 + sz * 0.38;
-    const r0 = sz * 0.36, steps = 48;
+    const scx = bw * 0.28, scy = bh * 0.50 + sz * 0.44;
+    const r0 = sz * 0.52, steps = 48;
     const totalAngle = Math.PI * 3.0, startAngle = -Math.PI * 1.25;
 
     g.moveTo(0, bh * 0.50);
@@ -304,7 +304,7 @@ export class Fish {
       g.lineTo(scx + Math.cos(startAngle + t * totalAngle) * r0 * (1 - t * 0.70),
                scy + Math.sin(startAngle + t * totalAngle) * r0 * (1 - t * 0.70));
     }
-    g.stroke({ color: bodyColor, width: sz * 0.24, cap: 'round', join: 'round' });
+    g.stroke({ color: bodyColor, width: sz * 0.26, cap: 'round', join: 'round' });
 
     // Tail ring outlines
     g.moveTo(0, bh * 0.50);
@@ -1990,8 +1990,8 @@ export class Fish {
     });
 
     // Spiral tail
-    const scx = bw * 0.28, scy = bh * 0.5 + sz * 0.38;
-    const r0 = sz * 0.36, steps = 36;
+    const scx = bw * 0.28, scy = bh * 0.5 + sz * 0.44;
+    const r0 = sz * 0.52, steps = 48;
     const totalAngle = Math.PI * 3.0, startAngle = -Math.PI * 1.25;
 
     g.moveTo(0, bh * 0.5);
@@ -2000,7 +2000,7 @@ export class Fish {
       g.lineTo(scx + Math.cos(startAngle + t * totalAngle) * r0 * (1 - t * 0.7),
                scy + Math.sin(startAngle + t * totalAngle) * r0 * (1 - t * 0.7));
     }
-    g.stroke({ color: bodyColor, width: sz * 0.24, cap: 'round', join: 'round' });
+    g.stroke({ color: bodyColor, width: sz * 0.26, cap: 'round', join: 'round' });
 
     // Glowing accent stripe on tail
     g.moveTo(0, bh * 0.5);
@@ -2009,7 +2009,7 @@ export class Fish {
       g.lineTo(scx + Math.cos(startAngle + t * totalAngle) * r0 * (1 - t * 0.7),
                scy + Math.sin(startAngle + t * totalAngle) * r0 * (1 - t * 0.7));
     }
-    g.stroke({ color: accentColor, width: 1.6, cap: 'round', join: 'round' });
+    g.stroke({ color: accentColor, width: 1.8, cap: 'round', join: 'round' });
 
     // Head
     this._ellipse(g, bw * 0.05, -bh * 0.56, bw * 0.46, bw * 0.3);
