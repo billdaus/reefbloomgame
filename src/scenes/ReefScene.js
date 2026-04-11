@@ -14,6 +14,7 @@ import {
   recordInteraction, refundCoral, refundFish,
 } from '../systems/BEEconomy.js';
 import { initQuests, recordQuestEvent, checkSnapshotQuests, getQuestStatus } from '../systems/QuestSystem.js';
+import { initEventSystem, recordEventProgress, checkEventSnapshots } from '../systems/EventSystem.js';
 import { initJournal, unlockEntry } from '../systems/JournalSystem.js';
 import { updateHarmonyFilter } from '../systems/HarmonySystem.js';
 import { initLevelSystem, checkLevelUp } from '../systems/LevelSystem.js';
@@ -24,6 +25,8 @@ import { ClamRewardModal }    from '../ui/ClamRewardModal.js';
 import { PearlShopModal }     from '../ui/PearlShopModal.js';
 import { DailyQuestModal }    from '../ui/DailyQuestModal.js';
 import JournalModal           from '../ui/JournalModal.js';
+import { AccountModal }       from '../ui/AccountModal.js';
+import { EventModal }         from '../ui/EventModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 
@@ -84,6 +87,11 @@ export class ReefScene {
     this._rewardModal   = new ClamRewardModal();
     this._shopModal     = new PearlShopModal();
     this._journalModal  = new JournalModal();
+    this._accountModal  = new AccountModal();
+    this._eventModal    = new EventModal(
+      () => { saveGame(); },       // onAccept
+      () => { saveGame(); },       // onClaim
+    );
     this._questModal    = new DailyQuestModal(
       () => { unlockEntry('event:quest_accept'); this._refreshQuestClam(); saveGame(); },   // onAccept
       () => {                                                                                // onClaim
@@ -96,6 +104,8 @@ export class ReefScene {
       () => { saveGame(); window.location.reload(); },
       () => this._shopModal.show(),
       () => this._journalModal.show(),
+      () => this._accountModal.show(),
+      () => this._eventModal.show(),
     );
     this._menu = new PlacementMenu(
       (id) => this._onCoralSelected(id),
@@ -108,6 +118,8 @@ export class ReefScene {
     this._uiContainer.addChild(this._shopModal.container);
     this._uiContainer.addChild(this._questModal.container);
     this._uiContainer.addChild(this._journalModal.container);
+    this._uiContainer.addChild(this._accountModal.container);
+    this._uiContainer.addChild(this._eventModal.container);
 
     // Expose layout + travel callback for DOM travel button/modal (see index.html)
     window._rfLayout   = { PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H };
@@ -167,6 +179,7 @@ export class ReefScene {
     // initQuests MUST come after _restoreFromSave — its onChange fires saveGame()
     // immediately if today's date is new, and state must be fully populated first.
     initQuests(() => { this._questModal.refresh(); this._refreshQuestClam(); saveGame(); });
+    initEventSystem(() => { this._eventModal.refresh(); saveGame(); });
   }
 
   // ── Game loop ──────────────────────────────────────────────────────────────
@@ -248,7 +261,9 @@ export class ReefScene {
     if (state.coralCount === 1) this._bubbles.trigger('firstCoral');
 
     recordQuestEvent('place_coral', 1);
+    recordEventProgress('place_coral', 1);
     checkSnapshotQuests();
+    checkEventSnapshots();
     checkLevelUp();
     saveGame();
   }
@@ -294,7 +309,9 @@ export class ReefScene {
     if (state.fishCount === 1) this._bubbles.trigger('firstFish');
 
     recordQuestEvent('hatch_fish', 1);
+    recordEventProgress('hatch_fish', 1);
     checkSnapshotQuests();
+    checkEventSnapshots();
     checkLevelUp();
     saveGame();
   }
@@ -394,7 +411,9 @@ export class ReefScene {
     state.pearls         = data.pearls  ?? state.pearls;
     state.clamWatchCount = data.clamWatchCount ?? 0;
     state.clamWatchDate  = data.clamWatchDate  ?? '';
-    state.quest          = data.quest ?? null;
+    state.quest   = data.quest   ?? null;
+    state.event   = data.event   ?? null;
+    state.account = data.account ?? null;
     state.harmonySmoothed = state.harmony;
 
     state.coralTypesSeen = new Set(data.coralTypesSeen ?? []);
@@ -466,6 +485,7 @@ export class ReefScene {
 
     // Re-evaluate snapshot quests now that coral/fish counts are restored
     checkSnapshotQuests();
+    checkEventSnapshots();
 
     // Spawn quest clam if today's quest is not yet claimed
     this._refreshQuestClam();

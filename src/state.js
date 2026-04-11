@@ -53,6 +53,12 @@ export const state = {
   // BE/tick contributed by entities in the currently inactive biome
   passiveBEPerTick: 0,
 
+  // ── Limited time event ─────────────────────────────────────────────────────
+  event: null,   // { id, name, icon, theme, description, startDate, endDate, status, challenges, reward }
+
+  // ── Account (placeholder — feature not yet live) ───────────────────────────
+  account: null,   // null = not signed in; { displayName, joinDate } when active
+
   // ── UID counter ────────────────────────────────────────────────────────────
   _nextUid: 1,
   nextUid() { return this._nextUid++; },

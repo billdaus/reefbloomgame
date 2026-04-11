@@ -1,6 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { SCREEN_W, HUD_H, IS_PORTRAIT, COLORS } from '../constants.js';
 import { state } from '../state.js';
+import { eventDaysRemaining } from '../systems/EventSystem.js';
 
 const FONT = 'system-ui, -apple-system, sans-serif';
 
@@ -8,10 +9,12 @@ const FONT = 'system-ui, -apple-system, sans-serif';
  * HUD — top bar showing BE, Harmony bar, and Level.
  */
 export class HUD {
-  constructor(onHome, onPearlShop, onJournal) {
+  constructor(onHome, onPearlShop, onJournal, onAccount, onEventBtn) {
     this._onHome      = onHome;
     this._onPearlShop = onPearlShop;
     this._onJournal   = onJournal;
+    this._onAccount   = onAccount;
+    this._onEventBtn  = onEventBtn;
     this.container = new Container();
     this._bg          = new Graphics();
     this._beText      = null;
@@ -19,6 +22,8 @@ export class HUD {
     this._bonusText   = null;
     this._bonusTimer  = 0;
     this._harmonyBar  = new Graphics();
+    this._eventBtn    = null;
+    this._eventPulse  = 0;
     this._harmonyText = null;
     this._levelText   = null;
     this._lvlUpBanner = null;
@@ -138,6 +143,12 @@ export class HUD {
     // ── Journal button ───────────────────────────────────────────────────────
     this._buildJournalBtn();
 
+    // ── Event button ─────────────────────────────────────────────────────────
+    this._buildEventBtn();
+
+    // ── Account button ───────────────────────────────────────────────────────
+    this._buildAccountBtn();
+
     // ── Home button ──────────────────────────────────────────────────────────
     this._buildHomeBtn();
 
@@ -239,6 +250,103 @@ export class HUD {
     this.container.addChild(btn);
   }
 
+  _buildEventBtn() {
+    // Portrait: floats just below the HUD on the right side (outside HUD bar)
+    // Landscape: sits inside the HUD between the journal and account buttons
+    const W  = IS_PORTRAIT ? 80 : 110;
+    const H  = IS_PORTRAIT ? 24 : 30;
+    const R  = 12;
+    const bx = IS_PORTRAIT ? SCREEN_W - W - 6 : 700;
+    const by = IS_PORTRAIT ? HUD_H + 4         : (HUD_H - H) / 2;
+
+    const bg = new Graphics();
+    const drawBg = (color, alpha) => {
+      bg.clear();
+      bg.roundRect(0, 0, W, H, R).fill({ color, alpha });
+      bg.roundRect(0, 0, W, H, R).stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    };
+    drawBg(0x2a1a40, 0.92);
+
+    const label = new Text({
+      text: IS_PORTRAIT ? '⚡ Event' : '⚡ Event',
+      style: { fontSize: IS_PORTRAIT ? 11 : 11, fill: 0xddaaff, fontFamily: FONT, fontWeight: '700' },
+    });
+    label.anchor.set(0, 0.5);
+    label.x = 10;
+    label.y = H / 2;
+
+    // Days-remaining sub-label (landscape only)
+    const daysLabel = new Text({
+      text: '',
+      style: { fontSize: 9, fill: 0xbbaacc, fontFamily: FONT },
+    });
+    daysLabel.anchor.set(1, 0.5);
+    daysLabel.x = W - 8;
+    daysLabel.y = H / 2;
+
+    const btn = new Container();
+    btn.addChild(bg);
+    btn.addChild(label);
+    if (!IS_PORTRAIT) btn.addChild(daysLabel);
+    btn.x = bx;
+    btn.y = by;
+    btn.interactive = true;
+    btn.cursor = 'pointer';
+    btn.visible = false;
+    btn.on('pointerover',  () => drawBg(0x4a2a6a, 1));
+    btn.on('pointerout',   () => {
+      const isComplete = state.event?.status === 'complete';
+      drawBg(isComplete ? 0x3a1a5a : 0x2a1a40, 0.92);
+    });
+    btn.on('pointerdown',  () => this._onEventBtn?.());
+
+    this._eventBtnBg       = bg;
+    this._eventBtnDrawBg   = drawBg;
+    this._eventBtnDaysText = daysLabel;
+    this._eventBtn         = btn;
+    this.container.addChild(btn);
+  }
+
+  _buildAccountBtn() {
+    const W  = IS_PORTRAIT ? 30 : 32;
+    const H  = IS_PORTRAIT ? 26 : 30;
+    const R  = 8;
+    // Portrait: just right of the journal button (journal bx=218, W=30 → ends at 248)
+    // Landscape: between journal (622+70=692) and home (SCREEN_W-148), at SCREEN_W-188
+    const bx = IS_PORTRAIT ? 252 : SCREEN_W - 188;
+    const by = (HUD_H - H) / 2;
+
+    const bg = new Graphics();
+    const drawBg = (hover) => {
+      bg.clear();
+      bg.roundRect(0, 0, W, H, R)
+        .fill({ color: hover ? 0x2a3060 : 0x101830, alpha: hover ? 1 : 0.85 });
+      bg.roundRect(0, 0, W, H, R)
+        .stroke({ color: 0x3a4a80, width: 1.5, alpha: 0.9 });
+    };
+    drawBg(false);
+
+    const label = new Text({
+      text: '👤',
+      style: { fontSize: IS_PORTRAIT ? 14 : 14, fill: 0xaabbee, fontFamily: FONT },
+    });
+    label.x = (W - label.width) / 2;
+    label.y = (H - label.height) / 2;
+
+    const btn = new Container();
+    btn.addChild(bg);
+    btn.addChild(label);
+    btn.x = bx;
+    btn.y = by;
+    btn.interactive = true;
+    btn.cursor = 'pointer';
+    btn.on('pointerover',  () => drawBg(true));
+    btn.on('pointerout',   () => drawBg(false));
+    btn.on('pointerdown',  () => this._onAccount?.());
+
+    this.container.addChild(btn);
+  }
+
   _buildHomeBtn() {
     const W = IS_PORTRAIT ? 38 : 64, H = IS_PORTRAIT ? 26 : 30, R = 8;
     const bx = IS_PORTRAIT ? SCREEN_W - 90 : SCREEN_W - 148;
@@ -284,7 +392,7 @@ export class HUD {
     this._levelText.text = String(state.level);
     this._harmonyText.text = String(Math.round(state.harmony));
     this._drawHarmonyBar();
-
+    this._updateEventBtn(deltaMS);
 
     // Level-up banner fade
     if (this._lvlUpTimer > 0) {
@@ -299,6 +407,30 @@ export class HUD {
       this._bonusText.alpha = Math.min(1, this._bonusTimer / 600);
     } else {
       this._bonusText.alpha = 0;
+    }
+  }
+
+  _updateEventBtn(deltaMS) {
+    if (!this._eventBtn) return;
+    const ev     = state.event;
+    const status = ev?.status ?? null;
+    const visible = status === 'available' || status === 'active' || status === 'complete';
+    this._eventBtn.visible = visible;
+    if (!visible) return;
+
+    const isComplete = status === 'complete';
+    this._eventPulse += deltaMS * 0.004;
+    const pulse = 0.82 + 0.18 * Math.sin(this._eventPulse);
+    this._eventBtn.alpha = isComplete ? pulse : 1;
+
+    // Tint background on complete
+    this._eventBtnDrawBg?.(isComplete ? 0x4a2060 : 0x2a1a40, 0.92);
+
+    // Days label
+    if (this._eventBtnDaysText && ev) {
+      const days = eventDaysRemaining(ev.endDate);
+      this._eventBtnDaysText.text = isComplete ? 'CLAIM!' : `${days}d`;
+      this._eventBtnDaysText.style.fill = isComplete ? 0xffaaff : (days <= 1 ? 0xff7043 : 0xbbaacc);
     }
   }
 
