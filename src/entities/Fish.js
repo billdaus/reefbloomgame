@@ -2153,9 +2153,11 @@ export class Fish {
     // ── Update sprite ─────────────────────────────────────────────────────
     this.container.x = this.x;
     this.container.y = this.y;
-    // Flip to face direction of travel
-    if (Math.abs(this.vx) > 0.05) {
-      this.container.scale.x = this.vx > 0 ? 1 : -1;
+
+    if (spd > 0.05) {
+      // Flip to face direction of travel, then tilt body along velocity vector
+      this.container.scale.x  = this.vx >= 0 ? 1 : -1;
+      this.container.rotation = Math.atan2(this.vy, Math.abs(this.vx));
     }
 
     // Subtle vertical bob
