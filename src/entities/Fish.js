@@ -25,6 +25,7 @@ export class Fish {
     this.targetY   = this.y;
     this.targetAge = 0;
     this.pickTargetCooldown = 0;
+    this._angle    = Math.atan2(this.vy || 0, this.vx || 1); // facing angle
 
     this.container = new Container();
     this._body     = new Graphics();
@@ -2086,7 +2087,7 @@ export class Fish {
     const speed = this.spec.speed;
     const ms    = dt * (60 / 1000) * 16;  // normalise to pixels/frame
 
-    // ── Steer toward target ────────────────────────────────────────────────
+    // ── Steer toward target (angle-limited — fish arc, never reverse) ────────
     this.pickTargetCooldown -= dt;
     const dx   = this.targetX - this.x;
     const dy   = this.targetY - this.y;
@@ -2094,10 +2095,17 @@ export class Fish {
 
     if (dist < 8 || this.pickTargetCooldown <= 0) {
       this._pickNewTarget(grid);
-    } else {
-      this.vx += (dx / dist) * STEER * speed * dt;
-      this.vy += (dy / dist) * STEER * speed * dt * 0.5;  // less vertical
     }
+
+    // Rotate heading toward target, capped to prevent instant reversals
+    let da = Math.atan2(dy, dx) - this._angle;
+    if (da >  Math.PI) da -= Math.PI * 2;
+    if (da < -Math.PI) da += Math.PI * 2;
+    this._angle += Math.sign(da) * Math.min(Math.abs(da), 0.016 * speed * dt);
+
+    // Always drive forward along current heading
+    this.vx = Math.cos(this._angle) * speed;
+    this.vy = Math.sin(this._angle) * speed * 0.55;
 
     // ── Coral repulsion ───────────────────────────────────────────────────
     for (let r = 0; r < 10; r++) {
@@ -2149,6 +2157,10 @@ export class Fish {
     if (this.x > right)  { this.x = right;  this.vx = -Math.abs(this.vx); }
     if (this.y < top)    { this.y = top;     this.vy =  Math.abs(this.vy); }
     if (this.y > bottom) { this.y = bottom;  this.vy = -Math.abs(this.vy); }
+
+    // Re-sync heading after bounce/repulsion so fish don't fight the new direction
+    const postSpd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    if (postSpd > 0.05) this._angle = Math.atan2(this.vy, this.vx);
 
     // ── Update sprite ─────────────────────────────────────────────────────
     this.container.x = this.x;
