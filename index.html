@@ -5,6 +5,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪸</text></svg>" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="description" content="Reef Bloom is a free browser game where you build and nurture your own coral reef ecosystem. Place coral, hatch fish, and watch life flourish." />
   <title>Reef Bloom</title>
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
@@ -482,6 +483,8 @@
       <button class="sp-btn" id="start-btn">Begin</button>
     </div>
     <div style="position:relative;z-index:1;font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-bottom:18px;">
+      <a class="legal-link" href="/about.html">About</a>
+      ·
       <button class="legal-link" onclick="openLegal('privacy')">Privacy Policy</button>
       ·
       <button class="legal-link" onclick="openLegal('terms')">Terms of Service</button>
@@ -493,7 +496,7 @@
     <div class="biome-box">
       <div class="biome-header">
         <h2>🌿 SEAGRASS BASIN</h2>
-        <button class="biome-close" onclick="closeBiome('seagrass')">✕</button>
+        <button class="biome-close" aria-label="Close" onclick="closeBiome('seagrass')">✕</button>
       </div>
       <div class="biome-body">
         <p class="biome-depth">Environment: Shallow (1–5 m)</p>
@@ -597,7 +600,7 @@
     <div class="legal-box">
       <div class="legal-header">
         <h2>PRIVACY POLICY</h2>
-        <button class="legal-close" onclick="closeLegal('privacy')">✕</button>
+        <button class="legal-close" aria-label="Close" onclick="closeLegal('privacy')">✕</button>
       </div>
       <div class="legal-body">
         <p class="effective">EFFECTIVE DATE: MARCH 27, 2026</p>
@@ -612,7 +615,7 @@
         <p>Reef Bloom may display third-party advertisements (e.g. rewarded video ads). Ad networks may collect anonymized data such as your device type, IP address, and ad interactions in accordance with their own privacy policies. We do not control and are not responsible for third-party data practices.</p>
 
         <h3>Analytics</h3>
-        <p>We do not currently use any analytics or tracking services. If this changes, this policy will be updated.</p>
+        <p>Reef Bloom uses Google Analytics to collect anonymous, non-personal usage data such as page visits, device type, and browser. This data helps us improve the game and is not used to identify individual users.</p>
 
         <h3>Cookies</h3>
         <p>Reef Bloom itself does not set cookies. Third-party ad networks may set cookies subject to their own policies.</p>
@@ -634,7 +637,7 @@
     <div class="legal-box">
       <div class="legal-header">
         <h2>TERMS OF SERVICE</h2>
-        <button class="legal-close" onclick="closeLegal('terms')">✕</button>
+        <button class="legal-close" aria-label="Close" onclick="closeLegal('terms')">✕</button>
       </div>
       <div class="legal-body">
         <p class="effective">EFFECTIVE DATE: MARCH 27, 2026</p>
