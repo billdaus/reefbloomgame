@@ -2102,12 +2102,10 @@ export class Fish {
     let da = Math.atan2(dy, dx) - this._angle;
     if (da >  Math.PI) da -= Math.PI * 2;
     if (da < -Math.PI) da += Math.PI * 2;
-    this._angle += Math.sign(da) * Math.min(Math.abs(da), Math.max(0.025, 0.02 * speed) * dt);
+    this._angle += Math.sign(da) * Math.min(Math.abs(da), Math.max(0.06, 0.05 * speed) * dt);
 
-    // Always drive forward along current heading at full intended speed
-    // Multiply by 2 to match pre-refactor terminal velocity
-    this.vx = Math.cos(this._angle) * speed * 2.0;
-    this.vy = Math.sin(this._angle) * speed * 2.0;
+    this.vx = Math.cos(this._angle) * speed * 4.0;
+    this.vy = Math.sin(this._angle) * speed * 4.0;
 
     // ── Coral repulsion ───────────────────────────────────────────────────
     for (let r = 0; r < 10; r++) {
@@ -2139,7 +2137,7 @@ export class Fish {
     this.vy *= DAMPEN;
 
     const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-    const maxSpd = speed * 4;
+    const maxSpd = speed * 8;
     if (spd > maxSpd) {
       this.vx = (this.vx / spd) * maxSpd;
       this.vy = (this.vy / spd) * maxSpd;
@@ -2196,6 +2194,6 @@ export class Fish {
       this.targetY = GRID_Y + MARGIN + Math.random() * (GRID_H - MARGIN * 2);
     }
 
-    this.pickTargetCooldown = 80 + Math.random() * 120;
+    this.pickTargetCooldown = 30 + Math.random() * 60;
   }
 }
