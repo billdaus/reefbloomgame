@@ -183,6 +183,16 @@ export const CORAL_SPECIES = {
   },
 
   // ── Seagrass biome vegetation ─────────────────────────────────────────────
+  barnacles: {
+    id: 'barnacles', name: 'Barnacles', scientific: 'Balanus sp.',
+    tier: TIER.COMMON, tall: false, blocksB: false, color: 0xc4c8ce, unlockLevel: 1,
+    biome: 'seagrass',
+  },
+  redSeagrass: {
+    id: 'redSeagrass', name: 'Red Seagrass', scientific: 'Halymenia sp.',
+    tier: TIER.UNCOMMON, tall: false, blocksB: false, color: 0xc62828, unlockLevel: 2,
+    biome: 'seagrass',
+  },
   seaweed: {
     id: 'seaweed', name: 'Seaweed', scientific: 'Ulva sp.',
     tier: TIER.UNCOMMON, tall: false, blocksB: false, color: 0x388e3c, unlockLevel: 1,

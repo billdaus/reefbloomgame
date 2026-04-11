@@ -41,6 +41,8 @@ export class Coral {
       case 'table':        this._drawTable(g, s, c);       break;
       case 'rainbowCoral': this._drawRainbowCoral(g, s, c); break;
       case 'sunfire':      this._drawSunfire(g, s, c);     break;
+      case 'barnacles':    this._drawBarnacles(g, s, c);     break;
+      case 'redSeagrass':  this._drawRedSeagrass(g, s, c);   break;
       case 'seaweed':      this._drawSeaweed(g, s, c);       break;
       case 'seagrass':     this._drawSeagrass(g, s, c);      break;
       case 'kelp':         this._drawKelp(g, s, c);          break;
@@ -306,6 +308,79 @@ export class Coral {
     }
     g.circle(mid, coreY, s * 0.1).fill(bright);
     g.circle(mid, coreY, s * 0.05).fill(0xffffff);
+  }
+
+  // ── Barnacles — cluster of calcite cones on the substrate ────────────
+  _drawBarnacles(g, s, c) {
+    const dark  = this._darken(c, 0.35);
+    const light = this._lighten(c, 0.28);
+    const cones = [
+      { x: s * 0.18, bw: 12, tw: 7,  h: s * 0.28 },
+      { x: s * 0.34, bw: 10, tw: 6,  h: s * 0.22 },
+      { x: s * 0.50, bw: 14, tw: 8,  h: s * 0.34 },
+      { x: s * 0.66, bw:  9, tw: 5,  h: s * 0.20 },
+      { x: s * 0.82, bw: 11, tw: 6,  h: s * 0.26 },
+    ];
+    cones.forEach(({ x, bw, tw, h }) => {
+      const yb = s - 3;
+      const yt = yb - h;
+      // Cone body (trapezoid)
+      g.moveTo(x - bw / 2, yb)
+       .lineTo(x + bw / 2, yb)
+       .lineTo(x + tw / 2, yt)
+       .lineTo(x - tw / 2, yt)
+       .closePath()
+       .fill(c);
+      // Operculum plate at top
+      g.rect(x - tw / 2, yt - 2, tw, 3).fill(dark);
+      // Highlight rib down the cone
+      g.moveTo(x, yb - 2)
+       .lineTo(x, yt + 2)
+       .stroke({ color: light, width: 1, alpha: 0.55 });
+    });
+    // Substrate base
+    g.rect(s * 0.06, s - 3, s * 0.88, 3).fill(dark);
+  }
+
+  // ── Red Seagrass — broad oval-tipped blades, reddish-crimson ─────────
+  _drawRedSeagrass(g, s, c) {
+    const dark  = this._darken(c, 0.3);
+    const light = this._lighten(c, 0.22);
+    const blades = [
+      { x: s * 0.20, h: s * 0.68, lean: -0.09 },
+      { x: s * 0.38, h: s * 0.80, lean:  0.10 },
+      { x: s * 0.57, h: s * 0.86, lean: -0.06 },
+      { x: s * 0.76, h: s * 0.72, lean:  0.08 },
+    ];
+    blades.forEach(({ x, h, lean }, i) => {
+      const base = s - 2;
+      const tipX = x + lean * s;
+      const tipY = base - h;
+      const col  = i % 2 === 0 ? c : dark;
+      // Wider blade body
+      g.moveTo(x - 5, base)
+       .lineTo(x + 5, base)
+       .lineTo(tipX + 2, tipY + h * 0.12)
+       .lineTo(tipX - 2, tipY + h * 0.12)
+       .closePath()
+       .fill(col);
+      // Rounded tip cap
+      g.circle(tipX, tipY + h * 0.10, 3).fill(col);
+      // Midrib
+      g.moveTo(x, base)
+       .lineTo(tipX, tipY)
+       .stroke({ color: light, width: 1, alpha: 0.45 });
+      // Two cross-veins
+      for (let v = 1; v <= 2; v++) {
+        const t  = v / 3;
+        const vx = x + (tipX - x) * t;
+        const vy = base + (tipY - base) * t;
+        const vw = 4 * (1 - t) + 1;
+        g.moveTo(vx - vw, vy).lineTo(vx + vw, vy)
+         .stroke({ color: light, width: 1, alpha: 0.28 });
+      }
+    });
+    g.rect(s * 0.06, s - 4, s * 0.88, 4).fill(dark);
   }
 
   // ── Seagrass — tall ribbon blades growing from substrate ─────────────────

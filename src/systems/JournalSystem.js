@@ -22,6 +22,8 @@ const CORAL_LORE = {
   table:         'Horizontal platforms on a central stalk create a microhabitat beneath that teems with invertebrates. Table coral can reach 2 metres across over a century of growth.',
   rainbowCoral:  'A rare mutant strain whose zooxanthellae have diversified into multiple photopigment lineages, producing vivid multicolored bands invisible in normal reef lighting.',
   sunfire:       'Radiating spines concentrate sunlight from multiple angles simultaneously. Colonies found near the edge of the photic zone grow unusually fast compared to shallower relatives.',
+  barnacles:     'Barnacles cement themselves permanently to hard surfaces with one of the strongest biological adhesives known. They feed by extending feathery cirri to comb the water column for plankton.',
+  redSeagrass:   'A crimson-bladed red alga whose phycoerythrin pigments absorb the blue-green wavelengths that penetrate deepest into the water column, letting it photosynthesize in dimmer conditions than green plants.',
   seaweed:       'Fast-growing macroalgae that rapidly colonizes cleared substrate. Provides essential grazing for urchins and sea slugs, and returns nutrients to the sediment as it decomposes.',
   seagrass:      'True marine flowering plants — not algae. Seagrass meadows produce more oxygen per acre than a temperate forest and lock vast quantities of carbon in the seafloor sediment.',
   kelp:          'Giant kelp can grow 30 cm per day, forming underwater forests 50 m tall. Pneumatocysts — hollow gas bladders — keep its fronds oriented toward the sunlight above.',
