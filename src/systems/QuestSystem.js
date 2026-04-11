@@ -33,21 +33,21 @@ const CHALLENGE_POOL = [
     labels:  ['Reach {n} Harmony', 'Reach {n} Harmony', 'Reach {n} Harmony'],
     targets: [25, 50, 75],
     be:      [40, 70, 0],
-    pearls:  [0,  0,  50],
+    pearls:  [0,  0,  25],
   },
   {
     type: 'have_fish',
     labels:  ['Have {n} fish alive', 'Have {n} fish alive', 'Have {n} fish alive'],
     targets: [3, 8, 15],
     be:      [30, 55, 0],
-    pearls:  [0,  0,  50],
+    pearls:  [0,  0,  25],
   },
   {
     type: 'have_coral',
     labels:  ['Have {n} coral placed', 'Have {n} coral placed', 'Have {n} coral placed'],
     targets: [5, 12, 20],
     be:      [30, 55, 0],
-    pearls:  [0,  0,  50],
+    pearls:  [0,  0,  25],
   },
 ];
 

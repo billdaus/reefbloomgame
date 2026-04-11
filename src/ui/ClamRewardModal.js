@@ -76,13 +76,20 @@ export class ClamRewardModal {
     this._overlay.clear();
     this._overlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0x000000, alpha: 0.55 });
 
-    const pw = 320, ph = 200;
+    const pw = 320, ph = this._phase === 'watching' ? 240 : 200;
     const px = SCREEN_W / 2 - pw / 2;
     const py = SCREEN_H / 2 - ph / 2;
 
     this._panel.clear();
     this._panel.roundRect(px, py, pw, ph, 14).fill({ color: 0x080e18, alpha: 0.97 });
     this._panel.roundRect(px, py, pw, ph, 14).stroke({ color: COLORS.panel_border, width: 2 });
+
+    if (this._phase === 'watching') {
+      // Ad placeholder box
+      const adBx = px + 16, adBy = py + 16, adBw = pw - 32, adBh = 110;
+      this._panel.roundRect(adBx, adBy, adBw, adBh, 6).fill({ color: 0x111b2a });
+      this._panel.roundRect(adBx, adBy, adBw, adBh, 6).stroke({ color: COLORS.panel_border, width: 1 });
+    }
 
     this._texts.removeChildren();
     this._bar.clear();
@@ -93,10 +100,10 @@ export class ClamRewardModal {
 
   _drawBar() {
     if (this._phase !== 'watching') return;
-    const pw = 320, ph = 200;
+    const pw = 320, ph = 240;
     const px = SCREEN_W / 2 - pw / 2;
     const py = SCREEN_H / 2 - ph / 2;
-    const bx = px + 30, by = py + ph - 50, bw = pw - 60;
+    const bx = px + 30, by = py + ph - 40, bw = pw - 60;
     const pct = Math.min(1, this._timer / WATCH_MS);
 
     this._bar.clear();
@@ -106,14 +113,35 @@ export class ClamRewardModal {
 
   _buildWatchingUI(px, py, pw, ph) {
     const cx = px + pw / 2;
+    const adBx = px + 16, adBy = py + 16, adBw = pw - 32, adBh = 110;
+
+    // Play icon centered in the ad box
+    const play = new Text({
+      text: '▶',
+      style: { fontSize: 40, fill: 0x2a3f5f, fontFamily: FONT },
+    });
+    play.anchor.set(0.5, 0.5);
+    play.x = adBx + adBw / 2;
+    play.y = adBy + adBh / 2;
+    this._texts.addChild(play);
+
+    // "AD" badge top-left of box
+    const adBadge = new Text({
+      text: 'AD',
+      style: { fontSize: 9, fill: COLORS.text_dim, fontFamily: FONT, fontWeight: 'bold' },
+    });
+    adBadge.anchor.set(0, 0);
+    adBadge.x = adBx + 6;
+    adBadge.y = adBy + 5;
+    this._texts.addChild(adBadge);
 
     const title = new Text({
-      text: '▶  Ad Watching...',
-      style: { fontSize: 16, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: 'bold' },
+      text: 'Ad Watching...',
+      style: { fontSize: 14, fill: COLORS.text_primary, fontFamily: FONT, fontWeight: 'bold' },
     });
     title.anchor.set(0.5, 0);
     title.x = cx;
-    title.y = py + 46;
+    title.y = py + 138;
     this._texts.addChild(title);
 
     const sub = new Text({
@@ -122,7 +150,7 @@ export class ClamRewardModal {
     });
     sub.anchor.set(0.5, 0);
     sub.x = cx;
-    sub.y = py + 80;
+    sub.y = py + 160;
     this._texts.addChild(sub);
 
     // Bar drawn separately each frame in _drawBar()
