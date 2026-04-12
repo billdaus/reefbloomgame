@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Complete beginner's guide to Reef Bloom — learn how to place coral, hatch fish, earn Bubble Energy, increase Harmony, and level up your reef." />
+  <title>Game Guide — Reef Bloom</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(175deg, #70d4f8 0%, #28a0e0 30%, #1468b0 65%, #0a3050 100%);
+      font-family: system-ui, -apple-system, sans-serif;
+      color: rgba(255,255,255,0.88);
+      padding: 0 0 80px;
+    }
+    .reef-silhouette {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 100px;
+      background: linear-gradient(180deg, transparent 0%, rgba(5,20,45,0.55) 35%, rgba(4,15,32,0.96) 100%);
+      clip-path: polygon(
+        0% 58%, 3% 38%, 6% 54%, 9% 28%, 12% 46%,
+        15% 22%, 18% 40%, 21% 18%, 24% 36%, 27% 12%,
+        30% 32%, 33%  8%, 36% 26%, 39%  6%, 42% 20%,
+        45%  4%, 48% 16%, 51%  2%, 54% 14%, 57%  5%,
+        60% 18%, 63%  7%, 66% 24%, 69% 10%, 72% 28%,
+        75% 16%, 78% 33%, 81% 20%, 84% 38%, 87% 26%,
+        90% 43%, 93% 30%, 96% 48%, 100% 33%, 100% 100%, 0% 100%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+    header {
+      background: rgba(4, 18, 50, 0.55);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(100,200,255,0.18);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    header a {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: 1px;
+      transition: color 0.15s;
+    }
+    header a:hover { color: #fff; }
+    header .site-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 2px;
+      text-decoration: none;
+    }
+    .content {
+      position: relative;
+      max-width: 720px;
+      margin: 48px auto 0;
+      padding: 0 24px;
+      z-index: 1;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .tagline {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 1px;
+      margin-bottom: 40px;
+    }
+    h2 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(140,210,255,0.85);
+      margin: 36px 0 10px;
+    }
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      margin: 24px 0 8px;
+    }
+    p, li {
+      font-size: 14px;
+      line-height: 1.75;
+      color: rgba(255,255,255,0.75);
+    }
+    ul, ol {
+      padding-left: 20px;
+      margin-top: 6px;
+    }
+    li { margin-bottom: 6px; }
+    a { color: rgba(140,210,255,0.9); }
+    a:hover { color: #fff; }
+    strong { color: rgba(255,255,255,0.9); }
+    .tip-box {
+      background: rgba(4, 18, 50, 0.45);
+      border: 1px solid rgba(100,200,255,0.15);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 16px 0;
+    }
+    .tip-box .tip-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: rgba(140,210,255,0.7);
+      margin-bottom: 6px;
+    }
+    .play-btn {
+      display: inline-block;
+      margin-top: 28px;
+      padding: 14px 48px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #0a3050;
+      background: #fff;
+      border-radius: 40px;
+      text-decoration: none;
+      box-shadow: 0 4px 32px rgba(0,100,200,0.4);
+      transition: transform 0.12s, background 0.12s;
+    }
+    .play-btn:hover { background: #d0f0ff; transform: scale(1.04); color: #0a3050; }
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(100,200,255,0.15);
+      margin: 36px 0 0;
+    }
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 40px 24px 20px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+    footer a { color: rgba(140,210,255,0.6); text-decoration: none; }
+    footer a:hover { color: #fff; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/about.html">About</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/privacy.html">Privacy</a>
+    <a href="/terms.html">Terms</a>
+  </header>
+
+  <div class="content">
+    <h1>Game Guide</h1>
+    <p class="tagline">Everything you need to know to grow a thriving reef.</p>
+
+    <h2>Getting Started</h2>
+    <p>When you first launch Reef Bloom, you'll choose one of three save slots and begin with a small amount of Bubble Energy (BE). Your reef is a 10&times;10 grid — every tile is visible at all times, so you never need to scroll or zoom. Your first task is to place coral, which generates BE over time, and then use that BE to add fish and more coral.</p>
+
+    <h3>Your First Reef</h3>
+    <ol>
+      <li><strong>Place your first coral.</strong> Tap the species menu on the right side of the screen and select Starter Coral. Then tap any tile on the grid to place it. Each coral generates Bubble Energy every tick.</li>
+      <li><strong>Let BE accumulate.</strong> Coral produces BE passively. Common coral generates 1 BE per tick, Rare generates 2, and Epic generates 3. Wait for your balance to grow.</li>
+      <li><strong>Hatch your first fish.</strong> Once you have enough BE, select a fish species from the menu and tap an empty tile to hatch it. Fish swim freely around your reef using autonomous flocking behavior.</li>
+      <li><strong>Keep building.</strong> Add more coral and fish to diversify your reef, raise your Harmony score, and level up to unlock new species.</li>
+    </ol>
+
+    <h2>Core Mechanics</h2>
+
+    <h3>Bubble Energy (BE)</h3>
+    <p>BE is the currency that powers everything in Reef Bloom. Coral generates it passively, and you spend it to place new coral and hatch fish. BE generation rates depend on the coral's rarity tier:</p>
+    <ul>
+      <li><strong>Common:</strong> 1 BE per tick</li>
+      <li><strong>Rare:</strong> 2 BE per tick</li>
+      <li><strong>Epic:</strong> 3 BE per tick</li>
+    </ul>
+    <p>The more coral you place, the faster BE flows in. Plan your grid layout to maximize production while leaving room for fish to swim.</p>
+
+    <h3>Harmony</h3>
+    <p>Harmony is a score from 0 to 100 that reflects the biodiversity and health of your reef. As Harmony rises, the entire world becomes more vibrant — colors become richer and more saturated. Low Harmony means a washed-out, desaturated reef. The key to high Harmony is <strong>species diversity</strong>: placing many different types of coral and fish is more valuable than stacking a single species.</p>
+
+    <div class="tip-box">
+      <div class="tip-label">TIP</div>
+      <p>Don't place 10 of the same coral. Instead, spread your BE across multiple species. A reef with one of everything will have much higher Harmony than a reef with many copies of one thing.</p>
+    </div>
+
+    <h3>Leveling Up</h3>
+    <p>As you place more coral and hatch more fish, you earn experience and level up. Each level unlocks new species. Early levels unlock Common species, while Rare, Epic, Legendary, and Mythic species require higher levels. You can check your current level in the top-left HUD bar.</p>
+
+    <h3>The Idle Streak</h3>
+    <p>Reef Bloom rewards patience. If you don't touch the screen for 20 seconds, an idle streak starts building. When the streak completes, you receive a burst of bonus BE. This mechanic encourages you to step back and watch your reef live — the game rewards observation, not constant interaction.</p>
+
+    <h2>Species Tiers</h2>
+    <p>Every coral and fish in Reef Bloom belongs to a rarity tier. Higher tiers cost more BE but generate more and contribute more to Harmony:</p>
+    <ul>
+      <li><strong>Common</strong> — inexpensive, available early. Great for building a BE foundation.</li>
+      <li><strong>Uncommon</strong> — slightly more expensive, unlocked at level 2.</li>
+      <li><strong>Rare</strong> — the backbone of a mid-game reef. Good BE production and visual variety.</li>
+      <li><strong>Super Rare</strong> — distinctive species with unique visuals. Unlocked at level 5+.</li>
+      <li><strong>Epic</strong> — powerful and visually striking. Some epic coral blocks fish movement.</li>
+      <li><strong>Legendary</strong> — requires Pearls (premium currency). Unlocked at level 10+.</li>
+      <li><strong>Mythic</strong> — the rarest species in the game. Unlocked at level 12+.</li>
+    </ul>
+
+    <h2>Fish Layers</h2>
+    <p>Fish in Reef Bloom swim on one of two layers, which determines how they navigate around coral:</p>
+    <ul>
+      <li><strong>Layer A</strong> (small fish like clownfish, chromis, butterflyfish, seahorse): These fish avoid all tall coral. They swim in the open spaces between short coral.</li>
+      <li><strong>Layer B</strong> (larger fish like moorish idol, yellow tang, cuttlefish, moray eel, dolphin, shark): These fish only avoid coral marked as "blocksB" — specifically Elkhorn and Pillar coral.</li>
+    </ul>
+    <p>This layer system means your grid layout matters. Placing too much tall coral can block Layer A fish from moving freely, while Layer B fish have more room to roam.</p>
+
+    <h2>Biomes</h2>
+    <p>Reef Bloom features three distinct biomes, each with its own species, mechanics, and visual atmosphere:</p>
+
+    <h3>Coral Reef</h3>
+    <p>The starting biome and the heart of Reef Bloom. A classic reef environment where you place coral and hatch fish on a sunlit grid. Most species in the game are native to this biome. This is where you'll spend most of your early game building up BE production and unlocking new species.</p>
+
+    <h3>Seagrass Basin</h3>
+    <p>A shallow environment of dense seagrass meadows with sandy patches. This biome introduces <strong>grazer species</strong> — creatures like pipefish, sand dollars, queen conch, and pufferfish that generate bonus BE while feeding on seagrass. Dual-biome fish like Yellow Tang and Blue Tang can travel between Coral Reef and Seagrass Basin automatically.</p>
+
+    <h3>Deep Twilight</h3>
+    <p>A darker, deeper biome featuring bioluminescent coral and creatures. Species here glow softly in the deep water, creating a completely different visual experience. This biome unlocks at higher levels and features unique species like Twilight Brain Coral, Phantom Polyp, and deep-sea fish.</p>
+
+    <div class="tip-box">
+      <div class="tip-label">TIP</div>
+      <p>Each biome has its own grid and progress. Use the Travel button in the game to switch between biomes. Your Coral Reef progress is saved when you travel.</p>
+    </div>
+
+    <h2>Save System</h2>
+    <p>Reef Bloom provides three save slots. Each slot stores your complete reef state — grid layout, species, BE balance, level, biome progress, and more. The game auto-saves every 30 seconds and on every placement action. All data is stored locally in your browser using localStorage — nothing is sent to any server. This means your save is tied to your browser and device.</p>
+
+    <h2>Events and Collectibles</h2>
+    <p>Reef Bloom features seasonal limited-time events with exclusive species, daily quests, and collectible clams. During events, you can earn special event tokens by completing quests and finding clams scattered on your reef. These tokens can be exchanged for event-exclusive species that aren't available outside the event period. Keep an eye out for event announcements on the start screen.</p>
+
+    <h2>Tips for New Players</h2>
+    <ul>
+      <li><strong>Diversify early.</strong> Place one of each available coral species rather than many copies of the same one. This raises Harmony faster.</li>
+      <li><strong>Don't overfill the grid.</strong> Fish need space to swim. Leave open lanes between coral clusters.</li>
+      <li><strong>Watch the idle streak.</strong> Step away from the screen periodically to trigger idle bonuses.</li>
+      <li><strong>Plan your tall coral placement.</strong> Tall coral blocks Layer A fish. Group tall coral together to leave open swimming lanes.</li>
+      <li><strong>Save your Pearls.</strong> Legendary and Mythic species are expensive. Don't spend Pearls until you know what you want.</li>
+      <li><strong>Explore all biomes.</strong> Each biome has unique species and mechanics. Traveling broadens your reef and unlocks dual-biome fish.</li>
+    </ul>
+
+    <div style="text-align:center;">
+      <a class="play-btn" href="/">Play Now</a>
+    </div>
+
+    <hr class="divider">
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <!-- Cookie consent banner -->
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>

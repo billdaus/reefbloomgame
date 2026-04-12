@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Terms of Service for Reef Bloom — rules and conditions for playing the free browser-based coral reef game at reefbloomgame.com." />
   <title>Terms of Service — Reef Bloom</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -115,9 +116,10 @@
 
   <header>
     <a class="site-name" href="/">Reef Bloom</a>
-    <a href="/">← Play</a>
+    <a href="/">Play</a>
     <a href="/about.html">About</a>
-    <a href="/privacy.html">Privacy Policy</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/privacy.html">Privacy</a>
   </header>
 
   <div class="content">
@@ -184,12 +186,46 @@
   </div>
 
   <footer>
-    &copy; 2026 ReefBloomGame.com &nbsp;·&nbsp;
-    <a href="/about.html">About</a> &nbsp;·&nbsp;
-    <a href="/privacy.html">Privacy Policy</a> &nbsp;·&nbsp;
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
     <a href="/terms.html">Terms of Service</a>
   </footer>
 
   <div class="reef-silhouette"></div>
+
+  <!-- Cookie consent banner -->
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
 </body>
 </html>

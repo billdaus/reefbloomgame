@@ -7,8 +7,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="description" content="Reef Bloom is a free browser game where you build and nurture your own coral reef ecosystem. Place coral, hatch fish, and watch life flourish." />
   <title>Reef Bloom</title>
-  <!-- Google AdSense -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YF2KCE7JPP"></script>
   <script>
@@ -632,9 +630,10 @@
     <!-- Navigation -->
     <nav class="landing-nav">
       <a class="site-name" href="/">Reef Bloom</a>
+      <a href="/guide.html">Guide</a>
+      <a href="/species.html">Species</a>
       <a href="/about.html">About</a>
-      <a href="/privacy.html">Privacy</a>
-      <a href="/terms.html">Terms</a>
+      <a href="/contact.html">Contact</a>
     </nav>
 
     <!-- Hero -->
@@ -716,6 +715,7 @@
     <div class="landing-footer">
       &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
       <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+      <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
       <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
       <a href="/terms.html">Terms of Service</a>
     </div>
@@ -842,7 +842,7 @@
         <p>Reef Bloom stores your game progress (reef state, coral, fish, currency) locally in your browser using <strong>localStorage</strong>. This data never leaves your device and is not transmitted to any server.</p>
 
         <h3>Advertising</h3>
-        <p>Reef Bloom may display third-party advertisements (e.g. rewarded video ads). Ad networks may collect anonymized data such as your device type, IP address, and ad interactions in accordance with their own privacy policies. We do not control and are not responsible for third-party data practices.</p>
+        <p>Reef Bloom may display third-party advertisements served by Google AdSense. Third-party vendors, including Google, use cookies to serve ads based on your prior visits to this website and other websites. Google's use of the DoubleClick cookie enables it and its partners to serve ads based on your visits to this site and other sites on the Internet. You may opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener">Google Ads Settings</a> or <a href="https://www.aboutads.info" target="_blank" rel="noopener">www.aboutads.info</a>.</p>
 
         <h3>Analytics</h3>
         <p>Reef Bloom uses Google Analytics to collect anonymous, non-personal usage data such as page visits, device type, and browser. This data helps us improve the game and is not used to identify individual users.</p>
@@ -916,32 +916,6 @@
     <button class="slp-back-btn" id="slp-back">← Back</button>
   </div>
 
-  <!-- ── Ad overlay (shown during clam reward sequence) ───────────────────── -->
-  <div id="ad-overlay" style="
-    display:none; position:fixed; inset:0; z-index:200;
-    flex-direction:column; align-items:center; justify-content:center; gap:16px;
-    background:rgba(4,12,28,0.95); backdrop-filter:blur(4px);
-  ">
-    <div style="font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.3);text-transform:uppercase;font-family:system-ui,sans-serif;">
-      Sponsored · Supporting Reef Bloom 🪸
-    </div>
-    <div id="ad-slot-container" style="
-      background:#f1f3f4; border-radius:6px; overflow:hidden;
-      min-width:300px; min-height:250px;
-      display:flex; align-items:center; justify-content:center;
-    ">
-      <!-- AdSense unit inserted dynamically by _rfShowAdOverlay -->
-    </div>
-    <div style="width:300px;font-family:system-ui,sans-serif;">
-      <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:8px;text-align:center;letter-spacing:0.5px;">
-        Reward unlocks when complete
-      </div>
-      <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:5px;overflow:hidden;">
-        <div id="ad-timer-bar" style="height:100%;background:#40c8ff;border-radius:4px;width:0%;"></div>
-      </div>
-    </div>
-  </div>
-
   <!-- ── Travel button (DOM, positioned over panel header) ─────────────────── -->
   <button id="rf-travel-btn" onclick="rfOpenTravel()" style="
     display:none; position:fixed; z-index:100;
@@ -971,6 +945,47 @@
       <div id="rf-travel-cards" style="padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
     </div>
   </div>
+
+  <!-- Cookie consent banner -->
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) {
+        document.getElementById('cookie-banner').style.display = 'flex';
+      }
+    })();
+    function acceptCookies() {
+      localStorage.setItem('cookie_consent', 'accepted');
+      document.getElementById('cookie-banner').style.display = 'none';
+    }
+    function declineCookies() {
+      localStorage.setItem('cookie_consent', 'declined');
+      document.getElementById('cookie-banner').style.display = 'none';
+    }
+  </script>
 
   <script type="module" src="/src/main.js"></script>
 
@@ -1094,36 +1109,6 @@
       if (e.key === 'Escape') rfCloseTravel();
     });
 
-    // ── Ad overlay ───────────────────────────────────────────────────────────
-    let _adTimerRaf = null;
-
-    window._rfShowAdOverlay = function(durationMs) {
-      const overlay   = document.getElementById('ad-overlay');
-      const container = document.getElementById('ad-slot-container');
-      const bar       = document.getElementById('ad-timer-bar');
-      if (!overlay || !container) return;
-
-      // Recreate the ins element so AdSense serves a fresh ad each time
-      container.innerHTML = '';
-      const ins = document.createElement('ins');
-      ins.className        = 'adsbygoogle';
-      ins.style.cssText    = 'display:block;width:300px;height:250px;';
-      ins.dataset.adClient = 'ca-pub-2397359547710356';
-      ins.dataset.adSlot   = '5175649528'; // TODO: replace with your ad slot ID
-      ins.dataset.adFormat = 'rectangle';
-      container.appendChild(ins);
-      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e) {}
-
-      // Reset bar — PixiJS drives the width each frame via ad-timer-bar
-      if (bar) { bar.style.transition = 'none'; bar.style.width = '0%'; }
-
-      overlay.style.display = 'flex';
-    };
-
-    window._rfHideAdOverlay = function() {
-      const overlay = document.getElementById('ad-overlay');
-      if (overlay) overlay.style.display = 'none';
-    };
   </script>
 </body>
 </html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Complete species guide for Reef Bloom — every coral and fish species, their rarity tiers, unlock levels, biomes, and gameplay details." />
+  <title>Species Guide — Reef Bloom</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(175deg, #70d4f8 0%, #28a0e0 30%, #1468b0 65%, #0a3050 100%);
+      font-family: system-ui, -apple-system, sans-serif;
+      color: rgba(255,255,255,0.88);
+      padding: 0 0 80px;
+    }
+    .reef-silhouette {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 100px;
+      background: linear-gradient(180deg, transparent 0%, rgba(5,20,45,0.55) 35%, rgba(4,15,32,0.96) 100%);
+      clip-path: polygon(
+        0% 58%, 3% 38%, 6% 54%, 9% 28%, 12% 46%,
+        15% 22%, 18% 40%, 21% 18%, 24% 36%, 27% 12%,
+        30% 32%, 33%  8%, 36% 26%, 39%  6%, 42% 20%,
+        45%  4%, 48% 16%, 51%  2%, 54% 14%, 57%  5%,
+        60% 18%, 63%  7%, 66% 24%, 69% 10%, 72% 28%,
+        75% 16%, 78% 33%, 81% 20%, 84% 38%, 87% 26%,
+        90% 43%, 93% 30%, 96% 48%, 100% 33%, 100% 100%, 0% 100%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+    header {
+      background: rgba(4, 18, 50, 0.55);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(100,200,255,0.18);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    header a {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: 1px;
+      transition: color 0.15s;
+    }
+    header a:hover { color: #fff; }
+    header .site-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 2px;
+      text-decoration: none;
+    }
+    .content {
+      position: relative;
+      max-width: 800px;
+      margin: 48px auto 0;
+      padding: 0 24px;
+      z-index: 1;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .tagline {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 1px;
+      margin-bottom: 40px;
+    }
+    h2 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(140,210,255,0.85);
+      margin: 36px 0 10px;
+    }
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      margin: 24px 0 8px;
+    }
+    p, li {
+      font-size: 14px;
+      line-height: 1.75;
+      color: rgba(255,255,255,0.75);
+    }
+    ul {
+      padding-left: 20px;
+      margin-top: 6px;
+    }
+    li { margin-bottom: 4px; }
+    a { color: rgba(140,210,255,0.9); }
+    a:hover { color: #fff; }
+    strong { color: rgba(255,255,255,0.9); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 24px;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(140,210,255,0.65);
+      border-bottom: 1px solid rgba(100,200,255,0.2);
+    }
+    td {
+      padding: 8px 10px;
+      color: rgba(255,255,255,0.72);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    td:first-child { font-weight: 600; color: rgba(200,230,255,0.9); white-space: nowrap; }
+    .tier-badge {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .tier-common     { background: rgba(100,180,255,0.15); color: rgba(100,180,255,0.85); border: 1px solid rgba(100,180,255,0.3); }
+    .tier-uncommon   { background: rgba(130,200,130,0.15); color: rgba(130,200,130,0.85); border: 1px solid rgba(130,200,130,0.3); }
+    .tier-rare       { background: rgba(66,165,245,0.15); color: rgba(100,180,255,0.9); border: 1px solid rgba(66,165,245,0.35); }
+    .tier-superrare  { background: rgba(102,187,106,0.15); color: rgba(102,187,106,0.9); border: 1px solid rgba(102,187,106,0.35); }
+    .tier-epic       { background: rgba(239,83,80,0.15); color: rgba(239,120,120,0.9); border: 1px solid rgba(239,83,80,0.35); }
+    .tier-legendary  { background: rgba(255,183,77,0.15); color: rgba(255,183,77,0.9); border: 1px solid rgba(255,183,77,0.35); }
+    .tier-mythic     { background: rgba(206,147,216,0.15); color: rgba(206,147,216,0.9); border: 1px solid rgba(206,147,216,0.35); }
+    .section-intro {
+      margin-bottom: 16px;
+    }
+    .play-btn {
+      display: inline-block;
+      margin-top: 28px;
+      padding: 14px 48px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #0a3050;
+      background: #fff;
+      border-radius: 40px;
+      text-decoration: none;
+      box-shadow: 0 4px 32px rgba(0,100,200,0.4);
+      transition: transform 0.12s, background 0.12s;
+    }
+    .play-btn:hover { background: #d0f0ff; transform: scale(1.04); color: #0a3050; }
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(100,200,255,0.15);
+      margin: 36px 0 0;
+    }
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 40px 24px 20px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+    footer a { color: rgba(140,210,255,0.6); text-decoration: none; }
+    footer a:hover { color: #fff; }
+    @media (max-width: 639px) {
+      header { padding: 12px 16px; gap: 14px; }
+      .content { padding: 0 12px; }
+      table { font-size: 11px; }
+      th, td { padding: 6px 6px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/about.html">About</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/privacy.html">Privacy</a>
+    <a href="/terms.html">Terms</a>
+  </header>
+
+  <div class="content">
+    <h1>Species Guide</h1>
+    <p class="tagline">Every coral and fish in Reef Bloom, organized by biome.</p>
+
+    <!-- ── Coral Reef Coral ──────────────────────────────────────────────── -->
+    <h2>Coral Reef — Coral Species</h2>
+    <p class="section-intro">Coral is the foundation of your reef. Each species generates Bubble Energy passively and contributes to your reef's Harmony score. Tall coral blocks Layer A fish movement, so plan placement carefully.</p>
+
+    <table>
+      <thead>
+        <tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Tall</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Starter Coral</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>No</td><td>Your first coral. Cheap and reliable BE source.</td></tr>
+        <tr><td>Firetip Coral</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>Yes</td><td>Orange-tipped coral. Blocks Layer A fish.</td></tr>
+        <tr><td>Ghost Coral</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>No</td><td>Pale white coral. Subtle and elegant.</td></tr>
+        <tr><td>Staghorn Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>Yes</td><td><em>Acropora cervicornis</em> — branching cyan coral.</td></tr>
+        <tr><td>Finger Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>Yes</td><td><em>Porites compressa</em> — purple finger-like branches.</td></tr>
+        <tr><td>Brain Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>No</td><td><em>Platygyra spp.</em> — round, orange with maze-like ridges.</td></tr>
+        <tr><td>Lettuce Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>No</td><td><em>Agaricia spp.</em> — flat green plates.</td></tr>
+        <tr><td>Star Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>No</td><td><em>Orbicella spp.</em> — golden dome-shaped coral.</td></tr>
+        <tr><td>Bubble Coral</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>No</td><td><em>Physogyra lichtensteini</em> — inflated bubble-like polyps.</td></tr>
+        <tr><td>Candy Cane Coral</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>Yes</td><td><em>Caulastrea furcata</em> — pink striped stalks.</td></tr>
+        <tr><td>Toadstool Leather</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>No</td><td><em>Sarcophyton spp.</em> — soft green leather coral.</td></tr>
+        <tr><td>Elkhorn Coral</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>Yes</td><td><em>Acropora palmata</em> — massive branching. Blocks Layer B fish.</td></tr>
+        <tr><td>Pillar Coral</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>Yes</td><td><em>Dendrogyra cylindrus</em> — tall golden pillars. Blocks Layer B fish.</td></tr>
+        <tr><td>Table Coral</td><td><span class="tier-badge tier-legendary">Legendary</span></td><td>Lv 10</td><td>No</td><td>Costs Pearls. Wide flat table shape. Blocks Layer B fish.</td></tr>
+        <tr><td>Rainbow Coral</td><td><span class="tier-badge tier-mythic">Mythic</span></td><td>Lv 12</td><td>No</td><td>Costs Pearls. Shifts through vibrant colors.</td></tr>
+        <tr><td>Sunfire Coral</td><td><span class="tier-badge tier-mythic">Mythic</span></td><td>Lv 12</td><td>Yes</td><td>Costs Pearls. Glowing orange. Blocks Layer B fish.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ── Coral Reef Fish ────────────────────────────────────────────────── -->
+    <h2>Coral Reef — Fish Species</h2>
+    <p class="section-intro">Fish swim autonomously using boids-style flocking AI. Layer A fish are small and avoid all tall coral. Layer B fish are larger and only avoid coral marked as "blocksB" (Elkhorn, Pillar, Table, Sunfire).</p>
+
+    <table>
+      <thead>
+        <tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Layer</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Blue Chromis</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>A</td><td>Small, fast blue schooling fish.</td></tr>
+        <tr><td>Green Chromis</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>A</td><td><em>Chromis viridis</em> — green schooling fish.</td></tr>
+        <tr><td>Neon Goby</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>A</td><td><em>Elacatinus oceanops</em> — tiny dark fish with neon stripe.</td></tr>
+        <tr><td>Firefish</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>A</td><td><em>Nemateleotris magnifica</em> — pale body, fiery red tail.</td></tr>
+        <tr><td>Zebra Goby</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>A</td><td>Yellow with dark banding.</td></tr>
+        <tr><td>Cardinalfish</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>A</td><td>Pinkish-red, slow-moving.</td></tr>
+        <tr><td>Damselfish</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 2</td><td>A</td><td><em>Pomacentridae spp.</em> — bold blue territorial fish.</td></tr>
+        <tr><td>Clownfish</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>A</td><td><em>Amphiprion ocellaris</em> — iconic orange with white bands.</td></tr>
+        <tr><td>Yellow Tang</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>B</td><td><em>Zebrasoma flavescens</em> — dual-biome (Coral + Seagrass).</td></tr>
+        <tr><td>Blue Tang</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>B</td><td>Deep blue — dual-biome (Coral + Seagrass).</td></tr>
+        <tr><td>Royal Gramma</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>A</td><td><em>Gramma loreto</em> — purple and yellow bicolor.</td></tr>
+        <tr><td>Octopus</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 4</td><td>B</td><td><em>Octopus vulgaris</em> — slow, intelligent-looking cephalopod.</td></tr>
+        <tr><td>Pajama Cardinalfish</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 4</td><td>A</td><td><em>Sphaeramia nematoptera</em> — white with red spots.</td></tr>
+        <tr><td>Moorish Idol</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>B</td><td><em>Zanclus cornutus</em> — elegant black-and-white with yellow.</td></tr>
+        <tr><td>Butterflyfish</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>A</td><td><em>Chaetodon spp.</em> — white and gold disc-shaped.</td></tr>
+        <tr><td>Zebrafish</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>A</td><td><em>Danio rerio</em> — fast white-and-navy stripes.</td></tr>
+        <tr><td>Seahorse</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>A</td><td><em>Hippocampus spp.</em> — the slowest fish in the game.</td></tr>
+        <tr><td>Shrimp Goby</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>A</td><td><em>Amblyeleotris spp.</em> — pale orange, small.</td></tr>
+        <tr><td>Banggai Cardinalfish</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>A</td><td><em>Pterapogon kauderni</em> — striking black-and-white pattern.</td></tr>
+        <tr><td>Cleaner Wrasse</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 6</td><td>A</td><td><em>Labroides dimidiatus</em> — blue with yellow accents.</td></tr>
+        <tr><td>Cuttlefish</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>B</td><td><em>Sepia spp.</em> — large purple cephalopod.</td></tr>
+        <tr><td>Moray Eel</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>B</td><td><em>Gymnothorax spp.</em> — long brown serpentine swimmer.</td></tr>
+        <tr><td>Flame Angelfish</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>B</td><td><em>Centropyge loricula</em> — vivid red-orange.</td></tr>
+        <tr><td>Mandarinfish</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 8</td><td>A</td><td><em>Synchiropus splendidus</em> — psychedelic blue-orange patterns.</td></tr>
+        <tr><td>Harlequin Tuskfish</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 8</td><td>B</td><td><em>Choerodon fasciatus</em> — blue with orange stripes.</td></tr>
+        <tr><td>Dolphin</td><td><span class="tier-badge tier-legendary">Legendary</span></td><td>Lv 10</td><td>B</td><td><em>Tursiops truncatus</em> — the largest and fastest reef visitor.</td></tr>
+        <tr><td>Blue Ribbon Eel</td><td><span class="tier-badge tier-legendary">Legendary</span></td><td>Lv 10</td><td>B</td><td><em>Rhinomuraena quaesita</em> — long blue eel with yellow accents.</td></tr>
+        <tr><td>Reef Shark</td><td><span class="tier-badge tier-mythic">Mythic</span></td><td>Lv 12</td><td>B</td><td><em>Carcharhinus amblyrhynchos</em> — the apex of your reef.</td></tr>
+        <tr><td>Napoleon Wrasse</td><td><span class="tier-badge tier-mythic">Mythic</span></td><td>Lv 13</td><td>B</td><td><em>Cheilinus undulatus</em> — huge indigo wrasse.</td></tr>
+        <tr><td>Giant Moray</td><td><span class="tier-badge tier-mythic">Mythic</span></td><td>Lv 14</td><td>B</td><td><em>Gymnothorax javanicus</em> — the largest eel in the game.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ── Seagrass Basin ─────────────────────────────────────────────────── -->
+    <h2>Seagrass Basin — Vegetation</h2>
+    <p class="section-intro">The Seagrass Basin biome features underwater vegetation instead of traditional coral. These plants function the same as coral for BE generation but create a completely different visual atmosphere.</p>
+
+    <table>
+      <thead>
+        <tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Tall</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Barnacles</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>No</td><td>Rocky grey clusters. Cheap BE source.</td></tr>
+        <tr><td>Seaweed</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 1</td><td>No</td><td><em>Ulva sp.</em> — bright green sheets.</td></tr>
+        <tr><td>Red Seagrass</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>No</td><td><em>Halymenia sp.</em> — deep red fronds.</td></tr>
+        <tr><td>Seagrass</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>No</td><td><em>Halophila sp.</em> — the biome's namesake. Ripples when grazed.</td></tr>
+        <tr><td>Giant Kelp</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>Yes</td><td><em>Macrocystis pyrifera</em> — tall, blocks Layer B. Impressive visuals.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Seagrass Basin — Fish &amp; Grazers</h2>
+    <p class="section-intro">Grazers are unique to the Seagrass Basin. They generate bonus BE while feeding on seagrass patches, making them a source of passive income beyond coral. Dual-biome fish (Yellow Tang, Blue Tang) travel between Coral Reef and Seagrass automatically.</p>
+
+    <table>
+      <thead>
+        <tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Type</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Pipefish</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>Grazer</td><td><em>Syngnathus spp.</em> — long, thin, slow green fish.</td></tr>
+        <tr><td>Sand Dollar</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>Grazer</td><td><em>Echinarachnius parma</em> — nearly stationary bottom feeder.</td></tr>
+        <tr><td>Horseshoe Crab</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>Benthic</td><td><em>Limulus polyphemus</em> — armored bottom crawler.</td></tr>
+        <tr><td>Queen Conch</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 4</td><td>Grazer</td><td><em>Aliger gigas</em> — large slow-moving shell.</td></tr>
+        <tr><td>Pufferfish</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>Grazer</td><td><em>Tetraodontidae spp.</em> — round, spiny, and charming.</td></tr>
+        <tr><td>Spotted Eagle Ray</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>Fish</td><td><em>Aetobatus narinari</em> — wide dark ray with white spots.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ── Deep Twilight ──────────────────────────────────────────────────── -->
+    <h2>Deep Twilight — Coral</h2>
+    <p class="section-intro">The Deep Twilight biome features bioluminescent coral that glows softly in deep water. These species create an otherworldly atmosphere and tend to unlock at higher levels.</p>
+
+    <table>
+      <thead>
+        <tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Tall</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Twilight Brain Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 6</td><td>No</td><td>Glowing cyan brain coral for the deep.</td></tr>
+        <tr><td>Phantom Polyp</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 8</td><td>Yes</td><td>Tall, purple, bioluminescent.</td></tr>
+        <tr><td>Midnight Table Coral</td><td><span class="tier-badge tier-legendary">Legendary</span></td><td>Lv 12</td><td>No</td><td>Costs Pearls. Blue glowing table. Blocks Layer B.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Event-Exclusive Species</h2>
+    <p class="section-intro">Some species are only available during limited-time seasonal events. These cannot be obtained outside their event period, making them the rarest additions to your reef.</p>
+
+    <table>
+      <thead>
+        <tr><th>Species</th><th>Tier</th><th>Type</th><th>Event</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Pearl Organ Pipe</td><td><span class="tier-badge tier-legendary">Legendary</span></td><td>Coral</td><td>Pearl Tide 2026</td><td><em>Tubipora musica (pearl form)</em> — tall, pearlescent white organ pipe coral. Event pass exclusive.</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:24px;">New species are added regularly through updates and seasonal events. Check the <a href="/guide.html">Game Guide</a> for tips on building your reef, or jump in and start discovering species yourself.</p>
+
+    <div style="text-align:center;">
+      <a class="play-btn" href="/">Play Now</a>
+    </div>
+
+    <hr class="divider">
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <!-- Cookie consent banner -->
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>

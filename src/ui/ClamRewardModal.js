@@ -2,13 +2,11 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { SCREEN_W, SCREEN_H, COLORS, FISH_SPECIES } from '../constants.js';
 
 const FONT      = 'system-ui, -apple-system, sans-serif';
-const WATCH_MS  = 30000;  // ad viewing duration before rewards shown
 const LINGER_MS = 4000;   // auto-dismiss after this long in rewards phase
 
 /**
- * ClamRewardModal — two-phase overlay:
- *   'watching'  → progress bar fills over WATCH_MS (simulates ad)
- *   'rewards'   → shows BE / pearls / fish earned, auto-dismisses
+ * ClamRewardModal — shows BE / pearls / fish earned, auto-dismisses.
+ * Rewarded ads will be re-added via H5 Games Ads API once AdSense is approved.
  */
 export class ClamRewardModal {
   constructor() {
@@ -35,14 +33,13 @@ export class ClamRewardModal {
     this._panel.on('pointerdown', () => { if (this._phase === 'rewards') this._dismiss(); });
   }
 
-  /** Start watching phase. rewards is the already-rolled package. onDone called on dismiss. */
+  /** Show rewards immediately. onDone called on dismiss. */
   show(rewards, onDone) {
     this._rewards  = rewards;
     this._onDone   = onDone;
-    this._phase    = 'watching';
+    this._phase    = 'rewards';
     this._timer    = 0;
     this.container.visible = true;
-    window._rfShowAdOverlay?.(WATCH_MS);
     this._render();
   }
 
@@ -50,17 +47,7 @@ export class ClamRewardModal {
     if (this._phase === 'hidden') return;
     this._timer += deltaMS;
 
-    if (this._phase === 'watching') {
-      // Keep the HTML timer bar in sync with the actual elapsed time
-      const bar = document.getElementById('ad-timer-bar');
-      if (bar) bar.style.width = Math.min(100, (this._timer / WATCH_MS) * 100) + '%';
-      if (this._timer >= WATCH_MS) {
-        window._rfHideAdOverlay?.();
-        this._phase = 'rewards';
-        this._timer = 0;
-        this._render();
-      }
-    } else if (this._phase === 'rewards') {
+    if (this._phase === 'rewards') {
       if (this._timer >= LINGER_MS) this._dismiss();
     }
   }
@@ -75,18 +62,11 @@ export class ClamRewardModal {
   }
 
   _render() {
-    // During watching the real ad is in the HTML overlay; only draw a minimal
-    // canvas backdrop so the game behind is dimmed / non-interactive.
     this._overlay.clear();
-    this._overlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0x000000, alpha: this._phase === 'watching' ? 0 : 0.55 });
+    this._overlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0x000000, alpha: 0.55 });
 
     this._panel.clear();
     this._texts.removeChildren();
-
-    if (this._phase === 'watching') {
-      // Minimal backing — real ad is rendered in the HTML layer above the canvas
-      return;
-    }
 
     const pw = 320, ph = 200;
     const px = SCREEN_W / 2 - pw / 2;
