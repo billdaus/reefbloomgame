@@ -52,6 +52,7 @@ function waitForBegin() {
     const btn = document.getElementById('start-btn');
     if (!btn) { resolve(); return; }
     btn.addEventListener('click', () => {
+      document.body.classList.add('game-active');
       const sp = document.getElementById('start-page');
       if (sp) {
         sp.classList.add('fade-out');
