@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Learn about real coral reefs — why they matter, the species that call them home, the threats they face, and how Reef Bloom brings marine education to your browser." />
+  <title>Reef Education — Reef Bloom</title>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(175deg, #70d4f8 0%, #28a0e0 30%, #1468b0 65%, #0a3050 100%);
+      font-family: system-ui, -apple-system, sans-serif;
+      color: rgba(255,255,255,0.88);
+      padding: 0 0 80px;
+    }
+    .reef-silhouette {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 100px;
+      background: linear-gradient(180deg, transparent 0%, rgba(5,20,45,0.55) 35%, rgba(4,15,32,0.96) 100%);
+      clip-path: polygon(
+        0% 58%, 3% 38%, 6% 54%, 9% 28%, 12% 46%,
+        15% 22%, 18% 40%, 21% 18%, 24% 36%, 27% 12%,
+        30% 32%, 33%  8%, 36% 26%, 39%  6%, 42% 20%,
+        45%  4%, 48% 16%, 51%  2%, 54% 14%, 57%  5%,
+        60% 18%, 63%  7%, 66% 24%, 69% 10%, 72% 28%,
+        75% 16%, 78% 33%, 81% 20%, 84% 38%, 87% 26%,
+        90% 43%, 93% 30%, 96% 48%, 100% 33%, 100% 100%, 0% 100%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+    header {
+      background: rgba(4, 18, 50, 0.55);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(100,200,255,0.18);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    header a {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: 1px;
+      transition: color 0.15s;
+    }
+    header a:hover { color: #fff; }
+    header .site-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 2px;
+      text-decoration: none;
+    }
+    .content {
+      position: relative;
+      max-width: 760px;
+      margin: 48px auto 0;
+      padding: 0 24px;
+      z-index: 1;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .tagline {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 1px;
+      margin-bottom: 40px;
+    }
+    h2 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(140,210,255,0.85);
+      margin: 40px 0 12px;
+    }
+    h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.92);
+      margin: 28px 0 8px;
+    }
+    p {
+      font-size: 15px;
+      line-height: 1.85;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 14px;
+    }
+    li {
+      font-size: 14px;
+      line-height: 1.75;
+      color: rgba(255,255,255,0.75);
+    }
+    ul, ol {
+      padding-left: 22px;
+      margin-top: 6px;
+      margin-bottom: 14px;
+    }
+    li { margin-bottom: 6px; }
+    a { color: rgba(140,210,255,0.9); }
+    a:hover { color: #fff; }
+    strong { color: rgba(255,255,255,0.92); }
+    em { color: rgba(180,220,255,0.7); font-style: italic; }
+    .fact-box {
+      background: rgba(4, 18, 50, 0.5);
+      border: 1px solid rgba(100,200,255,0.18);
+      border-radius: 14px;
+      padding: 18px 22px;
+      margin: 18px 0;
+    }
+    .fact-box .fact-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: rgba(140,210,255,0.6);
+      margin-bottom: 6px;
+    }
+    .fact-box p { margin-bottom: 0; font-size: 14px; }
+    .species-card {
+      background: rgba(4, 18, 50, 0.4);
+      border: 1px solid rgba(100,200,255,0.12);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 10px;
+    }
+    .species-card h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 2px;
+    }
+    .species-card .sci-name {
+      font-size: 12px;
+      font-style: italic;
+      color: rgba(140,210,255,0.55);
+      margin-bottom: 6px;
+    }
+    .species-card p { font-size: 13px; margin-bottom: 0; }
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(100,200,255,0.12);
+      margin: 40px 0;
+    }
+    .play-btn {
+      display: inline-block;
+      margin-top: 28px;
+      padding: 14px 48px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #0a3050;
+      background: #fff;
+      border-radius: 40px;
+      text-decoration: none;
+      box-shadow: 0 4px 32px rgba(0,100,200,0.4);
+      transition: transform 0.12s, background 0.12s;
+    }
+    .play-btn:hover { background: #d0f0ff; transform: scale(1.04); color: #0a3050; }
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 40px 24px 20px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+    footer a { color: rgba(140,210,255,0.6); text-decoration: none; }
+    footer a:hover { color: #fff; }
+    @media (max-width: 639px) {
+      header { padding: 12px 16px; gap: 14px; }
+      .content { padding: 0 16px; }
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/about.html">About</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <h1>Reef Education</h1>
+    <p class="tagline">The real science behind the game.</p>
+
+    <!-- ── Why Reefs Matter ──────────────────────────────────────────────── -->
+    <h2>Why Coral Reefs Matter</h2>
+    <p>Coral reefs are one of the most biodiverse ecosystems on Earth. Often called the "rainforests of the sea," they cover less than 1% of the ocean floor yet support roughly 25% of all marine species. They provide shelter, food, and breeding grounds for thousands of fish, invertebrates, and marine mammals — many of which appear in Reef Bloom.</p>
+
+    <p>Beyond biodiversity, reefs protect coastlines from storms and erosion, support fishing communities that feed hundreds of millions of people, and generate billions of dollars in tourism each year. The calcium carbonate structures that corals build over centuries act as natural breakwaters, absorbing wave energy before it reaches shore.</p>
+
+    <div class="fact-box">
+      <div class="fact-label">DID YOU KNOW</div>
+      <p>The Great Barrier Reef off Australia's coast is the largest living structure on Earth — it stretches over 2,300 kilometers and is visible from space.</p>
+    </div>
+
+    <!-- ── The Three Reef Zones ──────────────────────────────────────────── -->
+    <h2>The Three Reef Zones in Reef Bloom</h2>
+    <p>Reef Bloom's three biomes are inspired by real marine environments, each home to distinct communities of life.</p>
+
+    <h3>Coral Reef — The Sunlit Shallows</h3>
+    <p>The shallow coral reef is where sunlight penetrates fully, enabling the photosynthetic algae (zooxanthellae) living inside coral tissue to produce energy. This symbiotic relationship is the engine of reef life — corals provide shelter for the algae, and the algae provide up to 90% of the coral's energy through photosynthesis. When this partnership breaks down due to heat stress, coral bleaching occurs.</p>
+    <p>In real reefs, staghorn coral (<em>Acropora cervicornis</em>) and elkhorn coral (<em>Acropora palmata</em>) are among the most important reef-building species. Both appear in Reef Bloom and both are listed as critically endangered in the wild due to disease, bleaching, and habitat loss. Brain coral (<em>Platygyra spp.</em>) can live for hundreds of years and is one of the hardiest reef species, while pillar coral (<em>Dendrogyra cylindrus</em>) grows in rare columnar formations and is critically endangered.</p>
+
+    <h3>Seagrass Basin — The Coastal Meadows</h3>
+    <p>Seagrass meadows are underwater grasslands found in shallow coastal waters. They are among the most productive ecosystems on the planet, capturing carbon 35 times faster than tropical rainforests per unit area. Seagrass beds stabilize sediment, filter water, and serve as nursery habitat for countless juvenile fish.</p>
+    <p>In Reef Bloom, the Seagrass Basin introduces grazer species — creatures that feed on vegetation and generate bonus energy. This mirrors real ecology: herbivorous grazers like parrotfish (<em>Scaridae spp.</em>), sea urchins (<em>Diadema antillarum</em>), and green sea turtles (<em>Chelonia mydas</em>) play a critical role in preventing algae from overgrowing and smothering coral. Without grazers, reefs can shift from coral-dominated to algae-dominated states — a process known as a phase shift.</p>
+
+    <h3>Deep Twilight — The Mesophotic Zone</h3>
+    <p>Below roughly 40 meters, sunlight fades and a different world begins. The mesophotic (twilight) zone hosts specialized corals and fish adapted to low light. Many creatures here are bioluminescent — they produce their own light through chemical reactions to communicate, attract prey, or camouflage against faint downwelling light.</p>
+    <p>Reef Bloom's Deep Twilight biome features species inspired by real deep-sea creatures: anglerfish (<em>Melanocetus johnsonii</em>) use a bioluminescent lure dangling from their head to attract prey in total darkness. Hatchetfish (<em>Argyropelecus spp.</em>) use ventral photophores to match the faint light from above, rendering them invisible to predators below. The barreleye (<em>Macropinna microstoma</em>) has a transparent head and tubular eyes that can rotate upward to spot the silhouettes of prey above.</p>
+
+    <div class="fact-box">
+      <div class="fact-label">DID YOU KNOW</div>
+      <p>The oarfish (<em>Regalecus glesne</em>) is the longest bony fish in the world, reaching lengths over 11 meters. Sightings of oarfish are thought to have inspired ancient sea serpent legends. You can add one to your Deep Twilight reef at level 13.</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- ── Real Species in the Game ──────────────────────────────────────── -->
+    <h2>Real Species Featured in Reef Bloom</h2>
+    <p>Many of the species in Reef Bloom are modeled after real marine animals. Here's a look at the science behind some of the most notable ones.</p>
+
+    <h3>Coral Species</h3>
+
+    <div class="species-card">
+      <h4>Staghorn Coral</h4>
+      <div class="sci-name">Acropora cervicornis</div>
+      <p>One of the most important reef-building corals in the Caribbean. Staghorn coral grows in branching formations up to 2 meters tall and can grow up to 20 cm per year — one of the fastest-growing corals. It was listed as critically endangered in 2008 due to white-band disease and bleaching. Restoration programs now grow staghorn fragments in underwater nurseries before transplanting them onto degraded reefs.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Elkhorn Coral</h4>
+      <div class="sci-name">Acropora palmata</div>
+      <p>Named for its resemblance to elk antlers, this massive branching coral was once the dominant species on Caribbean reefs. A single colony can grow several meters across and provides critical habitat for fish and lobsters in its branching structure. Elkhorn coral populations have declined by over 90% since the 1980s, making it one of the most endangered coral species in the Atlantic.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Brain Coral</h4>
+      <div class="sci-name">Platygyra spp.</div>
+      <p>Brain corals are among the hardiest and longest-lived reef organisms. Their spherical shape with meandering grooves resembles a human brain. Some brain coral colonies have been aged at over 900 years old. They grow slowly — only a few millimeters per year — but their dense calcium carbonate skeleton makes them highly resistant to storm damage.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Pillar Coral</h4>
+      <div class="sci-name">Dendrogyra cylindrus</div>
+      <p>One of the rarest corals in the Caribbean, pillar coral grows in tall, cylindrical columns that can reach 3 meters high. Unlike most corals, its polyps are often extended during the day, giving it a fuzzy appearance. Pillar coral is critically endangered — a disease outbreak called Stony Coral Tissue Loss Disease has devastated remaining populations since 2014.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Bubble Coral</h4>
+      <div class="sci-name">Physogyra lichtensteini</div>
+      <p>This coral inflates grape-sized vesicles during the day to maximize surface area for its symbiotic algae to photosynthesize. At night, the bubbles retract and the coral extends sweeper tentacles up to 10 cm long to capture passing zooplankton. It's a beautiful example of how corals can be both photosynthetic and predatory.</p>
+    </div>
+
+    <h3>Fish Species</h3>
+
+    <div class="species-card">
+      <h4>Clownfish</h4>
+      <div class="sci-name">Amphiprion ocellaris</div>
+      <p>Perhaps the most famous reef fish, clownfish live in a mutualistic relationship with sea anemones. The anemone's stinging tentacles protect the clownfish from predators, while the clownfish defends the anemone from parasites and provides nutrients through its waste. Clownfish are protandrous hermaphrodites — all are born male, and the dominant individual in a group can change to female if the existing female dies.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Yellow Tang</h4>
+      <div class="sci-name">Zebrasoma flavescens</div>
+      <p>Native to Hawaiian reefs, yellow tangs are herbivorous grazers that play a vital role in controlling algae growth on coral. Their bright yellow coloration fades to a dull olive at night as a form of camouflage. They have a sharp, retractable spine near their tail — called a scalpel — which they use for defense. In Reef Bloom, yellow tangs are dual-biome fish that travel between Coral Reef and Seagrass Basin.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Moorish Idol</h4>
+      <div class="sci-name">Zanclus cornutus</div>
+      <p>Often confused with butterflyfish, the Moorish idol is the sole member of its family (Zanclidae). It's instantly recognizable by its elongated dorsal fin that trails behind like a pennant. Moorish idols are notoriously difficult to keep in captivity because they have a highly specialized diet of sponges and tunicates. In the wild, they can be found from East Africa to Hawaii.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Mandarinfish</h4>
+      <div class="sci-name">Synchiropus splendidus</div>
+      <p>Widely considered one of the most beautiful fish in the ocean, the mandarinfish has psychedelic blue, orange, and green patterning. Instead of scales, it secretes a thick, foul-smelling mucus coating that deters predators and protects against parasites. Mandarinfish are one of only two known vertebrate species that produce blue pigment — most blue animals achieve their color through structural effects rather than true pigmentation.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Seahorse</h4>
+      <div class="sci-name">Hippocampus spp.</div>
+      <p>Seahorses are among the most unusual fish in the ocean. They swim upright, have no stomach (food passes through their digestive system so quickly that they must eat almost constantly), and are the only animal family where males become pregnant. The male seahorse carries fertilized eggs in a specialized brood pouch for 2-4 weeks before giving birth to fully formed miniature seahorses.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Napoleon Wrasse</h4>
+      <div class="sci-name">Cheilinus undulatus</div>
+      <p>Also known as the humphead wrasse, this is one of the largest reef fish in the world, reaching over 2 meters in length and 190 kilograms. It's one of the few predators of toxic species like crown-of-thorns starfish, box jellyfish, and sea hares, making it ecologically important for reef health. The Napoleon wrasse is endangered due to overfishing and is protected under international trade agreements.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Manta Ray</h4>
+      <div class="sci-name">Mobula birostris</div>
+      <p>The oceanic manta ray is the largest ray in the world, with wingspans reaching 7 meters. Despite their size, mantas are gentle filter feeders that consume tiny plankton by swimming with their mouths open. They have the largest brain-to-body ratio of any fish and have demonstrated self-recognition in mirror tests — a trait associated with high intelligence. In Reef Bloom, the manta ray is a legendary premium visitor in the Seagrass Basin.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Green Sea Turtle</h4>
+      <div class="sci-name">Chelonia mydas</div>
+      <p>Green sea turtles are among the oldest reptile lineages on Earth, with ancestors dating back over 100 million years. Despite their name, they aren't green on the outside — the name comes from the green color of their body fat, tinted by their herbivorous diet of seagrass and algae. They can migrate thousands of kilometers between feeding and nesting grounds and return to the exact beach where they were born to lay their own eggs. Green sea turtles are endangered worldwide.</p>
+    </div>
+
+    <h3>Deep-Sea Species</h3>
+
+    <div class="species-card">
+      <h4>Anglerfish</h4>
+      <div class="sci-name">Melanocetus johnsonii</div>
+      <p>Deep-sea anglerfish are ambush predators that dangle a bioluminescent lure from a modified dorsal spine. In the pitch-black deep ocean, prey are attracted to the light and swim directly into the anglerfish's enormous mouth. Some anglerfish species have one of the most extreme forms of sexual dimorphism in nature — males are tiny parasites that fuse permanently to the much larger female's body, eventually sharing her bloodstream.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Barreleye</h4>
+      <div class="sci-name">Macropinna microstoma</div>
+      <p>The barreleye is one of the ocean's strangest fish. It has a completely transparent head filled with fluid, through which you can see its tubular green eyes. The eyes can rotate from pointing forward to pointing straight up, allowing the barreleye to scan for the silhouettes of jellyfish and siphonophores above it. It then steals food caught in their tentacles — navigating through stinging tentacles using its transparent head shield.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Giant Squid</h4>
+      <div class="sci-name">Architeuthis dux</div>
+      <p>For centuries, the giant squid was considered a myth. It can grow up to 13 meters long and has the largest eyes of any living animal — up to 27 cm in diameter, roughly the size of a dinner plate. These enormous eyes are adapted to detect the faint bioluminescence of sperm whales approaching from the darkness. The first footage of a living giant squid in its natural habitat wasn't captured until 2012.</p>
+    </div>
+
+    <div class="species-card">
+      <h4>Gulper Eel</h4>
+      <div class="sci-name">Eurypharynx pelecanoides</div>
+      <p>The gulper eel has a jaw that can open wide enough to swallow prey much larger than itself — its mouth is loosely hinged and can expand like a pelican's pouch. Its stomach can also stretch to accommodate enormous meals, an adaptation for the deep ocean where food encounters are rare and unpredictable. Despite its fearsome mouth, the gulper eel primarily feeds on small crustaceans.</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- ── Threats to Reefs ──────────────────────────────────────────────── -->
+    <h2>Threats Facing Coral Reefs Today</h2>
+    <p>Coral reefs are declining rapidly worldwide. Scientists estimate that 50% of the world's coral has been lost since the 1950s, and projections suggest that 70-90% of remaining reefs could disappear by 2050 if current trends continue.</p>
+
+    <h3>Climate Change and Bleaching</h3>
+    <p>Rising ocean temperatures are the single greatest threat to coral reefs. When water temperatures rise just 1-2 degrees Celsius above normal summer maximums, corals expel their symbiotic algae in a stress response called bleaching. Without these algae, corals turn white and begin to starve. If temperatures don't return to normal within weeks, the coral dies. Mass bleaching events — affecting entire reef systems at once — have become increasingly frequent, occurring in 2016, 2017, 2020, 2022, and 2024.</p>
+
+    <h3>Ocean Acidification</h3>
+    <p>As the ocean absorbs CO2 from the atmosphere, seawater becomes more acidic. This reduces the availability of carbonate ions that corals need to build their calcium carbonate skeletons. At projected CO2 levels, reefs may begin dissolving faster than corals can build them by the end of the century.</p>
+
+    <h3>Pollution and Runoff</h3>
+    <p>Agricultural runoff carries excess nutrients (nitrogen and phosphorus) into coastal waters, fueling algae blooms that smother coral. Sediment from coastal development clouds the water and blocks the sunlight corals need. Plastic pollution entangles marine life and introduces toxins into the food chain.</p>
+
+    <h3>Overfishing</h3>
+    <p>Removing too many fish disrupts the ecological balance of a reef. Herbivorous fish like parrotfish and tangs are essential for controlling algae growth. When these grazers are overfished, algae can outcompete and overgrow coral — a process that is very difficult to reverse.</p>
+
+    <div class="fact-box">
+      <div class="fact-label">IN REEF BLOOM</div>
+      <p>The Harmony mechanic in Reef Bloom is inspired by real reef ecology. Biodiversity — having many different species — is what keeps a reef healthy. A reef with high Harmony is vibrant and colorful; a reef with low Harmony is washed out and struggling. The game rewards the same thing that real reefs need: balance, diversity, and stewardship.</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- ── What You Can Do ───────────────────────────────────────────────── -->
+    <h2>What You Can Do</h2>
+    <p>While Reef Bloom is a game, the species and ecosystems it depicts are real and under real threat. Here are ways you can help:</p>
+    <ul>
+      <li><strong>Reduce your carbon footprint.</strong> Climate change is the biggest threat to reefs. Reducing energy consumption, supporting clean energy, and driving less all help lower ocean temperatures.</li>
+      <li><strong>Choose sustainable seafood.</strong> Overfishing removes the grazers that keep reefs healthy. Look for sustainably sourced fish when shopping or dining.</li>
+      <li><strong>Reduce plastic use.</strong> Plastic waste that enters the ocean breaks down into microplastics that are ingested by reef organisms throughout the food chain.</li>
+      <li><strong>Support reef conservation.</strong> Organizations like the Coral Restoration Foundation, Reef Check, and the Ocean Conservancy work directly on reef protection and restoration.</li>
+      <li><strong>Learn and share.</strong> Understanding why reefs matter is the first step. Share what you've learned with others — awareness drives action.</li>
+    </ul>
+
+    <p>Reef Bloom was created to spark curiosity about marine life. Every species in the game has a real-world counterpart with a fascinating story. We hope that building your virtual reef inspires you to care about the real ones.</p>
+
+    <div style="text-align:center;">
+      <a class="play-btn" href="/">Play Now</a>
+    </div>
+
+    <hr class="divider">
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <!-- Cookie consent banner -->
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
