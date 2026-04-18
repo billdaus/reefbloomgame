@@ -2,6 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { SCREEN_W, HUD_H, IS_PORTRAIT, COLORS } from '../constants.js';
 import { state } from '../state.js';
 import { eventDaysRemaining, isSetComplete } from '../systems/EventSystem.js';
+import { hasUnreadNewsletter } from '../systems/NewsletterSystem.js';
 
 const FONT = 'system-ui, -apple-system, sans-serif';
 
@@ -9,12 +10,13 @@ const FONT = 'system-ui, -apple-system, sans-serif';
  * HUD — top bar showing BE, Harmony bar, and Level.
  */
 export class HUD {
-  constructor(onHome, onPearlShop, onJournal, onAccount, onEventBtn) {
-    this._onHome      = onHome;
-    this._onPearlShop = onPearlShop;
-    this._onJournal   = onJournal;
-    this._onAccount   = onAccount;
-    this._onEventBtn  = onEventBtn;
+  constructor(onHome, onPearlShop, onJournal, onAccount, onEventBtn, onNewsletter) {
+    this._onHome       = onHome;
+    this._onPearlShop  = onPearlShop;
+    this._onJournal    = onJournal;
+    this._onAccount    = onAccount;
+    this._onEventBtn   = onEventBtn;
+    this._onNewsletter = onNewsletter;
     this.container = new Container();
     this._bg          = new Graphics();
     this._beText      = null;
@@ -151,6 +153,9 @@ export class HUD {
 
     // ── Home button ──────────────────────────────────────────────────────────
     this._buildHomeBtn();
+
+    // ── Newsletter button (floats below HUD, left side) ─────────────────────
+    this._buildNewsletterBtn();
 
     // ── Level-up banner ──────────────────────────────────────────────────────
     this._lvlUpBanner = new Container();
@@ -346,6 +351,63 @@ export class HUD {
 
     this.container.addChild(btn);
   }
+
+  _buildNewsletterBtn() {
+    const W = IS_PORTRAIT ? 72 : 36;
+    const H = IS_PORTRAIT ? 22 : 30;
+    const R = IS_PORTRAIT ? 11 : 8;
+    // Portrait: below HUD, left side.
+    // Landscape: inside HUD, between harmony readout and market button.
+    const bx = IS_PORTRAIT ? 6 : 490;
+    const by = IS_PORTRAIT ? HUD_H + 4 : (HUD_H - H) / 2;
+
+    const bg = new Graphics();
+    const drawBg = (hover) => {
+      bg.clear();
+      bg.roundRect(0, 0, W, H, R)
+        .fill({ color: hover ? 0x1a3040 : 0x0f1c2a, alpha: hover ? 1 : 0.9 });
+      bg.roundRect(0, 0, W, H, R)
+        .stroke({ color: COLORS.panel_border, width: 1, alpha: 0.8 });
+    };
+    drawBg(false);
+
+    const label = new Text({
+      text: IS_PORTRAIT ? '📰  News' : '📰',
+      style: { fontSize: IS_PORTRAIT ? 11 : 14, fill: 0xaaccdd, fontFamily: FONT, fontWeight: '600' },
+    });
+    label.x = (W - label.width) / 2;
+    label.y = (H - label.height) / 2;
+
+    const dot = new Graphics();
+    const dotX = W - 5, dotY = 5;
+    dot.circle(dotX, dotY, 4).fill({ color: 0xff5252, alpha: 1 });
+    dot.circle(dotX, dotY, 4).stroke({ color: 0xffffff, width: 1, alpha: 0.85 });
+    dot.visible = false;
+
+    const btn = new Container();
+    btn.addChild(bg);
+    btn.addChild(label);
+    btn.addChild(dot);
+    btn.x = bx;
+    btn.y = by;
+    btn.interactive = true;
+    btn.cursor = 'pointer';
+    btn.on('pointerover', () => { drawBg(true);  label.style.fill = 0xffffff; });
+    btn.on('pointerout',  () => { drawBg(false); label.style.fill = 0xaaccdd; });
+    btn.on('pointerdown', () => this._onNewsletter?.());
+
+    this._newsletterBtn    = btn;
+    this._newsletterDot    = dot;
+    this.container.addChild(btn);
+    this._refreshNewsletterBadge();
+  }
+
+  _refreshNewsletterBadge() {
+    if (this._newsletterDot) this._newsletterDot.visible = hasUnreadNewsletter();
+  }
+
+  /** Public — call after newsletter read state changes. */
+  refreshNewsletterBadge() { this._refreshNewsletterBadge(); }
 
   _buildHomeBtn() {
     const W = IS_PORTRAIT ? 38 : 64, H = IS_PORTRAIT ? 26 : 30, R = 8;

@@ -70,9 +70,10 @@ export function saveGame() {
   full.pearls         = state.pearls;
   full.clamWatchCount = state.clamWatchCount;
   full.clamWatchDate  = state.clamWatchDate;
-  full.quest          = state.quest;
-  full.event          = state.event;
-  full.account        = state.account;
+  full.quest              = state.quest;
+  full.event              = state.event;
+  full.account            = state.account;
+  full.newsletterLastRead = state.newsletterLastRead;
 
   // Write current biome's grid state
   full[_currentBiome] = biomeData;
@@ -107,9 +108,10 @@ export function loadGame() {
     pearls:         full.pearls,
     clamWatchCount: full.clamWatchCount,
     clamWatchDate:  full.clamWatchDate,
-    quest:          full.quest   ?? null,
-    event:          full.event   ?? null,
-    account:        full.account ?? null,
+    quest:              full.quest              ?? null,
+    event:              full.event              ?? null,
+    account:            full.account            ?? null,
+    newsletterLastRead: full.newsletterLastRead ?? '',
     grid:           biomeData.grid           ?? null,
     placedCoral:    biomeData.placedCoral    ?? [],
     fishTypes:      biomeData.fishTypes      ?? [],
