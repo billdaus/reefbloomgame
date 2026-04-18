@@ -2,7 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import {
   PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT,
   COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
-  BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL,
+  BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, TIER,
 } from '../constants.js';
 // Note: SEAGRASS_UNLOCK_LEVEL / DEEP_TWILIGHT_UNLOCK_LEVEL kept for lock-state tracking
 import { state } from '../state.js';
@@ -22,13 +22,34 @@ function _matchesBiome(spec, biome) {
   return false;
 }
 
+// Tier ordering for sort: common → mythic
+const TIER_ORDER = {
+  [TIER.COMMON]: 0, [TIER.UNCOMMON]: 1, [TIER.RARE]: 2, [TIER.SUPER_RARE]: 3,
+  [TIER.EPIC]: 4, [TIER.LEGENDARY]: 5, [TIER.MYTHIC]: 6,
+};
+
+// Numeric cost for sort; pearl-priced species rank after bubble-priced ones.
+function _sortCost(spec, type) {
+  if (spec.pearlCost) return 1_000_000 + spec.pearlCost;
+  const table = type === 'coral' ? CORAL_COST : FISH_COST;
+  return table[spec.tier] ?? 9999;
+}
+
+const SORT_MODES = [
+  { key: 'default', label: 'Default' },
+  { key: 'tier',    label: 'Tier'    },
+  { key: 'cost',    label: 'Cost'    },
+  { key: 'name',    label: 'Name'    },
+];
+
 const ROW_H          = 48;
 const ICON_SZ        = 30;
 const PAD            = 10;
 const BIOME_HEADER_H = 28;
 const REMOVE_BTN_H   = 36;
-const SCROLL_TOP     = PANEL_Y + BIOME_HEADER_H + REMOVE_BTN_H + 6;
-const SCROLL_AREA_H  = PANEL_H - BIOME_HEADER_H - 4 - REMOVE_BTN_H - 6;
+const SORT_ROW_H     = 24;
+const SCROLL_TOP     = PANEL_Y + BIOME_HEADER_H + REMOVE_BTN_H + SORT_ROW_H + 6;
+const SCROLL_AREA_H  = PANEL_H - BIOME_HEADER_H - 4 - REMOVE_BTN_H - SORT_ROW_H - 6;
 
 /**
  * PlacementMenu — scrollable right panel for species selection.
@@ -69,6 +90,11 @@ export class PlacementMenu {
     // Biome header container (rebuilt on biome travel)
     this._headerC = new Container();
 
+    // Sort controls (session-only; resets on reload)
+    this._sortMode = 'default';
+    this._sortC    = new Container();
+    this._sortChips = [];   // { key, bg, label }
+
     this._scrollContent = new Container();
     this._scrollContent.x = PANEL_X;
     this._scrollContent.y = SCROLL_TOP;
@@ -108,6 +134,10 @@ export class PlacementMenu {
     removeBtnHit.cursor = 'pointer';
     removeBtnHit.on('pointerdown', () => this._toggleRemoveMode());
     this.container.addChild(removeBtnHit);
+
+    // 3b. Sort chip row
+    this.container.addChild(this._sortC);
+    this._buildSortRow();
 
     // 3. Scrollable content
     this._scrollContent.x = PANEL_X;
@@ -165,42 +195,107 @@ export class PlacementMenu {
     let cursor = PAD;
     const biome = state.biome;
 
-    if (biome === 'seagrass') {
-      cursor = this._sectionLabel('SEAGRASS', cursor);
-      Object.values(CORAL_SPECIES)
-        .filter(s => _matchesBiome(s, 'seagrass'))
-        .forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
-      cursor += PAD * 2;
-      cursor = this._sectionLabel('FISH — SEAGRASS BASIN', cursor);
-      Object.values(FISH_SPECIES)
-        .filter(s => _matchesBiome(s, 'seagrass'))
-        .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
-    } else if (biome === 'deepTwilight') {
-      cursor = this._sectionLabel('DEEP STRUCTURES', cursor);
-      Object.values(CORAL_SPECIES)
-        .filter(s => _matchesBiome(s, 'deepTwilight'))
-        .forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
-      cursor += PAD * 2;
-      cursor = this._sectionLabel('FISH — DEEP TWILIGHT', cursor);
-      Object.values(FISH_SPECIES)
-        .filter(s => _matchesBiome(s, 'deepTwilight'))
-        .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
-    } else {
-      // coral (default)
-      cursor = this._sectionLabel('CORAL', cursor);
-      Object.values(CORAL_SPECIES)
-        .filter(s => _matchesBiome(s, 'coral'))
-        .forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
-      cursor += PAD * 2;
-      cursor = this._sectionLabel('FISH — CORAL REEF', cursor);
-      Object.values(FISH_SPECIES)
-        .filter(s => _matchesBiome(s, 'coral'))
-        .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
-    }
+    const coralLabel =
+      biome === 'seagrass'     ? 'SEAGRASS'
+    : biome === 'deepTwilight' ? 'DEEP STRUCTURES'
+    :                            'CORAL';
+    const fishLabel =
+      biome === 'seagrass'     ? 'FISH — SEAGRASS BASIN'
+    : biome === 'deepTwilight' ? 'FISH — DEEP TWILIGHT'
+    :                            'FISH — CORAL REEF';
+
+    cursor = this._sectionLabel(coralLabel, cursor);
+    this._sortedSpecies(CORAL_SPECIES, 'coral', biome)
+      .forEach(spec => { cursor = this._addRow('coral', spec, cursor); });
+    cursor += PAD * 2;
+    cursor = this._sectionLabel(fishLabel, cursor);
+    this._sortedSpecies(FISH_SPECIES, 'fish', biome)
+      .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
 
     cursor += PAD;
     this._contentH   = cursor;
     this._maxScrollY = Math.max(0, this._contentH - SCROLL_AREA_H);
+  }
+
+  _sortedSpecies(collection, type, biome) {
+    const list = Object.values(collection).filter(s => _matchesBiome(s, biome));
+    switch (this._sortMode) {
+      case 'tier':
+        return list.sort((a, b) =>
+          (TIER_ORDER[a.tier] ?? 99) - (TIER_ORDER[b.tier] ?? 99)
+          || a.name.localeCompare(b.name));
+      case 'cost':
+        return list.sort((a, b) =>
+          _sortCost(a, type) - _sortCost(b, type)
+          || a.name.localeCompare(b.name));
+      case 'name':
+        return list.sort((a, b) => a.name.localeCompare(b.name));
+      default:
+        return list;
+    }
+  }
+
+  _buildSortRow() {
+    this._sortC.removeChildren();
+    this._sortChips = [];
+
+    const rowY   = PANEL_Y + BIOME_HEADER_H + REMOVE_BTN_H + 2;
+    const padX   = 6;
+    const gap    = 4;
+    const usable = PANEL_W - padX * 2 - gap * (SORT_MODES.length - 1);
+    const chipW  = Math.floor(usable / SORT_MODES.length);
+    const chipH  = SORT_ROW_H - 6;
+
+    SORT_MODES.forEach((mode, i) => {
+      const bx = PANEL_X + padX + i * (chipW + gap);
+      const by = rowY;
+
+      const bg = new Graphics();
+      const label = new Text({
+        text: mode.label,
+        style: { fontSize: 9, fontFamily: FONT, letterSpacing: 1 },
+      });
+      label.x = bx + chipW / 2 - label.width / 2;
+      label.y = by + chipH / 2 - label.height / 2;
+
+      const hit = new Graphics();
+      hit.rect(bx, by, chipW, chipH).fill({ color: 0x000000, alpha: 0 });
+      hit.interactive = true;
+      hit.cursor = 'pointer';
+      hit.on('pointerdown', () => this._setSortMode(mode.key));
+
+      this._sortC.addChild(bg);
+      this._sortC.addChild(label);
+      this._sortC.addChild(hit);
+      this._sortChips.push({ key: mode.key, bg, label, bx, by, chipW, chipH });
+    });
+
+    this._drawSortChips();
+  }
+
+  _drawSortChips() {
+    this._sortChips.forEach(c => {
+      const active = c.key === this._sortMode;
+      c.bg.clear();
+      c.bg.roundRect(c.bx, c.by, c.chipW, c.chipH, 4)
+        .fill({ color: active ? COLORS.selected_hl : COLORS.panel_border, alpha: active ? 0.28 : 0.4 });
+      c.bg.roundRect(c.bx, c.by, c.chipW, c.chipH, 4)
+        .stroke({ color: active ? COLORS.selected_hl : COLORS.panel_border, width: 1, alpha: active ? 0.9 : 0.6 });
+      c.label.style.fill = active ? COLORS.selected_hl : COLORS.text_secondary;
+    });
+  }
+
+  _setSortMode(key) {
+    if (this._sortMode === key) return;
+    this._sortMode = key;
+    this._drawSortChips();
+    this._scrollContent.removeChildren();
+    this._rows    = [];
+    this._scrollY = 0;
+    this._scrollContent.y = SCROLL_TOP;
+    this._buildContent();
+    this._drawScrollbar();
+    this._updateHighlights();
   }
 
   _sectionLabel(text, y) {

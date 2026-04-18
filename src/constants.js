@@ -558,12 +558,14 @@ export const FISH_SPECIES = {
   moonSeahorse: {
     id: 'moonSeahorse', name: 'Moon Seahorse', scientific: 'Hippocampus phosphoreus',
     tier: TIER.RARE, layer: 'A', color: 0xd0d8f8, accentColor: 0x40c4ff,
-    size: 15, speed: 0.3, unlockLevel: 7, biome: 'deepTwilight',
+    size: 15, speed: 0.3, unlockLevel: 1, biome: 'deepTwilight',
+    eventId: 'bioluminescence_2026',
   },
   glowEel: {
     id: 'glowEel', name: 'Glow Eel', scientific: 'Gymnothorax bioluminescens',
     tier: TIER.UNCOMMON, layer: 'A', color: 0x0d1a0d, accentColor: 0x76ff03,
-    size: 20, speed: 1.1, unlockLevel: 6, biome: 'deepTwilight',
+    size: 20, speed: 1.1, unlockLevel: 1, biome: 'deepTwilight',
+    eventId: 'bioluminescence_2026',
   },
   anglerfish: {
     id: 'anglerfish', name: 'Anglerfish', scientific: 'Melanocetus johnsonii',

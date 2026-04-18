@@ -1,7 +1,10 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { SCREEN_W, SCREEN_H, COLORS } from '../constants.js';
 import { state } from '../state.js';
-import { acceptEvent, claimEvent, eventDaysRemaining } from '../systems/EventSystem.js';
+import {
+  acceptEvent, claimEvent, claimCurrentSet, eventDaysRemaining,
+  getCurrentSet, isSetComplete,
+} from '../systems/EventSystem.js';
 
 const FONT = 'system-ui, -apple-system, sans-serif';
 const PW   = 340;
@@ -56,13 +59,25 @@ export class EventModal {
     const ev     = state.event;
     const status = ev?.status ?? 'available';
     const theme  = ev?.theme  ?? 0x64b5f6;
+    const ended  = !!ev?.ended;
+
+    const currentSet   = ev ? getCurrentSet(ev) : null;
+    const challenges   = currentSet?.challenges ?? [];
+    const setComplete  = ev ? isSetComplete(ev) : false;
+    const setsTotal    = ev?.questSets?.length ?? 0;
+    const setsClaimed  = ev?.setsClaimed?.length ?? 0;
+    const showSetBlock = status === 'active' && !!currentSet;
 
     const hasTiers       = !!(ev?.pass?.tiers?.length);
     const showPassBlock  = hasTiers && status !== 'available';
-    const challengeRows  = (ev?.challenges ?? []).length;
+    const challengeRows  = challenges.length;
     const TIER_BLOCK_H   = showPassBlock ? 136 : 0;
+    const SET_HEADER_H   = showSetBlock ? 22 : 0;
+    const ENDED_BANNER_H = ended ? 28 : 0;
 
     const PH = 108                      // header + desc + reward
+             + ENDED_BANNER_H           // ended banner
+             + SET_HEADER_H             // current set label + progress pill
              + challengeRows * 74       // challenge rows
              + TIER_BLOCK_H             // pass block
              + 62;                      // action + bottom pad
@@ -97,10 +112,18 @@ export class EventModal {
     this._content.addChild(nameText);
 
     const days = ev ? eventDaysRemaining(ev.endDate) : 0;
+    const daysText =
+      status === 'claimed' ? 'Complete!'
+    : ended                ? 'Ended'
+    :                        `${days}d left`;
+    const daysColor =
+      status === 'claimed' ? 0x81c784
+    : ended                ? 0xff8a80
+    : days <= 1            ? 0xff7043
+    :                        0xaaccdd;
     const daysLabel = new Text({
-      text: status === 'claimed' ? 'Complete!' : `${days}d left`,
-      style: { fontSize: 11, fontFamily: FONT, fontWeight: '600',
-               fill: status === 'claimed' ? 0x81c784 : (days <= 1 ? 0xff7043 : 0xaaccdd) },
+      text: daysText,
+      style: { fontSize: 11, fontFamily: FONT, fontWeight: '600', fill: daysColor },
     });
     daysLabel.anchor.set(1, 0.5); daysLabel.x = px + PW - 14; daysLabel.y = py + 26;
     this._content.addChild(daysLabel);
@@ -114,8 +137,25 @@ export class EventModal {
     desc.anchor.set(0.5, 0); desc.x = cx; desc.y = py + 60;
     this._content.addChild(desc);
 
-    // ── Reward row ────────────────────────────────────────────────────────────
+    // ── Ended banner ─────────────────────────────────────────────────────────
     let cursor = py + 108;
+    if (ended) {
+      const bannerG = new Graphics();
+      bannerG.roundRect(px + 20, cursor, PW - 40, 22, 6)
+             .fill({ color: 0x2a0a0a, alpha: 0.75 });
+      bannerG.roundRect(px + 20, cursor, PW - 40, 22, 6)
+             .stroke({ color: 0xff8a80, width: 1 });
+      this._content.addChild(bannerG);
+      const bannerTxt = new Text({
+        text: 'EVENT ENDED  —  claim remaining rewards',
+        style: { fontSize: 10, fill: 0xffb0a0, fontFamily: FONT, fontWeight: '700', letterSpacing: 1 },
+      });
+      bannerTxt.anchor.set(0.5, 0.5); bannerTxt.x = cx; bannerTxt.y = cursor + 11;
+      this._content.addChild(bannerTxt);
+      cursor += 28;
+    }
+
+    // ── Reward row ────────────────────────────────────────────────────────────
     if (ev?.reward) {
       const parts = [];
       if (ev.reward.be)     parts.push(`${ev.reward.be} 🫧`);
@@ -136,9 +176,28 @@ export class EventModal {
       cursor += 38;
     }
 
-    // ── Challenge rows ────────────────────────────────────────────────────────
+    // ── Current quest set header ─────────────────────────────────────────────
     const rw = PW - 40, rx = px + 20;
-    (ev?.challenges ?? []).forEach(c => {
+    if (showSetBlock) {
+      const setLabel = new Text({
+        text: `SET ${ev.currentSetIdx + 1} / ${setsTotal}  —  ${currentSet.label}`,
+        style: { fontSize: 10, fill: theme, fontFamily: FONT, fontWeight: '700', letterSpacing: 1 },
+      });
+      setLabel.x = rx; setLabel.y = cursor;
+
+      const reward = new Text({
+        text: `+${currentSet.tokenReward} token${currentSet.tokenReward !== 1 ? 's' : ''}`,
+        style: { fontSize: 10, fill: 0x81c784, fontFamily: FONT, fontWeight: '600' },
+      });
+      reward.anchor.set(1, 0); reward.x = rx + rw; reward.y = cursor;
+
+      this._content.addChild(setLabel);
+      this._content.addChild(reward);
+      cursor += 22;
+    }
+
+    // ── Challenge rows ────────────────────────────────────────────────────────
+    challenges.forEach(c => {
       this._buildChallengeRow(c, rx, cursor, rw, status, theme);
       cursor += 74;
     });
@@ -153,8 +212,15 @@ export class EventModal {
     // ── Action button ─────────────────────────────────────────────────────────
     const btnY = cursor + 8;
     if (status === 'available') {
-      this._buildActionBtn(cx, btnY, 'Join Event', 0x1a4a1a, 0x0e2e0e, theme, theme, () => {
-        acceptEvent(); this._onAccept?.(); this._render();
+      const label = ended ? 'Event Ended' : 'Join Event';
+      const fill1 = ended ? 0x2a2a2a : 0x1a4a1a, fill2 = ended ? 0x1a1a1a : 0x0e2e0e;
+      const onPress = ended ? () => this.hide() : () => { acceptEvent(); this._onAccept?.(); this._render(); };
+      this._buildActionBtn(cx, btnY, label, fill1, fill2, theme, theme, onPress);
+    } else if (status === 'active' && setComplete) {
+      const isLast = (ev.currentSetIdx + 1) >= setsTotal && setsClaimed + 1 >= setsTotal;
+      const label = isLast ? '✦  Claim Final Set!' : `✦  Claim Set  +${currentSet.tokenReward}`;
+      this._buildActionBtn(cx, btnY, label, 0x1a5a30, 0x0e3a1e, 0xa8ffa0, 0x3a8a40, () => {
+        claimCurrentSet(); this._onClaim?.(); this._render();
       });
     } else if (status === 'complete') {
       this._buildActionBtn(cx, btnY, '✦  Claim Reward!', 0x6a4a00, 0x402e00, 0xfff0a0, 0x8a6a00, () => {
@@ -163,7 +229,8 @@ export class EventModal {
     } else if (status === 'claimed') {
       this._buildActionBtn(cx, btnY, 'Close', 0x1a2438, 0x0e1628, COLORS.text_secondary, COLORS.panel_border, () => this.hide());
     } else {
-      this._buildActionBtn(cx, btnY, 'Keep going!', 0x1a2438, 0x0e1628, COLORS.text_secondary, COLORS.panel_border, () => this.hide());
+      const label = ended ? 'Close' : 'Keep going!';
+      this._buildActionBtn(cx, btnY, label, 0x1a2438, 0x0e1628, COLORS.text_secondary, COLORS.panel_border, () => this.hide());
     }
 
     if (status !== 'available') {

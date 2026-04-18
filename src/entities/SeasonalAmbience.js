@@ -8,6 +8,7 @@ import { state } from '../state.js';
  *  Coral Bloom Festival     → falling cherry-blossom petals + blossom clusters
  *  Moonfish Migration       → golden light motes drifting upward + moonbeam shafts
  *  Pearl Tide               → pearl-shimmer sparkles + pearl orbs on the sea floor
+ *  Bioluminescence Bloom    → slow-drifting cyan/green plankton glow + resting orbs
  *
  * Call refresh() whenever the event state may have changed.
  * Lives in the world container above fish but below the Bubbles drone.
@@ -50,6 +51,49 @@ export class SeasonalAmbience {
     if      (newId === 'coral_bloom_2026')        this._buildCoralBloom();
     else if (newId === 'moonfish_migration_2026') this._buildMoonfishMigration();
     else if (newId === 'pearl_tide_2026')         this._buildPearlTide();
+    else if (newId === 'bioluminescence_2026')    this._buildBioluminescence();
+  }
+
+  // ── Bioluminescence Bloom ────────────────────────────────────────────────────
+
+  _buildBioluminescence() {
+    // Static glow orbs resting on the floor (cool cyan/green)
+    const floorG = new Graphics();
+    [20, 60, 110, GRID_W * 0.38, GRID_W * 0.55, GRID_W - 70, GRID_W - 30].forEach(ox => {
+      const x = GRID_X + ox;
+      const y = GRID_Y + GRID_H - 10 - Math.random() * 16;
+      const r = 2.5 + Math.random() * 2;
+      const col = Math.random() < 0.5 ? 0x76ff03 : 0x40c4ff;
+      floorG.circle(x, y, r).fill({ color: col, alpha: 0.65 });
+      floorG.circle(x - r * 0.3, y - r * 0.35, r * 0.3).fill({ color: 0xffffff, alpha: 0.55 });
+      floorG.circle(x, y, r + 5).fill({ color: col, alpha: 0.07 });
+    });
+    this._decorC.addChild(floorG);
+
+    // Drifting plankton — cyan and green motes with slow upward drift
+    const GLOW_COLORS = [0x40c4ff, 0x76ff03, 0x80d8ff, 0xb9f6ca, 0x00e5ff];
+    for (let i = 0; i < 24; i++) {
+      const g   = new Graphics();
+      const r   = 1.2 + Math.random() * 2.2;
+      const col = GLOW_COLORS[i % GLOW_COLORS.length];
+      g.circle(0, 0, r).fill({ color: col, alpha: 0.85 });
+      g.circle(0, 0, r * 2.2).fill({ color: col, alpha: 0.12 });
+
+      const p = {
+        gfx:          g,
+        x:            GRID_X + Math.random() * GRID_W,
+        y:            GRID_Y + Math.random() * GRID_H,
+        speed:        0.06 + Math.random() * 0.18,
+        drift:        (Math.random() - 0.5) * 0.4,
+        phase:        Math.random() * Math.PI * 2,
+        baseAlpha:    0.35 + Math.random() * 0.5,
+        twinkleSpeed: 0.03 + Math.random() * 0.05,
+        type:         'glow',
+      };
+      g.x = p.x; g.y = p.y;
+      this._particles.push(p);
+      this._particleC.addChild(g);
+    }
   }
 
   // ── Coral Bloom Festival ────────────────────────────────────────────────────
@@ -241,6 +285,20 @@ export class SeasonalAmbience {
 
         if (p.y < GRID_Y - 14) {
           p.y = GRID_Y + GRID_H + Math.random() * 28;
+          p.x = GRID_X + Math.random() * GRID_W;
+        }
+
+      } else if (p.type === 'glow') {
+        // Slow upward drift with lateral wander and breathing twinkle
+        p.y -= p.speed * dt;
+        p.x += Math.sin(t * 0.4 + p.phase) * p.drift * dt;
+        p.gfx.alpha = p.baseAlpha * (0.5 + 0.5 * Math.sin(t * p.twinkleSpeed * 60 + p.phase));
+
+        if (p.y < GRID_Y - 12) {
+          p.y = GRID_Y + GRID_H + Math.random() * 24;
+          p.x = GRID_X + Math.random() * GRID_W;
+        }
+        if (p.x < GRID_X - 20 || p.x > GRID_X + GRID_W + 20) {
           p.x = GRID_X + Math.random() * GRID_W;
         }
 

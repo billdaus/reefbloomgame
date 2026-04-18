@@ -1,7 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { SCREEN_W, HUD_H, IS_PORTRAIT, COLORS } from '../constants.js';
 import { state } from '../state.js';
-import { eventDaysRemaining } from '../systems/EventSystem.js';
+import { eventDaysRemaining, isSetComplete } from '../systems/EventSystem.js';
 
 const FONT = 'system-ui, -apple-system, sans-serif';
 
@@ -417,21 +417,42 @@ export class HUD {
     this._eventBtn.visible = !!status;
     if (!status) return;
 
-    const isComplete = status === 'complete';
-    const isClaimed  = status === 'claimed';
+    const isComplete   = status === 'complete';
+    const isClaimed    = status === 'claimed';
+    const ended        = !!ev.ended;
+    const setClaimable = status === 'active' && isSetComplete(ev);
     this._eventPulse += deltaMS * 0.004;
     const pulse = 0.82 + 0.18 * Math.sin(this._eventPulse);
-    this._eventBtn.alpha = isClaimed ? 0.5 : (isComplete ? pulse : 1);
+    this._eventBtn.alpha =
+      isClaimed                     ? 0.5
+    : (isComplete || setClaimable)  ? pulse
+    :                                 1;
 
-    // Tint background
-    const bgColor = isComplete ? 0x4a2060 : (isClaimed ? 0x1a1a2a : 0x2a1a40);
+    // Tint background — gold/purple for claimable, red for ended, default otherwise
+    const bgColor =
+      isComplete   ? 0x4a2060
+    : setClaimable ? 0x2a4a10
+    : ended        ? 0x4a1a1a
+    : isClaimed    ? 0x1a1a2a
+    :                0x2a1a40;
     this._eventBtnDrawBg?.(bgColor, 0.92);
 
     // Days label
     if (this._eventBtnDaysText && ev) {
       const days = eventDaysRemaining(ev.endDate);
-      this._eventBtnDaysText.text = isComplete ? 'CLAIM!' : (isClaimed ? 'Done' : `${days}d`);
-      this._eventBtnDaysText.style.fill = isComplete ? 0xffaaff : (isClaimed ? 0x666666 : (days <= 1 ? 0xff7043 : 0xbbaacc));
+      this._eventBtnDaysText.text =
+        isComplete   ? 'CLAIM!'
+      : setClaimable ? 'CLAIM SET'
+      : isClaimed    ? 'Done'
+      : ended        ? 'Ended'
+      :                `${days}d`;
+      this._eventBtnDaysText.style.fill =
+        isComplete   ? 0xffaaff
+      : setClaimable ? 0xa8ffa0
+      : isClaimed    ? 0x666666
+      : ended        ? 0xff8a80
+      : days <= 1    ? 0xff7043
+      :                0xbbaacc;
     }
   }
 
