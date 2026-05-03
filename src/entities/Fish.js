@@ -2464,49 +2464,75 @@ export class Fish {
      .quadraticCurveTo(-r * 1.10, r * 0.70, -r * 1.02, r * 0.78)
      .stroke({ color: this._darken(flesh, 0.30), width: 1.1, alpha: 0.7 });
 
-    // ── Tentacles (cirri) — two rings, short and thick, trailing -x ───
-    // Outer ring
-    const OUTER = 11;
+    // ── Tentacles fan — radiating outward from a head anchor behind
+    //     the aperture, instead of bunching along a vertical line.
+    const tax = -r * 0.85;            // anchor (head/mouth center)
+    const tay = r * 0.50;
+    const TENT_A = Math.PI;           // base direction: trailing (-x)
+
+    // Soft head lump showing through the aperture for visual coherence
+    g.circle(tax + r * 0.06, tay - r * 0.02, sz * 0.20)
+     .fill(this._darken(flesh, 0.28));
+
+    // Outer ring — long, fanning widely (~140°)
+    const OUTER = 13;
+    const outerSpread = Math.PI * 0.78;
     for (let i = 0; i < OUTER; i++) {
       const t   = i / (OUTER - 1);
-      const y0  = r * (0.26 + t * 0.54);
-      const x0  = -r * 0.90;
-      const len = sz * (0.16 + Math.sin(t * Math.PI) * 0.14);
-      const x1  = x0 - len;
-      const y1  = y0 + Math.sin(t * Math.PI) * sz * 0.04 * (i % 2 === 0 ? 1 : -0.4);
+      const a   = TENT_A + (t - 0.5) * outerSpread + Math.sin(i * 1.7) * 0.04;
+      const len = sz * (0.40 + Math.sin(t * Math.PI) * 0.18 + Math.sin(i * 1.3) * 0.04);
+      const r0  = sz * 0.10;
+      const x0  = tax + Math.cos(a) * r0;
+      const y0  = tay + Math.sin(a) * r0;
+      const x1  = tax + Math.cos(a) * (r0 + len);
+      const y1  = tay + Math.sin(a) * (r0 + len);
+      const px = -Math.sin(a);
+      const py =  Math.cos(a);
+      const curl = (i % 2 === 0 ? 1 : -1) * sz * 0.07 * Math.sin(t * Math.PI);
+      const cx = (x0 + x1) * 0.5 + px * curl;
+      const cy = (y0 + y1) * 0.5 + py * curl;
       g.moveTo(x0, y0)
-       .bezierCurveTo(x0 - sz * 0.10, y0,
-                      x1 + sz * 0.04, y1 + sz * 0.04,
-                      x1, y1)
+       .quadraticCurveTo(cx, cy, x1, y1)
        .stroke({ color: flesh, width: 2.0, cap: 'round' });
     }
-    // Inner ring — denser, shorter, suggests the ~90 cirri without drawing them all
+
+    // Inner ring — shorter, denser, tighter spread (~100°)
     const INNER = 13;
+    const innerSpread = Math.PI * 0.55;
     for (let i = 0; i < INNER; i++) {
       const t   = i / (INNER - 1);
-      const y0  = r * (0.30 + t * 0.46);
-      const x0  = -r * 0.86;
-      const len = sz * (0.07 + Math.sin(t * Math.PI) * 0.08);
+      const a   = TENT_A + (t - 0.5) * innerSpread + Math.sin(i * 2.1) * 0.03;
+      const len = sz * (0.18 + Math.sin(t * Math.PI) * 0.08);
+      const r0  = sz * 0.07;
+      const x0  = tax + Math.cos(a) * r0;
+      const y0  = tay + Math.sin(a) * r0;
+      const x1  = tax + Math.cos(a) * (r0 + len);
+      const y1  = tay + Math.sin(a) * (r0 + len);
       g.moveTo(x0, y0)
-       .lineTo(x0 - len, y0 + sz * 0.015)
+       .lineTo(x1, y1)
        .stroke({ color: this._darken(flesh, 0.18), width: 1.3, cap: 'round' });
     }
 
-    // ── Two prominent ocular tentacles — longer, gently wavy ──────────
-    for (let i = 0; i < 2; i++) {
-      const y0  = r * (0.30 + i * 0.10);
-      const x0  = -r * 0.92;
-      const len = sz * 0.55;
-      const x1  = x0 - len;
-      const y1  = y0 + (i === 0 ? -sz * 0.04 : sz * 0.10);
-      const xc1 = x0 - sz * 0.18;
-      const yc1 = y0 + (i === 0 ? sz * 0.08 : -sz * 0.04);
-      const xc2 = x1 + sz * 0.10;
-      const yc2 = y1 + sz * 0.04;
+    // ── Two prominent ocular tentacles — long, gently S-curved ────────
+    const promOffsets = [+0.06, -0.22];
+    for (let k = 0; k < 2; k++) {
+      const a   = TENT_A + promOffsets[k];
+      const len = sz * (0.62 + k * 0.04);
+      const r0  = sz * 0.10;
+      const x0  = tax + Math.cos(a) * r0;
+      const y0  = tay + Math.sin(a) * r0;
+      const x1  = tax + Math.cos(a) * (r0 + len);
+      const y1  = tay + Math.sin(a) * (r0 + len);
+      const px = -Math.sin(a);
+      const py =  Math.cos(a);
+      const xc1 = x0 + (x1 - x0) * 0.30 + px * sz * 0.10 * (k === 0 ? -1 : 1);
+      const yc1 = y0 + (y1 - y0) * 0.30 + py * sz * 0.10 * (k === 0 ? -1 : 1);
+      const xc2 = x0 + (x1 - x0) * 0.70 + px * sz * 0.05 * (k === 0 ? 1 : -1);
+      const yc2 = y0 + (y1 - y0) * 0.70 + py * sz * 0.05 * (k === 0 ? 1 : -1);
       g.moveTo(x0, y0)
        .bezierCurveTo(xc1, yc1, xc2, yc2, x1, y1)
        .stroke({ color: flesh, width: 2.2, cap: 'round', alpha: 0.95 });
-      // Highlight along the upper edge for a soft, fleshy feel
+      // Soft highlight along the upper edge
       g.moveTo(x0, y0 - 0.4)
        .bezierCurveTo(xc1, yc1 - 0.4, xc2, yc2 - 0.4, x1, y1 - 0.4)
        .stroke({ color: this._lighten(flesh, 0.18), width: 0.6, alpha: 0.55 });
