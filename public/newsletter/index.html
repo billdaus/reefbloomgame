@@ -15,6 +15,7 @@
       color: rgba(255,255,255,0.88);
       padding: 0 0 80px;
     }
+    body.modal-open { overflow: hidden; }
     .reef-silhouette {
       position: fixed;
       bottom: 0; left: 0; right: 0;
@@ -60,12 +61,11 @@
     }
     .content {
       position: relative;
-      max-width: 720px;
+      max-width: 880px;
       margin: 48px auto 0;
       padding: 0 24px;
       z-index: 1;
     }
-    .masthead { margin-bottom: 8px; }
     .masthead-eyebrow {
       font-size: 11px;
       letter-spacing: 4px;
@@ -86,33 +86,122 @@
       margin-bottom: 40px;
       font-style: italic;
     }
-    p {
-      font-size: 15px;
-      line-height: 1.8;
-      color: rgba(255,255,255,0.78);
-      margin-bottom: 16px;
-    }
-    p.lede {
-      font-size: 17px;
-      line-height: 1.7;
-      color: rgba(255,255,255,0.92);
-    }
-    p.lede::first-letter {
-      font-size: 48px;
-      float: left;
-      line-height: 1;
-      padding: 4px 8px 0 0;
-      color: #fff;
-      font-weight: 800;
-    }
     a { color: rgba(140,210,255,0.9); }
     a:hover { color: #fff; }
-    .issue {
-      margin-top: 56px;
-      padding-bottom: 48px;
-      border-bottom: 1px solid rgba(100,200,255,0.15);
+
+    /* ── Issue card grid ────────────────────────────────────────────────── */
+    .issues {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+      margin-bottom: 40px;
     }
-    .issue:last-of-type { border-bottom: none; }
+    .issue-card {
+      display: flex;
+      flex-direction: column;
+      padding: 22px;
+      border-radius: 14px;
+      background: rgba(8, 28, 60, 0.55);
+      border: 1px solid rgba(100,200,255,0.18);
+      cursor: pointer;
+      text-align: left;
+      color: inherit;
+      font: inherit;
+      transition: transform 0.15s, background 0.15s, border-color 0.15s;
+    }
+    .issue-card:hover {
+      transform: translateY(-3px);
+      background: rgba(14, 42, 80, 0.65);
+      border-color: rgba(140,210,255,0.55);
+    }
+    .issue-card:focus-visible {
+      outline: 2px solid rgba(140,210,255,0.8);
+      outline-offset: 2px;
+    }
+    .card-eyebrow {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(140,210,255,0.85);
+      margin-bottom: 8px;
+    }
+    .card-eyebrow span + span::before {
+      content: '·';
+      margin: 0 8px;
+      color: rgba(140,210,255,0.35);
+    }
+    .card-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.3px;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+    .card-deck {
+      font-size: 14px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.7);
+      flex: 1;
+      margin-bottom: 16px;
+    }
+    .card-cta {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(140,210,255,0.95);
+    }
+
+    /* ── Modal ──────────────────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 18, 50, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 16px;
+      overflow-y: auto;
+      z-index: 1000;
+      animation: fadeIn 0.18s ease;
+    }
+    .modal-backdrop.open { display: flex; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal {
+      position: relative;
+      max-width: 720px;
+      width: 100%;
+      background: linear-gradient(180deg, #0e2c52 0%, #061a36 100%);
+      border: 1px solid rgba(100,200,255,0.25);
+      border-radius: 16px;
+      padding: 40px 36px 36px;
+      box-shadow: 0 16px 64px rgba(0,0,0,0.6);
+      animation: slideUp 0.22s ease;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.12s, color 0.12s;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.18); color: #fff; }
+
     .byline {
       font-size: 11px;
       letter-spacing: 3px;
@@ -142,18 +231,37 @@
       padding-left: 12px;
       border-left: 2px solid rgba(140,210,255,0.5);
     }
-    h3 {
+    .modal p {
+      font-size: 15px;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.78);
+      margin-bottom: 16px;
+    }
+    .modal p.lede {
+      font-size: 17px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.92);
+    }
+    .modal p.lede::first-letter {
+      font-size: 48px;
+      float: left;
+      line-height: 1;
+      padding: 4px 8px 0 0;
+      color: #fff;
+      font-weight: 800;
+    }
+    .modal h3 {
       font-size: 18px;
       font-weight: 700;
       color: #fff;
       margin: 28px 0 10px;
       letter-spacing: 0.3px;
     }
-    blockquote {
+    .modal blockquote {
       margin: 24px 0;
       padding: 16px 22px;
       border-left: 3px solid rgba(140,210,255,0.7);
-      background: rgba(8, 28, 60, 0.3);
+      background: rgba(8, 28, 60, 0.5);
       font-size: 17px;
       line-height: 1.55;
       color: rgba(255,255,255,0.88);
@@ -164,7 +272,7 @@
       margin: 28px 0 8px;
       padding: 22px;
       border-radius: 12px;
-      background: rgba(8, 28, 60, 0.4);
+      background: rgba(8, 28, 60, 0.6);
       border: 1px solid rgba(100,200,255,0.18);
     }
     .spotlight-head {
@@ -252,6 +360,12 @@
     }
     footer a { color: rgba(140,210,255,0.6); text-decoration: none; }
     footer a:hover { color: #fff; }
+
+    @media (max-width: 600px) {
+      .modal { padding: 28px 20px 24px; }
+      .modal p.lede::first-letter { font-size: 38px; }
+      .issue-title { font-size: 24px; }
+    }
   </style>
 </head>
 <body>
@@ -267,19 +381,46 @@
   </header>
 
   <div class="content">
-    <div class="masthead">
-      <div class="masthead-eyebrow">The Reef Bloom Dispatch</div>
-      <h1>Notes from the Tide Line</h1>
-    </div>
+    <div class="masthead-eyebrow">The Reef Bloom Dispatch</div>
+    <h1>Notes from the Tide Line</h1>
     <p class="tagline">A weekly editorial on what's growing in the reef, and why.</p>
 
-    <article class="issue">
+    <div class="issues">
+      <button class="issue-card" data-issue="3" type="button">
+        <div class="card-eyebrow"><span>Issue 03</span><span>Apr 13, 2026</span></div>
+        <div class="card-title">Bioluminescence Descends</div>
+        <p class="card-deck">The deep twilight has been the quietest biome since launch. This week, we're giving it a heartbeat — and two glowing exclusives to chase.</p>
+        <div class="card-cta">Read editorial →</div>
+      </button>
+      <button class="issue-card" data-issue="2" type="button">
+        <div class="card-eyebrow"><span>Issue 02</span><span>Apr 6, 2026</span></div>
+        <div class="card-title">Event Passes &amp; Ambient Magic</div>
+        <p class="card-deck">Events get exclusive species and a real progression track. The biomes get something subtler — they finally breathe.</p>
+        <div class="card-cta">Read editorial →</div>
+      </button>
+      <button class="issue-card" data-issue="1" type="button">
+        <div class="card-eyebrow"><span>Issue 01</span><span>Mar 30, 2026</span></div>
+        <div class="card-title">Limited Time Events Arrive</div>
+        <p class="card-deck">Reef Bloom is no longer a game where every day is the same. Three rotating events introduce the first cadence of recurring content.</p>
+        <div class="card-cta">Read editorial →</div>
+      </button>
+    </div>
+
+    <div style="text-align:center;">
+      <a class="play-btn" href="/">Play Now</a>
+    </div>
+  </div>
+
+  <!-- ── Issue modals ──────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" data-modal="3" role="dialog" aria-modal="true" aria-labelledby="title-3">
+    <article class="modal" tabindex="-1">
+      <button class="modal-close" type="button" aria-label="Close">✕</button>
       <div class="byline">
         <span>Issue 03</span>
         <span>Week of April 13, 2026</span>
         <span>Editorial</span>
       </div>
-      <h2 class="issue-title">Bioluminescence Descends</h2>
+      <h2 id="title-3" class="issue-title">Bioluminescence Descends</h2>
       <p class="issue-deck">The deep twilight has been the quietest biome since launch. This week, we're giving it a heartbeat — and two glowing exclusives to chase.</p>
 
       <p class="lede">Of the three biomes available in Reef Bloom, the deep twilight has always been the one that asked the most patience of the player. It's the slowest to fill in, the darkest to look at, and — until now — the one with the fewest reasons to keep coming back. That changes on April 20, when the Bioluminescence Bloom event lights it from the inside out.</p>
@@ -316,14 +457,17 @@
 
       <p class="signoff">— The Reef Bloom team</p>
     </article>
+  </div>
 
-    <article class="issue">
+  <div class="modal-backdrop" data-modal="2" role="dialog" aria-modal="true" aria-labelledby="title-2">
+    <article class="modal" tabindex="-1">
+      <button class="modal-close" type="button" aria-label="Close">✕</button>
       <div class="byline">
         <span>Issue 02</span>
         <span>Week of April 6, 2026</span>
         <span>Editorial</span>
       </div>
-      <h2 class="issue-title">Event Passes &amp; Ambient Magic</h2>
+      <h2 id="title-2" class="issue-title">Event Passes &amp; Ambient Magic</h2>
       <p class="issue-deck">Events get exclusive species and a real progression track. The biomes get something subtler — they finally breathe.</p>
 
       <p class="lede">When we shipped the first version of limited-time events two weeks ago, we knew we were releasing scaffolding. The bones were right — windows of time, a shared challenge list, a deadline — but there was nothing about an event that felt different from playing the game on any other day. This week, we filled in the rest of the picture.</p>
@@ -364,14 +508,17 @@
 
       <p class="signoff">— The Reef Bloom team</p>
     </article>
+  </div>
 
-    <article class="issue">
+  <div class="modal-backdrop" data-modal="1" role="dialog" aria-modal="true" aria-labelledby="title-1">
+    <article class="modal" tabindex="-1">
+      <button class="modal-close" type="button" aria-label="Close">✕</button>
       <div class="byline">
         <span>Issue 01</span>
         <span>Week of March 30, 2026</span>
         <span>Editorial</span>
       </div>
-      <h2 class="issue-title">Limited Time Events Arrive</h2>
+      <h2 id="title-1" class="issue-title">Limited Time Events Arrive</h2>
       <p class="issue-deck">Reef Bloom is no longer a game where every day is the same. Three rotating events introduce the first cadence of recurring content.</p>
 
       <p class="lede">For most of its life so far, Reef Bloom has been a steady-state game. You log in, you place coral, you watch fish, you log out — and the reef looks the same on Tuesday as it did on Monday. That's the rhythm a lot of players love about it, and we don't intend to break that. What this week's update does is layer something new on top: a calendar.</p>
@@ -408,10 +555,6 @@
 
       <p class="signoff">— The Reef Bloom team</p>
     </article>
-
-    <div style="text-align:center;">
-      <a class="play-btn" href="/">Play Now</a>
-    </div>
   </div>
 
   <footer>
@@ -450,6 +593,7 @@
       ">Decline</button>
     </div>
   </div>
+
   <script>
     (function() {
       var consent = localStorage.getItem('cookie_consent');
@@ -457,6 +601,56 @@
     })();
     function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
     function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+
+  <script>
+    (function() {
+      var modals = document.querySelectorAll('.modal-backdrop');
+      var cards  = document.querySelectorAll('.issue-card');
+      var lastOpener = null;
+
+      function openModal(id) {
+        var m = document.querySelector('.modal-backdrop[data-modal="' + id + '"]');
+        if (!m) return;
+        m.classList.add('open');
+        document.body.classList.add('modal-open');
+        lastOpener = document.activeElement;
+        var card = m.querySelector('.modal');
+        if (card) {
+          card.scrollTop = 0;
+          card.focus({ preventScroll: true });
+        }
+        m.scrollTop = 0;
+        if (history.replaceState) history.replaceState(null, '', '#issue-' + id);
+      }
+
+      function closeAll() {
+        modals.forEach(function(m) { m.classList.remove('open'); });
+        document.body.classList.remove('modal-open');
+        if (history.replaceState) history.replaceState(null, '', location.pathname);
+        if (lastOpener && lastOpener.focus) lastOpener.focus();
+      }
+
+      cards.forEach(function(c) {
+        c.addEventListener('click', function() { openModal(c.getAttribute('data-issue')); });
+      });
+
+      modals.forEach(function(m) {
+        m.addEventListener('click', function(e) {
+          if (e.target === m) closeAll();
+        });
+        var btn = m.querySelector('.modal-close');
+        if (btn) btn.addEventListener('click', closeAll);
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeAll();
+      });
+
+      // Deep-link support: /newsletter/#issue-2 opens issue 2 on load
+      var hash = location.hash.match(/^#issue-(\d+)$/);
+      if (hash) openModal(hash[1]);
+    })();
   </script>
 </body>
 </html>
