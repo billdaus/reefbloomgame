@@ -4,8 +4,289 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="The Reef Bloom Dispatch — weekly editorial on new species, events, and design notes from the team." />
-  <title>Newsletter — Reef Bloom</title>
+  <title>The Reef Bloom Dispatch — Newsletter</title>
   <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* ── Index-only broadsheet styling: warm parchment & brass ─────────── */
+    :root {
+      --nl-bg-1: #2a1f12;
+      --nl-bg-2: #1a130a;
+      --nl-bg-3: #0d0904;
+      --nl-bg-4: #050301;
+      --theme-glow:   rgba(232, 184, 96, 0.16);
+      --theme-accent: #f3d28a;
+      --theme-rule:   rgba(232, 184, 96, 0.55);
+    }
+    /* Faint paper-grain noise unique to the dispatch index */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 12% 18%, rgba(232,184,96,0.08) 0, transparent 6%),
+        radial-gradient(circle at 82% 28%, rgba(255,224,160,0.06) 0, transparent 5%),
+        radial-gradient(circle at 28% 78%, rgba(232,184,96,0.06) 0, transparent 6%),
+        radial-gradient(circle at 88% 70%, rgba(255,224,160,0.07) 0, transparent 5%);
+      z-index: 0;
+    }
+
+    /* ── Broadsheet masthead ─────────────────────────────────────────── */
+    .dispatch-rule-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 10px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: rgba(243, 210, 138, 0.55);
+      padding: 0 0 14px;
+      border-bottom: 1px solid rgba(243, 210, 138, 0.25);
+      margin-bottom: 22px;
+    }
+    .dispatch-rule-top span { white-space: nowrap; }
+    .dispatch-rule-top .center {
+      flex: 1;
+      text-align: center;
+      letter-spacing: 8px;
+    }
+
+    .dispatch-masthead {
+      text-align: center;
+      padding: 8px 0 28px;
+      border-bottom: 4px double rgba(243, 210, 138, 0.4);
+      margin-bottom: 14px;
+    }
+    .dispatch-eyebrow {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 11px;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      color: rgba(243, 210, 138, 0.7);
+      margin-bottom: 14px;
+    }
+    .dispatch-title {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 72px;
+      font-weight: 900;
+      color: #fbe8c2;
+      letter-spacing: 2px;
+      line-height: 0.95;
+      font-style: italic;
+      text-shadow: 0 2px 24px rgba(232, 184, 96, 0.25);
+    }
+    .dispatch-subtitle {
+      font-family: 'Georgia', serif;
+      font-size: 17px;
+      font-style: italic;
+      color: rgba(251, 232, 194, 0.65);
+      margin-top: 14px;
+      letter-spacing: 0.5px;
+    }
+    .dispatch-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(243, 210, 138, 0.55);
+      margin-bottom: 36px;
+    }
+    .dispatch-meta .dot {
+      width: 4px; height: 4px; border-radius: 50%;
+      background: rgba(243, 210, 138, 0.5);
+    }
+
+    /* ── Hero (latest issue) ─────────────────────────────────────────── */
+    .latest-tag {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      margin-bottom: 14px;
+    }
+    .latest-tag::before, .latest-tag::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(243, 210, 138, 0.3);
+    }
+
+    .hero-card {
+      display: block;
+      padding: 32px 36px 30px;
+      border-radius: 4px;
+      background:
+        linear-gradient(140deg, rgba(60, 40, 18, 0.55) 0%, rgba(28, 20, 10, 0.65) 100%);
+      border: 1px solid rgba(243, 210, 138, 0.32);
+      border-left: 4px solid var(--theme-accent);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+      box-shadow: 0 0 32px rgba(232, 184, 96, 0.08);
+      margin-bottom: 44px;
+      font-family: 'Georgia', serif;
+      position: relative;
+    }
+    .hero-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--theme-accent);
+      box-shadow: 0 4px 40px rgba(232, 184, 96, 0.18);
+    }
+    .hero-eyebrow {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: rgba(243, 210, 138, 0.75);
+      margin-bottom: 14px;
+      display: flex;
+      gap: 14px;
+    }
+    .hero-eyebrow span + span::before {
+      content: '·';
+      margin-right: 14px;
+      color: rgba(243, 210, 138, 0.4);
+    }
+    .hero-title {
+      font-family: 'Georgia', serif;
+      font-size: 38px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.1;
+      letter-spacing: 0.2px;
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+    .hero-deck {
+      font-size: 18px;
+      line-height: 1.65;
+      color: rgba(255, 255, 255, 0.78);
+      max-width: 640px;
+      margin-bottom: 22px;
+    }
+    .hero-cta {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+    }
+
+    /* ── Archive section ─────────────────────────────────────────────── */
+    .archive-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .archive-head-line {
+      flex: 1;
+      height: 1px;
+      background: rgba(243, 210, 138, 0.25);
+    }
+    .archive-head-label {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 11px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: rgba(243, 210, 138, 0.65);
+    }
+
+    .archive-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 56px;
+    }
+    .archive-card {
+      display: flex;
+      gap: 16px;
+      padding: 18px 20px;
+      border-radius: 4px;
+      background: rgba(28, 20, 10, 0.45);
+      border: 1px solid rgba(243, 210, 138, 0.18);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.15s, border-color 0.15s, transform 0.15s;
+      font-family: 'Georgia', serif;
+    }
+    .archive-card:hover {
+      background: rgba(40, 28, 14, 0.65);
+      border-color: rgba(243, 210, 138, 0.45);
+      transform: translateY(-2px);
+    }
+    .archive-num {
+      font-family: 'Georgia', serif;
+      font-size: 36px;
+      font-weight: 900;
+      font-style: italic;
+      color: var(--theme-accent);
+      line-height: 1;
+      flex-shrink: 0;
+      padding-top: 4px;
+      letter-spacing: -1px;
+    }
+    .archive-body { flex: 1; min-width: 0; }
+    .archive-date {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(243, 210, 138, 0.55);
+      margin-bottom: 6px;
+    }
+    .archive-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.25;
+      margin-bottom: 6px;
+      letter-spacing: 0.2px;
+    }
+    .archive-deck {
+      font-size: 14px;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.62);
+      font-style: italic;
+    }
+
+    /* ── Closing colophon ─────────────────────────────────────────────── */
+    .colophon {
+      text-align: center;
+      padding: 28px 0 12px;
+      border-top: 1px solid rgba(243, 210, 138, 0.22);
+      margin-top: 12px;
+    }
+    .colophon p {
+      font-family: 'Georgia', serif;
+      font-size: 14px;
+      font-style: italic;
+      color: rgba(251, 232, 194, 0.55);
+      max-width: 520px;
+      margin: 0 auto 22px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 600px) {
+      .dispatch-title { font-size: 44px; letter-spacing: 1px; }
+      .hero-title { font-size: 26px; }
+      .hero-card { padding: 24px 22px; }
+      .dispatch-meta { flex-wrap: wrap; gap: 12px; font-size: 9px; }
+      .dispatch-rule-top { font-size: 9px; letter-spacing: 2px; }
+      .dispatch-rule-top .center { letter-spacing: 4px; }
+    }
+  </style>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -21,34 +302,64 @@
   </header>
 
   <div class="content">
-    <div class="masthead">
-      <div class="masthead-eyebrow">The Reef Bloom Dispatch</div>
-      <div class="masthead-title">Notes from the Tide Line</div>
-      <div class="masthead-tagline">A weekly editorial on what's growing in the reef, and why.</div>
+
+    <div class="dispatch-rule-top">
+      <span>Vol. I</span>
+      <span class="center">— The Editorial Tide —</span>
+      <span>No. 3</span>
     </div>
 
-    <div class="issues">
-      <a class="issue-card" href="/newsletter/issue-3.html">
-        <div class="card-eyebrow"><span>Issue 03</span><span>Apr 13, 2026</span></div>
-        <div class="card-title">Bioluminescence Descends</div>
-        <p class="card-deck">The deep twilight has been the quietest biome since launch. This week, we're giving it a heartbeat — and two glowing exclusives to chase.</p>
-        <div class="card-cta">Read editorial →</div>
+    <div class="dispatch-masthead">
+      <div class="dispatch-eyebrow">The Reef Bloom Dispatch</div>
+      <div class="dispatch-title">Notes from the Tide Line</div>
+      <div class="dispatch-subtitle">A weekly editorial on what's growing in the reef, and why.</div>
+    </div>
+
+    <div class="dispatch-meta">
+      <span>Updated April 13, 2026</span>
+      <span class="dot"></span>
+      <span>3 issues in print</span>
+      <span class="dot"></span>
+      <span>Editorial · Reef Bloom Team</span>
+    </div>
+
+    <div class="latest-tag">Latest Issue</div>
+    <a class="hero-card" href="/newsletter/issue-3.html">
+      <div class="hero-eyebrow">
+        <span>Issue 03</span><span>April 13, 2026</span><span>Editorial</span>
+      </div>
+      <div class="hero-title">Bioluminescence Descends</div>
+      <p class="hero-deck">The deep twilight has been the quietest biome since launch. This week, we're giving it a heartbeat — and two glowing exclusives to chase.</p>
+      <div class="hero-cta">Read this week's editorial →</div>
+    </a>
+
+    <div class="archive-head">
+      <div class="archive-head-line"></div>
+      <div class="archive-head-label">From the Archive</div>
+      <div class="archive-head-line"></div>
+    </div>
+
+    <div class="archive-grid">
+      <a class="archive-card" href="/newsletter/issue-2.html">
+        <div class="archive-num">02</div>
+        <div class="archive-body">
+          <div class="archive-date">April 6, 2026</div>
+          <div class="archive-title">Event Passes &amp; Ambient Magic</div>
+          <p class="archive-deck">Events get exclusive species and a real progression track. The biomes get something subtler — they finally breathe.</p>
+        </div>
       </a>
-      <a class="issue-card" href="/newsletter/issue-2.html">
-        <div class="card-eyebrow"><span>Issue 02</span><span>Apr 6, 2026</span></div>
-        <div class="card-title">Event Passes &amp; Ambient Magic</div>
-        <p class="card-deck">Events get exclusive species and a real progression track. The biomes get something subtler — they finally breathe.</p>
-        <div class="card-cta">Read editorial →</div>
-      </a>
-      <a class="issue-card" href="/newsletter/issue-1.html">
-        <div class="card-eyebrow"><span>Issue 01</span><span>Mar 30, 2026</span></div>
-        <div class="card-title">Limited Time Events Arrive</div>
-        <p class="card-deck">Reef Bloom is no longer a game where every day is the same. Three rotating events introduce the first cadence of recurring content.</p>
-        <div class="card-cta">Read editorial →</div>
+      <a class="archive-card" href="/newsletter/issue-1.html">
+        <div class="archive-num">01</div>
+        <div class="archive-body">
+          <div class="archive-date">March 30, 2026</div>
+          <div class="archive-title">Limited Time Events Arrive</div>
+          <p class="archive-deck">Reef Bloom is no longer a game where every day is the same. Three rotating events introduce the first cadence of recurring content.</p>
+        </div>
       </a>
     </div>
 
-    <div style="text-align:center;">
+    <div class="colophon">
+      <p>Set in Georgia &amp; system-sans. Composed in Reef Bloom HQ, somewhere just below the surface.</p>
       <a class="play-btn" href="/">Play Now</a>
     </div>
   </div>
