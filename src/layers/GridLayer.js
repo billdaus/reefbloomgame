@@ -2,7 +2,7 @@ import { Container, Graphics } from 'pixi.js';
 import {
   GRID_X, GRID_Y, GRID_W, GRID_H,
   TILE_SIZE, GRID_COLS, GRID_ROWS,
-  COLORS,
+  COLORS, CORAL_SPECIES, DECOR_SPECIES,
 } from '../constants.js';
 import { worldToTile } from '../utils/grid.js';
 import { Coral } from '../entities/Coral.js';
@@ -117,14 +117,32 @@ export class GridLayer {
     if (!this._hoveredTile) return;
     if (!state.selectedType && !state.removeMode) return;
     const { col, row } = this._hoveredTile;
-    const occupied = state.grid[row][col] !== null;
+
+    const cellId    = state.grid[row][col];
+    const decorHere = state.placedDecor.some(d => d.col === col && d.row === row);
+    const anyHere   = cellId !== null || decorHere;
 
     let color;
     if (state.removeMode) {
-      if (!occupied) return;          // nothing to remove
-      color = 0xff4444;               // red highlight for removal
+      if (!anyHere) return;
+      color = 0xff4444;
     } else {
-      color = occupied ? 0xff4444 : COLORS.grid_hover;
+      let blocked;
+      if (state.selectedType === 'coral') {
+        const spec = CORAL_SPECIES[state.selectedId];
+        blocked = (cellId !== null) || (decorHere && !spec?.tall);
+      } else if (state.selectedType === 'decor') {
+        const spec = DECOR_SPECIES[state.selectedId];
+        if (spec?.stackable) {
+          const cellSpec = cellId ? CORAL_SPECIES[cellId] : null;
+          blocked = decorHere || (cellId !== null && !cellSpec?.tall);
+        } else {
+          blocked = anyHere;
+        }
+      } else {
+        blocked = cellId !== null;
+      }
+      color = blocked ? 0xff4444 : COLORS.grid_hover;
     }
 
     const x = GRID_X + col * TILE_SIZE + 1;

@@ -638,12 +638,12 @@ export const DECOR_SPECIES = {
   seaPebble: {
     id: 'seaPebble', name: 'Sea Pebble',
     kind: 'pebble', tier: TIER.COMMON, color: 0x8a9097, accentColor: 0x4d5560,
-    cost: 3, unlockLevel: 1, biome: 'coral',
+    cost: 3, unlockLevel: 1, biome: 'coral', stackable: true,
   },
   conchShell: {
     id: 'conchShell', name: 'Conch Shell',
     kind: 'conch', tier: TIER.COMMON, color: 0xf6c8a0, accentColor: 0xb04a2a,
-    cost: 6, unlockLevel: 2, biome: 'coral',
+    cost: 6, unlockLevel: 2, biome: 'coral', stackable: true,
   },
   driftwood: {
     id: 'driftwood', name: 'Driftwood',
@@ -659,12 +659,12 @@ export const DECOR_SPECIES = {
   smoothPebble: {
     id: 'smoothPebble', name: 'Smooth Pebble',
     kind: 'pebble', tier: TIER.COMMON, color: 0xc8b28a, accentColor: 0x8a6a3e,
-    cost: 3, unlockLevel: 1, biome: 'seagrass',
+    cost: 3, unlockLevel: 1, biome: 'seagrass', stackable: true,
   },
   oysterCluster: {
     id: 'oysterCluster', name: 'Oyster Cluster',
     kind: 'oysters', tier: TIER.COMMON, color: 0xb6b9a5, accentColor: 0x52584a,
-    cost: 8, unlockLevel: 3, biome: 'seagrass',
+    cost: 8, unlockLevel: 3, biome: 'seagrass', stackable: true,
   },
   rustyAnchor: {
     id: 'rustyAnchor', name: 'Rusty Anchor',
@@ -675,12 +675,12 @@ export const DECOR_SPECIES = {
   glowOrb: {
     id: 'glowOrb', name: 'Glow Orb',
     kind: 'orb', tier: TIER.COMMON, color: 0x1a2a48, accentColor: 0x40e0ff,
-    cost: 5, unlockLevel: 6, biome: 'deepTwilight',
+    cost: 5, unlockLevel: 6, biome: 'deepTwilight', stackable: true,
   },
   fossilShell: {
     id: 'fossilShell', name: 'Fossil Ammonite',
     kind: 'fossil', tier: TIER.COMMON, color: 0x5b6168, accentColor: 0x2a2e34,
-    cost: 12, unlockLevel: 7, biome: 'deepTwilight',
+    cost: 12, unlockLevel: 7, biome: 'deepTwilight', stackable: true,
   },
   abyssCairn: {
     id: 'abyssCairn', name: 'Abyss Cairn',

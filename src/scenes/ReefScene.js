@@ -264,6 +264,9 @@ export class ReefScene {
     if (state.grid[row][col] !== null) return;
     const spec = CORAL_SPECIES[speciesId];
     if (!spec || spec.unlockLevel > state.level) return;
+    // Stackable decor occupies ground space; only tall coral can rise above it
+    const decorHere = state.placedDecor.some(d => d.col === col && d.row === row);
+    if (decorHere && !spec.tall) return;
     const spent = spec.pearlCost ? spendForCoralPearl(speciesId) : spendForCoral(speciesId);
     if (!spent) return;
 
@@ -291,13 +294,28 @@ export class ReefScene {
   }
 
   _tryPlaceDecor(col, row, speciesId) {
-    if (state.grid[row][col] !== null) return;
     const spec = DECOR_SPECIES[speciesId];
     if (!spec || spec.unlockLevel > state.level) return;
+
+    // One decor per tile, max
+    if (state.placedDecor.some(d => d.col === col && d.row === row)) return;
+
+    const cellId    = state.grid[row][col];
+    const cellCoral = cellId ? CORAL_SPECIES[cellId] : null;
+
+    if (spec.stackable) {
+      // Stackable decor: tile must be empty OR contain TALL coral
+      if (cellId !== null && !cellCoral?.tall) return;
+    } else {
+      // Non-stackable decor: tile must be empty
+      if (cellId !== null) return;
+    }
+
     if (!spendForDecor(speciesId)) return;
 
     const uid = state.nextUid();
-    state.grid[row][col] = speciesId;
+    // Only non-stackable decor takes the primary grid slot
+    if (!spec.stackable) state.grid[row][col] = speciesId;
     state.placedDecor.push({ uid, col, row, speciesId });
     state.decorTypesSeen.add(speciesId);
 
@@ -388,10 +406,12 @@ export class ReefScene {
     const idx = state.placedDecor.findIndex(d => d.col === col && d.row === row);
     if (idx === -1) return;
     const entry = state.placedDecor[idx];
+    const spec  = DECOR_SPECIES[entry.speciesId];
 
     const refund = refundDecor(entry.speciesId);
 
-    state.grid[row][col] = null;
+    // Stackable decor never owned the grid cell — leave any tall coral above intact.
+    if (spec && !spec.stackable) state.grid[row][col] = null;
     state.placedDecor.splice(idx, 1);
     this._grid.removeDecor(entry.uid);
 
@@ -488,8 +508,16 @@ export class ReefScene {
     // Rebuild decor sprites
     (data.placedDecor ?? []).forEach(({ uid, col, row, speciesId }) => {
       const spec = DECOR_SPECIES[speciesId];
-      if (!spec || state.grid[row]?.[col] !== null) return;
-      state.grid[row][col] = speciesId;
+      if (!spec) return;
+      const cellId = state.grid[row]?.[col];
+      if (spec.stackable) {
+        // Allow on top of tall coral; reject if cell holds anything non-tall
+        const cellCoral = cellId ? CORAL_SPECIES[cellId] : null;
+        if (cellId !== null && !cellCoral?.tall) return;
+      } else {
+        if (cellId !== null) return;
+        state.grid[row][col] = speciesId;
+      }
       state.placedDecor.push({ uid, col, row, speciesId });
       this._grid.placeDecor(spec, col, row, uid);
       if (uid > maxUid) maxUid = uid;
