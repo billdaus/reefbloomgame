@@ -593,6 +593,11 @@ export const FISH_SPECIES = {
     size: 36, speed: 1.0, unlockLevel: 11, biome: 'deepTwilight',
     pearlCost: 60,
   },
+  nautilus: {
+    id: 'nautilus', name: 'Nautilus', scientific: 'Nautilus pompilius',
+    tier: TIER.EPIC, layer: 'B', color: 0xfff0d9, accentColor: 0xb04a2a,
+    size: 26, speed: 0.55, unlockLevel: 9, biome: 'deepTwilight',
+  },
   abyssalRay: {
     id: 'abyssalRay', name: 'Abyssal Ray', scientific: '',
     tier: TIER.LEGENDARY, layer: 'B', color: 0x1a237e, accentColor: 0x7986cb,

@@ -101,6 +101,7 @@ const FISH_LORE = {
   fangtooth:           'The fangtooth has the largest teeth proportional to body size of any fish — so oversized it can never fully close its mouth. It hunts by detecting bioluminescence in the dark.',
   frilledShark:        'A living fossil whose body plan has not changed in 80 million years. It coils like a serpent before striking with a lunging bite, earning it the nickname "living sea serpent".',
   giantSquid:          'Giant squid have eyes up to 30 cm across — the largest of any living animal. They battle sperm whales in the dark ocean interior, leaving circular sucker scars on the whales\' skin.',
+  nautilus:            'A living fossil whose chambered spiral shell has barely changed in 500 million years. As the animal grows it seals off each chamber behind it, regulating buoyancy by adjusting the gas-to-fluid ratio inside — a biological submarine.',
   abyssalRay:          'This deep-water ray glides just above the sediment, detecting buried prey through electroreception. Its slow wingbeats stir billowing clouds of sediment undisturbed for centuries.',
   oarfish:             'The longest bony fish on Earth, reaching 11 m. Oarfish surface only when dying or disoriented — their rare appearances near beaches have fuelled sea-serpent myths for millennia.',
   twilightWhaleShark:  'A twilight-adapted filter-feeder whose bioluminescent spots pulse in slow rhythmic waves. Visible from 20 metres away, drawing clouds of zooplankton toward its open mouth.',

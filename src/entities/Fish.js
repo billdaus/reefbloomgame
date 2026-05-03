@@ -123,6 +123,7 @@ export class Fish {
       case 'fangtooth':         this._drawFangtooth(g, sz, c, ac);         break;
       case 'frilledShark':      this._drawFrilledShark(g, sz, c, ac);      break;
       case 'giantSquid':        this._drawGiantSquid(g, sz, c, ac);        break;
+      case 'nautilus':          this._drawNautilus(g, sz, c, ac);          break;
       case 'abyssalRay':        this._drawAbyssalRay(g, sz, c, ac);        break;
       case 'oarfish':           this._drawOarfish(g, sz, c, ac);           break;
       case 'twilightWhaleShark': this._drawTwilightWhaleShark(g, sz, c, ac); break;
@@ -2311,5 +2312,89 @@ export class Fish {
      .lineTo(hw * 1.0,   0)
      .lineTo(hw * 0.82,  hh * 0.06)
      .closePath().fill(ac);
+  }
+
+  /** Nautilus — chambered spiral shell with a hood of tentacles. Facing right. */
+  _drawNautilus(g, sz, bodyColor, accentColor) {
+    const r      = sz * 0.95;
+    const dark   = this._darken(bodyColor, 0.18);
+    const stripe = accentColor;
+    const cream  = bodyColor;
+
+    // Outer shell disc
+    g.circle(0, 0, r).fill(cream);
+    g.circle(0, 0, r).stroke({ color: dark, width: 1.4 });
+
+    // Radial reddish-brown stripes (camouflage banding) on the upper half
+    const STRIPES = 14;
+    for (let i = 0; i < STRIPES; i++) {
+      const t  = i / STRIPES;
+      const a  = -Math.PI * 0.95 + t * Math.PI * 1.10;     // arc across the upper half
+      const w  = sz * (0.06 + 0.05 * Math.sin(t * Math.PI)); // taper at ends
+      const r0 = sz * 0.18;
+      const r1 = r * 0.96;
+      g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0)
+       .lineTo(Math.cos(a) * r1, Math.sin(a) * r1)
+       .stroke({ color: stripe, width: w, cap: 'round', alpha: 0.85 });
+    }
+
+    // Chamber separators — a logarithmic spiral drawn as a polyline
+    const PTS = 80;
+    const startA = Math.PI * 0.10;
+    const endA   = Math.PI * 4.6;
+    const b      = 0.22;
+    g.moveTo(Math.cos(startA) * sz * 0.1, Math.sin(startA) * sz * 0.1);
+    for (let i = 1; i <= PTS; i++) {
+      const t  = i / PTS;
+      const a  = startA + (endA - startA) * t;
+      const rr = sz * 0.10 * Math.exp(b * (a - startA));
+      if (rr > r * 0.92) break;
+      g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    g.stroke({ color: dark, width: 1.1, alpha: 0.55 });
+
+    // Inner shell core — small dark spiral hub
+    g.circle(0, 0, sz * 0.13).fill(this._darken(stripe, 0.30));
+    g.circle(sz * 0.04, -sz * 0.02, sz * 0.06).fill({ color: cream, alpha: 0.55 });
+
+    // Aperture (shell opening on the right where the body emerges)
+    g.moveTo(r * 0.05,  r * 0.20)
+     .lineTo(r * 0.95,  r * 0.10)
+     .lineTo(r * 1.02,  r * 0.55)
+     .lineTo(r * 0.20,  r * 0.78)
+     .closePath().fill(this._darken(cream, 0.10));
+    g.moveTo(r * 0.05,  r * 0.20)
+     .lineTo(r * 0.95,  r * 0.10)
+     .lineTo(r * 1.02,  r * 0.55)
+     .lineTo(r * 0.20,  r * 0.78)
+     .stroke({ color: dark, width: 1.2, alpha: 0.7 });
+
+    // Hood — fleshy cap above the aperture
+    g.moveTo(r * 0.30, r * 0.18)
+     .bezierCurveTo(r * 0.70, r * 0.04,  r * 1.05, r * 0.20,  r * 1.05, r * 0.45)
+     .lineTo(r * 0.95, r * 0.50)
+     .bezierCurveTo(r * 0.95, r * 0.25, r * 0.65, r * 0.18, r * 0.35, r * 0.30)
+     .closePath().fill(this._darken(stripe, 0.25));
+
+    // Tentacle bundle trailing forward-right out of the aperture
+    const TENTACLES = 9;
+    for (let i = 0; i < TENTACLES; i++) {
+      const t  = i / (TENTACLES - 1);
+      const y0 = r * (0.30 + t * 0.45);
+      const x0 = r * 0.92;
+      const wave = Math.sin(t * Math.PI) * sz * 0.08;
+      const x1 = r * (1.30 + Math.sin(t * Math.PI) * 0.10);
+      const y1 = y0 + wave;
+      g.moveTo(x0, y0)
+       .bezierCurveTo(x0 + sz * 0.18, y0 - sz * 0.02,
+                      x1 - sz * 0.10, y1 + sz * 0.04,
+                      x1, y1)
+       .stroke({ color: this._darken(stripe, 0.10), width: 1.6, cap: 'round' });
+    }
+
+    // Eye — small dark dot under the hood
+    g.circle(r * 0.78, r * 0.34, sz * 0.10).fill(0xffffff);
+    g.circle(r * 0.80, r * 0.35, sz * 0.06).fill(0x1a0808);
+    g.circle(r * 0.82, r * 0.33, sz * 0.02).fill(0xffffff);
   }
 }
