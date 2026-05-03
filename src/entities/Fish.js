@@ -2314,131 +2314,163 @@ export class Fish {
      .closePath().fill(ac);
   }
 
-  /** Nautilus — chambered spiral shell with a friendly hood and tentacles. Facing right. */
+  /** Nautilus pompilius — anatomically grounded: countershaded shell, leathery hood, pinhole eye. */
   _drawNautilus(g, sz, bodyColor, accentColor) {
     const r        = sz * 1.05;
     const cream    = bodyColor;
     const stripe   = accentColor;
-    const stripeDk = this._darken(accentColor, 0.18);
-    const dark     = this._darken(bodyColor, 0.32);
-    const flesh    = this._darken(accentColor, 0.30);
+    const stripeDk = this._darken(accentColor, 0.22);
+    const stripeLt = this._lighten(accentColor, 0.18);
+    const dark     = this._darken(bodyColor, 0.42);
+    const hood     = this._darken(accentColor, 0.45);
+    const flesh    = this._darken(accentColor, 0.18);
 
-    // ── Outer shell — pearlescent disc ─────────────────────────────────
+    // ── Pale cream shell base ─────────────────────────────────────────
     g.circle(0, 0, r).fill(cream);
-    // Soft inner shadow on the lower-left for volume
-    g.circle(-r * 0.10, r * 0.10, r * 0.94)
-     .fill({ color: this._darken(cream, 0.08), alpha: 0.45 });
-    // Pearl highlight on the upper-right
-    g.circle(r * 0.18, -r * 0.18, r * 0.62)
+
+    // Soft volumetric shading
+    g.circle(-r * 0.06, r * 0.10, r * 0.95)
+     .fill({ color: this._darken(cream, 0.08), alpha: 0.32 });
+    g.circle(r * 0.18, -r * 0.20, r * 0.55)
      .fill({ color: 0xffffff, alpha: 0.10 });
 
-    // ── Camouflage banding — curved stripes following shell growth ─────
-    // Each stripe is a quadratic curve from inner radius to outer rim,
-    // tangentially offset so it sweeps with the spiral instead of radiating.
-    const STRIPES = 18;
+    // ── Wavy reddish-brown banding on the UPPER half (countershading) ─
+    // Real nautilus stripes are irregular; jitter spacing and width.
+    const STRIPES = 26;
+    const baseA   = -Math.PI * 1.04;
+    const sweep   = Math.PI * 1.16;
     for (let i = 0; i < STRIPES; i++) {
-      const t      = i / STRIPES;
-      const a      = -Math.PI * 1.05 + t * Math.PI * 1.45;
-      const offset = 0.18;                          // tangential sweep
-      const r0     = r * 0.18;
-      const r1     = r * 0.97;
-      const w      = sz * (0.08 + 0.06 * Math.sin(t * Math.PI));
-
+      const t  = i / (STRIPES - 1);
+      const j  = Math.sin(i * 1.7) * 0.020;          // spacing jitter
+      const a  = baseA + (t + j) * sweep;
+      const r0 = r * (0.20 + Math.sin(i * 2.3) * 0.020);
+      const r1 = r * (0.97 - Math.abs(t - 0.5) * 0.04);
+      const w  = sz * (0.05 + 0.06 * Math.sin(t * Math.PI) + Math.sin(i * 1.3) * 0.012);
+      const sw = 0.085 + Math.sin(i * 1.1) * 0.025;  // tangential sweep
+      const mid = (r0 + r1) * 0.55;
       const ax = Math.cos(a) * r0;
       const ay = Math.sin(a) * r0;
-      const bx = Math.cos(a + offset) * r1;
-      const by = Math.sin(a + offset) * r1;
-      const mid = (r0 + r1) * 0.55;
-      const cx = Math.cos(a + offset * 0.5) * mid;
-      const cy = Math.sin(a + offset * 0.5) * mid;
-
-      g.moveTo(ax, ay)
-       .quadraticCurveTo(cx, cy, bx, by)
-       .stroke({ color: stripeDk, width: w, cap: 'round', alpha: 0.78 });
+      const cx = Math.cos(a + sw * 0.5) * mid;
+      const cy = Math.sin(a + sw * 0.5) * mid;
+      const bx = Math.cos(a + sw) * r1;
+      const by = Math.sin(a + sw) * r1;
+      const col = (i % 4 === 0) ? stripeLt : (i % 3 === 0) ? stripe : stripeDk;
+      g.moveTo(ax, ay).quadraticCurveTo(cx, cy, bx, by)
+       .stroke({ color: col, width: w, cap: 'round', alpha: 0.82 });
     }
 
-    // Outer shell rim
-    g.circle(0, 0, r).stroke({ color: dark, width: 1.5 });
+    // ── Belly wash — fade bands into pale cream on the lower half ─────
+    g.moveTo(-r, r * 0.05)
+     .lineTo( r, r * 0.05)
+     .lineTo( r, r)
+     .lineTo(-r, r)
+     .closePath()
+     .fill({ color: cream, alpha: 0.32 });
 
-    // ── Chamber septa — logarithmic spiral chamber dividers ────────────
-    const PTS    = 110;
-    const startA = Math.PI * 0.20;
-    const endA   = Math.PI * 5.0;
-    const b_log  = 0.205;
-    let started  = false;
+    // Outer shell rim
+    g.circle(0, 0, r).stroke({ color: dark, width: 1.4 });
+
+    // ── Subtle inner-whorl boundary (single curve, not full chambers) ─
+    const PTS = 64;
+    let started = false;
     for (let i = 0; i <= PTS; i++) {
       const t  = i / PTS;
-      const a  = startA + (endA - startA) * t;
-      const rr = sz * 0.07 * Math.exp(b_log * (a - startA));
-      if (rr > r * 0.92) break;
-      const x = Math.cos(a) * rr;
-      const y = Math.sin(a) * rr;
+      const a  = Math.PI * 0.30 + t * Math.PI * 1.55;
+      const rr = r * (0.42 + 0.42 * t);
+      const x  = Math.cos(a) * rr;
+      const y  = Math.sin(a) * rr;
       if (!started) { g.moveTo(x, y); started = true; }
       else g.lineTo(x, y);
     }
-    g.stroke({ color: dark, width: 1.0, alpha: 0.6 });
+    g.stroke({ color: dark, width: 0.8, alpha: 0.28 });
 
-    // ── Spiral hub — innermost protoconch ──────────────────────────────
-    g.circle(0, 0, sz * 0.10).fill(this._darken(stripe, 0.40));
-    g.circle(sz * 0.025, -sz * 0.02, sz * 0.05).fill({ color: cream, alpha: 0.6 });
-
-    // ── Aperture — the shell opening on the right ─────────────────────
-    g.moveTo(r * 0.08, r * 0.16)
-     .bezierCurveTo(r * 0.55, r * 0.02,  r * 1.04, r * 0.22,  r * 1.06, r * 0.55)
-     .bezierCurveTo(r * 0.92, r * 0.82,  r * 0.50, r * 0.88,  r * 0.10, r * 0.78)
-     .closePath().fill(this._darken(cream, 0.18));
-
-    // ── Tentacles — short, soft, fanned bunch (cute "beard") ───────────
-    const TENTACLES = 13;
-    for (let i = 0; i < TENTACLES; i++) {
-      const t   = i / (TENTACLES - 1);
-      const y0  = r * (0.30 + t * 0.50);
-      const x0  = r * 0.88;
-      // Middle tentacles longer, outer ones shorter — gives the bunch a fan shape
-      const len  = sz * (0.32 + Math.sin(t * Math.PI) * 0.22);
-      // Slight up/down offset so they don't all stack flat
-      const sag  = Math.sin(t * Math.PI) * sz * 0.06;
-      const x1   = x0 + len;
-      const y1   = y0 + sag * (i % 2 === 0 ? 0.4 : -0.2);
-      // Curl: control points pull the tip slightly downward for a soft droop
-      g.moveTo(x0, y0)
-       .bezierCurveTo(x0 + sz * 0.16, y0 - sz * 0.02,
-                      x1 - sz * 0.06, y1 + sz * 0.08,
-                      x1, y1)
-       .stroke({ color: flesh, width: 1.8, cap: 'round' });
+    // Faint growth-line arcs near the outer rim (calcium lamellae)
+    for (let i = 0; i < 5; i++) {
+      const rr = r * (0.86 + i * 0.022);
+      g.arc(0, 0, rr, -Math.PI * 0.95, Math.PI * 0.20)
+       .stroke({ color: dark, width: 0.5, alpha: 0.22 });
     }
 
-    // ── Hood — plump, friendly fleshy cap above the aperture ──────────
-    g.moveTo(r * 0.28, r * 0.14)
-     .bezierCurveTo(r * 0.62, -r * 0.02,  r * 1.05, r * 0.10,  r * 1.10, r * 0.42)
-     .lineTo(r * 0.96, r * 0.50)
-     .bezierCurveTo(r * 0.96, r * 0.20,  r * 0.62, r * 0.16,  r * 0.32, r * 0.28)
+    // ── Umbilicus — small dark recessed dimple at the center ──────────
+    g.circle(0, 0, sz * 0.13).fill(this._darken(cream, 0.32));
+    g.circle(0, 0, sz * 0.13).stroke({ color: dark, width: 0.9, alpha: 0.65 });
+    g.circle(sz * 0.02, -sz * 0.02, sz * 0.05).fill({ color: cream, alpha: 0.40 });
+
+    // ── Aperture — opening on the TRAILING (-x) side; nautiluses jet
+    //     backward via the hyponome, so the shell leads and body trails.
+    g.moveTo(-r * 0.10, r * 0.10)
+     .bezierCurveTo(-r * 0.62, -r * 0.04, -r * 1.06, r * 0.18, -r * 1.10, r * 0.55)
+     .bezierCurveTo(-r * 0.96, r * 0.86, -r * 0.50, r * 0.92, -r * 0.10, r * 0.82)
+     .closePath().fill(this._darken(cream, 0.32));
+
+    // ── Hyponome (funnel) — fleshy tube below the tentacles ───────────
+    g.moveTo(-r * 0.78, r * 0.78)
+     .bezierCurveTo(-r * 0.96, r * 0.88, -r * 1.10, r * 0.78, -r * 1.12, r * 0.58)
+     .lineTo(-r * 1.00, r * 0.55)
+     .bezierCurveTo(-r * 1.00, r * 0.72, -r * 0.92, r * 0.74, -r * 0.78, r * 0.72)
      .closePath().fill(flesh);
+    // Funnel rim shadow
+    g.moveTo(-r * 1.04, r * 0.62)
+     .quadraticCurveTo(-r * 1.10, r * 0.70, -r * 1.02, r * 0.78)
+     .stroke({ color: this._darken(flesh, 0.30), width: 1.1, alpha: 0.7 });
 
-    // Hood camouflage banding — a couple of soft rust-colored speckles
-    g.circle(r * 0.55, r * 0.10, sz * 0.07).fill({ color: stripeDk, alpha: 0.55 });
-    g.circle(r * 0.78, r * 0.06, sz * 0.06).fill({ color: stripeDk, alpha: 0.50 });
-    g.circle(r * 0.95, r * 0.20, sz * 0.05).fill({ color: stripeDk, alpha: 0.50 });
+    // ── Tentacles (cirri) — two rings, short and thick, trailing -x ───
+    // Outer ring
+    const OUTER = 11;
+    for (let i = 0; i < OUTER; i++) {
+      const t   = i / (OUTER - 1);
+      const y0  = r * (0.26 + t * 0.54);
+      const x0  = -r * 0.90;
+      const len = sz * (0.16 + Math.sin(t * Math.PI) * 0.14);
+      const x1  = x0 - len;
+      const y1  = y0 + Math.sin(t * Math.PI) * sz * 0.04 * (i % 2 === 0 ? 1 : -0.4);
+      g.moveTo(x0, y0)
+       .bezierCurveTo(x0 - sz * 0.10, y0,
+                      x1 + sz * 0.04, y1 + sz * 0.04,
+                      x1, y1)
+       .stroke({ color: flesh, width: 2.0, cap: 'round' });
+    }
+    // Inner ring — denser, shorter, suggests the ~90 cirri without drawing them all
+    const INNER = 13;
+    for (let i = 0; i < INNER; i++) {
+      const t   = i / (INNER - 1);
+      const y0  = r * (0.30 + t * 0.46);
+      const x0  = -r * 0.86;
+      const len = sz * (0.07 + Math.sin(t * Math.PI) * 0.08);
+      g.moveTo(x0, y0)
+       .lineTo(x0 - len, y0 + sz * 0.015)
+       .stroke({ color: this._darken(flesh, 0.18), width: 1.3, cap: 'round' });
+    }
 
-    // Hood gloss highlight — gives a soft, cute sheen
-    g.moveTo(r * 0.45, r * 0.05)
-     .quadraticCurveTo(r * 0.78, -r * 0.02, r * 1.00, r * 0.18)
-     .quadraticCurveTo(r * 0.78, r * 0.04,  r * 0.45, r * 0.10)
-     .closePath().fill({ color: 0xffffff, alpha: 0.18 });
+    // ── Hood — leathery dark cap covering the upper aperture ──────────
+    g.moveTo(-r * 0.26, r * 0.10)
+     .bezierCurveTo(-r * 0.62, -r * 0.06, -r * 1.04, r * 0.04, -r * 1.10, r * 0.38)
+     .bezierCurveTo(-r * 1.06, r * 0.50, -r * 0.96, r * 0.50, -r * 0.92, r * 0.46)
+     .bezierCurveTo(-r * 0.90, r * 0.16, -r * 0.62, r * 0.16, -r * 0.30, r * 0.24)
+     .closePath().fill(hood);
 
-    // ── Big expressive eye ────────────────────────────────────────────
-    const ex   = r * 0.74;
-    const ey   = r * 0.36;
-    const eyR  = sz * 0.18;
-    // Sclera (off-white for warmth)
-    g.circle(ex, ey, eyR).fill(0xfaf2e6);
-    g.circle(ex, ey, eyR).stroke({ color: dark, width: 1.3 });
-    // Iris — warm dark
-    g.circle(ex + sz * 0.015, ey + sz * 0.012, eyR * 0.62).fill(0x2a1208);
-    // Pupil
-    g.circle(ex + sz * 0.015, ey + sz * 0.012, eyR * 0.36).fill(0x000000);
-    // Catchlights — primary and secondary (cute factor)
-    g.circle(ex - sz * 0.045, ey - sz * 0.045, eyR * 0.30).fill(0xffffff);
-    g.circle(ex + sz * 0.05,  ey + sz * 0.06,  eyR * 0.14).fill({ color: 0xffffff, alpha: 0.85 });
+    // Hood ridge — slightly darker trailing edge
+    g.moveTo(-r * 0.28, r * 0.12)
+     .bezierCurveTo(-r * 0.62, -r * 0.04, -r * 1.02, r * 0.06, -r * 1.08, r * 0.38)
+     .stroke({ color: this._darken(hood, 0.30), width: 1.2, alpha: 0.85 });
+
+    // Cream blotches scattered across the leathery hood (real nautilus marking)
+    g.circle(-r * 0.46, r * 0.04,  sz * 0.07).fill({ color: cream, alpha: 0.50 });
+    g.circle(-r * 0.66, -r * 0.01, sz * 0.06).fill({ color: cream, alpha: 0.45 });
+    g.circle(-r * 0.86, r * 0.12,  sz * 0.05).fill({ color: cream, alpha: 0.45 });
+    g.circle(-r * 1.00, r * 0.28,  sz * 0.04).fill({ color: cream, alpha: 0.40 });
+    g.circle(-r * 0.58, r * 0.20,  sz * 0.04).fill({ color: cream, alpha: 0.35 });
+    g.circle(-r * 0.78, r * 0.22,  sz * 0.035).fill({ color: cream, alpha: 0.35 });
+
+    // ── Pinhole eye — small lensless dark spot (Nautilus has no lens) ─
+    const ex  = -r * 0.78;
+    const ey  = r * 0.40;
+    const eyR = sz * 0.085;
+    // Eye depression — slightly darker patch on the hood
+    g.circle(ex, ey, eyR + sz * 0.025).fill(this._darken(hood, 0.35));
+    // Pinhole opening
+    g.circle(ex, ey, eyR * 0.55).fill(0x050202);
+    // Faint moisture glint
+    g.circle(ex - sz * 0.012, ey - sz * 0.018, eyR * 0.18).fill({ color: 0xffffff, alpha: 0.55 });
   }
 }
