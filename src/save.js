@@ -34,9 +34,11 @@ export function saveGame() {
   const biomeData = {
     grid:           state.grid.map(row => [...row]),
     placedCoral:    state.placedCoral.map(c => ({ uid: c.uid, col: c.col, row: c.row, speciesId: c.speciesId })),
+    placedDecor:    state.placedDecor.map(d => ({ uid: d.uid, col: d.col, row: d.row, speciesId: d.speciesId })),
     fishTypes:      state.fish.map(f => f.speciesId),
     coralTypesSeen: [...state.coralTypesSeen],
     fishTypesSeen:  [...state.fishTypesSeen],
+    decorTypesSeen: [...state.decorTypesSeen],
   };
 
   // Read existing slot data so we don't clobber the OTHER biome's grid
@@ -112,9 +114,11 @@ export function loadGame() {
     account:            full.account            ?? null,
     grid:           biomeData.grid           ?? null,
     placedCoral:    biomeData.placedCoral    ?? [],
+    placedDecor:    biomeData.placedDecor    ?? [],
     fishTypes:      biomeData.fishTypes      ?? [],
     coralTypesSeen: biomeData.coralTypesSeen ?? [],
     fishTypesSeen:  biomeData.fishTypesSeen  ?? [],
+    decorTypesSeen: biomeData.decorTypesSeen ?? [],
   };
 }
 

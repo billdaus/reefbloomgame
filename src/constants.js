@@ -630,6 +630,65 @@ export const FISH_SPECIES = {
   },
 };
 
+// ─── Decor species (purely aesthetic — no BE generation) ────────────────────
+// Decor occupies a grid tile like coral, costs BE on placement, refunds 50% on
+// removal. `kind` drives the renderer in src/entities/Decor.js.
+export const DECOR_SPECIES = {
+  // ── Coral biome ───────────────────────────────────────────────────────────
+  seaPebble: {
+    id: 'seaPebble', name: 'Sea Pebble',
+    kind: 'pebble', tier: TIER.COMMON, color: 0x8a9097, accentColor: 0x4d5560,
+    cost: 3, unlockLevel: 1, biome: 'coral',
+  },
+  conchShell: {
+    id: 'conchShell', name: 'Conch Shell',
+    kind: 'conch', tier: TIER.COMMON, color: 0xf6c8a0, accentColor: 0xb04a2a,
+    cost: 6, unlockLevel: 2, biome: 'coral',
+  },
+  driftwood: {
+    id: 'driftwood', name: 'Driftwood',
+    kind: 'driftwood', tier: TIER.COMMON, color: 0x8d6e4a, accentColor: 0x4d3925,
+    cost: 12, unlockLevel: 4, biome: 'coral',
+  },
+  treasureChest: {
+    id: 'treasureChest', name: 'Treasure Chest',
+    kind: 'chest', tier: TIER.UNCOMMON, color: 0x6d4019, accentColor: 0xffd54f,
+    cost: 30, unlockLevel: 6, biome: 'coral',
+  },
+  // ── Seagrass biome ────────────────────────────────────────────────────────
+  smoothPebble: {
+    id: 'smoothPebble', name: 'Smooth Pebble',
+    kind: 'pebble', tier: TIER.COMMON, color: 0xc8b28a, accentColor: 0x8a6a3e,
+    cost: 3, unlockLevel: 1, biome: 'seagrass',
+  },
+  oysterCluster: {
+    id: 'oysterCluster', name: 'Oyster Cluster',
+    kind: 'oysters', tier: TIER.COMMON, color: 0xb6b9a5, accentColor: 0x52584a,
+    cost: 8, unlockLevel: 3, biome: 'seagrass',
+  },
+  rustyAnchor: {
+    id: 'rustyAnchor', name: 'Rusty Anchor',
+    kind: 'anchor', tier: TIER.UNCOMMON, color: 0x6d4a32, accentColor: 0x3a261a,
+    cost: 20, unlockLevel: 5, biome: 'seagrass',
+  },
+  // ── Deep Twilight biome ───────────────────────────────────────────────────
+  glowOrb: {
+    id: 'glowOrb', name: 'Glow Orb',
+    kind: 'orb', tier: TIER.COMMON, color: 0x1a2a48, accentColor: 0x40e0ff,
+    cost: 5, unlockLevel: 6, biome: 'deepTwilight',
+  },
+  fossilShell: {
+    id: 'fossilShell', name: 'Fossil Ammonite',
+    kind: 'fossil', tier: TIER.COMMON, color: 0x5b6168, accentColor: 0x2a2e34,
+    cost: 12, unlockLevel: 7, biome: 'deepTwilight',
+  },
+  abyssCairn: {
+    id: 'abyssCairn', name: 'Abyss Cairn',
+    kind: 'cairn', tier: TIER.UNCOMMON, color: 0x2c3540, accentColor: 0x10151c,
+    cost: 25, unlockLevel: 9, biome: 'deepTwilight',
+  },
+};
+
 // ─── Biomes ───────────────────────────────────────────────────────────────────
 export const BIOMES = {
   coral: {

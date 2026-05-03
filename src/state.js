@@ -21,7 +21,7 @@ export const state = {
   quest: null,      // { date, status, challenges, reward } — regenerated each day
 
   // ── Selection (placement mode) ─────────────────────────────────────────────
-  selectedType: null,   // 'coral' | 'fish' | null
+  selectedType: null,   // 'coral' | 'fish' | 'decor' | null
   selectedId:   null,   // species id string
   removeMode:   false,  // true = tap to remove entities
 
@@ -31,7 +31,9 @@ export const state = {
 
   // ── Placed entities ────────────────────────────────────────────────────────
   placedCoral: [],   // [{ uid, col, row, speciesId }]
+  placedDecor: [],   // [{ uid, col, row, speciesId }] — purely aesthetic props
   fish:        [],   // Fish instances (added by FishLayer)
+  decorTypesSeen: new Set(),
 
   // ── Idle streak ────────────────────────────────────────────────────────────
   lastInteractionTime: Date.now(),

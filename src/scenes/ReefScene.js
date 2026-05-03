@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -12,6 +12,7 @@ import { SeasonalAmbience } from '../entities/SeasonalAmbience.js';
 import {
   initEconomy, tickEconomy,
   spendForCoral, spendForFish, spendForCoralPearl, spendForFishPearl,
+  spendForDecor, refundDecor,
   recordInteraction, refundCoral, refundFish,
 } from '../systems/BEEconomy.js';
 import { initQuests, recordQuestEvent, checkSnapshotQuests, getQuestStatus } from '../systems/QuestSystem.js';
@@ -68,6 +69,8 @@ export class ReefScene {
     this.worldContainer.addChild(this._bg.container);
     // 2. Grid floor + lines + input
     this.worldContainer.addChild(this._grid.container);
+    // 2b. Decor — static aesthetic props on the floor, below coral and fish
+    this.worldContainer.addChild(this._grid.decorContainer);
     // 3. Short/flat coral — fish Layer A swims over these
     this.worldContainer.addChild(this._grid.shortCoralContainer);
     // 3b. Clam + quest clam sit on the reef floor (above short coral, below fish)
@@ -117,6 +120,7 @@ export class ReefScene {
     this._menu = new PlacementMenu(
       (id) => this._onCoralSelected(id),
       (id) => this._onFishSelected(id),
+      (id) => this._onDecorSelected(id),
     );
 
     this._uiContainer.addChild(this._menu.container);
@@ -228,14 +232,19 @@ export class ReefScene {
 
   _onCoralSelected() { this._grid.refreshHover(); }
   _onFishSelected()  { this._grid.refreshHover(); }
+  _onDecorSelected() { this._grid.refreshHover(); }
 
   _onTileTap(tile) {
     recordInteraction();
     const { col, row } = tile;
 
-    // Remove mode: tap coral to remove it
+    // Remove mode: tap occupant to remove it (coral or decor)
     if (state.removeMode) {
-      this._tryRemoveCoral(col, row);
+      if (state.placedDecor.some(d => d.col === col && d.row === row)) {
+        this._tryRemoveDecor(col, row);
+      } else {
+        this._tryRemoveCoral(col, row);
+      }
       return;
     }
 
@@ -246,6 +255,8 @@ export class ReefScene {
       this._tryPlaceCoral(col, row, selectedId);
     } else if (selectedType === 'fish') {
       this._trySpawnFish(col, row, selectedId);
+    } else if (selectedType === 'decor') {
+      this._tryPlaceDecor(col, row, selectedId);
     }
   }
 
@@ -276,6 +287,21 @@ export class ReefScene {
     checkSnapshotQuests();
     checkEventSnapshots();
     checkLevelUp();
+    saveGame();
+  }
+
+  _tryPlaceDecor(col, row, speciesId) {
+    if (state.grid[row][col] !== null) return;
+    const spec = DECOR_SPECIES[speciesId];
+    if (!spec || spec.unlockLevel > state.level) return;
+    if (!spendForDecor(speciesId)) return;
+
+    const uid = state.nextUid();
+    state.grid[row][col] = speciesId;
+    state.placedDecor.push({ uid, col, row, speciesId });
+    state.decorTypesSeen.add(speciesId);
+
+    this._grid.placeDecor(spec, col, row, uid);
     saveGame();
   }
 
@@ -358,6 +384,21 @@ export class ReefScene {
     saveGame();
   }
 
+  _tryRemoveDecor(col, row) {
+    const idx = state.placedDecor.findIndex(d => d.col === col && d.row === row);
+    if (idx === -1) return;
+    const entry = state.placedDecor[idx];
+
+    const refund = refundDecor(entry.speciesId);
+
+    state.grid[row][col] = null;
+    state.placedDecor.splice(idx, 1);
+    this._grid.removeDecor(entry.uid);
+
+    if (refund > 0) this._hud.showBonus(`+${refund} 🫧`);
+    saveGame();
+  }
+
   _removeFish(fish) {
     const idx = state.fish.indexOf(fish);
     if (idx === -1) return;
@@ -429,6 +470,7 @@ export class ReefScene {
 
     state.coralTypesSeen = new Set(data.coralTypesSeen ?? []);
     state.fishTypesSeen  = new Set(data.fishTypesSeen  ?? []);
+    state.decorTypesSeen = new Set(data.decorTypesSeen ?? []);
 
     // Rebuild coral sprites
     let maxUid = 0;
@@ -440,6 +482,16 @@ export class ReefScene {
       state.coralCount++;
       state.coralTierCounts[spec.tier]++;
       this._grid.placeCoral(spec, col, row, uid);
+      if (uid > maxUid) maxUid = uid;
+    });
+
+    // Rebuild decor sprites
+    (data.placedDecor ?? []).forEach(({ uid, col, row, speciesId }) => {
+      const spec = DECOR_SPECIES[speciesId];
+      if (!spec || state.grid[row]?.[col] !== null) return;
+      state.grid[row][col] = speciesId;
+      state.placedDecor.push({ uid, col, row, speciesId });
+      this._grid.placeDecor(spec, col, row, uid);
       if (uid > maxUid) maxUid = uid;
     });
 
@@ -595,6 +647,7 @@ export class ReefScene {
 
     // Remove all coral sprites
     this._grid.clearAllCoral();
+    this._grid.clearAllDecor();
 
     // Remove all fish sprites
     state.fish.forEach(f => {
@@ -605,6 +658,7 @@ export class ReefScene {
     // Reset biome-specific state
     state.grid         = Array.from({ length: GRID_ROWS }, () => Array(GRID_COLS).fill(null));
     state.placedCoral  = [];
+    state.placedDecor  = [];
     state.fish         = [];
     state.coralCount   = 0;
     state.fishCount    = 0;
@@ -613,6 +667,7 @@ export class ReefScene {
     state.fishLayerCounts = { A: 0, B: 0 };
     state.coralTypesSeen  = new Set();
     state.fishTypesSeen   = new Set();
+    state.decorTypesSeen  = new Set();
     state.selectedType    = null;
     state.selectedId      = null;
     state.removeMode      = false;

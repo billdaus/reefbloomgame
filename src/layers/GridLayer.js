@@ -6,6 +6,7 @@ import {
 } from '../constants.js';
 import { worldToTile } from '../utils/grid.js';
 import { Coral } from '../entities/Coral.js';
+import { Decor } from '../entities/Decor.js';
 import { state } from '../state.js';
 
 /**
@@ -34,6 +35,8 @@ export class GridLayer {
     this.container.addChild(this._gridGfx);
 
     // ── Coral depth layers (added to worldContainer by ReefScene) ──────────
+    // decor — static aesthetic props, sits on the floor below coral and fish
+    this.decorContainer      = new Container();
     // short (flat) coral — brain, lettuce, star, bubble, toadstool
     this.shortCoralContainer = new Container();
     // tall coral — staghorn, finger, candycane, elkhorn, pillar
@@ -45,6 +48,7 @@ export class GridLayer {
     this.hoverContainer.addChild(this._hoverGfx);
 
     this._coralSprites = new Map();   // uid → Graphics container
+    this._decorSprites = new Map();   // uid → Graphics container
     this._hoveredTile  = null;
 
     this._drawFloor();
@@ -163,6 +167,28 @@ export class GridLayer {
   /** Remove all coral sprites (used when switching biomes). */
   clearAllCoral() {
     [...this._coralSprites.keys()].forEach(uid => this.removeCoral(uid));
+  }
+
+  // ── Decor placement ────────────────────────────────────────────────────────
+
+  placeDecor(decorSpec, col, row, uid) {
+    const decor = new Decor(decorSpec, col, row, uid);
+    decor.container.x = GRID_X + col * TILE_SIZE;
+    decor.container.y = GRID_Y + row * TILE_SIZE;
+    this.decorContainer.addChild(decor.container);
+    this._decorSprites.set(uid, decor.container);
+  }
+
+  removeDecor(uid) {
+    const sprite = this._decorSprites.get(uid);
+    if (!sprite) return;
+    sprite.parent?.removeChild(sprite);
+    sprite.destroy({ children: true });
+    this._decorSprites.delete(uid);
+  }
+
+  clearAllDecor() {
+    [...this._decorSprites.keys()].forEach(uid => this.removeDecor(uid));
   }
 
   /** Refresh hover highlight (call after selection changes). */

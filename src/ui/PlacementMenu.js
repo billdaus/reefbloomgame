@@ -1,7 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import {
   PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT,
-  COLORS, CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
+  COLORS, CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
   BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, TIER,
 } from '../constants.js';
 // Note: SEAGRASS_UNLOCK_LEVEL / DEEP_TWILIGHT_UNLOCK_LEVEL kept for lock-state tracking
@@ -31,6 +31,7 @@ const TIER_ORDER = {
 // Numeric cost for sort; pearl-priced species rank after bubble-priced ones.
 function _sortCost(spec, type) {
   if (spec.pearlCost) return 1_000_000 + spec.pearlCost;
+  if (type === 'decor') return spec.cost ?? 9999;
   const table = type === 'coral' ? CORAL_COST : FISH_COST;
   return table[spec.tier] ?? 9999;
 }
@@ -62,10 +63,11 @@ const SCROLL_AREA_H  = PANEL_H - BIOME_HEADER_H - 4 - REMOVE_BTN_H - SORT_ROW_H 
  *   - Tap (< 8px movement) selects a row
  */
 export class PlacementMenu {
-  constructor(onCoralSelect, onFishSelect) {
+  constructor(onCoralSelect, onFishSelect, onDecorSelect) {
     this.container     = new Container();
     this.onCoralSelect = onCoralSelect;
     this.onFishSelect  = onFishSelect;
+    this.onDecorSelect = onDecorSelect ?? (() => {});
 
     this._rows         = [];   // { type, id, rowY, hl, lockText, lockDim, unlockLevel }
     this._scrollY      = 0;
@@ -212,6 +214,13 @@ export class PlacementMenu {
     this._sortedSpecies(FISH_SPECIES, 'fish', biome)
       .forEach(spec => { cursor = this._addRow('fish', spec, cursor); });
 
+    const decorList = this._sortedSpecies(DECOR_SPECIES, 'decor', biome);
+    if (decorList.length > 0) {
+      cursor += PAD * 2;
+      cursor = this._sectionLabel('DECOR', cursor);
+      decorList.forEach(spec => { cursor = this._addRow('decor', spec, cursor); });
+    }
+
     cursor += PAD;
     this._contentH   = cursor;
     this._maxScrollY = Math.max(0, this._contentH - SCROLL_AREA_H);
@@ -337,8 +346,10 @@ export class PlacementMenu {
 
     // Cost — pearl species show 💎 instead of 🫧
     const isPearl = !!spec.pearlCost;
-    const cost    = isPearl ? spec.pearlCost
-                            : (type === 'coral' ? CORAL_COST[spec.tier] : FISH_COST[spec.tier]);
+    const cost    = isPearl  ? spec.pearlCost
+                  : type === 'decor' ? (spec.cost ?? 0)
+                  : type === 'coral' ? CORAL_COST[spec.tier]
+                  :                    FISH_COST[spec.tier];
     const costTxt = new Text({
       text: isPearl ? `${cost} 💎` : `${cost} 🫧`,
       style: { fontSize: 10, fill: isPearl ? 0xb0bec5 : COLORS.text_secondary, fontFamily: FONT },
@@ -423,8 +434,9 @@ export class PlacementMenu {
         state.selectedType = row.type;
         state.selectedId   = row.id;
         this._drawRemoveBtn();
-        if (row.type === 'coral') this.onCoralSelect(row.id);
-        else                      this.onFishSelect(row.id);
+        if      (row.type === 'coral') this.onCoralSelect(row.id);
+        else if (row.type === 'fish')  this.onFishSelect(row.id);
+        else                           this.onDecorSelect(row.id);
         this._updateHighlights();
       }
     }

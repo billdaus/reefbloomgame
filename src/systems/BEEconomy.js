@@ -2,7 +2,7 @@ import { state } from '../state.js';
 import {
   TICK_MS, IDLE_STREAK_MS, IDLE_BONUS_BASE, BE_MAX,
   BE_PER_TICK, CORAL_COST, FISH_COST, TIER,
-  CORAL_SPECIES, FISH_SPECIES,
+  CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES,
 } from '../constants.js';
 import { recordQuestEvent } from './QuestSystem.js';
 import { recordEventProgress } from './EventSystem.js';
@@ -95,6 +95,27 @@ export function refundCoral(speciesId) {
   const spec = CORAL_SPECIES[speciesId];
   if (!spec || spec.pearlCost) return 0;
   const refund = Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
+  state.be = Math.min(state.be + refund, BE_MAX);
+  onBEChange?.(state.be, null);
+  return refund;
+}
+
+/** Try to spend BE on decor placement. Returns true if successful. */
+export function spendForDecor(speciesId) {
+  const spec = DECOR_SPECIES[speciesId];
+  if (!spec) return false;
+  const cost = spec.cost ?? 0;
+  if (state.be < cost) return false;
+  state.be -= cost;
+  onBEChange?.(state.be, null);
+  return true;
+}
+
+/** Refund 50% of placement cost when removing decor. */
+export function refundDecor(speciesId) {
+  const spec = DECOR_SPECIES[speciesId];
+  if (!spec) return 0;
+  const refund = Math.floor((spec.cost ?? 0) / 2);
   state.be = Math.min(state.be + refund, BE_MAX);
   onBEChange?.(state.be, null);
   return refund;
