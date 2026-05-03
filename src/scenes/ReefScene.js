@@ -28,7 +28,6 @@ import { DailyQuestModal }    from '../ui/DailyQuestModal.js';
 import JournalModal           from '../ui/JournalModal.js';
 import { AccountModal }       from '../ui/AccountModal.js';
 import { EventModal }         from '../ui/EventModal.js';
-import { NewsletterModal }    from '../ui/NewsletterModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 
@@ -108,16 +107,12 @@ export class ReefScene {
         this._removeQuestClam(); saveGame();
       },
     );
-    this._newsletterModal = new NewsletterModal(
-      () => { this._hud?.refreshNewsletterBadge(); saveGame(); },
-    );
     this._hud  = new HUD(
       () => { saveGame(); window.location.reload(); },
       () => this._shopModal.show(),
       () => this._journalModal.show(),
       () => this._accountModal.show(),
       () => this._eventModal.show(),
-      () => this._newsletterModal.show(),
     );
     this._menu = new PlacementMenu(
       (id) => this._onCoralSelected(id),
@@ -132,7 +127,6 @@ export class ReefScene {
     this._uiContainer.addChild(this._journalModal.container);
     this._uiContainer.addChild(this._accountModal.container);
     this._uiContainer.addChild(this._eventModal.container);
-    this._uiContainer.addChild(this._newsletterModal.container);
 
     // Expose layout + travel callback for DOM travel button/modal (see index.html)
     window._rfLayout   = { PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H };
@@ -431,7 +425,6 @@ export class ReefScene {
     state.quest   = data.quest   ?? null;
     state.event   = data.event   ?? null;
     state.account = data.account ?? null;
-    state.newsletterLastRead = data.newsletterLastRead ?? '';
     state.harmonySmoothed = state.harmony;
 
     state.coralTypesSeen = new Set(data.coralTypesSeen ?? []);

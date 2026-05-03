@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="The Reef Bloom Newsletter — weekly recap of new species, events, and features." />
+  <title>Newsletter — Reef Bloom</title>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(175deg, #70d4f8 0%, #28a0e0 30%, #1468b0 65%, #0a3050 100%);
+      font-family: system-ui, -apple-system, sans-serif;
+      color: rgba(255,255,255,0.88);
+      padding: 0 0 80px;
+    }
+    .reef-silhouette {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 100px;
+      background: linear-gradient(180deg, transparent 0%, rgba(5,20,45,0.55) 35%, rgba(4,15,32,0.96) 100%);
+      clip-path: polygon(
+        0% 58%, 3% 38%, 6% 54%, 9% 28%, 12% 46%,
+        15% 22%, 18% 40%, 21% 18%, 24% 36%, 27% 12%,
+        30% 32%, 33%  8%, 36% 26%, 39%  6%, 42% 20%,
+        45%  4%, 48% 16%, 51%  2%, 54% 14%, 57%  5%,
+        60% 18%, 63%  7%, 66% 24%, 69% 10%, 72% 28%,
+        75% 16%, 78% 33%, 81% 20%, 84% 38%, 87% 26%,
+        90% 43%, 93% 30%, 96% 48%, 100% 33%, 100% 100%, 0% 100%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+    header {
+      background: rgba(4, 18, 50, 0.55);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(100,200,255,0.18);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    header a {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: 1px;
+      transition: color 0.15s;
+    }
+    header a:hover { color: #fff; }
+    header a.active { color: #fff; }
+    header .site-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 2px;
+      text-decoration: none;
+    }
+    .content {
+      position: relative;
+      max-width: 720px;
+      margin: 48px auto 0;
+      padding: 0 24px;
+      z-index: 1;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .tagline {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 1px;
+      margin-bottom: 40px;
+    }
+    p {
+      font-size: 14px;
+      line-height: 1.75;
+      color: rgba(255,255,255,0.75);
+    }
+    a { color: rgba(140,210,255,0.9); }
+    a:hover { color: #fff; }
+    .issue {
+      margin-top: 48px;
+      padding-bottom: 36px;
+      border-bottom: 1px solid rgba(100,200,255,0.15);
+    }
+    .issue:last-of-type { border-bottom: none; }
+    .issue-date {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(140,210,255,0.7);
+      margin-bottom: 6px;
+    }
+    .issue-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    .issue-intro {
+      font-size: 14px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 24px;
+    }
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(140,210,255,0.85);
+      margin: 28px 0 10px;
+    }
+    .drop {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 12px 0;
+      border-top: 1px solid rgba(100,200,255,0.08);
+    }
+    .drop:first-of-type { border-top: none; }
+    .drop-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+      width: 32px;
+      text-align: center;
+    }
+    .drop-body {
+      flex: 1;
+    }
+    .drop-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.92);
+      margin-bottom: 2px;
+    }
+    .drop-body p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.65);
+    }
+    .spotlight {
+      margin-top: 16px;
+      padding: 18px;
+      border-radius: 12px;
+      background: rgba(8, 28, 60, 0.4);
+      border: 1px solid rgba(100,200,255,0.18);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .spotlight-swatch {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.15);
+      box-shadow: 0 0 18px rgba(100,200,255,0.25), inset 0 0 12px rgba(255,255,255,0.1);
+    }
+    .spotlight-body { flex: 1; min-width: 0; }
+    .spotlight-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+    .spotlight-sci {
+      font-size: 12px;
+      font-style: italic;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 8px;
+    }
+    .spotlight-tier {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+    .tier-rare      { background: rgba(64,196,255,0.22); color: #80d8ff; }
+    .tier-uncommon  { background: rgba(118,255,3,0.18);  color: #b9f266; }
+    .tier-legendary { background: rgba(255,128,171,0.22); color: #ffb3d1; }
+    .spotlight-blurb {
+      font-size: 13px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.7);
+    }
+    .play-btn {
+      display: inline-block;
+      margin-top: 28px;
+      padding: 14px 48px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #0a3050;
+      background: #fff;
+      border-radius: 40px;
+      text-decoration: none;
+      box-shadow: 0 4px 32px rgba(0,100,200,0.4);
+      transition: transform 0.12s, background 0.12s;
+    }
+    .play-btn:hover { background: #d0f0ff; transform: scale(1.04); color: #0a3050; }
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 40px 24px 20px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+    footer a { color: rgba(140,210,255,0.6); text-decoration: none; }
+    footer a:hover { color: #fff; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <h1>The Reef Bloom Newsletter</h1>
+    <p class="tagline">Weekly recap of content drops, events, and species spotlights.</p>
+
+    <article class="issue">
+      <div class="issue-date">Week of April 13, 2026</div>
+      <h2 class="issue-title">Bioluminescence Descends</h2>
+      <p class="issue-intro">The deep twilight stirs — glowing drifters arrive with a new event pass and fresh quality-of-life.</p>
+
+      <div class="section-label">This Week</div>
+      <div class="drop">
+        <div class="drop-icon">✨</div>
+        <div class="drop-body">
+          <div class="drop-title">Bioluminescence Bloom event</div>
+          <p>Apr 20 – 26. Earn Glow Eel and Moon Seahorse as pass-tier exclusives.</p>
+        </div>
+      </div>
+      <div class="drop">
+        <div class="drop-icon">🎯</div>
+        <div class="drop-body">
+          <div class="drop-title">Progressive quest sets</div>
+          <p>Every event now has three escalating quest sets. Claim each for 2 / 3 / 4 tokens.</p>
+        </div>
+      </div>
+      <div class="drop">
+        <div class="drop-icon">⏳</div>
+        <div class="drop-body">
+          <div class="drop-title">Event-end grace window</div>
+          <p>Claim any leftover set or pass rewards for up to two days after an event ends.</p>
+        </div>
+      </div>
+      <div class="drop">
+        <div class="drop-icon">🔀</div>
+        <div class="drop-body">
+          <div class="drop-title">Market sort chips</div>
+          <p>Sort the species panel by Default / Tier / Cost / Name.</p>
+        </div>
+      </div>
+
+      <div class="section-label">Species Spotlight</div>
+      <div class="spotlight">
+        <div class="spotlight-swatch" style="background: radial-gradient(circle at 30% 30%, #d0d8f8 0%, #40c4ff 100%);"></div>
+        <div class="spotlight-body">
+          <div class="spotlight-name">Moon Seahorse</div>
+          <div class="spotlight-sci">Hippocampus phosphoreus</div>
+          <span class="spotlight-tier tier-rare">RARE</span>
+          <p class="spotlight-blurb">A spectral drifter from the deep twilight. Its pale coat pulses softly in the dark — a navigational beacon for shoaling fish.</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="issue">
+      <div class="issue-date">Week of April 6, 2026</div>
+      <h2 class="issue-title">Event Passes &amp; Ambient Magic</h2>
+      <p class="issue-intro">Events gained exclusive pass tracks and each biome now breathes with seasonal ambience.</p>
+
+      <div class="section-label">This Week</div>
+      <div class="drop">
+        <div class="drop-icon">🎟️</div>
+        <div class="drop-body">
+          <div class="drop-title">Event pass system</div>
+          <p>Earn tokens by completing quests to unlock pass-tier rewards, including exclusive species.</p>
+        </div>
+      </div>
+      <div class="drop">
+        <div class="drop-icon">🌸</div>
+        <div class="drop-body">
+          <div class="drop-title">Seasonal ambience</div>
+          <p>Petals, motes, and pearl shimmers animate during active events.</p>
+        </div>
+      </div>
+      <div class="drop">
+        <div class="drop-icon">📰</div>
+        <div class="drop-body">
+          <div class="drop-title">Real AdSense + ads.txt</div>
+          <p>Rewarded-video placements replaced the placeholder and the site now advertises ads.txt.</p>
+        </div>
+      </div>
+
+      <div class="section-label">Species Spotlight</div>
+      <div class="spotlight">
+        <div class="spotlight-swatch" style="background: radial-gradient(circle at 30% 30%, #ffd6e8 0%, #ff80ab 100%);"></div>
+        <div class="spotlight-body">
+          <div class="spotlight-name">Sakura Anthias</div>
+          <div class="spotlight-sci">Pseudanthias sakura</div>
+          <span class="spotlight-tier tier-legendary">LEGENDARY</span>
+          <p class="spotlight-blurb">Exclusive to the Coral Bloom Festival. Schools of these pink anthias trail petal-like fin rays wherever harmony runs high.</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="issue">
+      <div class="issue-date">Week of March 30, 2026</div>
+      <h2 class="issue-title">Limited Time Events Arrive</h2>
+      <p class="issue-intro">ReefBloom gains its first recurring event system — three rotating windows with unique challenges.</p>
+
+      <div class="section-label">This Week</div>
+      <div class="drop">
+        <div class="drop-icon">⚡</div>
+        <div class="drop-body">
+          <div class="drop-title">Limited Time Events</div>
+          <p>Coral Bloom Festival, Moonfish Migration, and Pearl Tide each run for a short window.</p>
+        </div>
+      </div>
+      <div class="drop">
+        <div class="drop-icon">🕒</div>
+        <div class="drop-body">
+          <div class="drop-title">Event countdown</div>
+          <p>The HUD shows days remaining and pulses when rewards are claimable.</p>
+        </div>
+      </div>
+
+      <div class="section-label">Species Spotlight</div>
+      <div class="spotlight">
+        <div class="spotlight-swatch" style="background: radial-gradient(circle at 30% 30%, #76ff03 0%, #0d1a0d 100%);"></div>
+        <div class="spotlight-body">
+          <div class="spotlight-name">Glow Eel</div>
+          <div class="spotlight-sci">Gymnothorax bioluminescens</div>
+          <span class="spotlight-tier tier-uncommon">UNCOMMON</span>
+          <p class="spotlight-blurb">A slender deep-biome eel whose skin culture is colonised by luminous bacteria. Moves in low, searching arcs near the reef floor.</p>
+        </div>
+      </div>
+    </article>
+
+    <div style="text-align:center;">
+      <a class="play-btn" href="/">Play Now</a>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <!-- Cookie consent banner -->
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>

@@ -56,9 +56,6 @@ export const state = {
   // ── Limited time event ─────────────────────────────────────────────────────
   event: null,   // { id, name, icon, theme, description, startDate, endDate, status, challenges, reward }
 
-  // ── Newsletter ─────────────────────────────────────────────────────────────
-  newsletterLastRead: '',   // weekOf (YYYY-MM-DD) of most recently opened issue
-
   // ── Account (placeholder — feature not yet live) ───────────────────────────
   account: null,   // null = not signed in; { displayName, joinDate } when active
 
