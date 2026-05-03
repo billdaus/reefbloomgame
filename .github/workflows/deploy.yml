@@ -38,8 +38,11 @@ jobs:
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "*.html"
-          for f in dist/*.html; do
-            aws s3 cp "$f" "s3://${{ secrets.S3_BUCKET_NAME }}/$(basename "$f")" \
+          # Re-upload every .html (top-level AND nested, e.g. /newsletter/*.html)
+          # with no-cache headers so navigation/HTML pages always get the latest copy.
+          while IFS= read -r f; do
+            key="${f#dist/}"
+            aws s3 cp "$f" "s3://${{ secrets.S3_BUCKET_NAME }}/$key" \
               --cache-control "no-cache, no-store, must-revalidate"
-          done
+          done < <(find dist -type f -name '*.html')
 
