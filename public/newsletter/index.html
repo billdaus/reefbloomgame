@@ -3,370 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="The Reef Bloom Newsletter — weekly editorial on new species, events, and the design choices behind them." />
+  <meta name="description" content="The Reef Bloom Dispatch — weekly editorial on new species, events, and design notes from the team." />
   <title>Newsletter — Reef Bloom</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      min-height: 100vh;
-      background: linear-gradient(175deg, #70d4f8 0%, #28a0e0 30%, #1468b0 65%, #0a3050 100%);
-      font-family: system-ui, -apple-system, sans-serif;
-      color: rgba(255,255,255,0.88);
-      padding: 0 0 80px;
-    }
-    body.modal-open { overflow: hidden; }
-    .reef-silhouette {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      height: 100px;
-      background: linear-gradient(180deg, transparent 0%, rgba(5,20,45,0.55) 35%, rgba(4,15,32,0.96) 100%);
-      clip-path: polygon(
-        0% 58%, 3% 38%, 6% 54%, 9% 28%, 12% 46%,
-        15% 22%, 18% 40%, 21% 18%, 24% 36%, 27% 12%,
-        30% 32%, 33%  8%, 36% 26%, 39%  6%, 42% 20%,
-        45%  4%, 48% 16%, 51%  2%, 54% 14%, 57%  5%,
-        60% 18%, 63%  7%, 66% 24%, 69% 10%, 72% 28%,
-        75% 16%, 78% 33%, 81% 20%, 84% 38%, 87% 26%,
-        90% 43%, 93% 30%, 96% 48%, 100% 33%, 100% 100%, 0% 100%
-      );
-      pointer-events: none;
-      z-index: 0;
-    }
-    header {
-      background: rgba(4, 18, 50, 0.55);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(100,200,255,0.18);
-      padding: 18px 32px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-    header a {
-      color: rgba(255,255,255,0.5);
-      text-decoration: none;
-      font-size: 13px;
-      letter-spacing: 1px;
-      transition: color 0.15s;
-    }
-    header a:hover { color: #fff; }
-    header a.active { color: #fff; }
-    header .site-name {
-      font-size: 18px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: 2px;
-      text-decoration: none;
-    }
-    .content {
-      position: relative;
-      max-width: 880px;
-      margin: 48px auto 0;
-      padding: 0 24px;
-      z-index: 1;
-    }
-    .masthead-eyebrow {
-      font-size: 11px;
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      color: rgba(140,210,255,0.7);
-    }
-    h1 {
-      font-size: 32px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: 1px;
-      margin: 6px 0;
-    }
-    .tagline {
-      font-size: 14px;
-      color: rgba(255,255,255,0.55);
-      letter-spacing: 0.5px;
-      margin-bottom: 40px;
-      font-style: italic;
-    }
-    a { color: rgba(140,210,255,0.9); }
-    a:hover { color: #fff; }
-
-    /* ── Issue card grid ────────────────────────────────────────────────── */
-    .issues {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 18px;
-      margin-bottom: 40px;
-    }
-    .issue-card {
-      display: flex;
-      flex-direction: column;
-      padding: 22px;
-      border-radius: 14px;
-      background: rgba(8, 28, 60, 0.55);
-      border: 1px solid rgba(100,200,255,0.18);
-      cursor: pointer;
-      text-align: left;
-      color: inherit;
-      font: inherit;
-      transition: transform 0.15s, background 0.15s, border-color 0.15s;
-    }
-    .issue-card:hover {
-      transform: translateY(-3px);
-      background: rgba(14, 42, 80, 0.65);
-      border-color: rgba(140,210,255,0.55);
-    }
-    .issue-card:focus-visible {
-      outline: 2px solid rgba(140,210,255,0.8);
-      outline-offset: 2px;
-    }
-    .card-eyebrow {
-      font-size: 11px;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: rgba(140,210,255,0.85);
-      margin-bottom: 8px;
-    }
-    .card-eyebrow span + span::before {
-      content: '·';
-      margin: 0 8px;
-      color: rgba(140,210,255,0.35);
-    }
-    .card-title {
-      font-size: 20px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: 0.3px;
-      line-height: 1.25;
-      margin-bottom: 10px;
-    }
-    .card-deck {
-      font-size: 14px;
-      line-height: 1.6;
-      color: rgba(255,255,255,0.7);
-      flex: 1;
-      margin-bottom: 16px;
-    }
-    .card-cta {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: rgba(140,210,255,0.95);
-    }
-
-    /* ── Modal ──────────────────────────────────────────────────────────── */
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(4, 18, 50, 0.85);
-      backdrop-filter: blur(8px);
-      display: none;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 40px 16px;
-      overflow-y: auto;
-      z-index: 1000;
-      animation: fadeIn 0.18s ease;
-    }
-    .modal-backdrop.open { display: flex; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    .modal {
-      position: relative;
-      max-width: 720px;
-      width: 100%;
-      background: linear-gradient(180deg, #0e2c52 0%, #061a36 100%);
-      border: 1px solid rgba(100,200,255,0.25);
-      border-radius: 16px;
-      padding: 40px 36px 36px;
-      box-shadow: 0 16px 64px rgba(0,0,0,0.6);
-      animation: slideUp 0.22s ease;
-    }
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .modal-close {
-      position: absolute;
-      top: 14px;
-      right: 14px;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: rgba(255,255,255,0.7);
-      font-size: 18px;
-      line-height: 1;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 0.12s, color 0.12s;
-    }
-    .modal-close:hover { background: rgba(255,255,255,0.18); color: #fff; }
-
-    .byline {
-      font-size: 11px;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: rgba(140,210,255,0.7);
-      margin-bottom: 6px;
-    }
-    .byline span + span::before {
-      content: '·';
-      margin: 0 10px;
-      color: rgba(140,210,255,0.35);
-    }
-    .issue-title {
-      font-size: 28px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: 0.5px;
-      line-height: 1.25;
-      margin-bottom: 8px;
-    }
-    .issue-deck {
-      font-size: 16px;
-      line-height: 1.55;
-      color: rgba(255,255,255,0.65);
-      font-style: italic;
-      margin-bottom: 28px;
-      padding-left: 12px;
-      border-left: 2px solid rgba(140,210,255,0.5);
-    }
-    .modal p {
-      font-size: 15px;
-      line-height: 1.8;
-      color: rgba(255,255,255,0.78);
-      margin-bottom: 16px;
-    }
-    .modal p.lede {
-      font-size: 17px;
-      line-height: 1.7;
-      color: rgba(255,255,255,0.92);
-    }
-    .modal p.lede::first-letter {
-      font-size: 48px;
-      float: left;
-      line-height: 1;
-      padding: 4px 8px 0 0;
-      color: #fff;
-      font-weight: 800;
-    }
-    .modal h3 {
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
-      margin: 28px 0 10px;
-      letter-spacing: 0.3px;
-    }
-    .modal blockquote {
-      margin: 24px 0;
-      padding: 16px 22px;
-      border-left: 3px solid rgba(140,210,255,0.7);
-      background: rgba(8, 28, 60, 0.5);
-      font-size: 17px;
-      line-height: 1.55;
-      color: rgba(255,255,255,0.88);
-      font-style: italic;
-      border-radius: 0 8px 8px 0;
-    }
-    .spotlight {
-      margin: 28px 0 8px;
-      padding: 22px;
-      border-radius: 12px;
-      background: rgba(8, 28, 60, 0.6);
-      border: 1px solid rgba(100,200,255,0.18);
-    }
-    .spotlight-head {
-      display: flex;
-      gap: 18px;
-      align-items: center;
-      margin-bottom: 14px;
-    }
-    .spotlight-swatch {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      border: 2px solid rgba(255,255,255,0.15);
-      box-shadow: 0 0 18px rgba(100,200,255,0.25), inset 0 0 12px rgba(255,255,255,0.1);
-    }
-    .spotlight-meta { flex: 1; min-width: 0; }
-    .spotlight-eyebrow {
-      font-size: 10px;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: rgba(140,210,255,0.85);
-      margin-bottom: 4px;
-    }
-    .spotlight-name {
-      font-size: 20px;
-      font-weight: 800;
-      color: #fff;
-      margin-bottom: 2px;
-    }
-    .spotlight-sci {
-      font-size: 12px;
-      font-style: italic;
-      color: rgba(255,255,255,0.5);
-      margin-bottom: 6px;
-    }
-    .spotlight-tier {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-    }
-    .tier-rare      { background: rgba(64,196,255,0.22); color: #80d8ff; }
-    .tier-uncommon  { background: rgba(118,255,3,0.18);  color: #b9f266; }
-    .tier-legendary { background: rgba(255,128,171,0.22); color: #ffb3d1; }
-    .spotlight p {
-      font-size: 14px;
-      line-height: 1.7;
-      color: rgba(255,255,255,0.75);
-      margin-bottom: 12px;
-    }
-    .spotlight p:last-child { margin-bottom: 0; }
-    .signoff {
-      margin-top: 28px;
-      font-size: 13px;
-      color: rgba(255,255,255,0.5);
-      font-style: italic;
-      letter-spacing: 0.3px;
-    }
-    .play-btn {
-      display: inline-block;
-      margin-top: 28px;
-      padding: 14px 48px;
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: #0a3050;
-      background: #fff;
-      border-radius: 40px;
-      text-decoration: none;
-      box-shadow: 0 4px 32px rgba(0,100,200,0.4);
-      transition: transform 0.12s, background 0.12s;
-    }
-    .play-btn:hover { background: #d0f0ff; transform: scale(1.04); color: #0a3050; }
-    footer {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 40px 24px 20px;
-      font-size: 12px;
-      color: rgba(255,255,255,0.35);
-    }
-    footer a { color: rgba(140,210,255,0.6); text-decoration: none; }
-    footer a:hover { color: #fff; }
-
-    @media (max-width: 600px) {
-      .modal { padding: 28px 20px 24px; }
-      .modal p.lede::first-letter { font-size: 38px; }
-      .issue-title { font-size: 24px; }
-    }
-  </style>
 </head>
 <body>
 
@@ -381,180 +21,36 @@
   </header>
 
   <div class="content">
-    <div class="masthead-eyebrow">The Reef Bloom Dispatch</div>
-    <h1>Notes from the Tide Line</h1>
-    <p class="tagline">A weekly editorial on what's growing in the reef, and why.</p>
+    <div class="masthead">
+      <div class="masthead-eyebrow">The Reef Bloom Dispatch</div>
+      <div class="masthead-title">Notes from the Tide Line</div>
+      <div class="masthead-tagline">A weekly editorial on what's growing in the reef, and why.</div>
+    </div>
 
     <div class="issues">
-      <button class="issue-card" data-issue="3" type="button">
+      <a class="issue-card" href="/newsletter/issue-3.html">
         <div class="card-eyebrow"><span>Issue 03</span><span>Apr 13, 2026</span></div>
         <div class="card-title">Bioluminescence Descends</div>
         <p class="card-deck">The deep twilight has been the quietest biome since launch. This week, we're giving it a heartbeat — and two glowing exclusives to chase.</p>
         <div class="card-cta">Read editorial →</div>
-      </button>
-      <button class="issue-card" data-issue="2" type="button">
+      </a>
+      <a class="issue-card" href="/newsletter/issue-2.html">
         <div class="card-eyebrow"><span>Issue 02</span><span>Apr 6, 2026</span></div>
         <div class="card-title">Event Passes &amp; Ambient Magic</div>
         <p class="card-deck">Events get exclusive species and a real progression track. The biomes get something subtler — they finally breathe.</p>
         <div class="card-cta">Read editorial →</div>
-      </button>
-      <button class="issue-card" data-issue="1" type="button">
+      </a>
+      <a class="issue-card" href="/newsletter/issue-1.html">
         <div class="card-eyebrow"><span>Issue 01</span><span>Mar 30, 2026</span></div>
         <div class="card-title">Limited Time Events Arrive</div>
         <p class="card-deck">Reef Bloom is no longer a game where every day is the same. Three rotating events introduce the first cadence of recurring content.</p>
         <div class="card-cta">Read editorial →</div>
-      </button>
+      </a>
     </div>
 
     <div style="text-align:center;">
       <a class="play-btn" href="/">Play Now</a>
     </div>
-  </div>
-
-  <!-- ── Issue modals ──────────────────────────────────────────────────── -->
-  <div class="modal-backdrop" data-modal="3" role="dialog" aria-modal="true" aria-labelledby="title-3">
-    <article class="modal" tabindex="-1">
-      <button class="modal-close" type="button" aria-label="Close">✕</button>
-      <div class="byline">
-        <span>Issue 03</span>
-        <span>Week of April 13, 2026</span>
-        <span>Editorial</span>
-      </div>
-      <h2 id="title-3" class="issue-title">Bioluminescence Descends</h2>
-      <p class="issue-deck">The deep twilight has been the quietest biome since launch. This week, we're giving it a heartbeat — and two glowing exclusives to chase.</p>
-
-      <p class="lede">Of the three biomes available in Reef Bloom, the deep twilight has always been the one that asked the most patience of the player. It's the slowest to fill in, the darkest to look at, and — until now — the one with the fewest reasons to keep coming back. That changes on April 20, when the Bioluminescence Bloom event lights it from the inside out.</p>
-
-      <p>The event runs for one week, ending April 26, and it's built around two new species that are exclusive to the event pass. The Glow Eel arrives at the lower tier of the pass — a slender, low-cruising fish whose skin is colonised by luminous bacteria, painting cold green light across the substrate as it moves. Higher up the pass sits the Moon Seahorse, a pale rare-tier drifter whose coat throbs softly in the dark, like a slow signal to anything else with eyes adapted to the gloom. Neither species will return to the regular roster after the event ends. If you want them in your reef, you have to earn them now.</p>
-
-      <h3>Easier on-ramps, harder finales</h3>
-
-      <p>Alongside the event itself, we're shipping a structural change that's been a long time coming: every event now runs on three progressive quest sets instead of one flat list. The first set is genuinely easy — the kind of thing you can clear inside a single play session — and it pays out two tokens. The second set ramps the asks (more placements, more variety, longer engagement) for three tokens. The third set is for players who really want the headline rewards, and it pays four.</p>
-
-      <p>The motivation here was simple. The old single-list quests punished players who couldn't put in a long stretch on day one, because there was nothing to show for partial progress. The new structure means anyone who plays for ten minutes gets something tangible, anyone who plays for an hour gets a meaningful chunk, and dedicated players still have a real summit to climb. Nine total tokens are on the table per event — enough for the full pass if you do all three sets, with breathing room left over.</p>
-
-      <blockquote>The old single-list quests punished players who couldn't put in a long stretch on day one. The new structure means anyone who plays for ten minutes gets something tangible.</blockquote>
-
-      <p>We've also added a two-day grace window after every event ends. Token-based progress freezes the moment the event closes, but any rewards you've already qualified for stay claimable for forty-eight hours. No more logging in to find a finished pass with an inaccessible final tier because you were a few hours late.</p>
-
-      <h3>Quality of life, in passing</h3>
-
-      <p>One last note for the species collectors among you: the placement market now has sort chips along the top of the panel. You can switch between Default, Tier, Cost, and Name. It's the kind of feature that sounds boring in a release post and becomes essential the moment you have it. Nothing major has moved around — the default order is unchanged — but if you've ever scrolled past the same fish for the third time looking for a coral by price, this is for you.</p>
-
-      <div class="spotlight">
-        <div class="spotlight-head">
-          <div class="spotlight-swatch" style="background: radial-gradient(circle at 30% 30%, #d0d8f8 0%, #40c4ff 100%);"></div>
-          <div class="spotlight-meta">
-            <div class="spotlight-eyebrow">Species Spotlight</div>
-            <div class="spotlight-name">Moon Seahorse</div>
-            <div class="spotlight-sci">Hippocampus phosphoreus</div>
-            <span class="spotlight-tier tier-rare">RARE</span>
-          </div>
-        </div>
-        <p>The Moon Seahorse is the headline reward of this event for a reason. It's the first fish in Reef Bloom that genuinely behaves like it belongs to the deep — slow, deliberate, and self-illuminating. Its coat shifts between cool lavender and pale ice-blue in soft pulses, and at low ambient light it casts a real glow across nearby tiles.</p>
-        <p>Mechanically, it's tuned for players who like a quieter reef. It moves at a fraction of normal seahorse speed, and its idle pose is closer to drifting than swimming. Pair it with the new bioluminescent ambience particles and it reads less like a pet and more like a navigation light for the rest of your shoal — which, in our internal playtests, is exactly the role other fish started giving it.</p>
-      </div>
-
-      <p class="signoff">— The Reef Bloom team</p>
-    </article>
-  </div>
-
-  <div class="modal-backdrop" data-modal="2" role="dialog" aria-modal="true" aria-labelledby="title-2">
-    <article class="modal" tabindex="-1">
-      <button class="modal-close" type="button" aria-label="Close">✕</button>
-      <div class="byline">
-        <span>Issue 02</span>
-        <span>Week of April 6, 2026</span>
-        <span>Editorial</span>
-      </div>
-      <h2 id="title-2" class="issue-title">Event Passes &amp; Ambient Magic</h2>
-      <p class="issue-deck">Events get exclusive species and a real progression track. The biomes get something subtler — they finally breathe.</p>
-
-      <p class="lede">When we shipped the first version of limited-time events two weeks ago, we knew we were releasing scaffolding. The bones were right — windows of time, a shared challenge list, a deadline — but there was nothing about an event that felt different from playing the game on any other day. This week, we filled in the rest of the picture.</p>
-
-      <p>The headline change is the event pass system. Every event now has its own track of unlockable rewards, paid for in tokens that you can only earn during that event. Lower pass tiers grant the kind of currencies you can already get elsewhere — a stack of Bubble Energy, a handful of Pearls — but the upper tiers are reserved for species that exist nowhere else in the game. Miss the event and you miss them. We don't anticipate revisiting that decision; the whole point is that participation has to mean something.</p>
-
-      <h3>The case for exclusivity</h3>
-
-      <p>We thought hard about whether locking species behind a calendar was the right call. The answer we kept landing on is that the alternative — making everything available all the time — flattens the reef into a checklist. With timed exclusives, the reef you build during a given month becomes a snapshot of when you played. Two players with identical investment can finish with different rosters, and that's a feature, not a bug.</p>
-
-      <p>To make that bet feel fair, we've leaned hard on telegraphing. Active events show their countdown in the HUD, the event modal lays out every reward you can still earn, and the pass tracks make the cost of each species explicit before you commit. The deal we want to make is: <em>here is exactly what you can get, and here is exactly how long you have to get it</em>. Then we get out of your way.</p>
-
-      <h3>Seasonal ambience</h3>
-
-      <p>The other addition this week is harder to point at in a screenshot, which is why we want to call it out. Every active event now layers a custom particle system over its biome. Cherry petals drift across the coral reef during the Coral Bloom Festival. Soft white motes mist through the moonfish migration. Pearl shimmers catch in the seagrass during the Pearl Tide. Next week's bioluminescence event will introduce floor orbs and drifting plankton glow.</p>
-
-      <blockquote>The reef you build during a given month becomes a snapshot of when you played. Two players with identical investment can finish with different rosters, and that's a feature, not a bug.</blockquote>
-
-      <p>None of these particles affect gameplay. They exist purely to make the reef feel like it knows what season it's in. We've talked internally about ambient feedback as one of the most underused tools in casual game design — the difference between a reef that responds to time and one that doesn't is enormous, even when nothing material has changed.</p>
-
-      <h3>Housekeeping</h3>
-
-      <p>One non-cosmetic change worth noting: rewarded video placements are now backed by real AdSense inventory rather than the placeholder we shipped at launch, and the site advertises ads.txt. None of this changes how rewarded videos work for the player — they're still optional, and they still grant the same in-game rewards — but it does mean the supply chain behind them is now a real one.</p>
-
-      <div class="spotlight">
-        <div class="spotlight-head">
-          <div class="spotlight-swatch" style="background: radial-gradient(circle at 30% 30%, #ffd6e8 0%, #ff80ab 100%);"></div>
-          <div class="spotlight-meta">
-            <div class="spotlight-eyebrow">Species Spotlight</div>
-            <div class="spotlight-name">Sakura Anthias</div>
-            <div class="spotlight-sci">Pseudanthias sakura</div>
-            <span class="spotlight-tier tier-legendary">LEGENDARY</span>
-          </div>
-        </div>
-        <p>The Sakura Anthias is the first species we built with the express intent of being unobtainable outside of an event. It's the legendary-tier capstone of the Coral Bloom Festival pass, and its design leans hard into that role — vivid pink, fin rays trailing like petals in a breeze, schooling behavior tuned to clump together in tight groups when local harmony runs high.</p>
-        <p>What we like most about how it turned out is how it photographs. There's a moment when a school of these anthias drifts through a falling-petal particle field that genuinely stops you, even after watching it a hundred times in QA. If we wanted a single image to argue for the seasonal ambience system, this is it.</p>
-      </div>
-
-      <p class="signoff">— The Reef Bloom team</p>
-    </article>
-  </div>
-
-  <div class="modal-backdrop" data-modal="1" role="dialog" aria-modal="true" aria-labelledby="title-1">
-    <article class="modal" tabindex="-1">
-      <button class="modal-close" type="button" aria-label="Close">✕</button>
-      <div class="byline">
-        <span>Issue 01</span>
-        <span>Week of March 30, 2026</span>
-        <span>Editorial</span>
-      </div>
-      <h2 id="title-1" class="issue-title">Limited Time Events Arrive</h2>
-      <p class="issue-deck">Reef Bloom is no longer a game where every day is the same. Three rotating events introduce the first cadence of recurring content.</p>
-
-      <p class="lede">For most of its life so far, Reef Bloom has been a steady-state game. You log in, you place coral, you watch fish, you log out — and the reef looks the same on Tuesday as it did on Monday. That's the rhythm a lot of players love about it, and we don't intend to break that. What this week's update does is layer something new on top: a calendar.</p>
-
-      <p>Three events ship with this update, and they'll each rotate back on a fixed schedule. The Coral Bloom Festival celebrates the warm reef in spring with petal-themed challenges. The Moonfish Migration runs cooler and quieter, focused on the deep biome's existing population. The Pearl Tide rewards Pearl spending and harmony milestones. Each runs for roughly a week, and only one is active at a time.</p>
-
-      <h3>Why events at all?</h3>
-
-      <p>The honest answer is that without recurring content, ecosystem games hit a wall. There's a finite amount of placement variety in a 10×10 grid, and once a player has unlocked the species roster, the loop has to find a second gear. We considered procedural goals, daily quests beyond the existing one, and seasonal biome reskins before settling on events. What sold us on this format is that events compress motivation into a window — there's a clear start, a clear end, and a clear pile of things to do in the middle.</p>
-
-      <p>The HUD now reflects that. While an event is active, you'll see a countdown showing days remaining. When you've completed something claimable, the event button pulses. When the event has ended but you still have rewards to collect, it switches color. The intent is that you never have to remember to check — the HUD will tell you when there's something to do.</p>
-
-      <blockquote>Without recurring content, ecosystem games hit a wall. Events compress motivation into a window — a clear start, a clear end, and a clear pile of things to do in the middle.</blockquote>
-
-      <h3>What this isn't</h3>
-
-      <p>A note on what we deliberately didn't ship. Events do not gate progression. You can ignore them entirely and still unlock every level, every biome, and the vast majority of species in the regular roster. Events also don't introduce competitive elements — there's no leaderboard, no ranking, no comparison against other players. The challenges are between you and your reef.</p>
-
-      <p>The exclusive species we've started introducing live in their own slot in the species page, marked with the event icon they came from. If you missed an event, you'll see those species as locked entries with their date stamp, so the catalogue stays honest about what was available when. We'll be writing more about how those interact with collection completion in a future issue.</p>
-
-      <div class="spotlight">
-        <div class="spotlight-head">
-          <div class="spotlight-swatch" style="background: radial-gradient(circle at 30% 30%, #76ff03 0%, #0d1a0d 100%);"></div>
-          <div class="spotlight-meta">
-            <div class="spotlight-eyebrow">Species Spotlight</div>
-            <div class="spotlight-name">Glow Eel</div>
-            <div class="spotlight-sci">Gymnothorax bioluminescens</div>
-            <span class="spotlight-tier tier-uncommon">UNCOMMON</span>
-          </div>
-        </div>
-        <p>The Glow Eel was the first species we modelled for the deep twilight, and it's the one we keep coming back to as the reference for how that biome should feel. Its body is a slow, low-amplitude curve close to the substrate, and the green light it emits is from the underside — meaning the floor itself appears to glow as it passes. There's no other fish in the game that interacts with the environment quite like that.</p>
-        <p>It's deliberately uncommon-tier, not legendary. We wanted the deep biome's signature fish to be something a player encounters early and often, not a rare reward locked behind hours of grinding. The eel sets the tone; the rare and epic species build on what it establishes.</p>
-      </div>
-
-      <p class="signoff">— The Reef Bloom team</p>
-    </article>
   </div>
 
   <footer>
@@ -569,7 +65,6 @@
 
   <div class="reef-silhouette"></div>
 
-  <!-- Cookie consent banner -->
   <div id="cookie-banner" style="
     display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
     background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
@@ -593,7 +88,6 @@
       ">Decline</button>
     </div>
   </div>
-
   <script>
     (function() {
       var consent = localStorage.getItem('cookie_consent');
@@ -601,56 +95,6 @@
     })();
     function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
     function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
-  </script>
-
-  <script>
-    (function() {
-      var modals = document.querySelectorAll('.modal-backdrop');
-      var cards  = document.querySelectorAll('.issue-card');
-      var lastOpener = null;
-
-      function openModal(id) {
-        var m = document.querySelector('.modal-backdrop[data-modal="' + id + '"]');
-        if (!m) return;
-        m.classList.add('open');
-        document.body.classList.add('modal-open');
-        lastOpener = document.activeElement;
-        var card = m.querySelector('.modal');
-        if (card) {
-          card.scrollTop = 0;
-          card.focus({ preventScroll: true });
-        }
-        m.scrollTop = 0;
-        if (history.replaceState) history.replaceState(null, '', '#issue-' + id);
-      }
-
-      function closeAll() {
-        modals.forEach(function(m) { m.classList.remove('open'); });
-        document.body.classList.remove('modal-open');
-        if (history.replaceState) history.replaceState(null, '', location.pathname);
-        if (lastOpener && lastOpener.focus) lastOpener.focus();
-      }
-
-      cards.forEach(function(c) {
-        c.addEventListener('click', function() { openModal(c.getAttribute('data-issue')); });
-      });
-
-      modals.forEach(function(m) {
-        m.addEventListener('click', function(e) {
-          if (e.target === m) closeAll();
-        });
-        var btn = m.querySelector('.modal-close');
-        if (btn) btn.addEventListener('click', closeAll);
-      });
-
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeAll();
-      });
-
-      // Deep-link support: /newsletter/#issue-2 opens issue 2 on load
-      var hash = location.hash.match(/^#issue-(\d+)$/);
-      if (hash) openModal(hash[1]);
-    })();
   </script>
 </body>
 </html>

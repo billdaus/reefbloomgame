@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 02 — Event Passes & Ambient Magic. The case for timed exclusives and a particle system per biome." />
+  <title>Event Passes &amp; Ambient Magic — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 02 — Coral Bloom petal palette */
+    :root {
+      --nl-bg-1: #4a2645;
+      --nl-bg-2: #2a1430;
+      --nl-bg-3: #160a1c;
+      --nl-bg-4: #08040c;
+      --theme-glow:   rgba(255, 128, 171, 0.20);
+      --theme-accent: #ffb3d1;
+      --theme-rule:   rgba(255, 128, 171, 0.7);
+    }
+    /* Drifting petal silhouettes */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 18% 28%, rgba(255,128,171,0.12) 0, transparent 5%),
+        radial-gradient(circle at 72% 14%, rgba(255,182,193,0.10) 0, transparent 4%),
+        radial-gradient(circle at 36% 76%, rgba(255,128,171,0.08) 0, transparent 5%),
+        radial-gradient(circle at 88% 62%, rgba(255,182,193,0.10) 0, transparent 4%);
+      z-index: 0;
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/">← Back to dispatch</a>
+
+      <div class="byline">
+        <span>Issue 02</span>
+        <span>Week of April 6, 2026</span>
+        <span>Editorial</span>
+      </div>
+      <h1 class="issue-title">Event Passes &amp; Ambient Magic</h1>
+      <p class="issue-deck">Events get exclusive species and a real progression track. The biomes get something subtler — they finally breathe.</p>
+
+      <p class="lede">When we shipped the first version of limited-time events two weeks ago, we knew we were releasing scaffolding. The bones were right — windows of time, a shared challenge list, a deadline — but there was nothing about an event that felt different from playing the game on any other day. This week, we filled in the rest of the picture.</p>
+
+      <p>The headline change is the event pass system. Every event now has its own track of unlockable rewards, paid for in tokens that you can only earn during that event. Lower pass tiers grant the kind of currencies you can already get elsewhere — a stack of Bubble Energy, a handful of Pearls — but the upper tiers are reserved for species that exist nowhere else in the game. Miss the event and you miss them. We don't anticipate revisiting that decision; the whole point is that participation has to mean something.</p>
+
+      <h3>The case for exclusivity</h3>
+
+      <p>We thought hard about whether locking species behind a calendar was the right call. The answer we kept landing on is that the alternative — making everything available all the time — flattens the reef into a checklist. With timed exclusives, the reef you build during a given month becomes a snapshot of when you played. Two players with identical investment can finish with different rosters, and that's a feature, not a bug.</p>
+
+      <p>To make that bet feel fair, we've leaned hard on telegraphing. Active events show their countdown in the HUD, the event modal lays out every reward you can still earn, and the pass tracks make the cost of each species explicit before you commit. The deal we want to make is: <em>here is exactly what you can get, and here is exactly how long you have to get it</em>. Then we get out of your way.</p>
+
+      <h3>Seasonal ambience</h3>
+
+      <p>The other addition this week is harder to point at in a screenshot, which is why we want to call it out. Every active event now layers a custom particle system over its biome. Cherry petals drift across the coral reef during the Coral Bloom Festival. Soft white motes mist through the moonfish migration. Pearl shimmers catch in the seagrass during the Pearl Tide. Next week's bioluminescence event will introduce floor orbs and drifting plankton glow.</p>
+
+      <blockquote>The reef you build during a given month becomes a snapshot of when you played. Two players with identical investment can finish with different rosters, and that's a feature, not a bug.</blockquote>
+
+      <p>None of these particles affect gameplay. They exist purely to make the reef feel like it knows what season it's in. We've talked internally about ambient feedback as one of the most underused tools in casual game design — the difference between a reef that responds to time and one that doesn't is enormous, even when nothing material has changed.</p>
+
+      <h3>Housekeeping</h3>
+
+      <p>One non-cosmetic change worth noting: rewarded video placements are now backed by real AdSense inventory rather than the placeholder we shipped at launch, and the site advertises ads.txt. None of this changes how rewarded videos work for the player — they're still optional, and they still grant the same in-game rewards — but it does mean the supply chain behind them is now a real one.</p>
+
+      <div class="spotlight">
+        <div class="spotlight-head">
+          <div class="spotlight-swatch" style="background: radial-gradient(circle at 30% 30%, #ffd6e8 0%, #ff80ab 100%);"></div>
+          <div class="spotlight-meta">
+            <div class="spotlight-eyebrow">Species Spotlight</div>
+            <div class="spotlight-name">Sakura Anthias</div>
+            <div class="spotlight-sci">Pseudanthias sakura</div>
+            <span class="spotlight-tier tier-legendary">LEGENDARY</span>
+          </div>
+        </div>
+        <p>The Sakura Anthias is the first species we built with the express intent of being unobtainable outside of an event. It's the legendary-tier capstone of the Coral Bloom Festival pass, and its design leans hard into that role — vivid pink, fin rays trailing like petals in a breeze, schooling behavior tuned to clump together in tight groups when local harmony runs high.</p>
+        <p>What we like most about how it turned out is how it photographs. There's a moment when a school of these anthias drifts through a falling-petal particle field that genuinely stops you, even after watching it a hundred times in QA. If we wanted a single image to argue for the seasonal ambience system, this is it.</p>
+      </div>
+
+      <p class="signoff">— The Reef Bloom team</p>
+
+      <a class="back-link" href="/newsletter/" style="margin-top:32px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
