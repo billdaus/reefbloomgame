@@ -1,7 +1,9 @@
 import { Application } from 'pixi.js';
 import { ReefScene }   from './scenes/ReefScene.js';
 import { SCREEN_W, SCREEN_H, IS_PORTRAIT } from './constants.js';
-import { setCurrentSlot, setCurrentBiome, getSlotPreview, clearSlot, clearBiome, getBiomePreview } from './save.js';
+import { setCurrentSlot, setCurrentBiome, getSlotPreview, clearSlot, clearBiome, getBiomePreview,
+         getProfile, defaultProfile } from './save.js';
+import { state } from './state.js';
 
 async function main() {
   const app = new Application();
@@ -36,6 +38,10 @@ async function main() {
   const slotIdx = await waitForSlotChoice();
   setCurrentSlot(slotIdx);
   setCurrentBiome('coral');
+
+  // Seed state.profile from the slot — or fall back to a default if the slot
+  // has no profile yet (empty slot, or legacy save from before profiles).
+  state.profile = getProfile(slotIdx) ?? defaultProfile();
 
   // 3. Boot game
   await initPromise;
@@ -94,8 +100,12 @@ function buildSlotCards(onChoose) {
     const preview = getSlotPreview(i);
     const card = el('div', 'slp-card');
 
-    // Header
-    card.appendChild(el('div', 'slp-card-header', `Reef ${i + 1}`));
+    // Header — profile name + avatar when present, otherwise "Reef N"
+    const profile = preview?.profile ?? null;
+    const headerText = profile
+      ? `${profile.avatar} ${profile.name}`
+      : `Reef ${i + 1}`;
+    card.appendChild(el('div', 'slp-card-header', headerText));
 
     // Body
     const body = el('div', 'slp-card-body');

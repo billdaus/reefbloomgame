@@ -130,6 +130,8 @@ export class Fish {
       // Event pass exclusives
       case 'sakuraAnthias':     this._drawSakuraAnthias(g, sz, c, ac);     break;
       case 'opah':              this._drawOpah(g, sz, c, ac);              break;
+      // Chaos vector
+      case 'gavin':             this._drawGavin(g, sz, c, ac);             break;
       default:                  this._drawOvalFish(g, sz, c, ac, false);   break;
     }
   }
@@ -2086,8 +2088,10 @@ export class Fish {
    * @param {number} dt      PixiJS deltaTime (frames @ 60fps, so 1 = 16ms)
    * @param {Array}  grid    state.grid [row][col]
    * @param {Array}  coralSpecies - CORAL_SPECIES map for tall lookup
+   * @param {function} [onEmit] Called with ({type,x,y}) when a chaotic fish
+   *                            emits a particle (currently only Gavin).
    */
-  update(dt, grid, coralSpecies) {
+  update(dt, grid, coralSpecies, onEmit) {
     const speed = this.spec.speed;
     const ms    = dt * (60 / 1000) * 16;  // normalise to pixels/frame
 
@@ -2172,6 +2176,21 @@ export class Fish {
 
     // Subtle vertical bob
     this.container.scale.y = 1 + Math.sin(Date.now() * 0.003 + this.uid) * 0.04;
+
+    // Chaotic species emit particles on a randomised cadence
+    if (this.spec.chaotic && onEmit) {
+      this._emitCooldown = (this._emitCooldown ?? 30 + Math.random() * 60) - dt;
+      if (this._emitCooldown <= 0) {
+        // Emit roughly behind the fish (opposite the facing angle)
+        const back = this._angle + Math.PI;
+        const ox   = this.x + Math.cos(back) * this.spec.size * 0.9;
+        const oy   = this.y + Math.sin(back) * this.spec.size * 0.9;
+        const type = Math.random() < 0.35 ? 'poop' : 'fart';
+        onEmit({ type, x: ox, y: oy });
+        // Next emission in 1.2 – 3.0 seconds (60fps frames)
+        this._emitCooldown = 72 + Math.random() * 108;
+      }
+    }
   }
 
   _pickNewTarget(grid) {
@@ -2312,6 +2331,64 @@ export class Fish {
      .lineTo(hw * 1.0,   0)
      .lineTo(hw * 0.82,  hh * 0.06)
      .closePath().fill(ac);
+  }
+
+  /**
+   * Gavin — a chubby green fish with a permanently sheepish grin. Designed to
+   * read as the goofy troublemaker that he is. Source of the chaos meter.
+   */
+  _drawGavin(g, sz, c, ac) {
+    const hw = sz * 1.15;
+    const hh = sz * 0.72;
+    const dark = this._darken(c, 0.35);
+
+    // Round tail
+    g.moveTo(-hw * 0.7, 0)
+     .lineTo(-hw * 1.3, -hh * 0.9)
+     .lineTo(-hw * 1.1,  0)
+     .lineTo(-hw * 1.3,  hh * 0.9)
+     .closePath().fill(c);
+
+    // Plump body
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(c);
+
+    // Pale belly
+    this._ellipse(g, hw * 0.05, hh * 0.32, hw * 0.7, hh * 0.45);
+    g.fill({ color: ac, alpha: 0.7 });
+
+    // Dorsal fin
+    g.moveTo(-hw * 0.15, -hh * 0.95)
+     .lineTo( hw * 0.05, -hh - sz * 0.42)
+     .lineTo( hw * 0.45, -hh * 0.95)
+     .closePath().fill(dark);
+
+    // Little pectoral fin (puffed-out, lazy)
+    g.moveTo(hw * 0.15, hh * 0.05)
+     .quadraticCurveTo(hw * 0.45, hh * 0.55, hw * 0.5, hh * 0.15)
+     .closePath().fill({ color: dark, alpha: 0.85 });
+
+    // Cheek blush — he's embarrassed
+    g.circle(hw * 0.4, hh * 0.18, sz * 0.13).fill({ color: 0xff8a80, alpha: 0.55 });
+
+    // Sheepish grin (small upward curve, mouth open a touch)
+    g.moveTo(hw * 0.55, hh * 0.05)
+     .quadraticCurveTo(hw * 0.78, hh * 0.28, hw * 0.92, hh * 0.05)
+     .stroke({ color: 0x2e2010, width: 2, cap: 'round' });
+    // Lower lip
+    g.moveTo(hw * 0.62, hh * 0.18)
+     .quadraticCurveTo(hw * 0.78, hh * 0.32, hw * 0.88, hh * 0.18)
+     .stroke({ color: 0x2e2010, width: 1.3, cap: 'round', alpha: 0.55 });
+
+    // Big oblivious eye
+    g.circle(hw * 0.55, -hh * 0.2, sz * 0.22).fill(0xffffff);
+    g.circle(hw * 0.6,  -hh * 0.2, sz * 0.11).fill(0x111111);
+    g.circle(hw * 0.64, -hh * 0.24, sz * 0.04).fill(0xffffff);
+
+    // Tiny eyebrow tilted up — "who, me?"
+    g.moveTo(hw * 0.42, -hh * 0.5)
+     .lineTo(hw * 0.7,  -hh * 0.55)
+     .stroke({ color: dark, width: 1.6, cap: 'round' });
   }
 
   /** Nautilus pompilius — anatomically grounded: countershaded shell, leathery hood, pinhole eye. */

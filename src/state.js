@@ -1,5 +1,5 @@
 import {
-  START_BE, START_HARMONY, START_LEVEL, START_PEARLS,
+  START_BE, START_HARMONY, START_LEVEL, START_PEARLS, START_CHAOS,
   GRID_ROWS, GRID_COLS,
 } from './constants.js';
 
@@ -12,6 +12,8 @@ export const state = {
   harmony: START_HARMONY,
   level:   START_LEVEL,
   pearls:  START_PEARLS,
+  chaos:   START_CHAOS,
+  chaosFlashMs: 0,   // briefly > 0 right after a chaos→harmony discharge (HUD flash hook)
 
   // ── Ad / clam tracking ─────────────────────────────────────────────────────
   clamWatchCount: 0,           // watches used today
@@ -60,6 +62,9 @@ export const state = {
 
   // ── Account (placeholder — feature not yet live) ───────────────────────────
   account: null,   // null = not signed in; { displayName, joinDate } when active
+
+  // ── Profile (local, tied to the active save slot) ─────────────────────────
+  profile: null,   // { name, avatar, createdDate } — see save.js getProfile/setProfile
 
   // ── UID counter ────────────────────────────────────────────────────────────
   _nextUid: 1,

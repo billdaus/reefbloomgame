@@ -70,11 +70,13 @@ export function saveGame() {
   full.harmony        = state.harmony;
   full.level          = state.level;
   full.pearls         = state.pearls;
+  full.chaos          = state.chaos;
   full.clamWatchCount = state.clamWatchCount;
   full.clamWatchDate  = state.clamWatchDate;
   full.quest              = state.quest;
   full.event              = state.event;
   full.account            = state.account;
+  if (state.profile) full.profile = state.profile;
 
   // Write current biome's grid state
   full[_currentBiome] = biomeData;
@@ -107,11 +109,13 @@ export function loadGame() {
     harmony:        full.harmony,
     level:          full.level,
     pearls:         full.pearls,
+    chaos:          full.chaos,
     clamWatchCount: full.clamWatchCount,
     clamWatchDate:  full.clamWatchDate,
     quest:              full.quest              ?? null,
     event:              full.event              ?? null,
     account:            full.account            ?? null,
+    profile:            full.profile            ?? null,
     grid:           biomeData.grid           ?? null,
     placedCoral:    biomeData.placedCoral    ?? [],
     placedDecor:    biomeData.placedDecor    ?? [],
@@ -126,7 +130,7 @@ export function clearSave() {
   try { localStorage.removeItem(SLOT_KEYS[_currentSlot]); } catch { /* ignore */ }
 }
 
-/** Returns {level, coralCount, fishCount} for display, or null if the slot is empty. */
+/** Returns {level, coralCount, fishCount, profile} for display, or null if the slot is empty. */
 export function getSlotPreview(idx) {
   try {
     const raw = localStorage.getItem(SLOT_KEYS[idx]);
@@ -139,6 +143,7 @@ export function getSlotPreview(idx) {
         level:      d.level || 1,
         coralCount: (d.placedCoral || []).length,
         fishCount:  (d.fishTypes   || []).length,
+        profile:    d.profile    ?? null,
       };
     }
 
@@ -152,10 +157,50 @@ export function getSlotPreview(idx) {
       fishCount:  (coral.fishTypes      || []).length
                 + (seagrass.fishTypes   || []).length
                 + (deepTwilight.fishTypes || []).length,
+      profile:    d.profile    ?? null,
     };
   } catch {
     return null;
   }
+}
+
+// ── Profile helpers ──────────────────────────────────────────────────────────
+
+/** Returns the profile stored on a slot, or null. Works on any slot index. */
+export function getProfile(idx) {
+  try {
+    const raw = localStorage.getItem(SLOT_KEYS[idx]);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    return d.profile ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write a profile to the given slot, preserving any other slot data.
+ * Creates the slot file if it doesn't exist yet (so a fresh slot can hold a
+ * profile before the player has placed anything).
+ */
+export function setProfile(idx, profile) {
+  try {
+    const raw = localStorage.getItem(SLOT_KEYS[idx]);
+    const data = raw ? JSON.parse(raw) : {};
+    data.profile = profile;
+    localStorage.setItem(SLOT_KEYS[idx], JSON.stringify(data));
+  } catch (e) {
+    console.warn('[save] profile write failed', e);
+  }
+}
+
+/** Default profile used when a slot has none yet. */
+export function defaultProfile() {
+  return {
+    name:        'Reef Keeper',
+    avatar:      '🪸',
+    createdDate: new Date().toISOString().slice(0, 10),
+  };
 }
 
 /** Permanently delete a specific slot. */

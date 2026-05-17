@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { SCREEN_W, HUD_H, IS_PORTRAIT, COLORS } from '../constants.js';
+import { SCREEN_W, HUD_H, IS_PORTRAIT, COLORS, CHAOS_MAX } from '../constants.js';
 import { state } from '../state.js';
 import { eventDaysRemaining, isSetComplete } from '../systems/EventSystem.js';
 
@@ -22,6 +22,8 @@ export class HUD {
     this._bonusText   = null;
     this._bonusTimer  = 0;
     this._harmonyBar  = new Graphics();
+    this._chaosBar    = new Graphics();
+    this._chaosText   = null;
     this._eventBtn    = null;
     this._eventPulse  = 0;
     this._harmonyText = null;
@@ -100,6 +102,7 @@ export class HUD {
     }
 
     this.container.addChild(this._harmonyBar);
+    this.container.addChild(this._chaosBar);
 
     this._harmonyText = new Text({
       text: `${state.harmony}`,
@@ -119,6 +122,17 @@ export class HUD {
       this._harmonyText.y = HUD_H / 2 + 4;
     }
     this.container.addChild(this._harmonyText);
+
+    // Chaos numeric value sits to the right of the bar in landscape
+    if (!IS_PORTRAIT) {
+      this._chaosText = new Text({
+        text: '0',
+        style: { fontSize: 11, fill: COLORS.chaos_fill, fontFamily: FONT, fontWeight: 'bold' },
+      });
+      this._chaosText.x = 505;
+      this._chaosText.y = HUD_H / 2 + 4;
+      this.container.addChild(this._chaosText);
+    }
 
     // ── Level section ────────────────────────────────────────────────────────
     const lvlLabel = new Text({
@@ -330,7 +344,7 @@ export class HUD {
     drawBg(false);
 
     const label = new Text({
-      text: '👤',
+      text: state.profile?.avatar || '👤',
       style: { fontSize: IS_PORTRAIT ? 14 : 14, fill: 0xaabbee, fontFamily: FONT },
     });
     label.x = (W - label.width) / 2;
@@ -347,7 +361,18 @@ export class HUD {
     btn.on('pointerout',   () => drawBg(false));
     btn.on('pointerdown',  () => this._onAccount?.());
 
+    this._accountBtnLabel = label;
+    this._accountBtnW     = W;
+    this._accountBtnH     = H;
     this.container.addChild(btn);
+  }
+
+  /** Refresh the account button avatar to reflect the current profile. */
+  refreshAccountAvatar() {
+    if (!this._accountBtnLabel) return;
+    this._accountBtnLabel.text = state.profile?.avatar || '👤';
+    this._accountBtnLabel.x = (this._accountBtnW - this._accountBtnLabel.width) / 2;
+    this._accountBtnLabel.y = (this._accountBtnH - this._accountBtnLabel.height) / 2;
   }
 
   _buildNewsletterBtn() {
@@ -432,6 +457,7 @@ export class HUD {
     this._pearlText.text = String(Math.floor(state.pearls));
     this._levelText.text = String(state.level);
     this._harmonyText.text = String(Math.round(state.harmony));
+    if (this._chaosText) this._chaosText.text = String(Math.round(state.chaos));
     this._drawHarmonyBar();
     this._updateEventBtn(deltaMS);
 
@@ -511,6 +537,22 @@ export class HUD {
     // Fill
     if (pct > 0) {
       g.roundRect(bx, by, bw * pct, bh, 5).fill(COLORS.harmony_fill);
+    }
+
+    // Chaos bar — thinner, stacked directly below the harmony bar
+    const cg  = this._chaosBar;
+    const cby = by + bh + 2;
+    const cbh = IS_PORTRAIT ? 3 : 4;
+    const cpct = Math.min(1, state.chaos / CHAOS_MAX);
+    cg.clear();
+    cg.roundRect(bx, cby, bw, cbh, 2).fill(COLORS.chaos_empty);
+    if (cpct > 0) {
+      cg.roundRect(bx, cby, bw * cpct, cbh, 2).fill(COLORS.chaos_fill);
+    }
+    // Discharge flash — pulse white over the harmony bar briefly
+    if (state.chaosFlashMs > 0) {
+      const flash = Math.min(1, state.chaosFlashMs / 1200);
+      g.roundRect(bx, by, bw, bh, 5).fill({ color: 0xffffff, alpha: flash * 0.85 });
     }
   }
 

@@ -1,4 +1,4 @@
-import { Container, ColorMatrixFilter } from 'pixi.js';
+import { Container, ColorMatrixFilter, Graphics } from 'pixi.js';
 import { state } from '../state.js';
 import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
@@ -19,6 +19,7 @@ import { initQuests, recordQuestEvent, checkSnapshotQuests, getQuestStatus } fro
 import { initEventSystem, recordEventProgress, checkEventSnapshots, recordQuestClaimed } from '../systems/EventSystem.js';
 import { initJournal, unlockEntry } from '../systems/JournalSystem.js';
 import { updateHarmonyFilter } from '../systems/HarmonySystem.js';
+import { addChaos, updateChaos } from '../systems/ChaosSystem.js';
 import { initLevelSystem, checkLevelUp } from '../systems/LevelSystem.js';
 import { initClamSystem, tickClamSystem, canWatch, collectAdReward, despawnClam } from '../systems/ClamSystem.js';
 import { Clam } from '../entities/Clam.js';
@@ -44,6 +45,10 @@ export class ReefScene {
     // ── Fish containers ──────────────────────────────────────────────────────
     this._fishContainerA = new Container();
     this._fishContainerB = new Container();
+
+    // ── Gavin emission particles (farts + poops) ─────────────────────────────
+    this._particleContainer = new Container();
+    this._particles = [];   // { gfx, vx, vy, age, life, type }
 
     // ── Clam ─────────────────────────────────────────────────────────────────
     this._clamContainer = new Container();
@@ -78,6 +83,8 @@ export class ReefScene {
     this.worldContainer.addChild(this._questClamContainer);
     // 4. Fish Layer A (clownfish, chromis, butterflyfish, seahorse)
     this.worldContainer.addChild(this._fishContainerA);
+    // 4b. Particle emissions (Gavin's farts/poops) — drift among Layer-A fish
+    this.worldContainer.addChild(this._particleContainer);
     // 5. Tall coral — renders in front of Layer-A fish
     this.worldContainer.addChild(this._grid.tallCoralContainer);
     // 6. Fish Layer B (moray, cuttlefish, moorish idol, yellow tang)
@@ -96,7 +103,7 @@ export class ReefScene {
     this._rewardModal   = new ClamRewardModal();
     this._shopModal     = new PearlShopModal();
     this._journalModal  = new JournalModal();
-    this._accountModal  = new AccountModal();
+    this._accountModal  = new AccountModal(() => this._hud?.refreshAccountAvatar());
     this._eventModal    = new EventModal(
       () => { saveGame(); },   // onAccept
       () => { saveGame(); },   // onClaim
@@ -186,6 +193,7 @@ export class ReefScene {
     // ── Restore save ─────────────────────────────────────────────────────────
     const saved = loadGame();
     if (saved) this._restoreFromSave(saved);
+    this._hud.refreshAccountAvatar();
 
     // initQuests MUST come after _restoreFromSave — its onChange fires saveGame()
     // immediately if today's date is new, and state must be fully populated first.
@@ -211,6 +219,7 @@ export class ReefScene {
 
     tickEconomy(dms);
     tickClamSystem(dms);
+    updateChaos(dms);
     updateHarmonyFilter(this.worldContainer);
     checkLevelUp();
 
@@ -218,7 +227,8 @@ export class ReefScene {
     if (this._questClamEntity) this._questClamEntity.update(dms);
     this._rewardModal.update(dms);
 
-    state.fish.forEach(fish => fish.update(dt, state.grid, CORAL_SPECIES));
+    state.fish.forEach(fish => fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev)));
+    this._updateParticles(dms);
 
     // Auto-save every 30 s
     this._autoSaveMs += dms;
@@ -443,6 +453,60 @@ export class ReefScene {
     saveGame();
   }
 
+  // ── Gavin emissions ────────────────────────────────────────────────────────
+
+  _onGavinEmit({ type, x, y }) {
+    const gfx = new Graphics();
+    if (type === 'poop') {
+      // Brown pellet that drifts down
+      gfx.circle(0, 0, 2.6).fill(0x5a3a1a);
+      gfx.circle(-0.6, -0.8, 1.0).fill({ color: 0x8a5a2a, alpha: 0.7 });
+    } else {
+      // Greenish fart cloud — a couple of overlapping puffs
+      gfx.circle(0, 0, 5).fill({ color: 0x9ccc65, alpha: 0.55 });
+      gfx.circle(2.5, -1, 3).fill({ color: 0xc5e1a5, alpha: 0.5 });
+      gfx.circle(-2, 1.5, 2.5).fill({ color: 0x7cb342, alpha: 0.5 });
+    }
+    gfx.x = x;
+    gfx.y = y;
+    this._particleContainer.addChild(gfx);
+
+    const isPoop = type === 'poop';
+    this._particles.push({
+      gfx,
+      type,
+      vx:   (Math.random() - 0.5) * 0.4,
+      vy:   isPoop ? 0.6 + Math.random() * 0.4 : -(0.3 + Math.random() * 0.3),
+      age:  0,
+      life: isPoop ? 1800 : 1400,
+    });
+
+    // Each emission charges the chaos meter; poops carry slightly more "weight"
+    addChaos(isPoop ? 6 : 3.5);
+  }
+
+  _updateParticles(dms) {
+    if (this._particles.length === 0) return;
+    const ds = dms / 16;
+    for (let i = this._particles.length - 1; i >= 0; i--) {
+      const p = this._particles[i];
+      p.age += dms;
+      p.gfx.x += p.vx * ds;
+      p.gfx.y += p.vy * ds;
+      // Farts expand and fade; poops just fall and fade
+      if (p.type === 'fart') {
+        const grow = 1 + p.age / p.life * 0.6;
+        p.gfx.scale.set(grow);
+      }
+      p.gfx.alpha = 1 - p.age / p.life;
+      if (p.age >= p.life) {
+        this._particleContainer.removeChild(p.gfx);
+        p.gfx.destroy();
+        this._particles.splice(i, 1);
+      }
+    }
+  }
+
   // ── Clam / ad ──────────────────────────────────────────────────────────────
 
   _onClamTap() {
@@ -481,11 +545,13 @@ export class ReefScene {
     state.harmony        = data.harmony ?? state.harmony;
     state.level          = data.level   ?? state.level;
     state.pearls         = data.pearls  ?? state.pearls;
+    state.chaos          = data.chaos   ?? 0;
     state.clamWatchCount = data.clamWatchCount ?? 0;
     state.clamWatchDate  = data.clamWatchDate  ?? '';
     state.quest   = data.quest   ?? null;
     state.event   = data.event   ?? null;
     state.account = data.account ?? null;
+    state.profile = data.profile ?? null;
     state.harmonySmoothed = state.harmony;
 
     state.coralTypesSeen = new Set(data.coralTypesSeen ?? []);
