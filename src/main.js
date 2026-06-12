@@ -3,11 +3,15 @@ import { ReefScene }   from './scenes/ReefScene.js';
 import { SCREEN_W, SCREEN_H, IS_PORTRAIT } from './constants.js';
 import { setCurrentSlot, setCurrentBiome, getSlotPreview, clearSlot, clearBiome, getBiomePreview,
          getProfile, defaultProfile } from './save.js';
-import { isAuthAvailable, onAuthChange, signIn, signOutUser } from './auth.js';
+import { isAuthAvailable, onAuthChange, signIn, signOutUser, initAuth } from './auth.js';
 import { initCloudSave, onCloudSynced } from './cloudsave.js';
 import { state } from './state.js';
 
 async function main() {
+  // Complete a Cognito sign-in redirect right away if one is in flight
+  // (auth codes are short-lived) — no-op while sign-in isn't configured.
+  initAuth();
+
   const app = new Application();
 
   // Begin PixiJS init immediately (runs while player reads start / slot pages)
@@ -96,7 +100,7 @@ function waitForSlotChoice() {
 
 /**
  * Sign-in row above the slot cards. Renders nothing when cloud sync isn't
- * configured (firebase-config.js is null) — the game stays fully local.
+ * configured (aws-config.js is null) — the game stays fully local.
  */
 function initAuthUI(rebuildCards) {
   const row = document.getElementById('slp-auth');

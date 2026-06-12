@@ -1,32 +1,36 @@
-import { firebaseConfig } from './firebase-config.js';
+import { awsConfig } from './aws-config.js';
 
 /**
- * auth.js — optional Google sign-in via Firebase.
+ * auth.js — optional sign-in via the Cognito Hosted UI (email/password,
+ * sign-up and verification included), using the OAuth2 authorization-code
+ * flow with PKCE. No SDK is needed for auth itself — it's two fetches.
  *
- * Everything here degrades gracefully: if firebase-config.js exports null
- * (or we're inside the Capacitor native shell, where web popup auth doesn't
- * work), isAuthAvailable() is false and no Firebase code is ever loaded.
- * The Firebase SDK is imported dynamically so signed-out local play never
- * pays its bundle cost.
+ * Everything degrades gracefully: if aws-config.js exports null (or we're
+ * inside the Capacitor native shell, where redirect auth needs native
+ * plumbing), isAuthAvailable() is false and nothing here runs.
+ *
+ * Tokens live in localStorage; cloudsave.js exchanges the id token for
+ * temporary AWS credentials via the Cognito Identity Pool.
  */
+
+const TOKEN_KEY = 'reef-bloom-auth';
+const PKCE_KEY  = 'reef-bloom-pkce';
 
 const _isNativeShell = typeof window !== 'undefined' && !!window.Capacitor;
 
-let _app   = null;
-let _auth  = null;
-let _user  = null;
-let _ready = null;           // promise resolved after first auth state event
+let _user  = null;    // { email, sub }
+let _ready = null;
 const _listeners = new Set();
 
 export function isAuthAvailable() {
-  return !!firebaseConfig && !_isNativeShell;
+  return !!awsConfig && !_isNativeShell;
 }
 
 export function currentUser() {
   return _user;
 }
 
-/** Register a callback for auth state changes; fires immediately if known. */
+/** Register a callback for auth state changes; fires immediately once known. */
 export function onAuthChange(cb) {
   _listeners.add(cb);
   if (_ready) cb(_user);
@@ -34,75 +38,152 @@ export function onAuthChange(cb) {
 }
 
 /**
- * Initialize Firebase auth (no-op when unavailable).
- * Resolves with the current user (or null) once the initial state is known.
+ * Initialize auth: complete a Hosted-UI redirect if one is in flight,
+ * otherwise restore (and refresh) stored tokens. Safe no-op when unavailable.
  */
 export async function initAuth() {
   if (!isAuthAvailable()) return null;
   if (_ready) return _ready;
 
   _ready = (async () => {
-    const { initializeApp } = await import('firebase/app');
-    const { getAuth, onAuthStateChanged, getRedirectResult } =
-      await import('firebase/auth');
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const code   = params.get('code');
+      const pkce   = _readJson(sessionStorage, PKCE_KEY);
 
-    _app  = initializeApp(firebaseConfig);
-    _auth = getAuth(_app);
+      if (code && pkce?.verifier) {
+        sessionStorage.removeItem(PKCE_KEY);
+        const tokens = await _tokenRequest({
+          grant_type:    'authorization_code',
+          code,
+          redirect_uri:  pkce.redirectUri,
+          code_verifier: pkce.verifier,
+        });
+        _storeTokens(tokens);
+        // Strip ?code=... from the address bar
+        const url = new URL(window.location.href);
+        url.searchParams.delete('code');
+        url.searchParams.delete('state');
+        history.replaceState(null, '', url.pathname + url.search + url.hash);
+      }
 
-    // Complete a redirect-based sign-in if one is in flight
-    try { await getRedirectResult(_auth); } catch { /* surfaced via state */ }
-
-    await new Promise(resolve => {
-      const unsub = onAuthStateChanged(_auth, user => {
-        _user = user;
-        _listeners.forEach(cb => cb(user));
-        unsub();
-        resolve();
-      });
-    });
-
-    // Keep listening for later changes (sign-out, token refresh)
-    const { onAuthStateChanged: onChange } = await import('firebase/auth');
-    onChange(_auth, user => {
-      _user = user;
-      _listeners.forEach(cb => cb(user));
-    });
-
+      await _loadStoredUser();
+    } catch (e) {
+      console.warn('[auth] init failed', e);
+      _user = null;
+    }
+    _listeners.forEach(cb => cb(_user));
     return _user;
   })();
 
   return _ready;
 }
 
-/** Sign in with Google — popup first, redirect fallback if blocked. */
+/** Redirect to the Cognito Hosted UI sign-in page (PKCE). */
 export async function signIn() {
   if (!isAuthAvailable()) throw new Error('auth unavailable');
-  await initAuth();
-  const { GoogleAuthProvider, signInWithPopup, signInWithRedirect } =
-    await import('firebase/auth');
-  const provider = new GoogleAuthProvider();
+
+  const verifier  = _randomString(64);
+  const challenge = _base64url(await crypto.subtle.digest(
+    'SHA-256', new TextEncoder().encode(verifier)));
+  const redirectUri = window.location.origin + window.location.pathname;
+
+  sessionStorage.setItem(PKCE_KEY, JSON.stringify({ verifier, redirectUri }));
+
+  const q = new URLSearchParams({
+    client_id:             awsConfig.userPoolClientId,
+    response_type:         'code',
+    scope:                 'openid email',
+    redirect_uri:          redirectUri,
+    code_challenge_method: 'S256',
+    code_challenge:        challenge,
+  });
+  window.location.assign(`${awsConfig.cognitoDomain}/oauth2/authorize?${q}`);
+}
+
+/** Clear local tokens and end the Hosted UI session. */
+export async function signOutUser() {
+  localStorage.removeItem(TOKEN_KEY);
+  _user = null;
+  _listeners.forEach(cb => cb(null));
+  const q = new URLSearchParams({
+    client_id:  awsConfig.userPoolClientId,
+    logout_uri: window.location.origin + window.location.pathname,
+  });
+  window.location.assign(`${awsConfig.cognitoDomain}/logout?${q}`);
+}
+
+/** Valid id token for the identity-pool exchange (refreshes if expired). */
+export async function getIdToken() {
+  const stored = _readJson(localStorage, TOKEN_KEY);
+  if (!stored) return null;
+  if (Date.now() < stored.expiresAt - 60_000) return stored.idToken;
+  return _refresh(stored);
+}
+
+// ── Internal ─────────────────────────────────────────────────────────────────
+
+async function _loadStoredUser() {
+  const idToken = await getIdToken();
+  if (!idToken) { _user = null; return; }
+  const claims = _decodeJwt(idToken);
+  _user = claims ? { email: claims.email, sub: claims.sub } : null;
+}
+
+async function _refresh(stored) {
+  if (!stored.refreshToken) { localStorage.removeItem(TOKEN_KEY); return null; }
   try {
-    const result = await signInWithPopup(_auth, provider);
-    return result.user;
+    const tokens = await _tokenRequest({
+      grant_type:    'refresh_token',
+      refresh_token: stored.refreshToken,
+    });
+    tokens.refresh_token ??= stored.refreshToken;  // not re-issued on refresh
+    _storeTokens(tokens);
+    return tokens.id_token;
   } catch (e) {
-    if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/popup-closed-by-user') {
-      if (e.code === 'auth/popup-blocked') {
-        await signInWithRedirect(_auth, provider);
-        return null; // page will reload via redirect
-      }
-      return null;   // user dismissed — not an error
-    }
-    throw e;
+    console.warn('[auth] refresh failed', e);
+    localStorage.removeItem(TOKEN_KEY);
+    return null;
   }
 }
 
-export async function signOutUser() {
-  if (!_auth) return;
-  const { signOut } = await import('firebase/auth');
-  await signOut(_auth);
+async function _tokenRequest(params) {
+  const res = await fetch(`${awsConfig.cognitoDomain}/oauth2/token`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: awsConfig.userPoolClientId, ...params }),
+  });
+  if (!res.ok) throw new Error(`token endpoint ${res.status}`);
+  return res.json();
 }
 
-/** Internal — used by cloudsave.js to share the app instance. */
-export function _getApp() {
-  return _app;
+function _storeTokens(t) {
+  localStorage.setItem(TOKEN_KEY, JSON.stringify({
+    idToken:      t.id_token,
+    refreshToken: t.refresh_token ?? null,
+    expiresAt:    Date.now() + (t.expires_in ?? 3600) * 1000,
+  }));
+}
+
+function _decodeJwt(jwt) {
+  try {
+    const payload = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(payload));
+  } catch {
+    return null;
+  }
+}
+
+function _readJson(store, key) {
+  try { return JSON.parse(store.getItem(key)); } catch { return null; }
+}
+
+function _randomString(bytes) {
+  const buf = crypto.getRandomValues(new Uint8Array(bytes));
+  return _base64url(buf);
+}
+
+function _base64url(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }

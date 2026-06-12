@@ -11,9 +11,11 @@
     "ios:open": "npm run build && cap sync ios && cap open ios"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity": "^3.1067.0",
+    "@aws-sdk/client-dynamodb": "^3.1067.0",
+    "@aws-sdk/credential-provider-cognito-identity": "^3.972.45",
     "@capacitor/core": "^8.4.0",
     "@capacitor/ios": "^8.4.0",
-    "firebase": "^12.14.0",
     "pixi.js": "^8.0.0"
   },
   "devDependencies": {

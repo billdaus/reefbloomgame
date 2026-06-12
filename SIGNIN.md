@@ -1,55 +1,80 @@
-# Reef Bloom — Sign-in & Cloud Sync
+# Reef Bloom — Sign-in & Cloud Sync (AWS)
 
-Optional Google sign-in that syncs the three save slots across devices via
-Firebase (free Spark plan — no card required). The game is fully playable
-signed out; until Firebase is configured, no sign-in UI appears at all and
-the game behaves exactly as before.
+Optional sign-in that syncs the three save slots across devices. The backend
+is **entirely AWS** and serverless: Cognito User Pool (hosted email/password
+sign-in page, sign-up and verification included), Cognito Identity Pool
+(temporary AWS credentials issued straight to the browser), and DynamoDB
+on-demand. No servers, no Lambda, no third-party services.
+
+The game is fully playable signed out; until the config is pasted in, no
+sign-in UI appears and no AWS code loads — the game behaves exactly as before.
+
+## Cost
+
+- **Cognito User Pool:** free for the first 10,000 monthly active users.
+- **Cognito Identity Pool:** free.
+- **DynamoDB (on-demand):** ~$1.25 per *million* writes; one item per player,
+  a few KB each, writes debounced to at most one per slot per 4 seconds of
+  active play. At current scale this rounds to $0.
+- **IAM/CloudFormation:** free.
 
 ## What it does
 
-- **Sign in with Google** from the slot-picker screen ("Choose Your Reef").
-- All three save slots sync to Firestore (`users/{uid}`, one doc per player).
-- Conflict resolution is per-slot, newest-wins, using the `savedAt` timestamp
-  stamped on every save. Erasing a slot writes a tombstone so the deletion
-  propagates to other devices instead of being resurrected.
+- "☁️ Sign in to sync your reefs" on the Choose Your Reef screen → Cognito's
+  hosted sign-in page (create account / sign in with email) → redirected back.
+- All three save slots sync to one DynamoDB item per player, keyed by their
+  Cognito identity id. The IAM policy (`dynamodb:LeadingKeys`) means a player's
+  browser credentials physically cannot read or write anyone else's item.
+- Conflict resolution is per-slot, newest-wins, via the `savedAt` timestamp on
+  every save. Erasing a slot writes a tombstone so deletions propagate.
 - Saves push automatically while playing (debounced 4s, flushed when the tab
-  is hidden). Signing in on a new device pulls your reefs down before the
-  slot cards render.
-- Signed-out play never loads any Firebase code (the SDK is dynamically
-  imported only when configured and used).
+  hides). Signing in on a new device pulls your reefs down.
 
-## Enable it (~5 minutes)
+## Enable it (one command + one paste)
 
-1. Go to [console.firebase.google.com](https://console.firebase.google.com)
-   → **Add project** (Analytics not needed).
-2. **Build → Authentication → Get started** → enable the **Google** provider.
-   Under Settings → Authorized domains, add `reefbloomgame.com`.
-3. **Build → Firestore Database → Create database** (production mode), then
-   in the **Rules** tab paste:
+1. Deploy the backend (uses your existing AWS credentials):
 
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /users/{uid} {
-         allow read, write: if request.auth != null && request.auth.uid == uid;
-       }
-     }
-   }
+   ```bash
+   aws cloudformation deploy \
+     --template-file infra/reef-auth.yaml \
+     --stack-name reef-bloom-auth \
+     --capabilities CAPABILITY_NAMED_IAM
    ```
 
-4. **Project settings (gear) → Your apps → Web app (`</>`)** → register, copy
-   the `firebaseConfig` object, and paste it into `src/firebase-config.js`
-   replacing `null`.
-5. Commit and push. The web config is public by design (security lives in the
-   rules above), so committing it is safe.
+   If the hosted-UI domain prefix `reef-bloom` is taken in your region, add
+   `--parameter-overrides DomainPrefix=reef-bloom-<something>`.
+
+2. Read the outputs:
+
+   ```bash
+   aws cloudformation describe-stacks --stack-name reef-bloom-auth \
+     --query 'Stacks[0].Outputs' --output table
+   ```
+
+3. Paste them into `src/aws-config.js` replacing `null`:
+
+   ```js
+   export const awsConfig = {
+     region:           '<Region>',
+     userPoolId:       '<UserPoolId>',
+     userPoolClientId: '<UserPoolClientId>',
+     cognitoDomain:    '<CognitoDomain>',
+     identityPoolId:   '<IdentityPoolId>',
+     saveTable:        '<SaveTable>',
+   };
+   ```
+
+4. Commit and push. These values are identifiers, not secrets — access
+   control lives in the app client's allowed callback URLs and the IAM policy.
 
 ## Notes
 
-- **iOS app:** web popup auth doesn't work inside the Capacitor shell, so the
-  sign-in row is hidden there for now. When wanted, add the
-  `@capacitor-firebase/authentication` plugin for native Google sign-in.
-- Each slot is stored as a JSON string field (`s0`–`s2`) because Firestore
-  rejects nested arrays (the reef grid is one).
-- Firestore free tier: 50k reads/20k writes per day — orders of magnitude
-  above what the debounced pushes produce.
+- **iOS app:** redirect auth needs native plumbing inside the Capacitor
+  shell, so the sign-in row is hidden there for now.
+- Each slot is stored as a raw JSON string attribute (`s0`–`s2`) on the
+  player's item, plus `updatedAt`.
+- The hosted UI page is plain but functional; it can be themed from the
+  Cognito console (Branding) later, and a custom domain (auth.reefbloomgame.com)
+  can replace the amazoncognito.com one if wanted.
+- Allowed sign-in redirect URLs are baked into the template: the production
+  site (root and /mobile/) and localhost:5173 for development.

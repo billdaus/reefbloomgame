@@ -1,0 +1,43 @@
+name: Deploy Auth Backend (Cognito + DynamoDB)
+
+# Manually triggered: stands up the sign-in/cloud-save backend from
+# infra/reef-auth.yaml and prints the config values to paste into
+# src/aws-config.js. Uses the same AWS credentials as the site deploy.
+# Note: the IAM user behind those credentials needs CloudFormation,
+# Cognito, DynamoDB, and IAM permissions — if it's scoped to S3 only,
+# run the same two commands locally with an admin profile instead
+# (see SIGNIN.md).
+on:
+  workflow_dispatch:
+    inputs:
+      domain_prefix:
+        description: Cognito hosted-UI domain prefix (globally unique per region)
+        default: reef-bloom
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy stack
+        run: |
+          aws cloudformation deploy \
+            --template-file infra/reef-auth.yaml \
+            --stack-name reef-bloom-auth \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides DomainPrefix=${{ inputs.domain_prefix }}
+
+      - name: Print config for src/aws-config.js
+        run: |
+          echo "Paste these into src/aws-config.js:"
+          aws cloudformation describe-stacks --stack-name reef-bloom-auth \
+            --query 'Stacks[0].Outputs' --output table
