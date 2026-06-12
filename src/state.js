@@ -1,5 +1,5 @@
 import {
-  START_BE, START_HARMONY, START_LEVEL, START_PEARLS, START_CHAOS,
+  START_BE, START_HARMONY, START_LEVEL, START_PEARLS,
   GRID_ROWS, GRID_COLS,
 } from './constants.js';
 
@@ -12,8 +12,6 @@ export const state = {
   harmony: START_HARMONY,
   level:   START_LEVEL,
   pearls:  START_PEARLS,
-  chaos:   START_CHAOS,
-  chaosFlashMs: 0,   // briefly > 0 right after a chaos→harmony discharge (HUD flash hook)
 
   // ── Ad / clam tracking ─────────────────────────────────────────────────────
   clamWatchCount: 0,           // watches used today

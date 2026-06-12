@@ -19,7 +19,6 @@ import { initQuests, recordQuestEvent, checkSnapshotQuests, getQuestStatus } fro
 import { initEventSystem, recordEventProgress, checkEventSnapshots, recordQuestClaimed } from '../systems/EventSystem.js';
 import { initJournal, unlockEntry } from '../systems/JournalSystem.js';
 import { updateHarmonyFilter } from '../systems/HarmonySystem.js';
-import { addChaos, updateChaos } from '../systems/ChaosSystem.js';
 import { initLevelSystem, checkLevelUp } from '../systems/LevelSystem.js';
 import { initClamSystem, tickClamSystem, canWatch, collectAdReward, despawnClam } from '../systems/ClamSystem.js';
 import { Clam } from '../entities/Clam.js';
@@ -219,7 +218,6 @@ export class ReefScene {
 
     tickEconomy(dms);
     tickClamSystem(dms);
-    updateChaos(dms);
     updateHarmonyFilter(this.worldContainer);
     checkLevelUp();
 
@@ -480,9 +478,6 @@ export class ReefScene {
       age:  0,
       life: isPoop ? 1800 : 1400,
     });
-
-    // Each emission charges the chaos meter; poops carry slightly more "weight"
-    addChaos(isPoop ? 6 : 3.5);
   }
 
   _updateParticles(dms) {
@@ -545,7 +540,6 @@ export class ReefScene {
     state.harmony        = data.harmony ?? state.harmony;
     state.level          = data.level   ?? state.level;
     state.pearls         = data.pearls  ?? state.pearls;
-    state.chaos          = data.chaos   ?? 0;
     state.clamWatchCount = data.clamWatchCount ?? 0;
     state.clamWatchDate  = data.clamWatchDate  ?? '';
     state.quest   = data.quest   ?? null;

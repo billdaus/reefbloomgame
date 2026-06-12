@@ -34,8 +34,6 @@ export const START_BE      = 20;
 export const START_HARMONY = 50;
 export const START_LEVEL   = 1;
 export const START_PEARLS  = 0;
-export const START_CHAOS   = 0;
-export const CHAOS_MAX     = 100;
 
 // ─── Biomes ──────────────────────────────────────────────────────────────────
 export const SEAGRASS_UNLOCK_LEVEL     = 3;
@@ -94,8 +92,6 @@ export const COLORS = {
   be_icon:        0x64b5f6,
   harmony_fill:   0x81c784,
   harmony_empty:  0x1a3a1a,
-  chaos_fill:     0xe57373,
-  chaos_empty:    0x3a1a1a,
   // Tier colors (matching rarity emojis: ⬜ 🟪 🟦 🟩 🟨 🟧 🟥)
   tier_common:    0xb0bec5,
   tier_uncommon:  0xab47bc,
@@ -633,9 +629,8 @@ export const FISH_SPECIES = {
     eventId: 'moonfish_migration_2026',
   },
 
-  // ── Chaos vector ─────────────────────────────────────────────────────────
-  // Gavin — emits farts and poops as he swims, charging the Chaos meter.
-  // When chaos hits max it discharges into a full-harmony rush.
+  // ── Gavin ────────────────────────────────────────────────────────────────
+  // Emits farts and poops as he swims — purely cosmetic personality.
   gavin: {
     id: 'gavin', name: 'Gavin', scientific: 'Pisces gaseousus',
     tier: TIER.EPIC, layer: 'A', color: 0x8bc34a, accentColor: 0xc5e1a5,

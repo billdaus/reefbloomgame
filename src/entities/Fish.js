@@ -130,7 +130,6 @@ export class Fish {
       // Event pass exclusives
       case 'sakuraAnthias':     this._drawSakuraAnthias(g, sz, c, ac);     break;
       case 'opah':              this._drawOpah(g, sz, c, ac);              break;
-      // Chaos vector
       case 'gavin':             this._drawGavin(g, sz, c, ac);             break;
       default:                  this._drawOvalFish(g, sz, c, ac, false);   break;
     }
@@ -2335,7 +2334,7 @@ export class Fish {
 
   /**
    * Gavin — a chubby green fish with a permanently sheepish grin. Designed to
-   * read as the goofy troublemaker that he is. Source of the chaos meter.
+   * read as the goofy troublemaker that he is.
    */
   _drawGavin(g, sz, c, ac) {
     const hw = sz * 1.15;
