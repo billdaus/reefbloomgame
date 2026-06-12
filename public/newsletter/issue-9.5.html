@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 09.5 — A Shop With No Till. A companion confession to this morning's special: the pearl market lists its prices in dollars, and there is no way on Earth to pay them." />
+  <title>A Shop With No Till — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 09.5 (Special) — jeweler's velvet: deep teal-green, pearl-white accent */
+    :root {
+      --nl-bg-1: #1c3a36;
+      --nl-bg-2: #122825;
+      --nl-bg-3: #0a1816;
+      --nl-bg-4: #040c0a;
+      --theme-glow:   rgba(242, 234, 216, 0.14);
+      --theme-accent: #f2ead8;
+      --theme-rule:   rgba(242, 234, 216, 0.55);
+    }
+    /* Loose pearls scattered on dark velvet */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 18% 22%, rgba(242,234,216,0.10) 0, transparent 4%),
+        radial-gradient(circle at 74% 16%, rgba(255,213,79,0.06) 0, transparent 3%),
+        radial-gradient(circle at 62% 76%, rgba(242,234,216,0.08) 0, transparent 4%),
+        radial-gradient(circle at 28% 84%, rgba(173,216,230,0.06) 0, transparent 3%);
+      z-index: 0;
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/">← Back to dispatch</a>
+
+      <div class="byline">
+        <span>Issue 09.5</span>
+        <span>June 12, 2026</span>
+        <span>Special Issue</span>
+      </div>
+      <h1 class="issue-title">A Shop With No Till</h1>
+      <p class="issue-deck">A companion confession to this morning's special. Having admitted that our advertising department is a clam with no advertisements, fairness requires we complete the audit: the pearl market lists its prices in dollars, and there is no way on Earth to pay them.</p>
+
+      <p class="lede">This morning we published a special issue about the long road to breaking even, and we thought the ledger was complete. Then we walked the monetization wing one more time, the way you check a museum after closing, and found the second room with its lights still on. So here is Issue 9.5 — a half-issue for the other half of the confession. Reef Bloom does not only have an ad system that has never shown an ad. It also has an in-app purchase shop that has never, and can never, charge anyone a cent.</p>
+
+      <h3>Two currencies, one of them honest</h3>
+
+      <p>The reef runs on Bubble Essence, which you earn by playing, and pearls, which are the premium currency — the one with the gem icon and the velvet rope. Thirteen species and corals across the three biomes carry pearl prices instead of BE prices, from a 15-pearl twilight resident up to the 80-pearl Twilight Whale Shark, and the economy code is strict about the rope: pearl species cannot be bought with BE, full stop. This is the standard two-currency architecture of the modern free game, built by the book. The book then assumes you will sell the pearls for money. We will get to that.</p>
+
+      <h3>The till</h3>
+
+      <p>Tap the gem on the HUD and the Pearl Shop opens — a tidy dark panel, three rows, exactly as the genre prescribes: 10 pearls for $0.99, 35 for $2.99, 60 for $4.99. The dollar signs are right there, rendered in bold. And when you tap a pack, here is the complete, unabridged transaction that occurs: the game adds the pearls to your balance and closes the window. That is all. No payment sheet, no card form, no receipt, because there is nothing behind the button. The code at that exact spot contains a comment reading <code>TODO: replace with real IAP flow</code>, which has been true for as long as the shop has existed. We never set up payments. Not Stripe, not Apple, not Google. The till was never installed; the shop simply extends you infinite credit and asks no questions.</p>
+
+      <p>The price tag says $4.99. The transaction that actually executes is: the game believes you, gives you the pearls, and closes the window.</p>
+
+      <p>We are aware of how this looks, publishing it. Some readers have presumably "bought" the Large pack many times, assuming a billing system somewhere was being merciful. No. There is no billing system to be merciful. Every pearl pack ever purchased in Reef Bloom was a gift the buyer gave themselves, dressed up in a dollar sign for ambience.</p>
+
+      <h3>Where pearls actually come from</h3>
+
+      <p>The strange consequence is that the pearl economy works anyway, fed entirely by its free faucets. The clam tips out one pearl most visits, five on a lucky one. Event milestones pay 15 to 30. Finishing an event pays 50 to 100 — the Pearl Tide alone is worth a round hundred. Players have been earning their whale sharks the slow way, or the instant way via the honor-system shop, and the reef has never known the difference. It turns out you can run a premium currency on goodwill and theater for quite a long time, provided you never need the revenue. We do eventually want the revenue; that was this morning's entire issue.</p>
+
+      <h3>On halves</h3>
+
+      <p>Why a half-issue? Because this is not new news — it is the same news as Issue 09, seen from the shop floor instead of the mailroom: we built the machinery of making money with the same care we built the chaos meter, and then never connected any of it to actual money. Ads without an ad network; a store without a payment processor. And because two issues of careful, dignified prose about "breaking even" have earned you one sentence without the editorial we — so here it is, in the first person, the whole confession at last:</p>
+
+      <blockquote>Yes, I want money. And don't try to hide it — you do too. Everyone does.</blockquote>
+
+      <p>There. Printed, archived, unretractable. It changes nothing about the promises: when a real till arrives someday — a payment SDK on the web, or the app stores' own billing in the place the reef may someday travel — the prices you see printed in the shop are the prices that will be true, and pearls already granted will stay granted. Until then the shop stands open, fully stocked, magnificently free, and we remain the proprietors of the politest failed business in the sea.</p>
+
+      <p class="signoff">— The Reef Bloom team</p>
+
+      <a class="back-link" href="/newsletter/" style="margin-top:32px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
