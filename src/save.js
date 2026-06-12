@@ -1,7 +1,12 @@
 import { state } from './state.js';
 
-const SLOT_KEYS        = ['reef-bloom-save-0', 'reef-bloom-save-1', 'reef-bloom-save-2'];
+export const SLOT_KEYS = ['reef-bloom-save-0', 'reef-bloom-save-1', 'reef-bloom-save-2'];
 const CURRENT_SLOT_KEY = 'reef-bloom-current-slot';
+
+// Cloud sync hook — cloudsave.js registers here; fired after any slot write.
+let _onSlotWritten = null;
+export function onSlotWritten(cb) { _onSlotWritten = cb; }
+function _notifyWrite(idx, info) { _onSlotWritten?.(idx, info); }
 
 let _currentSlot  = 0;
 let _currentBiome = 'coral';
@@ -70,7 +75,6 @@ export function saveGame() {
   full.harmony        = state.harmony;
   full.level          = state.level;
   full.pearls         = state.pearls;
-  full.chaos          = state.chaos;
   full.clamWatchCount = state.clamWatchCount;
   full.clamWatchDate  = state.clamWatchDate;
   full.quest              = state.quest;
@@ -80,9 +84,11 @@ export function saveGame() {
 
   // Write current biome's grid state
   full[_currentBiome] = biomeData;
+  full.savedAt = Date.now();
 
   try {
     localStorage.setItem(SLOT_KEYS[_currentSlot], JSON.stringify(full));
+    _notifyWrite(_currentSlot);
   } catch (e) {
     console.warn('[save] write failed', e);
   }
@@ -109,7 +115,6 @@ export function loadGame() {
     harmony:        full.harmony,
     level:          full.level,
     pearls:         full.pearls,
-    chaos:          full.chaos,
     clamWatchCount: full.clamWatchCount,
     clamWatchDate:  full.clamWatchDate,
     quest:              full.quest              ?? null,
@@ -127,7 +132,10 @@ export function loadGame() {
 }
 
 export function clearSave() {
-  try { localStorage.removeItem(SLOT_KEYS[_currentSlot]); } catch { /* ignore */ }
+  try {
+    localStorage.removeItem(SLOT_KEYS[_currentSlot]);
+    _notifyWrite(_currentSlot, { deleted: true });
+  } catch { /* ignore */ }
 }
 
 /** Returns {level, coralCount, fishCount, profile} for display, or null if the slot is empty. */
@@ -188,7 +196,9 @@ export function setProfile(idx, profile) {
     const raw = localStorage.getItem(SLOT_KEYS[idx]);
     const data = raw ? JSON.parse(raw) : {};
     data.profile = profile;
+    data.savedAt = Date.now();
     localStorage.setItem(SLOT_KEYS[idx], JSON.stringify(data));
+    _notifyWrite(idx);
   } catch (e) {
     console.warn('[save] profile write failed', e);
   }
@@ -205,7 +215,10 @@ export function defaultProfile() {
 
 /** Permanently delete a specific slot. */
 export function clearSlot(idx) {
-  try { localStorage.removeItem(SLOT_KEYS[idx]); } catch { /* ignore */ }
+  try {
+    localStorage.removeItem(SLOT_KEYS[idx]);
+    _notifyWrite(idx, { deleted: true });
+  } catch { /* ignore */ }
 }
 
 /** Clear only one biome's data within a slot, preserving the other biome and economy. */
@@ -216,11 +229,16 @@ export function clearBiome(slotIdx, biome) {
     const data = JSON.parse(raw);
     if (data.grid) {
       // Old flat format — coral is the only biome; clearing it = clearing the slot
-      if (biome === 'coral') localStorage.removeItem(SLOT_KEYS[slotIdx]);
+      if (biome === 'coral') {
+        localStorage.removeItem(SLOT_KEYS[slotIdx]);
+        _notifyWrite(slotIdx, { deleted: true });
+      }
       return;
     }
     delete data[biome];
+    data.savedAt = Date.now();
     localStorage.setItem(SLOT_KEYS[slotIdx], JSON.stringify(data));
+    _notifyWrite(slotIdx);
   } catch { /* ignore */ }
 }
 

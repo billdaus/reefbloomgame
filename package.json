@@ -13,6 +13,7 @@
   "dependencies": {
     "@capacitor/core": "^8.4.0",
     "@capacitor/ios": "^8.4.0",
+    "firebase": "^12.14.0",
     "pixi.js": "^8.0.0"
   },
   "devDependencies": {

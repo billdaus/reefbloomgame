@@ -282,6 +282,43 @@
     #slot-page { z-index: 205; opacity: 0; }
     #slot-page.visible { opacity: 1; }
 
+    .slp-auth {
+      min-height: 30px;
+      margin: -8px 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 12px;
+      color: rgba(220, 240, 255, 0.75);
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .slp-auth-btn {
+      padding: 6px 16px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(150,210,255,0.45);
+      border-radius: 16px;
+      color: #d8efff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .slp-auth-btn:hover { background: rgba(255,255,255,0.18); border-color: rgba(180,225,255,0.7); }
+    .slp-auth-status { opacity: 0.85; }
+    .slp-auth-signout {
+      background: none;
+      border: none;
+      color: rgba(180,215,255,0.6);
+      font-size: 11px;
+      cursor: pointer;
+      text-decoration: underline;
+      font-family: inherit;
+      padding: 2px 4px;
+    }
+    .slp-auth-signout:hover { color: rgba(210,235,255,0.9); }
+
     .slp-title {
       position: relative;
       font-size: 22px; font-weight: 700;
@@ -921,6 +958,7 @@
     <div class="bg-bubbles" id="slp-bubbles"></div>
     <div class="reef-silhouette"></div>
     <div class="slp-title">Choose Your Reef</div>
+    <div class="slp-auth" id="slp-auth"><!-- populated by JS when cloud sync is configured --></div>
     <div class="slp-cards" id="slp-cards"><!-- populated by JS --></div>
     <button class="slp-back-btn" id="slp-back">← Back</button>
   </div>

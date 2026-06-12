@@ -3,6 +3,8 @@ import { ReefScene }   from './scenes/ReefScene.js';
 import { SCREEN_W, SCREEN_H, IS_PORTRAIT } from './constants.js';
 import { setCurrentSlot, setCurrentBiome, getSlotPreview, clearSlot, clearBiome, getBiomePreview,
          getProfile, defaultProfile } from './save.js';
+import { isAuthAvailable, onAuthChange, signIn, signOutUser } from './auth.js';
+import { initCloudSave, onCloudSynced } from './cloudsave.js';
 import { state } from './state.js';
 
 async function main() {
@@ -85,10 +87,52 @@ function openSlotPage() {
 function waitForSlotChoice() {
   return new Promise(resolve => {
     buildSlotCards(resolve);
+    initAuthUI(() => buildSlotCards(resolve));
 
     const back = document.getElementById('slp-back');
     if (back) back.addEventListener('click', () => window.location.reload(), { once: true });
   });
+}
+
+/**
+ * Sign-in row above the slot cards. Renders nothing when cloud sync isn't
+ * configured (firebase-config.js is null) — the game stays fully local.
+ */
+function initAuthUI(rebuildCards) {
+  const row = document.getElementById('slp-auth');
+  if (!row || !isAuthAvailable()) return;
+
+  initCloudSave();
+  onCloudSynced(rebuildCards);   // cloud pull changed local slots → refresh cards
+
+  const render = user => {
+    row.innerHTML = '';
+    if (user) {
+      row.appendChild(el('span', 'slp-auth-status',
+        `☁️ Reefs synced — ${user.displayName ?? user.email ?? 'signed in'}`));
+      const out = el('button', 'slp-auth-signout', 'Sign out');
+      out.addEventListener('click', async () => {
+        await signOutUser();
+      });
+      row.appendChild(out);
+    } else {
+      const btn = el('button', 'slp-auth-btn', '☁️ Sign in to sync your reefs');
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Signing in…';
+        try {
+          await signIn();
+        } catch (e) {
+          console.warn('[auth] sign-in failed', e);
+          render(null);
+        }
+      });
+      row.appendChild(btn);
+    }
+  };
+
+  render(null);
+  onAuthChange(render);
 }
 
 function buildSlotCards(onChoose) {
