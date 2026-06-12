@@ -46,3 +46,13 @@ jobs:
               --cache-control "no-cache, no-store, must-revalidate"
           done < <(find dist -type f -name '*.html')
 
+      - name: Invalidate CloudFront (if configured)
+        env:
+          CF_DIST: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          if [ -n "$CF_DIST" ]; then
+            aws cloudfront create-invalidation --distribution-id "$CF_DIST" --paths "/*"
+          else
+            echo "CLOUDFRONT_DISTRIBUTION_ID secret not set — skipping"
+          fi
+
