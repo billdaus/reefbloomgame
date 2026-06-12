@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 06 — The Meter That Never Looks Down. Nothing shipped this week, so we wrote about the number that runs the whole reef: how harmony is scored, and why it refuses to be disappointed in you." />
+  <title>The Meter That Never Looks Down — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 06 — greyscale with one saturated coral accent, the harmony filter itself */
+    :root {
+      --nl-bg-1: #2e3338;
+      --nl-bg-2: #22262a;
+      --nl-bg-3: #15181b;
+      --nl-bg-4: #0a0c0e;
+      --theme-glow:   rgba(255, 126, 103, 0.16);
+      --theme-accent: #ff7e67;
+      --theme-rule:   rgba(255, 126, 103, 0.6);
+    }
+    /* A single tide of colour bleeding into a grey sea */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(ellipse at 18% 30%, rgba(255,126,103,0.10) 0, transparent 8%),
+        radial-gradient(circle at 82% 22%, rgba(255,255,255,0.04) 0, transparent 5%),
+        radial-gradient(ellipse at 70% 80%, rgba(255,126,103,0.07) 0, transparent 9%),
+        radial-gradient(circle at 30% 88%, rgba(255,255,255,0.03) 0, transparent 4%);
+      z-index: 0;
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/">← Back to dispatch</a>
+
+      <div class="byline">
+        <span>Issue 06</span>
+        <span>Week of May 25, 2026</span>
+        <span>Editorial</span>
+      </div>
+      <h1 class="issue-title">The Meter That Never Looks Down</h1>
+      <p class="issue-deck">Nothing shipped this week. We said something bigger was coming; it is still in the workshop, and we would rather be late than wrong. So instead, an essay about the number that quietly runs the entire game.</p>
+
+      <p class="lede">Last issue ended with a promise that next week would be "something a bit bigger." This is the part of the dispatch where we tell you, plainly, that it is not landing this week either. No new species swam in, no new system switched on. The build you played on Monday is the build you are playing now. What we have instead is the thing a quiet week is actually good for: a long look at a system that has been on screen since the first day and has never once been written about. Harmony — the gold reading at the top of the HUD — deserves its issue, and this is it.</p>
+
+      <h3>What the number is actually made of</h3>
+
+      <p>Harmony presents itself as a mood, but it is an audit. Out of a possible hundred points, forty come from coral diversity — eight points for every distinct coral species you have planted, capped at five species. Thirty come from fish: five points per fish up to twenty, plus five per distinct species up to ten more. Fifteen points come from layer balance, which is the system's way of asking whether life exists both near your coral and in the open water above it — populate both layers and you get the full fifteen; populate only one and you get seven. The last fifteen are a ratio bonus that pays out in proportion to how evenly your fish population matches your coral count. A hundred corals and two fish is a garden, not an ecosystem, and the meter prices it accordingly.</p>
+
+      <p>If you have ever wondered why a small, varied reef can outscore a sprawling monoculture, that is the whole answer. The meter does not count what you own. It counts how the things you own relate to each other.</p>
+
+      <h3>The refusal to be disappointed</h3>
+
+      <p>Here is the design decision we suspect nobody has noticed, because its entire job is to be unnoticeable: harmony never permanently goes down. Each time the reef is rescored, the new value is floored at ninety percent of the old one. Sell every fish you own and the number does not crash — it eases, briefly, and then climbs again as you rebuild. An empty reef still reads twenty, never zero. There is no state you can reach, no mistake you can make, from which the meter will not recover.</p>
+
+      <blockquote>Harmony is not a judge. It is a witness with a generous memory — it records the best reef you have managed, and it refuses to forget it just because you had a clumsy afternoon.</blockquote>
+
+      <p>We built it this way because the alternative is a meter that punishes experimentation, and experimentation is the only verb this game really has. If rearranging your reef could tank a number you had spent a week raising, you would stop rearranging. The ninety-percent floor means the worst case for any wild idea is a brief dip and a short climb home. The meter is rigged in your favour, openly, and we think a game about nurturing things is allowed to do that.</p>
+
+      <h3>The world is the readout</h3>
+
+      <p>The other thing harmony does is the one you can see from across the room: it is wired directly into the colour of the world. The whole reef renders through a saturation filter, and harmony is the dial. At zero the scene would be grey; at a hundred it is fully saturated; in between, every point of harmony is literally a point of colour. The filter chases the true value slowly — a fraction of the distance each frame, a deliberate lag of a second or two — so colour arrives the way light changes in the afternoon, not the way a light switch works.</p>
+
+      <p>This is, honestly, our favourite piece of indirection in the game. There is a number, and you can read the number, but you do not need to. A thriving reef looks thriving. A struggling reef looks washed out. The meter could disappear from the HUD tomorrow and the information would all still be there, in the only place it ever really mattered.</p>
+
+      <p>Next week: either the bigger thing, or another essay. We are no longer making promises with dates attached.</p>
+
+      <p class="signoff">— The Reef Bloom team</p>
+
+      <a class="back-link" href="/newsletter/" style="margin-top:32px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>

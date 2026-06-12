@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 05 — A Fish Named Gavin. The reef gets a chaos meter, a flatulent epic fish, and three save slots that finally know who you are." />
+  <title>A Fish Named Gavin — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 05 — acidic green & blush, the colour of Gavin himself */
+    :root {
+      --nl-bg-1: #1f2e16;
+      --nl-bg-2: #131c0d;
+      --nl-bg-3: #0a1106;
+      --nl-bg-4: #050803;
+      --theme-glow:   rgba(165, 214, 105, 0.20);
+      --theme-accent: #b5d96a;
+      --theme-rule:   rgba(181, 217, 106, 0.65);
+    }
+    /* Drifting motes — half algal bloom, half something less polite */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 14% 20%, rgba(181,217,106,0.12) 0, transparent 6%),
+        radial-gradient(circle at 78% 16%, rgba(229,115,115,0.08) 0, transparent 4%),
+        radial-gradient(circle at 30% 72%, rgba(181,217,106,0.10) 0, transparent 6%),
+        radial-gradient(circle at 84% 78%, rgba(255,224,178,0.08) 0, transparent 5%);
+      z-index: 0;
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/">← Back to dispatch</a>
+
+      <div class="byline">
+        <span>Issue 05</span>
+        <span>Week of May 18, 2026</span>
+        <span>Editorial</span>
+      </div>
+      <h1 class="issue-title">A Fish Named Gavin</h1>
+      <p class="issue-deck">Two ships this week: the save slots finally know your name, and the reef gets a small unstable element — a meter, a release valve, and a flatulent epic fish who exists to fill both.</p>
+
+      <p class="lede">It has always been a little strange to open Reef Bloom and pick "Save 2." Two of what, exactly. The game knew you had three save files; it didn't know anything else about you. This week, that low-grade weirdness gets sanded down: each slot now carries a tiny profile — a name, a chosen emoji avatar, a creation date — and the slot picker, the HUD, and the account screen all start to reflect it. The reef has, for the first time, a person attached to it.</p>
+
+      <p>That's the gentle ship. The other ship is louder. It's a fish. He is called Gavin, and he is the first species we've ever drawn whose primary purpose is to be annoying.</p>
+
+      <h3>Profiles, by way of restraint</h3>
+
+      <p>The temptation with any "profiles" feature is to make it the spine of half a dozen new systems — friends lists, leaderboards, cosmetic flair, account-bound currencies. We deliberately did not do any of that. A profile in Reef Bloom is three fields and one button. The name is a string up to twenty-four characters; the avatar is one of sixteen marine emoji; the creation date is set automatically the first time the slot is touched and never changes after that. The Account button on the HUD opens an editor over the reef where you can change the first two whenever you like.</p>
+
+      <p>The reason the surface stayed this small is that the profile system is entirely local. Nothing leaves the browser. There is no account server, no sync, no recovery, no shared identity across devices — your three slots live in <code>localStorage</code>, and so does the name attached to each of them. We could expand this later if a real reason to do so appears, but the version that ships this week is the version we think we can defend: it makes the slot picker a little warmer and the HUD a little more yours, and it does not ask you for anything in exchange.</p>
+
+      <blockquote>A profile in Reef Bloom is three fields and one button. The point is to make the slot picker feel a little more yours — and to stop, deliberately, before it becomes anything more than that.</blockquote>
+
+      <h3>Chaos, and the meter that contains it</h3>
+
+      <p>The other half of the week is a small mechanical wrinkle that we have been kicking around since the harmony system shipped. Harmony — the reef's overall happiness reading — has, until now, only ever drifted downward gently and recovered gently. There has been no spike, no dump, no moment where the meter is suddenly pinned full. We wanted to add a release valve that wasn't just "wait an hour."</p>
+
+      <p>Chaos is that valve. It's a second meter, sitting below harmony on the HUD as a thin red bar. It fills slowly while certain chaotic species are present in the reef, and when it caps at 100, it discharges: it drops instantly back to zero, harmony pops up to maximum, and the screen gets a brief white flash to mark the moment. After the discharge, harmony decays naturally from full the way it always has — there's no permanent buff and no exploit loop. It's a one-shot reset that you earn by hosting trouble.</p>
+
+      <p>The number we landed on for passive decay is 0.6 chaos points per second, which means a still reef with no chaotic species in it will never trigger anything. If you don't place the fish, you'll never see the meter move. That was important. The whole feature should be opt-in by the act of buying the trigger.</p>
+
+      <div class="spotlight">
+        <div class="spotlight-head">
+          <div class="spotlight-swatch" style="background: radial-gradient(circle at 35% 35%, #d8f3a8 0%, #6a9c3c 100%);"></div>
+          <div class="spotlight-meta">
+            <div class="spotlight-eyebrow">Species Spotlight</div>
+            <div class="spotlight-name">Gavin</div>
+            <div class="spotlight-sci">Pisces gaseousus</div>
+            <span class="spotlight-tier tier-epic">EPIC</span>
+          </div>
+        </div>
+        <p>Gavin is a chubby green fish with a sheepish closed-mouth grin, two soft pink blush marks high on his cheeks, and one large, slightly oblivious eye topped by a single tilted-up eyebrow. From across the grid he reads as cheerful and incurious. Up close, the impression holds — he is not malicious, he is not mischievous, he is simply a fish who has not considered, and will not consider, the room.</p>
+        <p>Every few seconds, Gavin emits. The emission is either a small drifting cluster of pale green puffs (a fart, 65% of the time) or a single brown pellet that falls (a poop, the remaining 35%). The puffs rise; the pellet sinks; both fade out over about a second. Each emission adds to the chaos meter — farts contribute a little, pellets contribute more — and the meter ticks toward its 100-point cap from there. Gavin himself is otherwise a perfectly ordinary Epic-tier fish: he swims layer A, he reacts to the same currents the rest of the roster does, he can be removed for the standard refund.</p>
+        <p>It would be reasonable to ask whether we needed a fish for this and could not have just put a button on the HUD that says <em>release chaos</em>. The answer is that a button would have worked, and we would have hated it. A chaos meter that fills because a specific small green creature is doing specific small undignified things in the corner of your reef is, we think, the version of this feature that belongs in this game.</p>
+      </div>
+
+      <h3>Two small things, on purpose</h3>
+
+      <p>Neither of this week's ships is large. Profiles add about a hundred lines of UI and a small migration helper to the save format; chaos and Gavin together add one system file, one species, one HUD bar, and a particle pool. We considered bundling something bigger alongside them — a new biome event, a roster expansion — and decided against it. Small, well-finished features are a load-bearing part of what this newsletter exists to defend. If we shipped four large features a month, the dispatch would be a changelog. We would rather it stay an editorial.</p>
+
+      <p>If you've made a profile already and seen Gavin do his thing, you've seen the entire update. There is nothing else hidden in the corners. Next week is something a bit bigger; we'll write it up when we're sure it's landing.</p>
+
+      <p class="signoff">— The Reef Bloom team</p>
+
+      <a class="back-link" href="/newsletter/" style="margin-top:32px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
