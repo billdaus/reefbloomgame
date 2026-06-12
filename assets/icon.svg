@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#70d4f8"/>
+      <stop offset="40%" stop-color="#28a0e0"/>
+      <stop offset="75%" stop-color="#1468b0"/>
+      <stop offset="100%" stop-color="#0a3050"/>
+    </linearGradient>
+    <linearGradient id="coralPink" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#d94f7e"/>
+      <stop offset="100%" stop-color="#ff8fb0"/>
+    </linearGradient>
+    <linearGradient id="coralOrange" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#e07020"/>
+      <stop offset="100%" stop-color="#ffb050"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#sea)"/>
+
+  <!-- light rays -->
+  <polygon points="300,0 420,0 260,620 200,600" fill="#ffffff" opacity="0.08"/>
+  <polygon points="520,0 660,0 560,560 470,540" fill="#ffffff" opacity="0.06"/>
+
+  <!-- bubbles -->
+  <circle cx="780" cy="300" r="26" fill="none" stroke="#ffffff" stroke-width="8" opacity="0.5"/>
+  <circle cx="840" cy="200" r="16" fill="none" stroke="#ffffff" stroke-width="6" opacity="0.4"/>
+  <circle cx="730" cy="400" r="12" fill="none" stroke="#ffffff" stroke-width="5" opacity="0.35"/>
+
+  <!-- sand mound -->
+  <ellipse cx="512" cy="980" rx="620" ry="160" fill="#e8c98a"/>
+  <ellipse cx="512" cy="1000" rx="620" ry="150" fill="#d4b070" opacity="0.6"/>
+
+  <!-- branching coral (pink) -->
+  <g fill="url(#coralPink)">
+    <path d="M420 900 C415 780 430 700 400 620 C380 560 330 520 320 460 C318 440 340 436 348 452 C370 510 410 540 430 600 C440 540 420 480 440 420 C448 396 478 400 472 428 C458 490 480 550 482 620 C500 560 540 530 552 470 C557 446 586 452 580 476 C566 540 520 580 510 650 C500 730 510 800 508 900 Z"/>
+  </g>
+
+  <!-- branching coral (orange, right) -->
+  <g fill="url(#coralOrange)">
+    <path d="M660 920 C658 840 670 790 650 730 C636 690 600 665 595 620 C593 602 612 598 619 612 C636 652 665 672 680 715 C688 672 674 630 690 588 C697 570 720 574 715 594 C705 640 720 685 722 730 C736 690 762 668 772 626 C777 608 798 613 793 631 C782 676 750 705 742 754 C734 812 742 860 740 920 Z"/>
+  </g>
+
+  <!-- small fish -->
+  <g transform="translate(310 330) rotate(-8)">
+    <ellipse cx="0" cy="0" rx="58" ry="34" fill="#ffd24a"/>
+    <polygon points="50,0 96,-30 96,30" fill="#ffb020"/>
+    <circle cx="-28" cy="-8" r="7" fill="#143050"/>
+    <path d="M-10 -32 Q0 -50 14 -34 Z" fill="#ffb020"/>
+  </g>
+</svg>

@@ -3,17 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪸</text></svg>" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="description" content="Reef Bloom is a free browser game where you build and nurture your own coral reef ecosystem. Place coral, hatch fish, and watch life flourish." />
   <title>Reef Bloom</title>
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-YF2KCE7JPP"></script>
+  <!-- Google Analytics (web only — skipped inside the iOS/Android app shell) -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-YF2KCE7JPP');
+    if (!window.location.protocol.startsWith('capacitor') && !window.Capacitor) {
+      const ga = document.createElement('script');
+      ga.async = true;
+      ga.src = 'https://www.googletagmanager.com/gtag/js?id=G-YF2KCE7JPP';
+      document.head.appendChild(ga);
+      gtag('js', new Date());
+      gtag('config', 'G-YF2KCE7JPP');
+    }
   </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><text y="28" font-size="28">🐠</text></svg>') 16 16, auto !important; }

@@ -1,0 +1,41 @@
+name: iOS Build (Simulator)
+
+# Manually triggered: builds the iOS app for the Simulator on a macOS runner
+# to verify the Xcode project compiles. Produces an unsigned .app artifact
+# you can drag onto a Simulator. Device/App Store builds require signing
+# certificates and are done from Xcode on a Mac.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets and sync to iOS
+        run: npm run ios:sync
+
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Upload Simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReefBloom-Simulator
+          path: build/Build/Products/Debug-iphonesimulator/App.app
