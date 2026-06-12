@@ -8,6 +8,12 @@ export default defineConfig({
   build: {
     target: 'es2022',
     assetsDir: 'assets',
+    rollupOptions: {
+      input: {
+        main:   'index.html',
+        mobile: 'mobile/index.html',
+      },
+    },
   },
   base: './',
 });

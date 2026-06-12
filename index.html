@@ -278,6 +278,16 @@
     .sp-btn:hover  { background: #d0f0ff; transform: scale(1.04); }
     .sp-btn:active { transform: scale(0.97); }
 
+    .sp-version-link {
+      display: block;
+      margin-top: 18px;
+      font-size: 13px;
+      color: rgba(210, 235, 255, 0.7);
+      text-decoration: none;
+      letter-spacing: 0.5px;
+    }
+    .sp-version-link:hover { color: #fff; text-decoration: underline; }
+
     /* ── Slot selection page ────────────────────────────────────────────────── */
     #slot-page { z-index: 205; opacity: 0; }
     #slot-page.visible { opacity: 1; }
@@ -689,6 +699,7 @@
         <div class="sp-title">Reef Bloom</div>
         <div class="sp-sub">Place coral. Hatch fish. Watch life flourish.</div>
         <button class="sp-btn" id="start-btn">Play Now</button>
+        <a class="sp-version-link" id="sp-version-link" href="/mobile/">📱 Phone version</a>
       </div>
       <div class="sp-scroll-hint">Scroll to learn more ↓</div>
     </div>

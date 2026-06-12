@@ -4,11 +4,11 @@
   "description": "Reef Bloom — ecosystem stewardship prototype",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node scripts/gen-mobile.mjs && vite",
+    "build": "node scripts/gen-mobile.mjs && vite build",
     "preview": "vite preview",
-    "ios:sync": "vite build && cap sync ios",
-    "ios:open": "vite build && cap sync ios && cap open ios"
+    "ios:sync": "npm run build && cap sync ios",
+    "ios:open": "npm run build && cap sync ios && cap open ios"
   },
   "dependencies": {
     "@capacitor/core": "^8.4.0",

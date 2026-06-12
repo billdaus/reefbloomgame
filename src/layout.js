@@ -9,10 +9,15 @@
  *   Canvas = 1024×768, panel is a right-side column (existing layout).
  */
 
-const vw = window.innerWidth;
-const vh = window.innerHeight;
+// /mobile/ sets this flag before the game module loads — it forces the
+// portrait phone layout regardless of viewport, clamped to phone dimensions
+// so the page shows a phone-sized game even in a wide desktop window.
+const FORCE_MOBILE = typeof window !== 'undefined' && window.__REEF_FORCE_MOBILE__ === true;
 
-export const IS_PORTRAIT = vw < vh && vw < 640;
+const vw = FORCE_MOBILE ? Math.min(window.innerWidth, 430) : window.innerWidth;
+const vh = FORCE_MOBILE ? Math.min(window.innerHeight, 930) : window.innerHeight;
+
+export const IS_PORTRAIT = FORCE_MOBILE || (vw < vh && vw < 640);
 
 export const GRID_COLS = 10;
 export const GRID_ROWS = 10;
