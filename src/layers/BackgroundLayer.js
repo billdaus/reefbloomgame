@@ -59,18 +59,19 @@ export class BackgroundLayer {
   // ── 1. Ocean gradient ──────────────────────────────────────────────────────
   _buildOceanGradient() {
     const g = new Graphics();
-    g.rect(0, 0, SCREEN_W, SCREEN_H).fill(0x1878c8);
-    g.rect(0, SCREEN_H * 0.1, SCREEN_W, SCREEN_H * 0.5).fill({ color: 0x28a0e0, alpha: 0.55 });
-    g.rect(0, 0, SCREEN_W, SCREEN_H * 0.28).fill({ color: 0x40b8f0, alpha: 0.50 });
-    g.rect(0, 0, SCREEN_W, SCREEN_H * 0.1).fill({ color: 0x70d4ff, alpha: 0.45 });
+    // Brighter, more saturated tropical-reef water
+    g.rect(0, 0, SCREEN_W, SCREEN_H).fill(0x12a6e0);
+    g.rect(0, SCREEN_H * 0.1, SCREEN_W, SCREEN_H * 0.5).fill({ color: 0x33c4ee, alpha: 0.60 });
+    g.rect(0, 0, SCREEN_W, SCREEN_H * 0.28).fill({ color: 0x5fd8f6, alpha: 0.55 });
+    g.rect(0, 0, SCREEN_W, SCREEN_H * 0.1).fill({ color: 0x9cefff, alpha: 0.55 });
     this._coralGroup.addChild(g);
   }
 
   // ── 2. Surface shimmer ─────────────────────────────────────────────────────
   _buildSurfaceShimmer() {
     const g = new Graphics();
-    g.rect(0, 0, SCREEN_W, 28).fill({ color: 0x90e4ff, alpha: 0.45 });
-    g.rect(0, 0, SCREEN_W,  6).fill({ color: 0xc8f4ff, alpha: 0.40 });
+    g.rect(0, 0, SCREEN_W, 28).fill({ color: 0xb0f0ff, alpha: 0.55 });
+    g.rect(0, 0, SCREEN_W,  6).fill({ color: 0xe4fcff, alpha: 0.55 });
     this._coralGroup.addChild(g);
   }
 
@@ -81,17 +82,17 @@ export class BackgroundLayer {
       [0,0],[90,-52],[180,-38],[270,-66],[360,-44],
       [450,-70],[550,-42],[650,-58],[750,-36],
       [850,-60],[940,-42],[1024,-28],[1024,0],
-    ], 0x0c5492, 0.50);
+    ], 0x1488c8, 0.50);
     this._reefSilhouette(g, 340, [
       [0,0],[70,-44],[155,-60],[235,-38],
       [320,-68],[410,-46],[500,-64],[590,-34],
       [680,-54],[780,-40],[880,-56],[980,-32],[1024,-26],[1024,0],
-    ], 0x0e6aaa, 0.40);
+    ], 0x1aa0d4, 0.42);
     this._reefSilhouette(g, 420, [
       [0,0],[110,-32],[200,-46],[290,-28],
       [390,-48],[480,-30],[570,-44],[670,-24],
       [760,-38],[860,-28],[960,-34],[1024,-20],[1024,0],
-    ], 0x1478b8, 0.30);
+    ], 0x36b6e0, 0.34);
     this._coralGroup.addChild(g);
   }
 
@@ -116,7 +117,7 @@ export class BackgroundLayer {
         cy:        GRID_Y + GRID_H * 0.5 + Math.random() * GRID_H * 0.42,
         rx:        8  + Math.random() * 18,
         ry:        3  + Math.random() * 6,
-        baseAlpha: 0.10 + Math.random() * 0.12,
+        baseAlpha: 0.14 + Math.random() * 0.16,
         phase:     Math.random() * Math.PI * 2,
       });
     }
@@ -135,7 +136,7 @@ export class BackgroundLayer {
           const angle = (i / 14) * Math.PI * 2;
           pts.push(c.cx + Math.cos(angle) * c.rx, c.cy + Math.sin(angle) * c.ry);
         }
-        g.poly(pts).fill({ color: 0x90e8ff, alpha: a });
+        g.poly(pts).fill({ color: 0xbaf4ff, alpha: a });
       }
     });
   }
@@ -148,9 +149,9 @@ export class BackgroundLayer {
       const spread = 50 + Math.random() * 55;
       const len    = SCREEN_H * (0.55 + Math.random() * 0.38);
       const baseX  = SCREEN_W * 0.07 + i * (SCREEN_W * 0.118);
-      const alpha  = 0.06 + Math.random() * 0.05;
+      const alpha  = 0.09 + Math.random() * 0.07;
       g.moveTo(0, 0).lineTo(-spread / 2, len).lineTo(spread / 2, len)
-       .closePath().fill({ color: 0xa8e8ff, alpha });
+       .closePath().fill({ color: 0xccf4ff, alpha });
       this._rays.push({ gfx: g, baseX, phase: Math.random() * Math.PI * 2, amp: 0.015 + Math.random() * 0.02 });
       this._rayContainer.addChild(g);
     }
@@ -168,7 +169,7 @@ export class BackgroundLayer {
       const lean = (Math.random() - 0.5) * 14;
       g.moveTo(sx, base)
        .bezierCurveTo(sx - w, base - h * 0.5, sx + w, base - h * 0.72, sx + lean, base - h)
-       .stroke({ color: 0x1a7840, width: w * 0.5, cap: 'round', alpha: 0.9 });
+       .stroke({ color: 0x2eb85e, width: w * 0.5, cap: 'round', alpha: 0.9 });
     }
     this._coralGroup.addChild(g);
   }
@@ -190,8 +191,9 @@ export class BackgroundLayer {
     g.rect(0, SCREEN_H * 0.1, SCREEN_W, SCREEN_H * 0.45).fill({ color: 0x070e22, alpha: 0.8 });
     // Deepest dark near floor
     g.rect(0, SCREEN_H * 0.72, SCREEN_W, SCREEN_H * 0.28).fill({ color: 0x020408, alpha: 0.9 });
-    // Very faint violet bioluminescent ambient at mid-depth
-    g.rect(0, SCREEN_H * 0.3, SCREEN_W, SCREEN_H * 0.4).fill({ color: 0x1a0040, alpha: 0.12 });
+    // Richer violet + teal bioluminescent ambient at mid-depth (still dark)
+    g.rect(0, SCREEN_H * 0.28, SCREEN_W, SCREEN_H * 0.44).fill({ color: 0x2a0a66, alpha: 0.20 });
+    g.rect(0, SCREEN_H * 0.42, SCREEN_W, SCREEN_H * 0.3).fill({ color: 0x06324a, alpha: 0.16 });
     this._twilightGroup.addChild(g);
   }
 
@@ -250,9 +252,9 @@ export class BackgroundLayer {
       const pulse = 0.5 + Math.sin(t * p.pulseRate + p.phase) * 0.45;
       if (pulse > 0.05) {
         // Outer glow halo
-        g.circle(p.x, p.y, p.r * 2.8).fill({ color: p.color, alpha: pulse * 0.12 });
+        g.circle(p.x, p.y, p.r * 3.2).fill({ color: p.color, alpha: pulse * 0.18 });
         // Core dot
-        g.circle(p.x, p.y, p.r).fill({ color: p.color, alpha: pulse * 0.85 });
+        g.circle(p.x, p.y, p.r).fill({ color: p.color, alpha: Math.min(1, pulse * 1.0) });
       }
     });
   }
