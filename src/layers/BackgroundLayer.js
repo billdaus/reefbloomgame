@@ -349,10 +349,10 @@ export class BackgroundLayer {
     const top = this._sandTop;
     const h   = SCREEN_H - top;
     g.clear();
-    // Rich sand filling the lower third, lighter at the top edge and deeper below
+    // Rich sand filling the lower third — uniform to the bottom edge (no
+    // darkening near the viewer), just a lighter sun-touched band up top.
     g.rect(0, top, SCREEN_W, h).fill({ color: p.sand, alpha: p.alpha });
     g.rect(0, top, SCREEN_W, h * 0.22).fill({ color: p.light, alpha: 0.45 });
-    g.rect(0, top + h * 0.58, SCREEN_W, h * 0.42).fill({ color: p.deep, alpha: 0.50 });
     this._floorRipples.forEach(({ ex, ey, rx }) => {
       const pts = [];
       for (let j = 0; j < 14; j++) {
