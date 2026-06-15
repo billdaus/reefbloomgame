@@ -332,16 +332,24 @@ export class ReefScene {
   }
 
   /**
-   * A coral's "···" badge was tapped. The badge now covers the whole tile, so
-   * delegate to the normal tile-tap handler — it already does the right thing
-   * in every mode (remove → decor-first then coral; placement → stack decor on
-   * tall coral; neutral → open the upgrade menu). This keeps badge taps and
-   * bare tile taps perfectly consistent.
+   * A coral's "···" badge was tapped. The badge IS the upgrade button, so it
+   * opens the upgrade menu in every mode EXCEPT remove (where the tap removes)
+   * — this makes the menu open consistently whether or not a placement tool is
+   * selected. The one exception: stacking small decor onto tall coral, which
+   * is delegated to the normal tile handler so that feature still works.
    */
   _onCoralBadgeTap(uid) {
     const entry = state.placedCoral.find(c => c.uid === uid);
     if (!entry) return;
-    this._onTileTap({ col: entry.col, row: entry.row });
+    const { col, row } = entry;
+    if (state.removeMode) { this._onTileTap({ col, row }); return; }
+    if (state.selectedType === 'decor') {
+      const dspec = DECOR_SPECIES[state.selectedId];
+      const cspec = CORAL_SPECIES[entry.speciesId];
+      if (dspec?.stackable && cspec?.tall) { this._onTileTap({ col, row }); return; }
+    }
+    recordInteraction();
+    this._openCoralUpgrade(entry);
   }
 
   _openCoralUpgrade(entry) {
@@ -444,10 +452,16 @@ export class ReefScene {
     saveGame();
   }
 
-  /** Station "···" badge tapped — mirror tile-tap behaviour for its footprint. */
+  /**
+   * Station "···" badge tapped — opens the upgrade menu in every mode except
+   * remove (where it removes the station), so the menu opens consistently.
+   */
   _onStationBadgeTap(uid) {
     const st = state.placedStations.find(s => s.uid === uid);
-    if (st) this._onTileTap({ col: st.col, row: st.row });
+    if (!st) return;
+    if (state.removeMode) { this._tryRemoveStation(st); return; }
+    recordInteraction();
+    this._openStationUpgrade(st);
   }
 
   _openStationUpgrade(st) {
