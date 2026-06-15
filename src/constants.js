@@ -47,6 +47,7 @@ export const STATION_SPAN             = 2;      // footprint is STATION_SPAN × 
 export const STATION_MAX_LEVEL        = 5;      // capacity (fish cleaned at once) = level, 1..5
 export const STATION_CELL             = '__station'; // grid sentinel marking a station tile
 export const CLEAN_DURATION_TICKS      = 100;   // a fish sits still 100 ticks while being cleaned
+export const CLEAN_COOLDOWN_MS         = 20000; // a freshly cleaned fish won't seek cleaning again for this long
 export const CLEANER_TENURE_TICKS      = 1000;  // re-evaluate a cleaner after this many on-duty ticks…
 export const CLEANER_TENURE_CUSTOMERS  = 5;     // …or this many customers served, whichever comes first
 export const CLEANER_LEAVE_CHANCE      = 1 / 3; // chance to clock off at each evaluation

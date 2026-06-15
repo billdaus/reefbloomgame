@@ -2188,11 +2188,14 @@ export class Fish {
       }
     }
 
-    // ── Fish separation — same-layer fish can't pass through one another;
-    // different layers are at different depths and may overlap freely. Fish
-    // heading to / sitting at a cleaning station are skipped so they can still
-    // converge there.
+    // ── Separation + schooling ──────────────────────────────────────────────
+    // Same-layer fish can't pass through one another (separation). Same-SPECIES
+    // neighbours also school: drift toward the group's centre (cohesion) and
+    // match its heading (alignment). Station-bound fish are skipped.
+    this._schoolN = 0;
     if (allFish && this._cleanState === 'none') {
+      const schoolR = TILE_SIZE * 3;
+      let cohX = 0, cohY = 0, aliX = 0, aliY = 0, n = 0;
       for (let i = 0; i < allFish.length; i++) {
         const o = allFish[i];
         if (o === this || o.layer !== this.layer) continue;
@@ -2200,15 +2203,29 @@ export class Fish {
         const ody = this.y - o.y;
         const od  = Math.sqrt(odx * odx + ody * ody);
         const minD = (this.spec.size + o.spec.size) * 0.8;
-        if (od > minD) continue;
-        if (od > 0.01) {
-          const force = (minD - od) / minD * speed * 1.1;
-          this.vx += (odx / od) * force * dt;
-          this.vy += (ody / od) * force * dt;
-        } else {
-          // exactly coincident — shove apart deterministically
-          this.vx += (this.uid % 2 ? 1 : -1) * speed * 0.6 * dt;
+        if (od <= minD) {
+          if (od > 0.01) {
+            const force = (minD - od) / minD * speed * 1.1;
+            this.vx += (odx / od) * force * dt;
+            this.vy += (ody / od) * force * dt;
+          } else {
+            this.vx += (this.uid % 2 ? 1 : -1) * speed * 0.6 * dt;   // coincident shove
+          }
         }
+        if (o.speciesId === this.speciesId && od < schoolR && od > 0.01) {
+          cohX += o.x; cohY += o.y; aliX += o.vx; aliY += o.vy; n++;
+        }
+      }
+      if (n > 0) {
+        // remember the school's centre so _pickNewTarget can drift toward it
+        this._schoolX = cohX / n; this._schoolY = cohY / n; this._schoolN = n;
+        // cohesion — gentle pull toward the group centre
+        const ax = this._schoolX - this.x, ay = this._schoolY - this.y;
+        const ad = Math.sqrt(ax * ax + ay * ay);
+        if (ad > 0.01) { this.vx += (ax / ad) * speed * 0.10 * dt; this.vy += (ay / ad) * speed * 0.10 * dt; }
+        // alignment — nudge toward the group's average heading
+        const al = Math.sqrt(aliX * aliX + aliY * aliY);
+        if (al > 0.01) { this.vx += (aliX / al) * speed * 0.08 * dt; this.vy += (aliY / al) * speed * 0.08 * dt; }
       }
     }
 
@@ -2293,6 +2310,17 @@ export class Fish {
   }
 
   _pickNewTarget(grid) {
+    // Schooling: most of the time, head for a spot near the school's centre so
+    // same-species fish travel together rather than scattering.
+    if (this._schoolN > 0 && Math.random() < 0.6) {
+      const r = TILE_SIZE * (0.4 + Math.random() * 1.2);
+      const a = Math.random() * Math.PI * 2;
+      this.targetX = this._schoolX + Math.cos(a) * r;
+      this.targetY = this._schoolY + Math.sin(a) * r;
+      this.pickTargetCooldown = 25 + Math.random() * 45;
+      return;
+    }
+
     // Occasionally head toward a coral tile, otherwise wander
     const occupiedTiles = getOccupiedTiles(grid);
     const usesCoral = occupiedTiles.length > 0 && Math.random() < 0.4;

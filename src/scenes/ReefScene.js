@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter, Graphics } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, STATION_SPAN, STATION_MAX_LEVEL, STATION_CELL, CLEAN_DURATION_TICKS, CLEANER_TENURE_TICKS, CLEANER_TENURE_CUSTOMERS, CLEANER_LEAVE_CHANCE, CLEANER_OFFDUTY_MS, CLEANING_ASSIGN_INTERVAL, stationUpgradeCost } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, STATION_SPAN, STATION_MAX_LEVEL, STATION_CELL, CLEAN_DURATION_TICKS, CLEAN_COOLDOWN_MS, CLEANER_TENURE_TICKS, CLEANER_TENURE_CUSTOMERS, CLEANER_LEAVE_CHANCE, CLEANER_OFFDUTY_MS, CLEANING_ASSIGN_INTERVAL, stationUpgradeCost } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -717,6 +717,7 @@ export class ReefScene {
           if (cl.ticksLeft <= 0) {
             const cf = state.fish.find(ff => ff.uid === cl.cleanerUid);   // credit the cleaner
             if (cf) cf._dutyCustomers = (cf._dutyCustomers ?? 0) + 1;
+            f._cleanedUntil = now + CLEAN_COOLDOWN_MS;                     // rest before seeking again
             f.endCleaning(); st._clients.splice(i, 1); bookedClients.delete(cl.fishUid);
           }
         } else if (cl.age > 30000 && !f.isBeingCleaned()) {
@@ -727,7 +728,8 @@ export class ReefScene {
       // 3. Accept a new client (swims over and waits) — only if staffed at all
       if (canAssign && st._cleaners.length > 0 && st._clients.length < capacity) {
         const cand = state.fish.find(f =>
-          !isCleaner(f) && f.isIdle() && !bookedClients.has(f.uid));
+          !isCleaner(f) && f.isIdle() && !bookedClients.has(f.uid) &&
+          !(f._cleanedUntil && f._cleanedUntil > now));
         if (cand) {
           cand.startCleaning(ctrX + (Math.random() - 0.5) * span * 0.5,
                              ctrY + (Math.random() - 0.5) * span * 0.5);

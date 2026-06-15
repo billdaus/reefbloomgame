@@ -136,7 +136,16 @@ export function getHarmonyAdvice() {
     suggestions.push('Build a cleaning station — without one, fish get parasites and harmony drops.');
   } else if (s.placedStations.length > 0) {
     const cleaners = s.fish.filter(f => FISH_SPECIES[f.speciesId]?.cleaner).length;
-    if (cleaners === 0) suggestions.push('Hatch a cleaner wrasse or shrimp to staff your station.');
+    const clients  = s.fishCount - cleaners;
+    const capacity = s.placedStations.reduce((a, st) => a + (st.level ?? 1), 0);
+    if (cleaners === 0) {
+      suggestions.push('Hatch a cleaner wrasse or shrimp to staff your station.');
+    } else if (cleaners < capacity) {
+      suggestions.push(`Your stations have ${capacity} slots but only ${cleaners} cleaner${cleaners === 1 ? '' : 's'} — hatch more cleaners to fill them.`);
+    }
+    if (clients > capacity * 2) {
+      suggestions.push(`Cleaning stations are crowded (capacity ${capacity} for ${clients} fish) — upgrade a station or build another.`);
+    }
   }
 
   if (suggestions.length === 0) {
@@ -154,6 +163,9 @@ const _OPINIONS = {
             'Feels empty. Where is everyone?'],
   oneLayer:['Nobody swims up where I am.',
             'I\'d love some neighbours at a different depth.'],
+  crowded: ['The cleaning station queue is endless — we need more capacity!',
+            'I\'ve been waiting ages for a cleaner. Upgrade the station?',
+            'Too many of us, not enough cleaning slots.'],
   bare:    ['Could use more coral to hide in.',
             'A few more corals would make this feel like home.'],
   happy:   ['The water\'s never felt better!',
@@ -175,6 +187,12 @@ export function getFishOpinions() {
   // Choose condition pools that apply right now
   const pools = [];
   if (state.fishCount > 0 && state.placedStations.length === 0) pools.push('dirty');
+  if (state.placedStations.length > 0) {
+    const cleaners = state.fish.filter(f => FISH_SPECIES[f.speciesId]?.cleaner).length;
+    const clients  = state.fishCount - cleaners;
+    const capacity = state.placedStations.reduce((a, st) => a + (st.level ?? 1), 0);
+    if (clients > capacity * 2) pools.push('crowded');
+  }
   if (state.fishCount > 0 && state.fishCount < 4) pools.push('lonely');
   const hasA = state.fishLayerCounts.A > 0, hasB = state.fishLayerCounts.B > 0;
   if (state.fishCount > 0 && !(hasA && hasB)) pools.push('oneLayer');
