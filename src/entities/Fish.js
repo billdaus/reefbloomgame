@@ -1,5 +1,5 @@
 import { Container, Graphics } from 'pixi.js';
-import { GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, CLEANING_DURATION_TICKS } from '../constants.js';
+import { GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE } from '../constants.js';
 import { tileCenter, getOccupiedTiles } from '../utils/grid.js';
 
 const MARGIN    = 10;
@@ -57,6 +57,7 @@ export class Fish {
       // Common
       case 'blueChromis':       this._drawOvalFish(g, sz, c, ac, false);  break;
       case 'chromis':           this._drawOvalFish(g, sz, c, ac, false);  break;
+      case 'cleanerWrasse':     this._drawOvalFish(g, sz, c, ac, true);   break;
       // Uncommon
       case 'zebraGoby':         this._drawZebraGoby(g, sz, c, ac);        break;
       case 'cardinalfish':      this._drawOvalFish(g, sz, c, ac, false);  break;
@@ -2104,10 +2105,18 @@ export class Fish {
     this._cleanY = y;
   }
 
+  /** Release the fish from the station (called by the station after 30s). */
+  endCleaning() {
+    if (this._cleanState !== 'none') {
+      this._cleanState = 'none';
+      this.pickTargetCooldown = 0;
+    }
+  }
+
   /** True when free to be dispatched to a cleaning station. */
   isIdle() { return this._cleanState === 'none'; }
 
-  /** True while lingering at a station (used to sparkle). */
+  /** True once arrived and lingering at a station (used to sparkle). */
   isBeingCleaned() { return this._cleanState === 'cleaning'; }
 
   update(dt, grid, coralSpecies, onEmit) {
@@ -2127,19 +2136,11 @@ export class Fish {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (this._cleanState === 'toStation') {
-      if (dist < TILE_SIZE * 0.55) {       // arrived — settle in to be cleaned
-        this._cleanState = 'cleaning';
-        this._cleanTimer = CLEANING_DURATION_TICKS;
-      }
-    } else if (this._cleanState === 'cleaning') {
-      this._cleanTimer -= dt;
-      if (this._cleanTimer <= 0) {          // done — resume wandering
-        this._cleanState = 'none';
-        this.pickTargetCooldown = 0;
-      }
-    } else if (dist < 8 || this.pickTargetCooldown <= 0) {
+      if (dist < TILE_SIZE * 0.6) this._cleanState = 'cleaning';  // arrived; wait for release
+    } else if (this._cleanState === 'none' && (dist < 8 || this.pickTargetCooldown <= 0)) {
       this._pickNewTarget(grid);
     }
+    // 'cleaning': keep hovering at the station until endCleaning() is called
 
     // Rotate heading toward target, capped to prevent instant reversals
     // Floor ensures slow fish (sand dollar etc.) still turn in reasonable time

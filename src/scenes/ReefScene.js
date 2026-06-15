@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter, Graphics } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, CLEANING_VISIT_INTERVAL } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, STATION_SPAN, STATION_MAX_LEVEL, STATION_CELL, CLEAN_DURATION_MS, CLEANING_ASSIGN_INTERVAL, stationUpgradeCost } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -31,6 +31,7 @@ import JournalModal           from '../ui/JournalModal.js';
 import { AccountModal }       from '../ui/AccountModal.js';
 import { EventModal }         from '../ui/EventModal.js';
 import { CoralUpgradeModal }  from '../ui/CoralUpgradeModal.js';
+import { StationUpgradeModal } from '../ui/StationUpgradeModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 
@@ -62,7 +63,8 @@ export class ReefScene {
     // ── Layers ───────────────────────────────────────────────────────────────
     this._bg         = new BackgroundLayer();
     this._grid       = new GridLayer((tile) => this._onTileTap(tile));
-    this._grid.onCoralTap = (uid) => this._onCoralBadgeTap(uid);
+    this._grid.onCoralTap   = (uid) => this._onCoralBadgeTap(uid);
+    this._grid.onStationTap = (uid) => this._onStationBadgeTap(uid);
     this._foreground = new ForegroundLayer();
 
     // ── Bubbles drone ────────────────────────────────────────────────────────
@@ -78,6 +80,8 @@ export class ReefScene {
     this.worldContainer.addChild(this._grid.container);
     // 2b. Decor — static aesthetic props on the floor, below coral and fish
     this.worldContainer.addChild(this._grid.decorContainer);
+    // 2c. Cleaning stations — 2×2 structures on the floor, below coral and fish
+    this.worldContainer.addChild(this._grid.stationContainer);
     // 3. Short/flat coral — fish Layer A swims over these
     this.worldContainer.addChild(this._grid.shortCoralContainer);
     // 3b. Clam + quest clam sit on the reef floor (above short coral, below fish)
@@ -108,6 +112,7 @@ export class ReefScene {
     this._shopModal     = new PearlShopModal();
     this._journalModal  = new JournalModal();
     this._upgradeModal  = new CoralUpgradeModal();
+    this._stationModal  = new StationUpgradeModal();
     this._accountModal  = new AccountModal(() => this._hud?.refreshAccountAvatar());
     this._eventModal    = new EventModal(
       () => { saveGame(); },   // onAccept
@@ -142,6 +147,7 @@ export class ReefScene {
     this._uiContainer.addChild(this._questModal.container);
     this._uiContainer.addChild(this._journalModal.container);
     this._uiContainer.addChild(this._upgradeModal.container);
+    this._uiContainer.addChild(this._stationModal.container);
     this._uiContainer.addChild(this._accountModal.container);
     this._uiContainer.addChild(this._eventModal.container);
 
@@ -239,7 +245,7 @@ export class ReefScene {
         this._spawnSparkle(fish.x + (Math.random() - 0.5) * 10, fish.y - 6);
       }
     });
-    this._tickCleaning(dms);
+    this._tickStations(dms);
     this._updateParticles(dms);
 
     // Auto-save every 30 s
@@ -259,10 +265,13 @@ export class ReefScene {
   _onTileTap(tile) {
     recordInteraction();
     const { col, row } = tile;
+    const station = this._stationAt(col, row);
 
-    // Remove mode: tap occupant to remove it (coral or decor)
+    // Remove mode: tap occupant to remove it (station, then decor, then coral)
     if (state.removeMode) {
-      if (state.placedDecor.some(d => d.col === col && d.row === row)) {
+      if (station) {
+        this._tryRemoveStation(station);
+      } else if (state.placedDecor.some(d => d.col === col && d.row === row)) {
         this._tryRemoveDecor(col, row);
       } else {
         this._tryRemoveCoral(col, row);
@@ -272,8 +281,9 @@ export class ReefScene {
 
     const { selectedType, selectedId } = state;
 
-    // Nothing selected: tapping a placed coral opens its upgrade panel
+    // Nothing selected: tapping a station opens its panel; a coral opens its panel
     if (!selectedType || !selectedId) {
+      if (station) { this._openStationUpgrade(station); return; }
       const entry = state.placedCoral.find(c => c.col === col && c.row === row);
       if (entry) this._openCoralUpgrade(entry);
       return;
@@ -353,6 +363,9 @@ export class ReefScene {
     const spec = DECOR_SPECIES[speciesId];
     if (!spec || spec.unlockLevel > state.level) return;
 
+    // Cleaning stations are 2×2 structures, not ordinary decor — route them out
+    if (spec.cleaning) { this._tryPlaceStation(col, row, speciesId); return; }
+
     // One decor per tile, max
     if (state.placedDecor.some(d => d.col === col && d.row === row)) return;
 
@@ -377,6 +390,80 @@ export class ReefScene {
 
     this._grid.placeDecor(spec, col, row, uid);
     saveGame();
+  }
+
+  // ── Cleaning stations (2×2) ──────────────────────────────────────────────────
+
+  /** The station occupying (col,row), or undefined. */
+  _stationAt(col, row) {
+    return state.placedStations.find(s =>
+      col >= s.col && col < s.col + STATION_SPAN &&
+      row >= s.row && row < s.row + STATION_SPAN);
+  }
+
+  _tryPlaceStation(col, row, speciesId) {
+    const spec = DECOR_SPECIES[speciesId];
+    if (!spec || spec.unlockLevel > state.level) return;
+
+    // Needs a 2×2 block, in bounds and fully clear (no coral, decor, or station)
+    if (col + STATION_SPAN > GRID_COLS || row + STATION_SPAN > GRID_ROWS) return;
+    for (let r = row; r < row + STATION_SPAN; r++) {
+      for (let c = col; c < col + STATION_SPAN; c++) {
+        if (state.grid[r][c] !== null) return;
+        if (state.placedDecor.some(d => d.col === c && d.row === r)) return;
+      }
+    }
+    if (!spendForDecor(speciesId)) return;
+
+    const uid = state.nextUid();
+    for (let r = row; r < row + STATION_SPAN; r++) {
+      for (let c = col; c < col + STATION_SPAN; c++) {
+        state.grid[r][c] = STATION_CELL;
+      }
+    }
+    state.placedStations.push({ uid, col, row, level: 1 });
+    this._grid.placeStation(col, row, uid, 1);
+    unlockEntry('event:station_place');
+    saveGame();
+  }
+
+  _tryRemoveStation(st) {
+    const idx = state.placedStations.indexOf(st);
+    if (idx === -1) return;
+    // Release any fish currently being cleaned here
+    (st._active ?? []).forEach(a => state.fish.find(f => f.uid === a.fishUid)?.endCleaning());
+    for (let r = st.row; r < st.row + STATION_SPAN; r++) {
+      for (let c = st.col; c < st.col + STATION_SPAN; c++) {
+        if (state.grid[r][c] === STATION_CELL) state.grid[r][c] = null;
+      }
+    }
+    state.placedStations.splice(idx, 1);
+    this._grid.removeStation(st.uid);
+    const refund = refundDecor('cleaningStation');
+    if (refund > 0) this._hud.showBonus(`+${refund} 🫧`);
+    saveGame();
+  }
+
+  /** Station "···" badge tapped — mirror tile-tap behaviour for its footprint. */
+  _onStationBadgeTap(uid) {
+    const st = state.placedStations.find(s => s.uid === uid);
+    if (st) this._onTileTap({ col: st.col, row: st.row });
+  }
+
+  _openStationUpgrade(st) {
+    this._stationModal.show(st, (e) => {
+      const level = e.level ?? 1;
+      const cost  = stationUpgradeCost(level);
+      if (level >= STATION_MAX_LEVEL || state.polyps < cost) return null;
+      state.polyps -= cost;
+      e.level = level + 1;
+      this._grid.upgradeStation(e.uid, e.level);
+      this._hud.showBonus(`Station → Lv ${e.level} (capacity ${e.level}) 🪸`);
+      unlockEntry('event:station_upgrade');
+      recordInteraction();
+      saveGame();
+      return e.level;
+    });
   }
 
   _trySpawnFish(col, row, speciesId) {
@@ -531,22 +618,63 @@ export class ReefScene {
   // ── Cleaning stations ───────────────────────────────────────────────────────
 
   /** Periodically dispatch an idle fish to a placed cleaning station. */
-  _tickCleaning(dms) {
-    const stations = state.placedDecor.filter(d => DECOR_SPECIES[d.speciesId]?.cleaning);
-    if (stations.length === 0) return;
+  /**
+   * Drive the cleaning stations. Each station has `level` cleaning slots; while
+   * staffed (a cleaner wrasse is present in the reef) it pulls idle non-wrasse
+   * fish in, cleans each for 30s, then releases them. state.cleaningActive (the
+   * number of fish actually being cleaned) feeds the harmony bonus.
+   */
+  _tickStations(dms) {
+    const stations = state.placedStations;
+    if (stations.length === 0) { state.cleaningActive = 0; return; }
 
-    this._cleaningTimer = (this._cleaningTimer ?? CLEANING_VISIT_INTERVAL) - dms;
-    if (this._cleaningTimer > 0) return;
-    this._cleaningTimer = CLEANING_VISIT_INTERVAL;
+    const staffed = state.fish.some(f => f.speciesId === 'cleanerWrasse');
 
-    const idle = state.fish.filter(f => f.isIdle());
-    if (idle.length === 0) return;
+    this._assignTimer = (this._assignTimer ?? 0) - dms;
+    const canAssign = this._assignTimer <= 0;
+    if (canAssign) this._assignTimer = CLEANING_ASSIGN_INTERVAL;
 
-    const fish    = idle[Math.floor(Math.random() * idle.length)];
-    const station = stations[Math.floor(Math.random() * stations.length)];
-    const cx = GRID_X + station.col * TILE_SIZE + TILE_SIZE / 2;
-    const cy = GRID_Y + station.row * TILE_SIZE + TILE_SIZE / 2;
-    fish.startCleaning(cx, cy);
+    // uids already booked into any station, so two stations can't grab one fish
+    const booked = new Set(stations.flatMap(s => (s._active ?? []).map(a => a.fishUid)));
+
+    let active = 0;
+    for (const st of stations) {
+      st._active = st._active ?? [];
+      const capacity = Math.max(1, Math.min(STATION_MAX_LEVEL, st.level ?? 1));
+
+      // Advance / expire existing slots
+      for (let i = st._active.length - 1; i >= 0; i--) {
+        const slot = st._active[i];
+        const fish = state.fish.find(f => f.uid === slot.fishUid);
+        slot.age = (slot.age ?? 0) + dms;
+        if (!fish || !staffed) {                       // fish gone or unstaffed → free slot
+          fish?.endCleaning();
+          st._active.splice(i, 1); booked.delete(slot.fishUid);
+        } else if (fish.isBeingCleaned()) {            // arrived — count down the 30s
+          slot.timeLeft -= dms;
+          if (slot.timeLeft <= 0) { fish.endCleaning(); st._active.splice(i, 1); booked.delete(slot.fishUid); }
+          else active++;
+        } else if (slot.age > 15000) {                 // never arrived — give up the slot
+          fish.endCleaning(); st._active.splice(i, 1); booked.delete(slot.fishUid);
+        }
+      }
+
+      // Fill a free slot (throttled, staffed only)
+      if (staffed && canAssign && st._active.length < capacity) {
+        const candidate = state.fish.find(f =>
+          f.isIdle() && f.speciesId !== 'cleanerWrasse' && !booked.has(f.uid));
+        if (candidate) {
+          const span = STATION_SPAN * TILE_SIZE;
+          const cx = GRID_X + st.col * TILE_SIZE + span * (0.3 + Math.random() * 0.4);
+          const cy = GRID_Y + st.row * TILE_SIZE + span * (0.3 + Math.random() * 0.4);
+          candidate.startCleaning(cx, cy);
+          st._active.push({ fishUid: candidate.uid, timeLeft: CLEAN_DURATION_MS, age: 0 });
+          booked.add(candidate.uid);
+        }
+      }
+    }
+
+    state.cleaningActive = active;
   }
 
   /** A small rising twinkle, reused from the particle pool. */
@@ -654,10 +782,29 @@ export class ReefScene {
       if (uid > maxUid) maxUid = uid;
     });
 
-    // Rebuild decor sprites
+    // Rebuild cleaning stations (claim their 2×2 footprints before decor)
+    const placeStationAt = (col, row, uid, level) => {
+      if (col + STATION_SPAN > GRID_COLS || row + STATION_SPAN > GRID_ROWS) return false;
+      for (let r = row; r < row + STATION_SPAN; r++)
+        for (let c = col; c < col + STATION_SPAN; c++)
+          if (state.grid[r]?.[c] !== null) return false;
+      const lvl = Math.max(1, Math.min(STATION_MAX_LEVEL, level ?? 1));
+      for (let r = row; r < row + STATION_SPAN; r++)
+        for (let c = col; c < col + STATION_SPAN; c++)
+          state.grid[r][c] = STATION_CELL;
+      state.placedStations.push({ uid, col, row, level: lvl });
+      this._grid.placeStation(col, row, uid, lvl);
+      if (uid > maxUid) maxUid = uid;
+      return true;
+    };
+    (data.placedStations ?? []).forEach(({ uid, col, row, level }) =>
+      placeStationAt(col, row, uid, level));
+
+    // Rebuild decor sprites (migrate any legacy 1-tile cleaning decor → station)
     (data.placedDecor ?? []).forEach(({ uid, col, row, speciesId }) => {
       const spec = DECOR_SPECIES[speciesId];
       if (!spec) return;
+      if (spec.cleaning) { placeStationAt(col, row, uid, 1); return; }  // legacy migration
       const cellId = state.grid[row]?.[col];
       if (spec.stackable) {
         // Allow on top of tall coral; reject if cell holds anything non-tall
@@ -831,9 +978,10 @@ export class ReefScene {
     // Save current biome state before leaving
     saveGame();
 
-    // Remove all coral sprites
+    // Remove all coral / decor / station sprites
     this._grid.clearAllCoral();
     this._grid.clearAllDecor();
+    this._grid.clearAllStations();
 
     // Remove all fish sprites
     state.fish.forEach(f => {
@@ -845,6 +993,8 @@ export class ReefScene {
     state.grid         = Array.from({ length: GRID_ROWS }, () => Array(GRID_COLS).fill(null));
     state.placedCoral  = [];
     state.placedDecor  = [];
+    state.placedStations = [];
+    state.cleaningActive = 0;
     state.fish         = [];
     state.coralCount   = 0;
     state.fishCount    = 0;

@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { DECOR_SPECIES, CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX } from '../constants.js';
+import { CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX } from '../constants.js';
 
 /**
  * Set saturation via a proper luminance-preserving color matrix.
@@ -54,16 +54,11 @@ export function computeHarmony() {
     score += Math.round(ratio * 15);
   }
 
-  // Cleaning stations (up to CLEANING_HARMONY_MAX pts) — only count once there
-  // are fish for them to clean, so an empty reef can't game harmony with them.
-  if (fishCount > 0) {
-    let stations = 0;
-    for (const d of state.placedDecor) {
-      if (DECOR_SPECIES[d.speciesId]?.cleaning) stations++;
-    }
-    if (stations > 0) {
-      score += Math.min(stations * CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX);
-    }
+  // Cleaning stations (up to CLEANING_HARMONY_MAX pts) — scales with the number
+  // of fish actively being cleaned right now, which requires a staffed station
+  // (cleaner wrasse present) and rises with station capacity (upgrades).
+  if (state.cleaningActive > 0) {
+    score += Math.min(state.cleaningActive * CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX);
   }
 
   // Harmony never decreases permanently

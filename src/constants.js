@@ -41,11 +41,19 @@ export const CORAL_MAX_LEVEL       = 5;     // levels 1..5
 export const POLYP_BE_BONUS        = 0.5;   // +50% of base BE/tick per level above 1
 export const POLYP_PER_CORAL_TICK  = 0.2;   // polyps each coral yields per BE tick, ×level
 
-// ─── Cleaning stations (fish visit to be cleaned; raise harmony) ──────────────
-export const CLEANING_HARMONY_PER    = 5;    // harmony score bonus per station (needs fish)
-export const CLEANING_HARMONY_MAX    = 15;   // cap on total cleaning harmony bonus
-export const CLEANING_VISIT_INTERVAL = 2600; // ms between dispatching a fish to a station
-export const CLEANING_DURATION_TICKS = 180;  // ~3s a fish lingers (ticker.deltaTime units)
+// ─── Cleaning stations (2×2 structures staffed by cleaner wrasse) ─────────────
+export const STATION_SPAN             = 2;      // footprint is STATION_SPAN × STATION_SPAN tiles
+export const STATION_MAX_LEVEL        = 5;      // capacity (fish cleaned at once) = level, 1..5
+export const STATION_CELL             = '__station'; // grid sentinel marking a station tile
+export const CLEAN_DURATION_MS        = 30000;  // each fish takes 30s to be cleaned
+export const CLEANING_ASSIGN_INTERVAL = 1500;   // ms between attempts to fill a free slot
+export const CLEANING_HARMONY_PER     = 4;      // harmony score per fish actively being cleaned
+export const CLEANING_HARMONY_MAX     = 20;     // cap on cleaning harmony bonus
+
+/** Polyps to upgrade a station FROM the given level to the next. */
+export function stationUpgradeCost(level) {
+  return 10 * Math.max(1, level);   // 1→2:10, 2→3:20, 3→4:30, 4→5:40
+}
 
 // ─── Biomes ──────────────────────────────────────────────────────────────────
 export const SEAGRASS_UNLOCK_LEVEL     = 3;
@@ -258,6 +266,11 @@ export const FISH_SPECIES = {
     id: 'chromis', name: 'Green Chromis', scientific: 'Chromis viridis',
     tier: TIER.COMMON, layer: 'A', color: 0x4caf50, accentColor: 0xb5e7b5,
     size: 12, speed: 1.8, unlockLevel: 1,
+  },
+  cleanerWrasse: {
+    id: 'cleanerWrasse', name: 'Cleaner Wrasse', scientific: 'Labroides dimidiatus',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0x2a6fb0, accentColor: 0x0d1620,
+    size: 11, speed: 1.7, unlockLevel: 4,
   },
   // ── Uncommon ────────────────────────────────────────────────────────────────
   zebraGoby: {

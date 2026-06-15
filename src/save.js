@@ -40,6 +40,7 @@ export function saveGame() {
     grid:           state.grid.map(row => [...row]),
     placedCoral:    state.placedCoral.map(c => ({ uid: c.uid, col: c.col, row: c.row, speciesId: c.speciesId, level: c.level ?? 1 })),
     placedDecor:    state.placedDecor.map(d => ({ uid: d.uid, col: d.col, row: d.row, speciesId: d.speciesId })),
+    placedStations: state.placedStations.map(s => ({ uid: s.uid, col: s.col, row: s.row, level: s.level ?? 1 })),
     fishTypes:      state.fish.map(f => f.speciesId),   // kept for slot-preview counts
     fish:           state.fish.map(f => ({ id: f.speciesId, x: Math.round(f.x), y: Math.round(f.y) })),
     coralTypesSeen: [...state.coralTypesSeen],
@@ -127,6 +128,7 @@ export function loadGame() {
     grid:           biomeData.grid           ?? null,
     placedCoral:    biomeData.placedCoral    ?? [],
     placedDecor:    biomeData.placedDecor    ?? [],
+    placedStations: biomeData.placedStations ?? [],
     fishTypes:      biomeData.fishTypes      ?? [],
     fish:           biomeData.fish           ?? null,
     coralTypesSeen: biomeData.coralTypesSeen ?? [],

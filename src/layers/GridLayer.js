@@ -2,11 +2,12 @@ import { Container, Graphics } from 'pixi.js';
 import {
   GRID_X, GRID_Y, GRID_W, GRID_H,
   TILE_SIZE, GRID_COLS, GRID_ROWS,
-  COLORS, CORAL_SPECIES, DECOR_SPECIES,
+  COLORS, CORAL_SPECIES, DECOR_SPECIES, STATION_SPAN,
 } from '../constants.js';
 import { worldToTile } from '../utils/grid.js';
 import { Coral } from '../entities/Coral.js';
 import { Decor } from '../entities/Decor.js';
+import { CleaningStation } from '../entities/CleaningStation.js';
 import { state } from '../state.js';
 
 /**
@@ -37,24 +38,29 @@ export class GridLayer {
     // ── Coral depth layers (added to worldContainer by ReefScene) ──────────
     // decor — static aesthetic props, sits on the floor below coral and fish
     this.decorContainer      = new Container();
+    // cleaning stations — 2×2 structures, sit on the floor below coral and fish
+    this.stationContainer    = new Container();
     // short (flat) coral — brain, lettuce, star, bubble, toadstool
     this.shortCoralContainer = new Container();
     // tall coral — staghorn, finger, candycane, elkhorn, pillar
     this.tallCoralContainer  = new Container();
 
-    // ── Coral upgrade badges (added above coral, below hover, by ReefScene) ──
-    // A small "···" tap target on each coral that opens its upgrade menu.
+    // ── Upgrade badges (added above coral, below hover, by ReefScene) ───────
+    // A small "···" tap target on each coral / station that opens its menu.
     this.badgeContainer = new Container();
-    this.onCoralTap = null;   // (uid) => void — set by ReefScene
+    this.onCoralTap   = null;   // (uid) => void — set by ReefScene
+    this.onStationTap = null;   // (uid) => void — set by ReefScene
 
     // ── Hover overlay (added topmost by ReefScene) ──────────────────────────
     this.hoverContainer = new Container();
     this._hoverGfx = new Graphics();
     this.hoverContainer.addChild(this._hoverGfx);
 
-    this._coralSprites = new Map();   // uid → Coral instance
-    this._coralBadges  = new Map();   // uid → badge Container
-    this._decorSprites = new Map();   // uid → Graphics container
+    this._coralSprites   = new Map();   // uid → Coral instance
+    this._coralBadges    = new Map();   // uid → badge Container
+    this._stationSprites = new Map();   // uid → CleaningStation instance
+    this._stationBadges  = new Map();   // uid → badge Container
+    this._decorSprites   = new Map();   // uid → Graphics container
     this._hoveredTile  = null;
 
     this._drawFloor();
@@ -123,6 +129,26 @@ export class GridLayer {
     if (!this._hoveredTile) return;
     if (!state.selectedType && !state.removeMode) return;
     const { col, row } = this._hoveredTile;
+
+    // Cleaning station preview spans a 2×2 footprint
+    if (!state.removeMode && state.selectedType === 'decor'
+        && DECOR_SPECIES[state.selectedId]?.cleaning) {
+      let blocked = col + STATION_SPAN > GRID_COLS || row + STATION_SPAN > GRID_ROWS;
+      for (let r = row; r < row + STATION_SPAN && !blocked; r++) {
+        for (let c = col; c < col + STATION_SPAN && !blocked; c++) {
+          if (state.grid[r]?.[c] !== null || state.placedDecor.some(d => d.col === c && d.row === r)) {
+            blocked = true;
+          }
+        }
+      }
+      const hc = blocked ? 0xff4444 : COLORS.grid_hover;
+      const hx = GRID_X + col * TILE_SIZE + 1;
+      const hy = GRID_Y + row * TILE_SIZE + 1;
+      const hw = TILE_SIZE * STATION_SPAN - 2;
+      g.rect(hx, hy, hw, hw).fill({ color: hc, alpha: 0.3 });
+      g.rect(hx, hy, hw, hw).stroke({ color: hc, width: 2, alpha: 0.9 });
+      return;
+    }
 
     const cellId    = state.grid[row][col];
     const decorHere = state.placedDecor.some(d => d.col === col && d.row === row);
@@ -265,6 +291,76 @@ export class GridLayer {
 
   clearAllDecor() {
     [...this._decorSprites.keys()].forEach(uid => this.removeDecor(uid));
+  }
+
+  // ── Cleaning stations (2×2) ──────────────────────────────────────────────────
+
+  placeStation(col, row, uid, level = 1) {
+    const station = new CleaningStation(col, row, uid, level);
+    station.container.x = GRID_X + col * TILE_SIZE;
+    station.container.y = GRID_Y + row * TILE_SIZE;
+    this.stationContainer.addChild(station.container);
+    this._stationSprites.set(uid, station);
+    this._addStationBadge(uid, col, row);
+  }
+
+  upgradeStation(uid, level) {
+    this._stationSprites.get(uid)?.setLevel(level);
+  }
+
+  removeStation(uid) {
+    const station = this._stationSprites.get(uid);
+    if (station) {
+      station.container.parent?.removeChild(station.container);
+      station.container.destroy({ children: true });
+      this._stationSprites.delete(uid);
+    }
+    const badge = this._stationBadges.get(uid);
+    if (badge) {
+      badge.parent?.removeChild(badge);
+      badge.destroy({ children: true });
+      this._stationBadges.delete(uid);
+    }
+  }
+
+  clearAllStations() {
+    [...this._stationSprites.keys()].forEach(uid => this.removeStation(uid));
+  }
+
+  /** "···" badge centred on the 2×2 station footprint. */
+  _addStationBadge(uid, col, row) {
+    const W = 24, H = 16;
+    const span = STATION_SPAN * TILE_SIZE;
+    const cx = GRID_X + col * TILE_SIZE + span / 2;
+    const cy = GRID_Y + row * TILE_SIZE + span - H - 4;
+
+    const badge = new Container();
+    badge.x = cx - W / 2;
+    badge.y = cy;
+
+    const g = new Graphics();
+    g.roundRect(0, 0, W, H, 8).fill({ color: 0x0a1a08, alpha: 0.8 });
+    g.roundRect(0, 0, W, H, 8).stroke({ color: 0x8bc34a, width: 1.5, alpha: 0.9 });
+    for (let i = 0; i < 3; i++) {
+      g.circle(W / 2 + (i - 1) * 6, H / 2, 2).fill({ color: 0xc8e6a0, alpha: 0.95 });
+    }
+    badge.addChild(g);
+
+    badge.eventMode = 'static';
+    badge.cursor = 'pointer';
+    // Generous hit area covering the station footprint, without spilling past it
+    const padX = span / 2 - W / 2 - 2;
+    const padTop = span - H - 6;
+    badge.hitArea = {
+      contains: (x, y) => x >= -padX && x <= W + padX && y >= -padTop && y <= H + 2,
+    };
+    badge.on('pointerdown', (e) => {
+      e.stopPropagation();
+      this.onStationTap?.(uid);
+    });
+
+    this.badgeContainer.addChild(badge);
+    this._stationBadges.set(uid, badge);
   }
 
   /** Refresh hover highlight (call after selection changes). */

@@ -33,6 +33,8 @@ export const state = {
   // ── Placed entities ────────────────────────────────────────────────────────
   placedCoral: [],   // [{ uid, col, row, speciesId, level }]
   placedDecor: [],   // [{ uid, col, row, speciesId }] — purely aesthetic props
+  placedStations: [], // [{ uid, col, row, level }] — 2×2 cleaning stations (col,row = top-left)
+  cleaningActive: 0, // fish currently being cleaned across all stations (drives harmony)
   fish:        [],   // Fish instances (added by FishLayer)
   decorTypesSeen: new Set(),
 
