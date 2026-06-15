@@ -1,11 +1,12 @@
 import { Graphics } from 'pixi.js';
-import { TILE_SIZE, CORAL_SCALE_PER_LEVEL } from '../constants.js';
+import { TILE_SIZE } from '../constants.js';
 
 /**
  * Coral — draws a procedural flat/minimal sprite for each species.
- * The sprite is drawn in tile-local space [0,TILE_SIZE]; the pivot is set to
- * the base-centre so upgrade scaling grows the coral upward and outward while
- * keeping its foot planted on the tile (GridLayer positions accordingly).
+ * The sprite is drawn in tile-local space [0,TILE_SIZE] (pivot at base-centre,
+ * GridLayer positions accordingly). Upgrade levels do NOT scale the sprite past
+ * its tile — instead each level redraws with extra branchlets and polyps, so a
+ * grown coral reads as fuller and more intricate while staying in its tile.
  */
 export class Coral {
   constructor(speciesData, col, row, uid, level = 1) {
@@ -18,14 +19,12 @@ export class Coral {
     this.container = new Graphics();
     this.container.pivot.set(TILE_SIZE / 2, TILE_SIZE);
     this._draw();
-    this.setLevel(level);
   }
 
-  /** Resize the sprite for an upgrade level (1 = base size). */
+  /** Redraw the coral with the intricacy of an upgrade level (1 = base). */
   setLevel(level) {
     this.level = level;
-    const k = 1 + (level - 1) * CORAL_SCALE_PER_LEVEL;
-    this.container.scale.set(k);
+    this._draw();
   }
 
   _draw() {
@@ -65,6 +64,61 @@ export class Coral {
       case 'pearlOrganPipe':  this._drawPearlOrganPipe(g, s, c);  break;
       default:                this._drawGeneric(g, s, c);          break;
     }
+
+    if (this.level > 1) this._drawGrowthDetail(g, s, c, this.level);
+  }
+
+  /**
+   * Growth overlay for upgraded corals — extra branchlets reaching upward and
+   * a scatter of polyps, both growing in number with level. Stays within the
+   * tile and is seeded by uid so the pattern is stable across redraws/reloads.
+   */
+  _drawGrowthDetail(g, s, c, level) {
+    const extra  = Math.min(4, level - 1);     // 1..4 extra tiers of detail
+    const rand   = this._seededRand((this.uid * 2654435761) >>> 0);
+    const light  = this._lighten(c, 0.45);
+    const bright = this._lighten(c, 0.7);
+    const clampX = (x) => Math.max(s * 0.12, Math.min(s * 0.88, x));
+    const clampY = (y) => Math.max(s * 0.08, Math.min(s * 0.92, y));
+    const midX   = s * 0.5;
+
+    // New branchlets — fine strokes reaching up/out from the coral's body
+    for (let i = 0; i < extra * 2; i++) {
+      const baseX = midX + (rand() - 0.5) * s * 0.24;
+      const baseY = s * (0.55 + rand() * 0.3);
+      const ang   = -Math.PI / 2 + (rand() - 0.5) * 1.7;   // mostly upward, fanned
+      const len   = s * (0.16 + rand() * 0.16);
+      const ex    = clampX(baseX + Math.cos(ang) * len);
+      const ey    = clampY(baseY + Math.sin(ang) * len);
+      g.moveTo(baseX, baseY).lineTo(ex, ey)
+       .stroke({ color: light, width: 2, cap: 'round' });
+      // small fork near the tip for a branching feel
+      if (rand() > 0.4) {
+        const fx = clampX(ex + (rand() - 0.5) * s * 0.16);
+        const fy = clampY(ey - rand() * s * 0.1);
+        g.moveTo(ex, ey).lineTo(fx, fy).stroke({ color: light, width: 1.5, cap: 'round' });
+        g.circle(fx, fy, 1.8).fill(bright);
+      }
+      g.circle(ex, ey, 2).fill(bright);   // tip polyp
+    }
+
+    // Polyp speckle — added intricacy across the body
+    for (let i = 0; i < extra * 3; i++) {
+      const dx = clampX(s * (0.3 + (rand() - 0.5) * 0.5));
+      const dy = clampY(s * (0.45 + (rand() - 0.5) * 0.6));
+      g.circle(dx, dy, 1.4 + rand() * 1.2).fill({ color: bright, alpha: 0.85 });
+    }
+  }
+
+  /** Deterministic PRNG (mulberry32) so growth detail is stable per coral. */
+  _seededRand(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
   }
 
   // ── Staghorn — branching antler shape ──────────────────────────────────────
