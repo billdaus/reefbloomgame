@@ -58,6 +58,7 @@ export class Fish {
       case 'blueChromis':       this._drawOvalFish(g, sz, c, ac, false);  break;
       case 'chromis':           this._drawOvalFish(g, sz, c, ac, false);  break;
       case 'cleanerWrasse':     this._drawOvalFish(g, sz, c, ac, true);   break;
+      case 'glowCleanerGoby':   this._drawOvalFish(g, sz, c, ac, true);   break;
       // Uncommon
       case 'zebraGoby':         this._drawZebraGoby(g, sz, c, ac);        break;
       case 'cardinalfish':      this._drawOvalFish(g, sz, c, ac, false);  break;
@@ -2136,11 +2137,21 @@ export class Fish {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (this._cleanState === 'toStation') {
-      if (dist < TILE_SIZE * 0.6) this._cleanState = 'cleaning';  // arrived; wait for release
+      if (dist < TILE_SIZE * 0.6) this._cleanState = 'cleaning';  // arrived; settle in
     } else if (this._cleanState === 'none' && (dist < 8 || this.pickTargetCooldown <= 0)) {
       this._pickNewTarget(grid);
     }
-    // 'cleaning': keep hovering at the station until endCleaning() is called
+
+    // 'cleaning' — sit perfectly still (cleaner on station, or client being
+    // cleaned). Hold position, zero velocity, just a faint bob.
+    if (this._cleanState === 'cleaning') {
+      this.vx = 0;
+      this.vy = 0;
+      this.container.x = this.x;
+      this.container.y = this.y;
+      this.container.scale.y = 1 + Math.sin(Date.now() * 0.003 + this.uid) * 0.03;
+      return;
+    }
 
     // Rotate heading toward target, capped to prevent instant reversals
     // Floor ensures slow fish (sand dollar etc.) still turn in reasonable time

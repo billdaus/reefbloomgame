@@ -45,7 +45,9 @@ export const POLYP_PER_CORAL_TICK  = 0.2;   // polyps each coral yields per BE t
 export const STATION_SPAN             = 2;      // footprint is STATION_SPAN × STATION_SPAN tiles
 export const STATION_MAX_LEVEL        = 5;      // capacity (fish cleaned at once) = level, 1..5
 export const STATION_CELL             = '__station'; // grid sentinel marking a station tile
-export const CLEAN_DURATION_MS        = 30000;  // each fish takes 30s to be cleaned
+export const CLEAN_DURATION_TICKS     = 50;     // a fish sits still ~50 ticks while being cleaned
+export const CLEANER_OFFDUTY_CHANCE   = 0.08;   // per assign-tick chance a cleaner clocks off
+export const CLEANER_OFFDUTY_MS       = 9000;   // how long a cleaner stays off duty before rejoining
 export const CLEANING_ASSIGN_INTERVAL = 1500;   // ms between attempts to fill a free slot
 export const CLEANING_HARMONY_PER     = 4;      // harmony score per fish actively being cleaned
 export const CLEANING_HARMONY_MAX     = 20;     // cap on cleaning harmony bonus
@@ -475,8 +477,8 @@ export const FISH_SPECIES = {
   // ── Seagrass Basin — Premium visitors ────────────────────────────────────────
   cleanerShrimp: {
     id: 'cleanerShrimp', name: 'Cleaner Shrimp', scientific: 'Lysmata amboinensis',
-    tier: TIER.EPIC, layer: 'A', color: 0xe53935, accentColor: 0xffffff,
-    size: 10, speed: 0.8, unlockLevel: 7, biome: 'both', cleaner: true,
+    tier: TIER.COMMON, layer: 'A', color: 0xe53935, accentColor: 0xffffff,
+    size: 10, speed: 0.8, unlockLevel: 3, biome: 'both', cleaner: true,
   },
   mantaRay: {
     id: 'mantaRay', name: 'Manta Ray', scientific: 'Mobula birostris',
@@ -530,6 +532,11 @@ export const FISH_SPECIES = {
     id: 'lanternfish', name: 'Lanternfish', scientific: 'Myctophidae spp.',
     tier: TIER.COMMON, layer: 'A', color: 0x26c6da, accentColor: 0x00e5ff,
     size: 10, speed: 2.2, unlockLevel: 6, biome: 'deepTwilight',
+  },
+  glowCleanerGoby: {
+    id: 'glowCleanerGoby', name: 'Glow Cleaner Goby', scientific: 'Elacatinus lumen',
+    tier: TIER.COMMON, layer: 'A', color: 0x1de9b6, accentColor: 0x00e5ff,
+    size: 11, speed: 1.5, unlockLevel: 6, biome: 'deepTwilight', cleaner: true,
   },
   ghostGoby: {
     id: 'ghostGoby', name: 'Ghost Goby', scientific: '',
