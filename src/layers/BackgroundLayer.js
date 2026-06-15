@@ -308,6 +308,36 @@ export class BackgroundLayer {
         r: 2 + Math.random() * 6,
       });
     }
+    // Fine ripple lines across the sand
+    this._floorStrokes = [];
+    for (let i = 0; i < 14; i++) {
+      this._floorStrokes.push({
+        y: top + 14 + Math.random() * (h - 28),
+        amp: 2 + Math.random() * 4,
+        phase: Math.random() * Math.PI * 2,
+        light: Math.random() < 0.5,
+      });
+    }
+    // Sand-grain speckles
+    this._floorSpeckles = [];
+    for (let i = 0; i < 48; i++) {
+      this._floorSpeckles.push({
+        x: Math.random() * SCREEN_W,
+        y: top + 6 + Math.random() * (h - 10),
+        r: 0.6 + Math.random() * 1.4,
+        light: Math.random() < 0.5,
+      });
+    }
+    // Scattered shells & rubble, lower in the band
+    this._floorShells = [];
+    for (let i = 0; i < 8; i++) {
+      this._floorShells.push({
+        x: 24 + Math.random() * (SCREEN_W - 48),
+        y: top + h * 0.42 + Math.random() * (h * 0.52),
+        s: 4 + Math.random() * 4,
+        kind: Math.random() < 0.5 ? 'shell' : 'rubble',
+      });
+    }
 
     this._sharedGroup.addChild(this._floorGfx);
     this._drawSeafloor('coral');
@@ -333,6 +363,37 @@ export class BackgroundLayer {
     });
     this._floorPebbles.forEach(({ x, y, r }) => {
       g.circle(x, y, r).fill({ color: p.pebble, alpha: 0.45 });
+    });
+    // Fine wavy ripple lines
+    this._floorStrokes.forEach(({ y, amp, phase, light }) => {
+      g.moveTo(0, y + Math.sin(phase) * amp);
+      for (let x = 40; x <= SCREEN_W; x += 40) {
+        g.lineTo(x, y + Math.sin(phase + x * 0.03) * amp);
+      }
+      g.stroke({ color: light ? p.ripple : p.deep, width: 1.4, alpha: 0.22 });
+    });
+    // Sand grains
+    this._floorSpeckles.forEach(({ x, y, r, light }) => {
+      g.circle(x, y, r).fill({ color: light ? p.light : p.deep, alpha: 0.40 });
+    });
+    // Shells & rubble
+    this._floorShells.forEach(({ x, y, s, kind }) => {
+      if (kind === 'shell') {
+        const pts = [];
+        for (let k = 0; k <= 8; k++) {
+          const a = Math.PI + (k / 8) * Math.PI;
+          pts.push(x + Math.cos(a) * s, y + Math.sin(a) * s * 0.7);
+        }
+        g.poly(pts).fill({ color: p.light, alpha: 0.70 });
+        for (let r = -1; r <= 1; r++) {
+          g.moveTo(x, y).lineTo(x + r * s * 0.55, y - s * 0.6)
+           .stroke({ color: p.deep, width: 0.8, alpha: 0.5 });
+        }
+      } else {
+        g.circle(x, y, s * 0.6).fill({ color: p.deep, alpha: 0.55 });
+        g.circle(x + s * 0.7, y + 1, s * 0.4).fill({ color: p.deep, alpha: 0.45 });
+        g.circle(x - s * 0.6, y + 1, s * 0.35).fill({ color: p.pebble, alpha: 0.50 });
+      }
     });
   }
 
