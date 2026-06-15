@@ -274,33 +274,38 @@ export class BackgroundLayer {
 
   // ── Shared: seafloor + rocky outcrop ──────────────────────────────────────
 
-  // Biome sand palettes — golden in the shallows, dark slate in the abyss
+  // Biome sand palettes — rich gold in the shallows, dark slate in the abyss.
+  // light = sun-touched top edge, deep = richer tone toward the floor.
   static _SAND = {
-    coral:        { sand: 0xe8c884, ripple: 0xf4dca2, pebble: 0xceac6e, alpha: 0.95 },
-    seagrass:     { sand: 0xd9cf86, ripple: 0xefe6a6, pebble: 0xbcae66, alpha: 0.95 },
-    deepTwilight: { sand: 0x142038, ripple: 0x26324e, pebble: 0x303e5c, alpha: 0.88 },
+    coral:        { sand: 0xd9a64a, light: 0xf0ce84, deep: 0xab7628, ripple: 0xf2d88e, pebble: 0xc8983f, alpha: 0.96 },
+    seagrass:     { sand: 0xc2ac4e, light: 0xe4d684, deep: 0x88762c, ripple: 0xdccb74, pebble: 0xa8902a, alpha: 0.96 },
+    deepTwilight: { sand: 0x172a4a, light: 0x26396a, deep: 0x0a1530, ripple: 0x2a3a5e, pebble: 0x32466e, alpha: 0.90 },
   };
+
+  // The sand fills the lower third of the screen.
+  get _sandTop() { return SCREEN_H * 0.66; }
 
   _buildSeafloor() {
     this._sharedGroup = new Container();
     this._floorGfx = new Graphics();
-    const floorY = SCREEN_H - 56;
+    const top = this._sandTop;
+    const h   = SCREEN_H - top;
 
-    // Stable ripple / pebble positions (generated once, recoloured per biome)
+    // Stable ripple / pebble positions across the whole sand band
     this._floorRipples = [];
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 24; i++) {
       this._floorRipples.push({
         ex: Math.random() * SCREEN_W,
-        ey: floorY + 5 + Math.random() * 14,
-        rx: 30 + Math.random() * 70,
+        ey: top + 12 + Math.random() * (h - 24),
+        rx: 34 + Math.random() * 80,
       });
     }
     this._floorPebbles = [];
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 32; i++) {
       this._floorPebbles.push({
         x: Math.random() * SCREEN_W,
-        y: floorY + 12 + Math.random() * 28,
-        r: 2 + Math.random() * 5,
+        y: top + 8 + Math.random() * (h - 14),
+        r: 2 + Math.random() * 6,
       });
     }
 
@@ -311,19 +316,23 @@ export class BackgroundLayer {
   _drawSeafloor(biome) {
     const p = BackgroundLayer._SAND[biome] ?? BackgroundLayer._SAND.coral;
     const g = this._floorGfx;
-    const floorY = SCREEN_H - 56;
+    const top = this._sandTop;
+    const h   = SCREEN_H - top;
     g.clear();
-    g.rect(0, floorY, SCREEN_W, 56).fill({ color: p.sand, alpha: p.alpha });
+    // Rich sand filling the lower third, lighter at the top edge and deeper below
+    g.rect(0, top, SCREEN_W, h).fill({ color: p.sand, alpha: p.alpha });
+    g.rect(0, top, SCREEN_W, h * 0.22).fill({ color: p.light, alpha: 0.45 });
+    g.rect(0, top + h * 0.58, SCREEN_W, h * 0.42).fill({ color: p.deep, alpha: 0.50 });
     this._floorRipples.forEach(({ ex, ey, rx }) => {
       const pts = [];
       for (let j = 0; j < 14; j++) {
         const a = (j / 14) * Math.PI * 2;
-        pts.push(ex + Math.cos(a) * rx, ey + Math.sin(a) * 5);
+        pts.push(ex + Math.cos(a) * rx, ey + Math.sin(a) * 6);
       }
-      g.poly(pts).fill({ color: p.ripple, alpha: 0.40 });
+      g.poly(pts).fill({ color: p.ripple, alpha: 0.30 });
     });
     this._floorPebbles.forEach(({ x, y, r }) => {
-      g.circle(x, y, r).fill({ color: p.pebble, alpha: 0.50 });
+      g.circle(x, y, r).fill({ color: p.pebble, alpha: 0.45 });
     });
   }
 
