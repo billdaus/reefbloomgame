@@ -71,10 +71,9 @@ export class GridLayer {
   // ── Static visuals ─────────────────────────────────────────────────────────
 
   _drawFloor() {
-    const g = this._floorGfx;
-    g.rect(GRID_X, GRID_Y, GRID_W, GRID_H).fill({ color: COLORS.grid_floor, alpha: 0.42 });
-    g.rect(GRID_X, GRID_Y + GRID_H - 10, GRID_W, 10)
-     .fill({ color: 0x0a1810, alpha: 0.5 });
+    // Grid floor is fully transparent — only the lines between boxes are drawn
+    // (see _drawGrid), so the sand/water backdrop shows through the cells.
+    this._floorGfx.clear();
   }
 
   _drawGrid() {
