@@ -43,6 +43,7 @@ export class BackgroundLayer {
     const isDark = biome === 'deepTwilight';
     this._coralGroup.visible   = !isDark;
     this._twilightGroup.visible = isDark;
+    this._drawSeafloor(biome);
   }
 
   // ── Coral group ────────────────────────────────────────────────────────────
@@ -169,7 +170,7 @@ export class BackgroundLayer {
       const lean = (Math.random() - 0.5) * 14;
       g.moveTo(sx, base)
        .bezierCurveTo(sx - w, base - h * 0.5, sx + w, base - h * 0.72, sx + lean, base - h)
-       .stroke({ color: 0x2eb85e, width: w * 0.5, cap: 'round', alpha: 0.9 });
+       .stroke({ color: 0x44dd72, width: w * 0.5, cap: 'round', alpha: 0.92 });
     }
     this._coralGroup.addChild(g);
   }
@@ -273,33 +274,57 @@ export class BackgroundLayer {
 
   // ── Shared: seafloor + rocky outcrop ──────────────────────────────────────
 
+  // Biome sand palettes — golden in the shallows, dark slate in the abyss
+  static _SAND = {
+    coral:        { sand: 0xe8c884, ripple: 0xf4dca2, pebble: 0xceac6e, alpha: 0.95 },
+    seagrass:     { sand: 0xd9cf86, ripple: 0xefe6a6, pebble: 0xbcae66, alpha: 0.95 },
+    deepTwilight: { sand: 0x142038, ripple: 0x26324e, pebble: 0x303e5c, alpha: 0.88 },
+  };
+
   _buildSeafloor() {
     this._sharedGroup = new Container();
-    const g     = new Graphics();
+    this._floorGfx = new Graphics();
     const floorY = SCREEN_H - 56;
 
-    // Sandy seafloor
-    g.rect(0, floorY, SCREEN_W, 56).fill({ color: 0x0e3c5a, alpha: 0.85 });
-
-    // Sand ripple highlights
+    // Stable ripple / pebble positions (generated once, recoloured per biome)
+    this._floorRipples = [];
     for (let i = 0; i < 14; i++) {
+      this._floorRipples.push({
+        ex: Math.random() * SCREEN_W,
+        ey: floorY + 5 + Math.random() * 14,
+        rx: 30 + Math.random() * 70,
+      });
+    }
+    this._floorPebbles = [];
+    for (let i = 0; i < 18; i++) {
+      this._floorPebbles.push({
+        x: Math.random() * SCREEN_W,
+        y: floorY + 12 + Math.random() * 28,
+        r: 2 + Math.random() * 5,
+      });
+    }
+
+    this._sharedGroup.addChild(this._floorGfx);
+    this._drawSeafloor('coral');
+  }
+
+  _drawSeafloor(biome) {
+    const p = BackgroundLayer._SAND[biome] ?? BackgroundLayer._SAND.coral;
+    const g = this._floorGfx;
+    const floorY = SCREEN_H - 56;
+    g.clear();
+    g.rect(0, floorY, SCREEN_W, 56).fill({ color: p.sand, alpha: p.alpha });
+    this._floorRipples.forEach(({ ex, ey, rx }) => {
       const pts = [];
-      const ex = Math.random() * SCREEN_W;
-      const ey = floorY + 5 + Math.random() * 14;
-      const rx = 30 + Math.random() * 70;
-      const ry = 5;
       for (let j = 0; j < 14; j++) {
         const a = (j / 14) * Math.PI * 2;
-        pts.push(ex + Math.cos(a) * rx, ey + Math.sin(a) * ry);
+        pts.push(ex + Math.cos(a) * rx, ey + Math.sin(a) * 5);
       }
-      g.poly(pts).fill({ color: 0x1e6858, alpha: 0.40 });
-    }
-    for (let i = 0; i < 18; i++) {
-      g.circle(Math.random() * SCREEN_W, floorY + 12 + Math.random() * 28,
-               2 + Math.random() * 5)
-       .fill({ color: 0x247060, alpha: 0.50 });
-    }
-    this._sharedGroup.addChild(g);
+      g.poly(pts).fill({ color: p.ripple, alpha: 0.40 });
+    });
+    this._floorPebbles.forEach(({ x, y, r }) => {
+      g.circle(x, y, r).fill({ color: p.pebble, alpha: 0.50 });
+    });
   }
 
   _buildRockyOutcrop() {
