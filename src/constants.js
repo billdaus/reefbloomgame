@@ -34,6 +34,13 @@ export const START_BE      = 20;
 export const START_HARMONY = 50;
 export const START_LEVEL   = 1;
 export const START_PEARLS  = 0;
+export const START_POLYPS  = 0;
+
+// ─── Coral upgrading (spend Polyps to grow corals) ───────────────────────────
+export const CORAL_MAX_LEVEL       = 5;     // levels 1..5
+export const POLYP_BE_BONUS        = 0.5;   // +50% of base BE/tick per level above 1
+export const CORAL_SCALE_PER_LEVEL = 0.18;  // sprite grows 18% per level above 1
+export const POLYP_PER_CORAL_TICK  = 0.06;  // polyps each coral yields per BE tick, ×level
 
 // ─── Biomes ──────────────────────────────────────────────────────────────────
 export const SEAGRASS_UNLOCK_LEVEL     = 3;

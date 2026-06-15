@@ -3,12 +3,16 @@ import {
   TICK_MS, IDLE_STREAK_MS, IDLE_BONUS_BASE, BE_MAX,
   BE_PER_TICK, CORAL_COST, FISH_COST, TIER,
   CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES,
+  POLYP_PER_CORAL_TICK,
 } from '../constants.js';
+import { coralBEPerTick, coralLevel } from './CoralUpgrade.js';
 import { recordQuestEvent } from './QuestSystem.js';
 import { recordEventProgress } from './EventSystem.js';
 
 let tickAccum  = 0;
 let onBEChange = null;  // callback(newBE)
+let _beCarry    = 0;    // fractional BE carried between ticks (from level multipliers)
+let _polypCarry = 0;    // fractional polyps carried between ticks
 
 export function initEconomy(onChange) {
   onBEChange = onChange;
@@ -28,17 +32,38 @@ export function tickEconomy(deltaMS) {
 
 function _applyCoralTick() {
   // Start with passive income from the inactive biome
-  let earned = state.passiveBEPerTick ?? 0;
-  state.placedCoral.forEach(({ speciesId }) => {
-    const spec = CORAL_SPECIES[speciesId];
+  let earned  = state.passiveBEPerTick ?? 0;
+  let polyps  = 0;
+  state.placedCoral.forEach((entry) => {
+    const spec = CORAL_SPECIES[entry.speciesId];
     if (!spec) return;
-    earned += BE_PER_TICK[spec.tier] ?? 0;
+    const lvl = coralLevel(entry);
+    earned += coralBEPerTick(spec, lvl);       // level-scaled BE
+    polyps += POLYP_PER_CORAL_TICK * lvl;      // higher levels drip faster
   });
-  if (earned > 0) {
-    state.be = Math.min(state.be + earned, BE_MAX);
-    onBEChange?.(state.be, `+${earned} 🫧`);
-    recordQuestEvent('earn_be', earned);
-    recordEventProgress('earn_be', earned);
+
+  // BE — carry the fraction left over by level multipliers between ticks
+  _beCarry += earned;
+  const wholeBE = Math.floor(_beCarry);
+  _beCarry -= wholeBE;
+
+  // Polyps — same fractional carry so a small reef still earns them steadily
+  _polypCarry += polyps;
+  const wholePolyps = Math.floor(_polypCarry);
+  _polypCarry -= wholePolyps;
+  if (wholePolyps > 0) state.polyps += wholePolyps;
+
+  if (wholeBE > 0) {
+    state.be = Math.min(state.be + wholeBE, BE_MAX);
+    recordQuestEvent('earn_be', wholeBE);
+    recordEventProgress('earn_be', wholeBE);
+  }
+
+  if (wholeBE > 0 || wholePolyps > 0) {
+    const parts = [];
+    if (wholeBE > 0)     parts.push(`+${wholeBE} 🫧`);
+    if (wholePolyps > 0) parts.push(`+${wholePolyps} 🪸`);
+    onBEChange?.(state.be, parts.join('  '));
   }
 }
 

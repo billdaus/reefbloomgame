@@ -38,7 +38,7 @@ export function getCurrentBiome() {
 export function saveGame() {
   const biomeData = {
     grid:           state.grid.map(row => [...row]),
-    placedCoral:    state.placedCoral.map(c => ({ uid: c.uid, col: c.col, row: c.row, speciesId: c.speciesId })),
+    placedCoral:    state.placedCoral.map(c => ({ uid: c.uid, col: c.col, row: c.row, speciesId: c.speciesId, level: c.level ?? 1 })),
     placedDecor:    state.placedDecor.map(d => ({ uid: d.uid, col: d.col, row: d.row, speciesId: d.speciesId })),
     fishTypes:      state.fish.map(f => f.speciesId),
     coralTypesSeen: [...state.coralTypesSeen],
@@ -75,6 +75,7 @@ export function saveGame() {
   full.harmony        = state.harmony;
   full.level          = state.level;
   full.pearls         = state.pearls;
+  full.polyps         = state.polyps;
   full.clamWatchCount = state.clamWatchCount;
   full.clamWatchDate  = state.clamWatchDate;
   full.quest              = state.quest;
@@ -115,6 +116,7 @@ export function loadGame() {
     harmony:        full.harmony,
     level:          full.level,
     pearls:         full.pearls,
+    polyps:         full.polyps,
     clamWatchCount: full.clamWatchCount,
     clamWatchDate:  full.clamWatchDate,
     quest:              full.quest              ?? null,

@@ -20,6 +20,7 @@ import { initEventSystem, recordEventProgress, checkEventSnapshots, recordQuestC
 import { initJournal, unlockEntry } from '../systems/JournalSystem.js';
 import { updateHarmonyFilter } from '../systems/HarmonySystem.js';
 import { initLevelSystem, checkLevelUp } from '../systems/LevelSystem.js';
+import { coralLevel, canUpgrade, applyUpgrade } from '../systems/CoralUpgrade.js';
 import { initClamSystem, tickClamSystem, canWatch, collectAdReward, despawnClam } from '../systems/ClamSystem.js';
 import { Clam } from '../entities/Clam.js';
 import { QuestClam } from '../entities/QuestClam.js';
@@ -29,6 +30,7 @@ import { DailyQuestModal }    from '../ui/DailyQuestModal.js';
 import JournalModal           from '../ui/JournalModal.js';
 import { AccountModal }       from '../ui/AccountModal.js';
 import { EventModal }         from '../ui/EventModal.js';
+import { CoralUpgradeModal }  from '../ui/CoralUpgradeModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 
@@ -102,6 +104,7 @@ export class ReefScene {
     this._rewardModal   = new ClamRewardModal();
     this._shopModal     = new PearlShopModal();
     this._journalModal  = new JournalModal();
+    this._upgradeModal  = new CoralUpgradeModal();
     this._accountModal  = new AccountModal(() => this._hud?.refreshAccountAvatar());
     this._eventModal    = new EventModal(
       () => { saveGame(); },   // onAccept
@@ -135,6 +138,7 @@ export class ReefScene {
     this._uiContainer.addChild(this._shopModal.container);
     this._uiContainer.addChild(this._questModal.container);
     this._uiContainer.addChild(this._journalModal.container);
+    this._uiContainer.addChild(this._upgradeModal.container);
     this._uiContainer.addChild(this._accountModal.container);
     this._uiContainer.addChild(this._eventModal.container);
 
@@ -257,7 +261,13 @@ export class ReefScene {
     }
 
     const { selectedType, selectedId } = state;
-    if (!selectedType || !selectedId) return;
+
+    // Nothing selected: tapping a placed coral opens its upgrade panel
+    if (!selectedType || !selectedId) {
+      const entry = state.placedCoral.find(c => c.col === col && c.row === row);
+      if (entry) this._openCoralUpgrade(entry);
+      return;
+    }
 
     if (selectedType === 'coral') {
       this._tryPlaceCoral(col, row, selectedId);
@@ -280,12 +290,12 @@ export class ReefScene {
 
     const uid = state.nextUid();
     state.grid[row][col] = speciesId;
-    state.placedCoral.push({ uid, col, row, speciesId });
+    state.placedCoral.push({ uid, col, row, speciesId, level: 1 });
     state.coralCount++;
     state.coralTierCounts[spec.tier]++;
     state.coralTypesSeen.add(speciesId);
 
-    this._grid.placeCoral(spec, col, row, uid);
+    this._grid.placeCoral(spec, col, row, uid, 1);
 
     unlockEntry(`coral:${speciesId}`);
     unlockEntry('resource:harmony');
@@ -299,6 +309,21 @@ export class ReefScene {
     checkEventSnapshots();
     checkLevelUp();
     saveGame();
+  }
+
+  _openCoralUpgrade(entry) {
+    this._upgradeModal.show(entry, (e) => {
+      if (!canUpgrade(e)) return null;
+      const newLevel = applyUpgrade(e);
+      if (!newLevel) return null;
+      this._grid.upgradeCoral(e.uid, newLevel);
+      const spec = CORAL_SPECIES[e.speciesId];
+      this._hud.showBonus(`${spec?.name ?? 'Coral'} → Lv ${newLevel} 🪸`);
+      unlockEntry('event:coral_upgrade');
+      recordInteraction();
+      saveGame();
+      return newLevel;
+    });
   }
 
   _tryPlaceDecor(col, row, speciesId) {
@@ -540,6 +565,7 @@ export class ReefScene {
     state.harmony        = data.harmony ?? state.harmony;
     state.level          = data.level   ?? state.level;
     state.pearls         = data.pearls  ?? state.pearls;
+    state.polyps         = data.polyps  ?? 0;
     state.clamWatchCount = data.clamWatchCount ?? 0;
     state.clamWatchDate  = data.clamWatchDate  ?? '';
     state.quest   = data.quest   ?? null;
@@ -554,14 +580,15 @@ export class ReefScene {
 
     // Rebuild coral sprites
     let maxUid = 0;
-    (data.placedCoral ?? []).forEach(({ uid, col, row, speciesId }) => {
+    (data.placedCoral ?? []).forEach(({ uid, col, row, speciesId, level }) => {
       const spec = CORAL_SPECIES[speciesId];
       if (!spec || state.grid[row]?.[col] !== null) return;
+      const lvl = coralLevel({ level });
       state.grid[row][col] = speciesId;
-      state.placedCoral.push({ uid, col, row, speciesId });
+      state.placedCoral.push({ uid, col, row, speciesId, level: lvl });
       state.coralCount++;
       state.coralTierCounts[spec.tier]++;
-      this._grid.placeCoral(spec, col, row, uid);
+      this._grid.placeCoral(spec, col, row, uid, lvl);
       if (uid > maxUid) maxUid = uid;
     });
 
@@ -698,11 +725,11 @@ export class ReefScene {
         if (state.grid[row][col] !== null) continue;
         const uid = state.nextUid();
         state.grid[row][col] = speciesId;
-        state.placedCoral.push({ uid, col, row, speciesId });
+        state.placedCoral.push({ uid, col, row, speciesId, level: 1 });
         state.coralCount++;
         state.coralTierCounts[coralSpec.tier]++;
         state.coralTypesSeen.add(speciesId);
-        this._grid.placeCoral(coralSpec, col, row, uid);
+        this._grid.placeCoral(coralSpec, col, row, uid, 1);
         unlockEntry(`coral:${speciesId}`);
         checkSnapshotQuests();
         checkEventSnapshots();

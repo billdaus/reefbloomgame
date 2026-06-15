@@ -1,5 +1,5 @@
 import {
-  START_BE, START_HARMONY, START_LEVEL, START_PEARLS,
+  START_BE, START_HARMONY, START_LEVEL, START_PEARLS, START_POLYPS,
   GRID_ROWS, GRID_COLS,
 } from './constants.js';
 
@@ -12,6 +12,7 @@ export const state = {
   harmony: START_HARMONY,
   level:   START_LEVEL,
   pearls:  START_PEARLS,
+  polyps:  START_POLYPS,   // spent to upgrade corals; drips from corals over time
 
   // ── Ad / clam tracking ─────────────────────────────────────────────────────
   clamWatchCount: 0,           // watches used today
@@ -30,7 +31,7 @@ export const state = {
   grid: Array.from({ length: GRID_ROWS }, () => Array(GRID_COLS).fill(null)),
 
   // ── Placed entities ────────────────────────────────────────────────────────
-  placedCoral: [],   // [{ uid, col, row, speciesId }]
+  placedCoral: [],   // [{ uid, col, row, speciesId, level }]
   placedDecor: [],   // [{ uid, col, row, speciesId }] — purely aesthetic props
   fish:        [],   // Fish instances (added by FishLayer)
   decorTypesSeen: new Set(),

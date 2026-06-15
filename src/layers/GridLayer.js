@@ -47,7 +47,7 @@ export class GridLayer {
     this._hoverGfx = new Graphics();
     this.hoverContainer.addChild(this._hoverGfx);
 
-    this._coralSprites = new Map();   // uid → Graphics container
+    this._coralSprites = new Map();   // uid → Coral instance
     this._decorSprites = new Map();   // uid → Graphics container
     this._hoveredTile  = null;
 
@@ -159,10 +159,11 @@ export class GridLayer {
    * tallCoralContainer so Layer-A fish render behind them.
    * Short/flat coral goes into shortCoralContainer so fish can swim over them.
    */
-  placeCoral(coralSpec, col, row, uid) {
-    const coral = new Coral(coralSpec, col, row, uid);
-    coral.container.x = GRID_X + col * TILE_SIZE;
-    coral.container.y = GRID_Y + row * TILE_SIZE;
+  placeCoral(coralSpec, col, row, uid, level = 1) {
+    const coral = new Coral(coralSpec, col, row, uid, level);
+    // Coral pivot is its base-centre, so offset the position into the tile.
+    coral.container.x = GRID_X + col * TILE_SIZE + TILE_SIZE / 2;
+    coral.container.y = GRID_Y + row * TILE_SIZE + TILE_SIZE;
 
     if (coralSpec.tall) {
       this.tallCoralContainer.addChild(coral.container);
@@ -170,15 +171,20 @@ export class GridLayer {
       this.shortCoralContainer.addChild(coral.container);
     }
 
-    this._coralSprites.set(uid, coral.container);
+    this._coralSprites.set(uid, coral);
+  }
+
+  /** Re-scale a placed coral's sprite to a new upgrade level. */
+  upgradeCoral(uid, level) {
+    this._coralSprites.get(uid)?.setLevel(level);
   }
 
   /** Remove a coral sprite by uid. */
   removeCoral(uid) {
-    const sprite = this._coralSprites.get(uid);
-    if (!sprite) return;
-    sprite.parent?.removeChild(sprite);
-    sprite.destroy({ children: true });
+    const coral = this._coralSprites.get(uid);
+    if (!coral) return;
+    coral.container.parent?.removeChild(coral.container);
+    coral.container.destroy({ children: true });
     this._coralSprites.delete(uid);
   }
 

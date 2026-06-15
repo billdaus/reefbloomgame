@@ -19,6 +19,7 @@ export class HUD {
     this._bg          = new Graphics();
     this._beText      = null;
     this._pearlText   = null;
+    this._polypText   = null;
     this._bonusText   = null;
     this._bonusTimer  = 0;
     this._harmonyBar  = new Graphics();
@@ -87,6 +88,20 @@ export class HUD {
     pearlHit.rect(pearlX - 4, HUD_H / 2 - 16, 70, 30).fill({ color: 0xffffff, alpha: 0 });
     pearlSection.addChild(pearlHit);
     this.container.addChild(pearlSection);
+
+    // ── Polyp section (upgrade currency) — sits just below the pearl counter ──
+    const polypIcon = new Text({ text: '🪸', style: { fontSize: IS_PORTRAIT ? 13 : 15 } });
+    polypIcon.x = pearlX;
+    polypIcon.y = HUD_H / 2 + (IS_PORTRAIT ? 6 : 8);
+    this.container.addChild(polypIcon);
+
+    this._polypText = new Text({
+      text: '0',
+      style: { fontSize: IS_PORTRAIT ? 13 : 15, fill: 0xc8e6a0, fontFamily: FONT, fontWeight: 'bold' },
+    });
+    this._polypText.x = pearlX + 20;
+    this._polypText.y = HUD_H / 2 + (IS_PORTRAIT ? 6 : 8);
+    this.container.addChild(this._polypText);
 
     // ── Harmony section ──────────────────────────────────────────────────────
     if (!IS_PORTRAIT) {
@@ -441,6 +456,7 @@ export class HUD {
   update(deltaMS) {
     this._beText.text    = String(Math.floor(state.be));
     this._pearlText.text = String(Math.floor(state.pearls));
+    this._polypText.text = String(Math.floor(state.polyps));
     this._levelText.text = String(state.level);
     this._harmonyText.text = String(Math.round(state.harmony));
     this._drawHarmonyBar();

@@ -1,19 +1,31 @@
 import { Graphics } from 'pixi.js';
-import { TILE_SIZE } from '../constants.js';
+import { TILE_SIZE, CORAL_SCALE_PER_LEVEL } from '../constants.js';
 
 /**
  * Coral — draws a procedural flat/minimal sprite for each species.
- * The container origin is the tile's top-left corner.
+ * The sprite is drawn in tile-local space [0,TILE_SIZE]; the pivot is set to
+ * the base-centre so upgrade scaling grows the coral upward and outward while
+ * keeping its foot planted on the tile (GridLayer positions accordingly).
  */
 export class Coral {
-  constructor(speciesData, col, row, uid) {
+  constructor(speciesData, col, row, uid, level = 1) {
     this.spec   = speciesData;
     this.col    = col;
     this.row    = row;
     this.uid    = uid;
+    this.level  = level;
 
     this.container = new Graphics();
+    this.container.pivot.set(TILE_SIZE / 2, TILE_SIZE);
     this._draw();
+    this.setLevel(level);
+  }
+
+  /** Resize the sprite for an upgrade level (1 = base size). */
+  setLevel(level) {
+    this.level = level;
+    const k = 1 + (level - 1) * CORAL_SCALE_PER_LEVEL;
+    this.container.scale.set(k);
   }
 
   _draw() {
