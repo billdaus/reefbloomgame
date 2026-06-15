@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { SCREEN_W, SCREEN_H, COLORS, STATION_MAX_LEVEL, stationUpgradeCost } from '../constants.js';
+import { SCREEN_W, SCREEN_H, COLORS, STATION_MAX_LEVEL, stationUpgradeCost, FISH_SPECIES } from '../constants.js';
 import { state } from '../state.js';
 
 const FONT = 'system-ui, -apple-system, sans-serif';
@@ -48,7 +48,7 @@ export class StationUpgradeModal {
     const maxed = level >= STATION_MAX_LEVEL;
     const cost  = stationUpgradeCost(level);
     const affordable = state.polyps >= cost;
-    const wrasse = state.fish.filter(f => f.speciesId === 'cleanerWrasse').length;
+    const cleaners = state.fish.filter(f => FISH_SPECIES[f.speciesId]?.cleaner).length;
 
     this._overlay.clear();
     this._overlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0x000000, alpha: 0.62 });
@@ -84,11 +84,11 @@ export class StationUpgradeModal {
     const cap = maxed ? `${level} 🐟  (max)` : `${level} 🐟  →  ${level + 1} 🐟`;
     this._text(cap, cx, py + 104, 16, COLORS.text_primary, true, 0.5);
 
-    // Wrasse requirement
-    const wrasseMsg = wrasse > 0
-      ? `Staffed by ${wrasse} cleaner wrasse ✓`
-      : 'Needs a Cleaner Wrasse to operate';
-    this._text(wrasseMsg, cx, py + 138, 12, wrasse > 0 ? 0x9ccc65 : 0xffb74d, false, 0.5);
+    // Cleaner-staff requirement
+    const staffMsg = cleaners > 0
+      ? `${cleaners} cleaner${cleaners > 1 ? 's' : ''} on staff ✓`
+      : 'Needs a cleaner wrasse or shrimp';
+    this._text(staffMsg, cx, py + 138, 12, cleaners > 0 ? 0x9ccc65 : 0xffb74d, false, 0.5);
 
     this._text(`You have ${state.polyps} 🪸`, cx, py + 162, 13, 0xc8e6a0, false, 0.5);
 

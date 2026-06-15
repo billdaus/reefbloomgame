@@ -267,11 +267,6 @@ export const FISH_SPECIES = {
     tier: TIER.COMMON, layer: 'A', color: 0x4caf50, accentColor: 0xb5e7b5,
     size: 12, speed: 1.8, unlockLevel: 1,
   },
-  cleanerWrasse: {
-    id: 'cleanerWrasse', name: 'Cleaner Wrasse', scientific: 'Labroides dimidiatus',
-    tier: TIER.UNCOMMON, layer: 'A', color: 0x2a6fb0, accentColor: 0x0d1620,
-    size: 11, speed: 1.7, unlockLevel: 4,
-  },
   // ── Uncommon ────────────────────────────────────────────────────────────────
   zebraGoby: {
     id: 'zebraGoby', name: 'Zebra Goby', scientific: '',
@@ -387,7 +382,7 @@ export const FISH_SPECIES = {
   cleanerWrasse: {
     id: 'cleanerWrasse', name: 'Cleaner Wrasse', scientific: 'Labroides dimidiatus',
     tier: TIER.SUPER_RARE, layer: 'A', color: 0x1e88e5, accentColor: 0xffd54f,
-    size: 13, speed: 1.3, unlockLevel: 6,
+    size: 13, speed: 1.3, unlockLevel: 6, biome: 'both', cleaner: true,
   },
   flameAngelfish: {
     id: 'flameAngelfish', name: 'Flame Angelfish', scientific: 'Centropyge loricula',
@@ -480,7 +475,7 @@ export const FISH_SPECIES = {
   cleanerShrimp: {
     id: 'cleanerShrimp', name: 'Cleaner Shrimp', scientific: 'Lysmata amboinensis',
     tier: TIER.EPIC, layer: 'A', color: 0xe53935, accentColor: 0xffffff,
-    size: 10, speed: 0.8, unlockLevel: 7, biome: 'seagrass', pearlCost: 30,
+    size: 10, speed: 0.8, unlockLevel: 7, biome: 'both', cleaner: true,
   },
   mantaRay: {
     id: 'mantaRay', name: 'Manta Ray', scientific: 'Mobula birostris',

@@ -240,8 +240,8 @@ export class ReefScene {
 
     state.fish.forEach(fish => {
       fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev));
-      // Sparkle over fish being cleaned at a station
-      if (fish.isBeingCleaned() && Math.random() < 0.14) {
+      // Sparkle only over CLIENTS actively being cleaned (not loitering cleaners)
+      if (this._activeCleanUids?.has(fish.uid) && Math.random() < 0.16) {
         this._spawnSparkle(fish.x + (Math.random() - 0.5) * 10, fish.y - 6);
       }
     });
@@ -438,8 +438,9 @@ export class ReefScene {
   _tryRemoveStation(st) {
     const idx = state.placedStations.indexOf(st);
     if (idx === -1) return;
-    // Release any fish currently being cleaned here
-    (st._active ?? []).forEach(a => state.fish.find(f => f.uid === a.fishUid)?.endCleaning());
+    // Release any clients and loitering cleaners back to free swimming
+    (st._clients  ?? []).forEach(c => state.fish.find(f => f.uid === c.fishUid)?.endCleaning());
+    (st._cleaners ?? []).forEach(u => state.fish.find(f => f.uid === u)?.endCleaning());
     for (let r = st.row; r < st.row + STATION_SPAN; r++) {
       for (let c = st.col; c < st.col + STATION_SPAN; c++) {
         if (state.grid[r][c] === STATION_CELL) state.grid[r][c] = null;
@@ -631,60 +632,95 @@ export class ReefScene {
 
   // ── Cleaning stations ───────────────────────────────────────────────────────
 
-  /** Periodically dispatch an idle fish to a placed cleaning station. */
   /**
-   * Drive the cleaning stations. Each station has `level` cleaning slots; while
-   * staffed (a cleaner wrasse is present in the reef) it pulls idle non-wrasse
-   * fish in, cleans each for 30s, then releases them. state.cleaningActive (the
-   * number of fish actually being cleaned) feeds the harmony bonus.
+   * Drive the cleaning stations.
+   *  - Cleaner species (wrasse + shrimp) are assigned to stations (up to the
+   *    station's capacity) and loiter there.
+   *  - Client fish are pulled in, swim to the station, and WAIT until a cleaner
+   *    that lives there is free, then get cleaned for 30s and released.
+   *  - state.cleaningActive (fish actively being cleaned) feeds the harmony
+   *    bonus, so an unstaffed station produces nothing.
    */
   _tickStations(dms) {
     const stations = state.placedStations;
+    this._activeCleanUids = this._activeCleanUids ?? new Set();
+    this._activeCleanUids.clear();
     if (stations.length === 0) { state.cleaningActive = 0; return; }
 
-    const staffed = state.fish.some(f => f.speciesId === 'cleanerWrasse');
+    const isCleaner = (f) => !!FISH_SPECIES[f.speciesId]?.cleaner;
 
     this._assignTimer = (this._assignTimer ?? 0) - dms;
     const canAssign = this._assignTimer <= 0;
     if (canAssign) this._assignTimer = CLEANING_ASSIGN_INTERVAL;
 
-    // uids already booked into any station, so two stations can't grab one fish
-    const booked = new Set(stations.flatMap(s => (s._active ?? []).map(a => a.fishUid)));
+    // Cleaners already homed to a station, and clients already booked anywhere
+    const homedCleaners = new Set(stations.flatMap(s => s._cleaners ?? []));
+    const bookedClients = new Set(stations.flatMap(s => (s._clients ?? []).map(c => c.fishUid)));
 
     let active = 0;
     for (const st of stations) {
-      st._active = st._active ?? [];
+      st._cleaners = (st._cleaners ?? []).filter(u => state.fish.some(f => f.uid === u));
+      st._clients  = st._clients ?? [];
       const capacity = Math.max(1, Math.min(STATION_MAX_LEVEL, st.level ?? 1));
+      const span = STATION_SPAN * TILE_SIZE;
+      const ctrX = GRID_X + st.col * TILE_SIZE + span / 2;
+      const ctrY = GRID_Y + st.row * TILE_SIZE + span / 2;
 
-      // Advance / expire existing slots
-      for (let i = st._active.length - 1; i >= 0; i--) {
-        const slot = st._active[i];
-        const fish = state.fish.find(f => f.uid === slot.fishUid);
-        slot.age = (slot.age ?? 0) + dms;
-        if (!fish || !staffed) {                       // fish gone or unstaffed → free slot
-          fish?.endCleaning();
-          st._active.splice(i, 1); booked.delete(slot.fishUid);
-        } else if (fish.isBeingCleaned()) {            // arrived — count down the 30s
-          slot.timeLeft -= dms;
-          if (slot.timeLeft <= 0) { fish.endCleaning(); st._active.splice(i, 1); booked.delete(slot.fishUid); }
-          else active++;
-        } else if (slot.age > 15000) {                 // never arrived — give up the slot
-          fish.endCleaning(); st._active.splice(i, 1); booked.delete(slot.fishUid);
+      // 1. Staff the station: assign idle cleaners to loiter here (up to capacity)
+      if (canAssign && st._cleaners.length < capacity) {
+        const c = state.fish.find(f => isCleaner(f) && f.isIdle() && !homedCleaners.has(f.uid));
+        if (c) {
+          c.startCleaning(ctrX + (Math.random() - 0.5) * span * 0.45,
+                          ctrY + (Math.random() - 0.5) * span * 0.45);
+          st._cleaners.push(c.uid); homedCleaners.add(c.uid);
+        }
+      }
+      const presentCleaners = st._cleaners.filter(u => {
+        const f = state.fish.find(ff => ff.uid === u);
+        return f && f.isBeingCleaned();   // arrived & loitering
+      }).length;
+
+      // 2. Advance / expire client slots
+      for (let i = st._clients.length - 1; i >= 0; i--) {
+        const cl = st._clients[i];
+        const f  = state.fish.find(ff => ff.uid === cl.fishUid);
+        cl.age = (cl.age ?? 0) + dms;
+        if (!f) { st._clients.splice(i, 1); bookedClients.delete(cl.fishUid); continue; }
+        if (cl.phase === 'clean') {
+          cl.timeLeft -= dms;
+          if (cl.timeLeft <= 0) { f.endCleaning(); st._clients.splice(i, 1); bookedClients.delete(cl.fishUid); }
+        } else if (cl.age > 25000 && !f.isBeingCleaned()) {
+          f.endCleaning(); st._clients.splice(i, 1); bookedClients.delete(cl.fishUid);  // never arrived
         }
       }
 
-      // Fill a free slot (throttled, staffed only)
-      if (staffed && canAssign && st._active.length < capacity) {
-        const candidate = state.fish.find(f =>
-          f.isIdle() && f.speciesId !== 'cleanerWrasse' && !booked.has(f.uid));
-        if (candidate) {
-          const span = STATION_SPAN * TILE_SIZE;
-          const cx = GRID_X + st.col * TILE_SIZE + span * (0.3 + Math.random() * 0.4);
-          const cy = GRID_Y + st.row * TILE_SIZE + span * (0.3 + Math.random() * 0.4);
-          candidate.startCleaning(cx, cy);
-          st._active.push({ fishUid: candidate.uid, timeLeft: CLEAN_DURATION_MS, age: 0 });
-          booked.add(candidate.uid);
+      // 3. Accept a new client (swims over and waits) — only if staffed at all
+      if (canAssign && st._cleaners.length > 0 && st._clients.length < capacity) {
+        const cand = state.fish.find(f =>
+          !isCleaner(f) && f.isIdle() && !bookedClients.has(f.uid));
+        if (cand) {
+          cand.startCleaning(ctrX + (Math.random() - 0.5) * span * 0.5,
+                             ctrY + (Math.random() - 0.5) * span * 0.5);
+          st._clients.push({ fishUid: cand.uid, phase: 'wait', timeLeft: CLEAN_DURATION_MS, age: 0 });
+          bookedClients.add(cand.uid);
         }
+      }
+
+      // 4. Service waiting clients while free cleaners are available
+      let freeCleaners = presentCleaners - st._clients.filter(c => c.phase === 'clean').length;
+      for (const cl of st._clients) {
+        if (cl.phase === 'clean') continue;
+        const f = state.fish.find(ff => ff.uid === cl.fishUid);
+        if (f && f.isBeingCleaned() && freeCleaners > 0) {   // arrived & a cleaner is free
+          cl.phase = 'clean';
+          cl.timeLeft = CLEAN_DURATION_MS;   // the 30s starts now, when cleaning begins
+          freeCleaners--;
+        }
+      }
+
+      // 5. Tally active cleanings for harmony + sparkles
+      for (const cl of st._clients) {
+        if (cl.phase === 'clean') { active++; this._activeCleanUids.add(cl.fishUid); }
       }
     }
 
