@@ -41,6 +41,12 @@ export const CORAL_MAX_LEVEL       = 5;     // levels 1..5
 export const POLYP_BE_BONUS        = 0.5;   // +50% of base BE/tick per level above 1
 export const POLYP_PER_CORAL_TICK  = 0.06;  // polyps each coral yields per BE tick, ×level
 
+// ─── Cleaning stations (fish visit to be cleaned; raise harmony) ──────────────
+export const CLEANING_HARMONY_PER    = 5;    // harmony score bonus per station (needs fish)
+export const CLEANING_HARMONY_MAX    = 15;   // cap on total cleaning harmony bonus
+export const CLEANING_VISIT_INTERVAL = 2600; // ms between dispatching a fish to a station
+export const CLEANING_DURATION_TICKS = 180;  // ~3s a fish lingers (ticker.deltaTime units)
+
 // ─── Biomes ──────────────────────────────────────────────────────────────────
 export const SEAGRASS_UNLOCK_LEVEL     = 3;
 export const DEEP_TWILIGHT_UNLOCK_LEVEL = 6;
@@ -701,6 +707,13 @@ export const DECOR_SPECIES = {
     id: 'abyssCairn', name: 'Abyss Cairn',
     kind: 'cairn', tier: TIER.UNCOMMON, color: 0x2c3540, accentColor: 0x10151c,
     cost: 25, unlockLevel: 9, biome: 'deepTwilight',
+  },
+  // ── Functional — available in every biome ─────────────────────────────────
+  cleaningStation: {
+    id: 'cleaningStation', name: 'Cleaning Station',
+    kind: 'cleaningStation', tier: TIER.RARE, color: 0x8ad1d8, accentColor: 0xff7043,
+    cost: 40, unlockLevel: 4, biome: ['coral', 'seagrass', 'deepTwilight'],
+    cleaning: true,
   },
 };
 

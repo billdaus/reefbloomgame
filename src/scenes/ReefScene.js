@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter, Graphics } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, CLEANING_VISIT_INTERVAL } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -232,7 +232,14 @@ export class ReefScene {
     if (this._questClamEntity) this._questClamEntity.update(dms);
     this._rewardModal.update(dms);
 
-    state.fish.forEach(fish => fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev)));
+    state.fish.forEach(fish => {
+      fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev));
+      // Sparkle over fish being cleaned at a station
+      if (fish.isBeingCleaned() && Math.random() < 0.14) {
+        this._spawnSparkle(fish.x + (Math.random() - 0.5) * 10, fish.y - 6);
+      }
+    });
+    this._tickCleaning(dms);
     this._updateParticles(dms);
 
     // Auto-save every 30 s
@@ -515,6 +522,45 @@ export class ReefScene {
       vy:   isPoop ? 0.6 + Math.random() * 0.4 : -(0.3 + Math.random() * 0.3),
       age:  0,
       life: isPoop ? 1800 : 1400,
+    });
+  }
+
+  // ── Cleaning stations ───────────────────────────────────────────────────────
+
+  /** Periodically dispatch an idle fish to a placed cleaning station. */
+  _tickCleaning(dms) {
+    const stations = state.placedDecor.filter(d => DECOR_SPECIES[d.speciesId]?.cleaning);
+    if (stations.length === 0) return;
+
+    this._cleaningTimer = (this._cleaningTimer ?? CLEANING_VISIT_INTERVAL) - dms;
+    if (this._cleaningTimer > 0) return;
+    this._cleaningTimer = CLEANING_VISIT_INTERVAL;
+
+    const idle = state.fish.filter(f => f.isIdle());
+    if (idle.length === 0) return;
+
+    const fish    = idle[Math.floor(Math.random() * idle.length)];
+    const station = stations[Math.floor(Math.random() * stations.length)];
+    const cx = GRID_X + station.col * TILE_SIZE + TILE_SIZE / 2;
+    const cy = GRID_Y + station.row * TILE_SIZE + TILE_SIZE / 2;
+    fish.startCleaning(cx, cy);
+  }
+
+  /** A small rising twinkle, reused from the particle pool. */
+  _spawnSparkle(x, y) {
+    const gfx = new Graphics();
+    gfx.circle(0, 0, 1.6).fill(0xffffff);
+    gfx.circle(0, 0, 3.2).fill({ color: 0xfff3b0, alpha: 0.35 });
+    gfx.x = x;
+    gfx.y = y;
+    this._particleContainer.addChild(gfx);
+    this._particles.push({
+      gfx,
+      type: 'sparkle',
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: -(0.2 + Math.random() * 0.3),
+      age: 0,
+      life: 700,
     });
   }
 

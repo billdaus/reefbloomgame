@@ -1,5 +1,5 @@
 import { Container, Graphics } from 'pixi.js';
-import { GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE } from '../constants.js';
+import { GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, CLEANING_DURATION_TICKS } from '../constants.js';
 import { tileCenter, getOccupiedTiles } from '../utils/grid.js';
 
 const MARGIN    = 10;
@@ -26,6 +26,12 @@ export class Fish {
     this.targetAge = 0;
     this.pickTargetCooldown = 0;
     this._angle    = Math.atan2(this.vy || 0, this.vx || 1); // facing angle
+
+    // Cleaning-station visit: 'none' | 'toStation' | 'cleaning'
+    this._cleanState = 'none';
+    this._cleanX = 0;
+    this._cleanY = 0;
+    this._cleanTimer = 0;
 
     this.container = new Container();
     this._body     = new Graphics();
@@ -2090,9 +2096,29 @@ export class Fish {
    * @param {function} [onEmit] Called with ({type,x,y}) when a chaotic fish
    *                            emits a particle (currently only Gavin).
    */
+  /** Send this fish to a cleaning station at (x,y). Ignored if already busy. */
+  startCleaning(x, y) {
+    if (this._cleanState !== 'none') return;
+    this._cleanState = 'toStation';
+    this._cleanX = x;
+    this._cleanY = y;
+  }
+
+  /** True when free to be dispatched to a cleaning station. */
+  isIdle() { return this._cleanState === 'none'; }
+
+  /** True while lingering at a station (used to sparkle). */
+  isBeingCleaned() { return this._cleanState === 'cleaning'; }
+
   update(dt, grid, coralSpecies, onEmit) {
     const speed = this.spec.speed;
     const ms    = dt * (60 / 1000) * 16;  // normalise to pixels/frame
+
+    // ── Cleaning-station visit overrides normal wandering ───────────────────
+    if (this._cleanState !== 'none') {
+      this.targetX = this._cleanX;
+      this.targetY = this._cleanY;
+    }
 
     // ── Steer toward target (angle-limited — fish arc, never reverse) ────────
     this.pickTargetCooldown -= dt;
@@ -2100,7 +2126,18 @@ export class Fish {
     const dy   = this.targetY - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist < 8 || this.pickTargetCooldown <= 0) {
+    if (this._cleanState === 'toStation') {
+      if (dist < TILE_SIZE * 0.55) {       // arrived — settle in to be cleaned
+        this._cleanState = 'cleaning';
+        this._cleanTimer = CLEANING_DURATION_TICKS;
+      }
+    } else if (this._cleanState === 'cleaning') {
+      this._cleanTimer -= dt;
+      if (this._cleanTimer <= 0) {          // done — resume wandering
+        this._cleanState = 'none';
+        this.pickTargetCooldown = 0;
+      }
+    } else if (dist < 8 || this.pickTargetCooldown <= 0) {
       this._pickNewTarget(grid);
     }
 

@@ -1,4 +1,5 @@
 import { state } from '../state.js';
+import { DECOR_SPECIES, CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX } from '../constants.js';
 
 /**
  * Set saturation via a proper luminance-preserving color matrix.
@@ -51,6 +52,18 @@ export function computeHarmony() {
   if (coralCount > 0 && fishCount > 0) {
     const ratio = Math.min(fishCount, coralCount) / Math.max(fishCount, coralCount);
     score += Math.round(ratio * 15);
+  }
+
+  // Cleaning stations (up to CLEANING_HARMONY_MAX pts) — only count once there
+  // are fish for them to clean, so an empty reef can't game harmony with them.
+  if (fishCount > 0) {
+    let stations = 0;
+    for (const d of state.placedDecor) {
+      if (DECOR_SPECIES[d.speciesId]?.cleaning) stations++;
+    }
+    if (stations > 0) {
+      score += Math.min(stations * CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX);
+    }
   }
 
   // Harmony never decreases permanently

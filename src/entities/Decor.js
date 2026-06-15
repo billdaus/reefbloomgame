@@ -31,8 +31,49 @@ export class Decor {
       case 'orb':       this._drawOrb(g, s);       break;
       case 'fossil':    this._drawFossil(g, s);    break;
       case 'cairn':     this._drawCairn(g, s);     break;
+      case 'cleaningStation': this._drawCleaningStation(g, s); break;
       default:          this._drawPebble(g, s);    break;
     }
+  }
+
+  // ── Cleaning station — a pale coral knob staffed by cleaner shrimp ──────────
+  _drawCleaningStation(g, s) {
+    const c  = this.spec.color;        // pale teal rock
+    const ac = this.spec.accentColor;  // warm shrimp/stripe accent
+    const base = s - 3;
+
+    // Rock mound
+    g.roundRect(s * 0.18, s * 0.52, s * 0.64, s * 0.4, 8).fill(0x5f7d80);
+    g.circle(s * 0.5, s * 0.52, s * 0.24).fill(c);
+    g.circle(s * 0.33, s * 0.58, s * 0.14).fill(c);
+    g.circle(s * 0.67, s * 0.58, s * 0.15).fill(c);
+    // Coral knobs on top
+    g.circle(s * 0.42, s * 0.42, 4).fill(0xb6e7ec);
+    g.circle(s * 0.58, s * 0.4, 5).fill(0xb6e7ec);
+    g.circle(s * 0.5, s * 0.36, 3.5).fill(0xd6f4f7);
+
+    // Two cleaner shrimp working the station
+    this._cleanerShrimp(g, s * 0.4, s * 0.52, 1, ac);
+    this._cleanerShrimp(g, s * 0.63, s * 0.54, -1, ac);
+
+    // Sparkles of activity
+    [[0.5, 0.3], [0.31, 0.42], [0.72, 0.44]].forEach(([fx, fy]) => {
+      g.circle(s * fx, s * fy, 1.6).fill({ color: 0xfff3b0, alpha: 0.9 });
+    });
+
+    // Substrate shadow
+    g.rect(s * 0.16, base, s * 0.68, 3).fill(0x445b5e);
+  }
+
+  /** Tiny cleaner shrimp: curved pale body, a coloured stripe, two antennae. */
+  _cleanerShrimp(g, x, y, dir, ac) {
+    g.moveTo(x, y).lineTo(x + 6 * dir, y - 2)
+     .stroke({ color: 0xfdf3e7, width: 3, cap: 'round' });
+    g.moveTo(x + 6 * dir, y - 2).lineTo(x + 9 * dir, y)
+     .stroke({ color: 0xfdf3e7, width: 2.5, cap: 'round' });
+    g.circle(x + 3 * dir, y - 1, 1.4).fill(ac);                 // stripe
+    g.moveTo(x, y).lineTo(x - 4 * dir, y - 5).stroke({ color: 0xffffff, width: 0.8, alpha: 0.8 });
+    g.moveTo(x, y).lineTo(x - 5 * dir, y - 1).stroke({ color: 0xffffff, width: 0.8, alpha: 0.8 });
   }
 
   // ── Pebble — small rounded stone with shadow ───────────────────────────────
