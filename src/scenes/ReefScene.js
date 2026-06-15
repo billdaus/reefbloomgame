@@ -32,6 +32,7 @@ import { AccountModal }       from '../ui/AccountModal.js';
 import { EventModal }         from '../ui/EventModal.js';
 import { CoralUpgradeModal }  from '../ui/CoralUpgradeModal.js';
 import { StationUpgradeModal } from '../ui/StationUpgradeModal.js';
+import { HarmonyAdvisorModal } from '../ui/HarmonyAdvisorModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 
@@ -113,6 +114,7 @@ export class ReefScene {
     this._journalModal  = new JournalModal();
     this._upgradeModal  = new CoralUpgradeModal();
     this._stationModal  = new StationUpgradeModal();
+    this._advisorModal  = new HarmonyAdvisorModal();
     this._accountModal  = new AccountModal(() => this._hud?.refreshAccountAvatar());
     this._eventModal    = new EventModal(
       () => { saveGame(); },   // onAccept
@@ -133,6 +135,7 @@ export class ReefScene {
       () => this._journalModal.show(),
       () => this._accountModal.show(),
       () => this._eventModal.show(),
+      () => this._advisorModal.show(),
     );
     this._menu = new PlacementMenu(
       (id) => this._onCoralSelected(id),
@@ -148,6 +151,7 @@ export class ReefScene {
     this._uiContainer.addChild(this._journalModal.container);
     this._uiContainer.addChild(this._upgradeModal.container);
     this._uiContainer.addChild(this._stationModal.container);
+    this._uiContainer.addChild(this._advisorModal.container);
     this._uiContainer.addChild(this._accountModal.container);
     this._uiContainer.addChild(this._eventModal.container);
 

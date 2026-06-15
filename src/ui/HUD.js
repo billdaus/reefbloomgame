@@ -9,12 +9,13 @@ const FONT = 'system-ui, -apple-system, sans-serif';
  * HUD — top bar showing BE, Harmony bar, and Level.
  */
 export class HUD {
-  constructor(onHome, onPearlShop, onJournal, onAccount, onEventBtn) {
+  constructor(onHome, onPearlShop, onJournal, onAccount, onEventBtn, onAdvisor) {
     this._onHome       = onHome;
     this._onPearlShop  = onPearlShop;
     this._onJournal    = onJournal;
     this._onAccount    = onAccount;
     this._onEventBtn   = onEventBtn;
+    this._onAdvisor    = onAdvisor;
     this.container = new Container();
     this._bg          = new Graphics();
     this._beText      = null;
@@ -135,6 +136,9 @@ export class HUD {
     }
     this.container.addChild(this._harmonyText);
 
+    // ── Harmony advisor "···" button (next to the harmony bar) ────────────────
+    this._buildAdvisorBtn();
+
     // ── Level section ────────────────────────────────────────────────────────
     const lvlLabel = new Text({
       text: 'LEVEL',
@@ -189,6 +193,35 @@ export class HUD {
     this._lvlUpBanner.x = SCREEN_W / 2;
     this._lvlUpBanner.y = HUD_H / 2;
     this.container.addChild(this._lvlUpBanner);
+  }
+
+  _buildAdvisorBtn() {
+    const W = IS_PORTRAIT ? 20 : 24;
+    const H = IS_PORTRAIT ? 16 : 20;
+    const bx = IS_PORTRAIT ? 178 : 506;
+    const by = IS_PORTRAIT ? HUD_H / 2 + 2 : HUD_H / 2 - 11;
+
+    const bg = new Graphics();
+    const draw = (hover) => {
+      bg.clear();
+      bg.roundRect(0, 0, W, H, 7).fill({ color: hover ? 0x224a3a : 0x14302a, alpha: 0.9 });
+      bg.roundRect(0, 0, W, H, 7).stroke({ color: 0x4faf86, width: 1.3, alpha: 0.9 });
+      for (let i = 0; i < 3; i++) {
+        bg.circle(W / 2 + (i - 1) * 5, H / 2, 1.7).fill({ color: 0x9fe0c0, alpha: 0.95 });
+      }
+    };
+    draw(false);
+
+    const btn = new Container();
+    btn.addChild(bg);
+    btn.x = bx;
+    btn.y = by;
+    btn.interactive = true;
+    btn.cursor = 'pointer';
+    btn.on('pointerover', () => draw(true));
+    btn.on('pointerout',  () => draw(false));
+    btn.on('pointerdown', () => this._onAdvisor?.());
+    this.container.addChild(btn);
   }
 
   _buildMarketBtn() {

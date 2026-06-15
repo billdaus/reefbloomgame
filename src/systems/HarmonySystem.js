@@ -1,5 +1,7 @@
 import { state } from '../state.js';
-import { CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX } from '../constants.js';
+import {
+  CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX, CLEANING_MISSING_PENALTY, FISH_SPECIES,
+} from '../constants.js';
 
 /**
  * Set saturation via a proper luminance-preserving color matrix.
@@ -61,6 +63,14 @@ export function computeHarmony() {
     score += Math.min(state.cleaningActive * CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX);
   }
 
+  // No cleaning station while fish are present → parasites build up, harmony
+  // suffers. The penalty grows with the fish population (capped).
+  if (fishCount > 0 && state.placedStations.length === 0) {
+    score -= Math.min(fishCount * 2, CLEANING_MISSING_PENALTY);
+  }
+
+  score = Math.max(0, score);
+
   // Harmony never decreases permanently
   const target = Math.min(Math.max(score, state.harmony * 0.9), 100);
   return Math.round(target);
@@ -80,4 +90,111 @@ export function updateHarmonyFilter(worldContainer) {
   if (filters && filters.length > 0) {
     _applySaturationMatrix(filters[0], h / 100);
   }
+}
+
+// ── Harmony advisor (suggestions + fish opinions) ─────────────────────────────
+
+/** A one-line status word for the current harmony level. */
+function _harmonyStatus(h) {
+  if (h >= 90) return 'Thriving';
+  if (h >= 70) return 'Healthy';
+  if (h >= 45) return 'Settling in';
+  return 'Struggling';
+}
+
+/**
+ * Actionable suggestions for raising harmony, derived from the same rubric
+ * computeHarmony() uses, so the advice always matches what actually helps.
+ */
+export function getHarmonyAdvice() {
+  const s = state;
+  const suggestions = [];
+
+  if (s.coralCount === 0) {
+    suggestions.push('Plant some coral to start your reef.');
+    return { harmony: Math.round(s.harmony), status: _harmonyStatus(s.harmony), suggestions };
+  }
+
+  if (s.coralTypesSeen.size < 5) {
+    suggestions.push(`Plant more coral varieties — diversity counts (${s.coralTypesSeen.size}/5).`);
+  }
+  if (s.fishCount < 6) {
+    suggestions.push('Hatch more fish to bring the reef to life.');
+  }
+  if (s.fishTypesSeen.size < 3) {
+    suggestions.push('Add a few different fish species.');
+  }
+  const hasA = s.fishLayerCounts.A > 0, hasB = s.fishLayerCounts.B > 0;
+  if (s.fishCount > 0 && !(hasA && hasB)) {
+    suggestions.push('Add fish that swim at the other depth (mix layer A and B).');
+  }
+  if (s.coralCount > 0 && s.fishCount > 0) {
+    const ratio = Math.min(s.fishCount, s.coralCount) / Math.max(s.fishCount, s.coralCount);
+    if (ratio < 0.5) suggestions.push('Balance your fish-to-coral numbers.');
+  }
+  if (s.fishCount > 0 && s.placedStations.length === 0) {
+    suggestions.push('Build a cleaning station — without one, fish get parasites and harmony drops.');
+  } else if (s.placedStations.length > 0) {
+    const cleaners = s.fish.filter(f => FISH_SPECIES[f.speciesId]?.cleaner).length;
+    if (cleaners === 0) suggestions.push('Hatch a cleaner wrasse or shrimp to staff your station.');
+  }
+
+  if (suggestions.length === 0) {
+    suggestions.push('Your reef is in beautiful balance — keep it up!');
+  }
+  return { harmony: Math.round(s.harmony), status: _harmonyStatus(s.harmony), suggestions };
+}
+
+const _OPINIONS = {
+  dirty:   ['I\'m so itchy… we really need a cleaning station.',
+            'My scales could use a good scrub.',
+            'Is anyone going to deal with these parasites?'],
+  lonely:  ['It\'s a little quiet down here — could use more company.',
+            'I wish more fish would move in.',
+            'Feels empty. Where is everyone?'],
+  oneLayer:['Nobody swims up where I am.',
+            'I\'d love some neighbours at a different depth.'],
+  bare:    ['Could use more coral to hide in.',
+            'A few more corals would make this feel like home.'],
+  happy:   ['The water\'s never felt better!',
+            'Best reef in the sea, if you ask me.',
+            'I could stay here forever.',
+            'So clean, so balanced — chef\'s kiss.'],
+  ok:      ['Not bad. Coming along nicely.',
+            'Pretty comfy here, mostly.',
+            'I\'ve seen worse reefs.'],
+};
+
+/** A few in-character fish opinions reflecting the reef's current condition. */
+export function getFishOpinions() {
+  const present = [...new Set(state.fish.map(f => f.speciesId))]
+    .map(id => FISH_SPECIES[id]?.name)
+    .filter(Boolean);
+  if (present.length === 0) return [];
+
+  // Choose condition pools that apply right now
+  const pools = [];
+  if (state.fishCount > 0 && state.placedStations.length === 0) pools.push('dirty');
+  if (state.fishCount > 0 && state.fishCount < 4) pools.push('lonely');
+  const hasA = state.fishLayerCounts.A > 0, hasB = state.fishLayerCounts.B > 0;
+  if (state.fishCount > 0 && !(hasA && hasB)) pools.push('oneLayer');
+  if (state.coralTypesSeen.size < 3) pools.push('bare');
+  if (pools.length === 0) pools.push(state.harmony >= 75 ? 'happy' : 'ok');
+
+  const count = Math.min(3, present.length, Math.max(pools.length, 1) + 1);
+  const opinions = [];
+  const usedTexts = new Set();
+  for (let i = 0; i < count; i++) {
+    const pool = _OPINIONS[pools[i % pools.length]];
+    // pick a not-yet-used line from this pool when possible
+    let text = pool[(i + state.fishCount) % pool.length];
+    let guard = 0;
+    while (usedTexts.has(text) && guard < pool.length) {
+      text = pool[(pool.indexOf(text) + 1) % pool.length]; guard++;
+    }
+    usedTexts.add(text);
+    const speaker = present[i % present.length];   // distinct speakers (i < present.length)
+    opinions.push({ speaker, text });
+  }
+  return opinions;
 }

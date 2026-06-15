@@ -49,6 +49,7 @@ export const CLEAN_DURATION_MS        = 30000;  // each fish takes 30s to be cle
 export const CLEANING_ASSIGN_INTERVAL = 1500;   // ms between attempts to fill a free slot
 export const CLEANING_HARMONY_PER     = 4;      // harmony score per fish actively being cleaned
 export const CLEANING_HARMONY_MAX     = 20;     // cap on cleaning harmony bonus
+export const CLEANING_MISSING_PENALTY = 14;     // max harmony lost when fish have no station at all
 
 /** Polyps to upgrade a station FROM the given level to the next. */
 export function stationUpgradeCost(level) {
