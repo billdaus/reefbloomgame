@@ -45,10 +45,12 @@ export const POLYP_PER_CORAL_TICK  = 0.2;   // polyps each coral yields per BE t
 export const STATION_SPAN             = 2;      // footprint is STATION_SPAN × STATION_SPAN tiles
 export const STATION_MAX_LEVEL        = 5;      // capacity (fish cleaned at once) = level, 1..5
 export const STATION_CELL             = '__station'; // grid sentinel marking a station tile
-export const CLEAN_DURATION_TICKS     = 50;     // a fish sits still ~50 ticks while being cleaned
-export const CLEANER_OFFDUTY_CHANCE   = 0.08;   // per assign-tick chance a cleaner clocks off
-export const CLEANER_OFFDUTY_MS       = 9000;   // how long a cleaner stays off duty before rejoining
-export const CLEANING_ASSIGN_INTERVAL = 1500;   // ms between attempts to fill a free slot
+export const CLEAN_DURATION_TICKS      = 100;   // a fish sits still 100 ticks while being cleaned
+export const CLEANER_TENURE_TICKS      = 1000;  // re-evaluate a cleaner after this many on-duty ticks…
+export const CLEANER_TENURE_CUSTOMERS  = 5;     // …or this many customers served, whichever comes first
+export const CLEANER_LEAVE_CHANCE      = 1 / 3; // chance to clock off at each evaluation
+export const CLEANER_OFFDUTY_MS        = 9000;  // how long a cleaner stays off duty before rejoining
+export const CLEANING_ASSIGN_INTERVAL  = 1500;  // ms between attempts to fill a free slot
 export const CLEANING_HARMONY_PER     = 4;      // harmony score per fish actively being cleaned
 export const CLEANING_HARMONY_MAX     = 20;     // cap on cleaning harmony bonus
 export const CLEANING_MISSING_PENALTY = 14;     // max harmony lost when fish have no station at all

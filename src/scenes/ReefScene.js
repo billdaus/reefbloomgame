@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter, Graphics } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, STATION_SPAN, STATION_MAX_LEVEL, STATION_CELL, CLEAN_DURATION_TICKS, CLEANER_OFFDUTY_CHANCE, CLEANER_OFFDUTY_MS, CLEANING_ASSIGN_INTERVAL, stationUpgradeCost } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, STATION_SPAN, STATION_MAX_LEVEL, STATION_CELL, CLEAN_DURATION_TICKS, CLEANER_TENURE_TICKS, CLEANER_TENURE_CUSTOMERS, CLEANER_LEAVE_CHANCE, CLEANER_OFFDUTY_MS, CLEANING_ASSIGN_INTERVAL, stationUpgradeCost } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -672,31 +672,30 @@ export class ReefScene {
       const ctrX = GRID_X + st.col * TILE_SIZE + span / 2;
       const ctrY = GRID_Y + st.row * TILE_SIZE + span / 2;
 
-      // 0. Cleaners sometimes clock off (only when assignment ticks, so it's rare)
-      if (canAssign) {
-        for (let i = st._cleaners.length - 1; i >= 0; i--) {
-          if (Math.random() < CLEANER_OFFDUTY_CHANCE) {
-            const f = state.fish.find(ff => ff.uid === st._cleaners[i]);
-            if (f) { f.endCleaning(); f._offDutyUntil = now + CLEANER_OFFDUTY_MS; }
-            homedCleaners.delete(st._cleaners[i]);
-            st._cleaners.splice(i, 1);
-          }
-        }
-      }
+      // Send a cleaner off duty: unbind its client, start its cooldown.
+      const dismiss = (uid) => {
+        const f = state.fish.find(ff => ff.uid === uid);
+        if (f) { f.endCleaning(); f._offDutyUntil = now + CLEANER_OFFDUTY_MS; }
+        homedCleaners.delete(uid);
+        const ix = st._cleaners.indexOf(uid);
+        if (ix >= 0) st._cleaners.splice(ix, 1);
+        st._clients.forEach(cl => { if (cl.cleanerUid === uid) { cl.phase = 'wait'; cl.cleanerUid = null; } });
+      };
 
-      // 1. Staff the station: assign idle, on-duty cleaners to loiter here
+      // 1. Staff the station: recruit idle, on-duty cleaners to loiter here
       if (canAssign && st._cleaners.length < capacity) {
         const c = state.fish.find(f => isCleaner(f) && f.isIdle() && !offDuty(f) && !homedCleaners.has(f.uid));
         if (c) {
           c.startCleaning(ctrX + (Math.random() - 0.5) * span * 0.45,
                           ctrY + (Math.random() - 0.5) * span * 0.45);
+          c._dutyTicks = 0; c._dutyCustomers = 0;
           st._cleaners.push(c.uid); homedCleaners.add(c.uid);
         }
       }
-      const presentCleaners = st._cleaners.filter(u => {
+      const presentUids = st._cleaners.filter(u => {
         const f = state.fish.find(ff => ff.uid === u);
         return f && f.isBeingCleaned();   // arrived & sitting at the station
-      }).length;
+      });
 
       // 2. Advance / expire client slots (clean time counts in ticks)
       for (let i = st._clients.length - 1; i >= 0; i--) {
@@ -706,8 +705,12 @@ export class ReefScene {
         if (!f) { st._clients.splice(i, 1); bookedClients.delete(cl.fishUid); continue; }
         if (cl.phase === 'clean') {
           cl.ticksLeft -= dt;
-          if (cl.ticksLeft <= 0) { f.endCleaning(); st._clients.splice(i, 1); bookedClients.delete(cl.fishUid); }
-        } else if (cl.age > 25000 && !f.isBeingCleaned()) {
+          if (cl.ticksLeft <= 0) {
+            const cf = state.fish.find(ff => ff.uid === cl.cleanerUid);   // credit the cleaner
+            if (cf) cf._dutyCustomers = (cf._dutyCustomers ?? 0) + 1;
+            f.endCleaning(); st._clients.splice(i, 1); bookedClients.delete(cl.fishUid);
+          }
+        } else if (cl.age > 30000 && !f.isBeingCleaned()) {
           f.endCleaning(); st._clients.splice(i, 1); bookedClients.delete(cl.fishUid);  // never arrived
         }
       }
@@ -719,24 +722,37 @@ export class ReefScene {
         if (cand) {
           cand.startCleaning(ctrX + (Math.random() - 0.5) * span * 0.5,
                              ctrY + (Math.random() - 0.5) * span * 0.5);
-          st._clients.push({ fishUid: cand.uid, phase: 'wait', ticksLeft: CLEAN_DURATION_TICKS, age: 0 });
+          st._clients.push({ fishUid: cand.uid, phase: 'wait', ticksLeft: CLEAN_DURATION_TICKS, age: 0, cleanerUid: null });
           bookedClients.add(cand.uid);
         }
       }
 
-      // 4. Service waiting clients while free cleaners are available
-      let freeCleaners = presentCleaners - st._clients.filter(c => c.phase === 'clean').length;
+      // 4. Service: bind a free present cleaner to each arrived, waiting client
+      const busy = new Set(st._clients.filter(c => c.phase === 'clean').map(c => c.cleanerUid));
+      const freeCleanerUids = presentUids.filter(u => !busy.has(u));
+      let fi = 0;
       for (const cl of st._clients) {
         if (cl.phase === 'clean') continue;
         const f = state.fish.find(ff => ff.uid === cl.fishUid);
-        if (f && f.isBeingCleaned() && freeCleaners > 0) {   // arrived & a cleaner is free
+        if (f && f.isBeingCleaned() && fi < freeCleanerUids.length) {
           cl.phase = 'clean';
-          cl.ticksLeft = CLEAN_DURATION_TICKS;   // the 50-tick clean starts now
-          freeCleaners--;
+          cl.ticksLeft = CLEAN_DURATION_TICKS;       // the 100-tick clean starts now
+          cl.cleanerUid = freeCleanerUids[fi++];
         }
       }
 
-      // 5. Tally active cleanings for harmony + sparkles
+      // 5. Tenure: accrue duty ticks; at 1000 ticks OR 5 customers, 1/3 to leave
+      for (const u of presentUids) {
+        const f = state.fish.find(ff => ff.uid === u);
+        if (!f) continue;
+        f._dutyTicks = (f._dutyTicks ?? 0) + dt;
+        if (f._dutyTicks >= CLEANER_TENURE_TICKS || (f._dutyCustomers ?? 0) >= CLEANER_TENURE_CUSTOMERS) {
+          f._dutyTicks = 0; f._dutyCustomers = 0;
+          if (Math.random() < CLEANER_LEAVE_CHANCE) dismiss(u);
+        }
+      }
+
+      // 6. Tally active cleanings for harmony + sparkles
       for (const cl of st._clients) {
         if (cl.phase === 'clean') { active++; this._activeCleanUids.add(cl.fishUid); }
       }
