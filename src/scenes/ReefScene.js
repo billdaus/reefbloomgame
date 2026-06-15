@@ -243,7 +243,7 @@ export class ReefScene {
     this._rewardModal.update(dms);
 
     state.fish.forEach(fish => {
-      fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev));
+      fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev), state.fish);
       // Sparkle only over CLIENTS actively being cleaned (not loitering cleaners)
       if (this._activeCleanUids?.has(fish.uid) && Math.random() < 0.16) {
         this._spawnSparkle(fish.x + (Math.random() - 0.5) * 10, fish.y - 6);

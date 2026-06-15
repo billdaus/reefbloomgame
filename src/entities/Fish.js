@@ -2120,7 +2120,7 @@ export class Fish {
   /** True once arrived and lingering at a station (used to sparkle). */
   isBeingCleaned() { return this._cleanState === 'cleaning'; }
 
-  update(dt, grid, coralSpecies, onEmit) {
+  update(dt, grid, coralSpecies, onEmit, allFish) {
     const speed = this.spec.speed;
     const ms    = dt * (60 / 1000) * 16;  // normalise to pixels/frame
 
@@ -2184,6 +2184,30 @@ export class Fish {
           const force = (REPULSE_R - rd) / REPULSE_R * speed * 0.4;
           this.vx += (rdx / rd) * force * dt;
           this.vy += (rdy / rd) * force * dt;
+        }
+      }
+    }
+
+    // ── Fish separation — same-layer fish can't pass through one another;
+    // different layers are at different depths and may overlap freely. Fish
+    // heading to / sitting at a cleaning station are skipped so they can still
+    // converge there.
+    if (allFish && this._cleanState === 'none') {
+      for (let i = 0; i < allFish.length; i++) {
+        const o = allFish[i];
+        if (o === this || o.layer !== this.layer) continue;
+        const odx = this.x - o.x;
+        const ody = this.y - o.y;
+        const od  = Math.sqrt(odx * odx + ody * ody);
+        const minD = (this.spec.size + o.spec.size) * 0.8;
+        if (od > minD) continue;
+        if (od > 0.01) {
+          const force = (minD - od) / minD * speed * 1.1;
+          this.vx += (odx / od) * force * dt;
+          this.vy += (ody / od) * force * dt;
+        } else {
+          // exactly coincident — shove apart deterministically
+          this.vx += (this.uid % 2 ? 1 : -1) * speed * 0.6 * dt;
         }
       }
     }
