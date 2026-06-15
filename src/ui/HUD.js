@@ -171,8 +171,6 @@ export class HUD {
     // ── Home button ──────────────────────────────────────────────────────────
     this._buildHomeBtn();
 
-    // ── Newsletter button (floats below HUD, left side) ─────────────────────
-    this._buildNewsletterBtn();
 
     // ── Level-up banner ──────────────────────────────────────────────────────
     this._lvlUpBanner = new Container();
@@ -407,44 +405,6 @@ export class HUD {
     this._accountBtnLabel.text = state.profile?.avatar || '👤';
     this._accountBtnLabel.x = (this._accountBtnW - this._accountBtnLabel.width) / 2;
     this._accountBtnLabel.y = (this._accountBtnH - this._accountBtnLabel.height) / 2;
-  }
-
-  _buildNewsletterBtn() {
-    const W = IS_PORTRAIT ? 72 : 36;
-    const H = IS_PORTRAIT ? 22 : 30;
-    const R = IS_PORTRAIT ? 11 : 8;
-    const bx = IS_PORTRAIT ? 6 : 490;
-    const by = IS_PORTRAIT ? HUD_H + 4 : (HUD_H - H) / 2;
-
-    const bg = new Graphics();
-    const drawBg = (hover) => {
-      bg.clear();
-      bg.roundRect(0, 0, W, H, R)
-        .fill({ color: hover ? 0x1a3040 : 0x0f1c2a, alpha: hover ? 1 : 0.9 });
-      bg.roundRect(0, 0, W, H, R)
-        .stroke({ color: COLORS.panel_border, width: 1, alpha: 0.8 });
-    };
-    drawBg(false);
-
-    const label = new Text({
-      text: IS_PORTRAIT ? '📰  News' : '📰',
-      style: { fontSize: IS_PORTRAIT ? 11 : 14, fill: 0xaaccdd, fontFamily: FONT, fontWeight: '600' },
-    });
-    label.x = (W - label.width) / 2;
-    label.y = (H - label.height) / 2;
-
-    const btn = new Container();
-    btn.addChild(bg);
-    btn.addChild(label);
-    btn.x = bx;
-    btn.y = by;
-    btn.interactive = true;
-    btn.cursor = 'pointer';
-    btn.on('pointerover', () => { drawBg(true);  label.style.fill = 0xffffff; });
-    btn.on('pointerout',  () => { drawBg(false); label.style.fill = 0xaaccdd; });
-    btn.on('pointerdown', () => { window.open('/newsletter/', '_blank', 'noopener,noreferrer'); });
-
-    this.container.addChild(btn);
   }
 
   _buildHomeBtn() {
