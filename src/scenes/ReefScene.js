@@ -62,6 +62,7 @@ export class ReefScene {
     // ── Layers ───────────────────────────────────────────────────────────────
     this._bg         = new BackgroundLayer();
     this._grid       = new GridLayer((tile) => this._onTileTap(tile));
+    this._grid.onCoralTap = (uid) => this._onCoralBadgeTap(uid);
     this._foreground = new ForegroundLayer();
 
     // ── Bubbles drone ────────────────────────────────────────────────────────
@@ -96,7 +97,9 @@ export class ReefScene {
     this.worldContainer.addChild(this._ambience.container);
     // 9. Bubbles drone (above world, below UI)
     this.worldContainer.addChild(this._bubbles.container);
-    // 9. Tile hover highlight (always topmost in world)
+    // 9b. Coral upgrade badges (above coral/fish, below hover highlight)
+    this.worldContainer.addChild(this._grid.badgeContainer);
+    // 9c. Tile hover highlight (always topmost in world)
     this.worldContainer.addChild(this._grid.hoverContainer);
 
     // ── UI (no saturation filter) ────────────────────────────────────────────
@@ -309,6 +312,16 @@ export class ReefScene {
     checkEventSnapshots();
     checkLevelUp();
     saveGame();
+  }
+
+  /** A coral's "···" badge was tapped — act based on the current mode. */
+  _onCoralBadgeTap(uid) {
+    recordInteraction();
+    const entry = state.placedCoral.find(c => c.uid === uid);
+    if (!entry) return;
+    if (state.removeMode) { this._tryRemoveCoral(entry.col, entry.row); return; }
+    if (state.selectedType) return;   // mid-placement — ignore the badge
+    this._openCoralUpgrade(entry);
   }
 
   _openCoralUpgrade(entry) {

@@ -42,12 +42,18 @@ export class GridLayer {
     // tall coral — staghorn, finger, candycane, elkhorn, pillar
     this.tallCoralContainer  = new Container();
 
+    // ── Coral upgrade badges (added above coral, below hover, by ReefScene) ──
+    // A small "···" tap target on each coral that opens its upgrade menu.
+    this.badgeContainer = new Container();
+    this.onCoralTap = null;   // (uid) => void — set by ReefScene
+
     // ── Hover overlay (added topmost by ReefScene) ──────────────────────────
     this.hoverContainer = new Container();
     this._hoverGfx = new Graphics();
     this.hoverContainer.addChild(this._hoverGfx);
 
     this._coralSprites = new Map();   // uid → Coral instance
+    this._coralBadges  = new Map();   // uid → badge Container
     this._decorSprites = new Map();   // uid → Graphics container
     this._hoveredTile  = null;
 
@@ -172,6 +178,7 @@ export class GridLayer {
     }
 
     this._coralSprites.set(uid, coral);
+    this._addCoralBadge(uid, col, row);
   }
 
   /** Re-scale a placed coral's sprite to a new upgrade level. */
@@ -186,11 +193,49 @@ export class GridLayer {
     coral.container.parent?.removeChild(coral.container);
     coral.container.destroy({ children: true });
     this._coralSprites.delete(uid);
+
+    const badge = this._coralBadges.get(uid);
+    if (badge) {
+      badge.parent?.removeChild(badge);
+      badge.destroy({ children: true });
+      this._coralBadges.delete(uid);
+    }
   }
 
   /** Remove all coral sprites (used when switching biomes). */
   clearAllCoral() {
     [...this._coralSprites.keys()].forEach(uid => this.removeCoral(uid));
+  }
+
+  /** Build the small "···" upgrade tap target at a coral's base-right corner. */
+  _addCoralBadge(uid, col, row) {
+    const W = 22, H = 14;
+    const bx = GRID_X + col * TILE_SIZE + TILE_SIZE - W - 2;
+    const by = GRID_Y + row * TILE_SIZE + TILE_SIZE - H - 2;
+
+    const badge = new Container();
+    badge.x = bx;
+    badge.y = by;
+
+    const g = new Graphics();
+    g.roundRect(0, 0, W, H, 7).fill({ color: 0x0a1a08, alpha: 0.78 });
+    g.roundRect(0, 0, W, H, 7).stroke({ color: 0x8bc34a, width: 1, alpha: 0.85 });
+    for (let i = 0; i < 3; i++) {
+      g.circle(W / 2 + (i - 1) * 5, H / 2, 1.5).fill({ color: 0xc8e6a0, alpha: 0.95 });
+    }
+    badge.addChild(g);
+
+    badge.eventMode = 'static';
+    badge.cursor = 'pointer';
+    // Padded hit area for comfortable tapping (esp. on touch)
+    badge.hitArea = { contains: (x, y) => x >= -5 && x <= W + 5 && y >= -5 && y <= H + 5 };
+    badge.on('pointerdown', (e) => {
+      e.stopPropagation();
+      this.onCoralTap?.(uid);
+    });
+
+    this.badgeContainer.addChild(badge);
+    this._coralBadges.set(uid, badge);
   }
 
   // ── Decor placement ────────────────────────────────────────────────────────
