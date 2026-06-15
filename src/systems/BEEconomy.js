@@ -3,7 +3,7 @@ import {
   TICK_MS, IDLE_STREAK_MS, IDLE_BONUS_BASE, BE_MAX,
   BE_PER_TICK, CORAL_COST, FISH_COST, TIER,
   CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES,
-  POLYP_PER_CORAL_TICK,
+  POLYP_PER_CORAL_TICK, POLYP_MAX,
 } from '../constants.js';
 import { coralBEPerTick, coralLevel } from './CoralUpgrade.js';
 import { recordQuestEvent } from './QuestSystem.js';
@@ -51,7 +51,7 @@ function _applyCoralTick() {
   _polypCarry += polyps;
   const wholePolyps = Math.floor(_polypCarry);
   _polypCarry -= wholePolyps;
-  if (wholePolyps > 0) state.polyps += wholePolyps;
+  if (wholePolyps > 0) state.polyps = Math.min(state.polyps + wholePolyps, POLYP_MAX);
 
   if (wholeBE > 0) {
     state.be = Math.min(state.be + wholeBE, BE_MAX);

@@ -2227,6 +2227,33 @@ export class Fish {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
+    // ── Hard coral block — fish cannot enter a coral they avoid (tall coral
+    // for layer A; massive blocksB coral for layer B). Soft repulsion above
+    // steers them off; this clamp guarantees they never pass through.
+    const blockR = TILE_SIZE * 0.55;
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 10; c++) {
+        const sid = grid[r][c];
+        if (!sid) continue;
+        const spec = coralSpecies[sid];
+        if (!spec) continue;
+        if (this.layer === 'B' && !spec.blocksB) continue;
+        if (this.layer === 'A' && !spec.tall)   continue;
+        const cx = GRID_X + c * TILE_SIZE + TILE_SIZE / 2;
+        const cy = GRID_Y + r * TILE_SIZE + TILE_SIZE / 2;
+        let bdx = this.x - cx, bdy = this.y - cy;
+        const bd = Math.sqrt(bdx * bdx + bdy * bdy);
+        if (bd < blockR) {
+          if (bd < 0.01) { bdx = 1; bdy = 0; }                 // dead-centre fallback
+          const nx = bdx / (bd || 1), ny = bdy / (bd || 1);
+          this.x = cx + nx * blockR;                           // push to the surface
+          this.y = cy + ny * blockR;
+          const into = this.vx * nx + this.vy * ny;            // remove inward velocity
+          if (into < 0) { this.vx -= into * nx; this.vy -= into * ny; }
+        }
+      }
+    }
+
     // ── Bounce off reef bounds ─────────────────────────────────────────────
     const left   = GRID_X + MARGIN;
     const right  = GRID_X + GRID_W - MARGIN;

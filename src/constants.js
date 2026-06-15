@@ -13,6 +13,7 @@ export const TICK_MS          = 5000;   // BE tick every 5 s
 export const IDLE_STREAK_MS   = 20000;  // 20 s without touch = idle streak
 export const IDLE_BONUS_BASE  = 12;     // BE awarded on idle streak
 export const BE_MAX           = 999;    // BE hard cap
+export const POLYP_MAX        = 999;    // Polyp hard cap
 
 // Per-tick BE output by tier (coral)
 export const BE_PER_TICK = {

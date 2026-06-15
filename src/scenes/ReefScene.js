@@ -206,6 +206,15 @@ export class ReefScene {
     this._autoSaveMs = 0;
     app.ticker.add((ticker) => this._onTick(ticker));
 
+    // Persist current state (including live fish positions) the moment the tab
+    // is hidden or closed, so a reload restores fish where they actually are
+    // rather than at the last 30s autosave.
+    const persistNow = () => { try { saveGame(); } catch { /* ignore */ } };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') persistNow();
+    });
+    window.addEventListener('pagehide', persistNow);
+
     // ── Restore save ─────────────────────────────────────────────────────────
     const saved = loadGame();
     if (saved) this._restoreFromSave(saved);
