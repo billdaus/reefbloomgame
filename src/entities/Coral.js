@@ -60,6 +60,9 @@ export class Coral {
       case 'twilightBrain': this._drawTwilightBrain(g, s, c); break;
       case 'phantomPolyp': this._drawPhantomPolyp(g, s, c); break;
       case 'midnightTable':   this._drawMidnightTable(g, s, c);   break;
+      case 'abyssalFan':      this._drawAbyssalFan(g, s, c);      break;
+      case 'lanternCoral':    this._drawLanternCoral(g, s, c);    break;
+      case 'wispCoral':       this._drawWispCoral(g, s, c);       break;
       // Event pass exclusives
       case 'pearlOrganPipe':  this._drawPearlOrganPipe(g, s, c);  break;
       default:                this._drawGeneric(g, s, c);          break;
@@ -82,7 +85,10 @@ export class Coral {
       case 'finger':
       case 'candycane':
       case 'pillar':
+      case 'lanternCoral':
       case 'phantomPolyp': this._growColumns(g, s, c, level); break;
+      case 'abyssalFan':   this._growFan(g, s, c, level); break;
+      case 'wispCoral':    this._growBlades(g, s, c, level); break;
       case 'brain':
       case 'twilightBrain':
       case 'rainbowCoral': this._growDome(g, s, c, level, s / 2, s * 0.56, s * 0.38); break;
@@ -773,6 +779,59 @@ export class Coral {
       g.moveTo(tx, s * 0.42).lineTo(tx + (i % 2 ? 2 : -2), s * 0.52)
        .stroke({ color: glow, width: 1.5, alpha: 0.7, cap: 'round' });
     }
+  }
+
+  // ── Abyssal Fan — glowing sea fan of curved ribs ──────────────────────────
+  _drawAbyssalFan(g, s, c) {
+    const mid = s / 2;
+    const base = s * 0.9;
+    const glow = this._lighten(c, 0.55);
+    g.circle(mid, base, s * 0.42).fill({ color: c, alpha: 0.12 });   // halo
+    for (let i = -3; i <= 3; i++) {
+      const ang = Math.PI * 0.5 + i * 0.24;
+      const len = s * (0.5 - Math.abs(i) * 0.04);
+      const tx  = mid + Math.cos(Math.PI - ang) * len;
+      const ty  = base - Math.sin(ang) * len;
+      g.moveTo(mid, base).lineTo(tx, ty)
+       .stroke({ color: i % 2 === 0 ? c : glow, width: 2.5, cap: 'round' });
+      g.circle(tx, ty, 2.4).fill(glow);   // glowing tip polyp
+    }
+    g.circle(mid, base, 5).fill(this._darken(c, 0.3));
+  }
+
+  // ── Lantern Coral — tall stalk hung with luminous bulbs ───────────────────
+  _drawLanternCoral(g, s, c) {
+    const mid  = s / 2;
+    const dark = this._darken(c, 0.35);
+    const glow = this._lighten(c, 0.6);
+    g.roundRect(mid - 4, s * 0.1, 8, s * 0.82, 4).fill(dark);   // stalk
+    const bulbs = [[mid - 9, 0.3], [mid + 9, 0.45], [mid - 8, 0.6], [mid + 7, 0.74]];
+    bulbs.forEach(([bx, fy]) => {
+      g.moveTo(mid, s * fy - 4).lineTo(bx, s * fy).stroke({ color: dark, width: 1.5 });
+      g.circle(bx, s * fy + 4, 5).fill({ color: c, alpha: 0.9 });
+      g.circle(bx, s * fy + 4, 2.4).fill(glow);
+    });
+    g.circle(mid, s * 0.1, 4).fill(glow);   // crown light
+  }
+
+  // ── Wisp Coral — low cluster of wispy luminous tendrils ───────────────────
+  _drawWispCoral(g, s, c) {
+    const dark = this._darken(c, 0.2);
+    const glow = this._lighten(c, 0.6);
+    const base = s * 0.92;
+    const stalks = [0.28, 0.42, 0.56, 0.7];
+    stalks.forEach((fx, i) => {
+      const x   = s * fx;
+      const h   = s * (0.4 + (i % 2) * 0.16);
+      const sway = (i % 2 ? 1 : -1) * s * 0.08;
+      g.moveTo(x, base)
+       .lineTo(x + sway * 0.5, base - h * 0.5)
+       .lineTo(x + sway, base - h)
+       .stroke({ color: i % 2 ? c : dark, width: 2, cap: 'round' });
+      g.circle(x + sway, base - h, 3).fill({ color: glow, alpha: 0.9 });
+      g.circle(x + sway, base - h, 1.4).fill(0xffffff);
+    });
+    g.circle(s * 0.5, base, s * 0.14).fill({ color: c, alpha: 0.15 });
   }
 
   // ── Generic fallback ──────────────────────────────────────────────────────

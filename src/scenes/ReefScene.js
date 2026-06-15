@@ -658,9 +658,16 @@ export class ReefScene {
     const stations = state.placedStations;
     this._activeCleanUids = this._activeCleanUids ?? new Set();
     this._activeCleanUids.clear();
+
+    // Rolling cleans-per-minute (drives the harmony advisor's capacity advice).
+    // Pruned every tick so it decays even when nothing is cleaning.
+    const now = Date.now();
+    this._cleanLog = this._cleanLog ?? [];
+    while (this._cleanLog.length && this._cleanLog[0] < now - 60000) this._cleanLog.shift();
+    state.cleansPerMin = this._cleanLog.length;
+
     if (stations.length === 0) { state.cleaningActive = 0; return; }
 
-    const now = Date.now();
     const isCleaner = (f) => !!FISH_SPECIES[f.speciesId]?.cleaner;
     const offDuty   = (f) => f._offDutyUntil && f._offDutyUntil > now;
 
@@ -718,6 +725,7 @@ export class ReefScene {
             const cf = state.fish.find(ff => ff.uid === cl.cleanerUid);   // credit the cleaner
             if (cf) cf._dutyCustomers = (cf._dutyCustomers ?? 0) + 1;
             f._cleanedUntil = now + CLEAN_COOLDOWN_MS;                     // rest before seeking again
+            this._cleanLog.push(now);                                      // count toward cleans/min
             f.endCleaning(); st._clients.splice(i, 1); bookedClients.delete(cl.fishUid);
           }
         } else if (cl.age > 30000 && !f.isBeingCleaned()) {

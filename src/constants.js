@@ -252,6 +252,22 @@ export const CORAL_SPECIES = {
     tier: TIER.LEGENDARY, tall: false, blocksB: true, color: 0x3d5afe, unlockLevel: 12,
     pearlCost: 50, biome: 'deepTwilight',
   },
+  // ── Deep Twilight — Bubble Essence corals ─────────────────────────────────
+  abyssalFan: {
+    id: 'abyssalFan', name: 'Abyssal Fan', scientific: '',
+    tier: TIER.UNCOMMON, tall: false, color: 0x1de9b6, unlockLevel: 6,
+    biome: 'deepTwilight',
+  },
+  lanternCoral: {
+    id: 'lanternCoral', name: 'Lantern Coral', scientific: '',
+    tier: TIER.RARE, tall: true, color: 0xffa726, unlockLevel: 7,
+    biome: 'deepTwilight',
+  },
+  wispCoral: {
+    id: 'wispCoral', name: 'Wisp Coral', scientific: '',
+    tier: TIER.SUPER_RARE, tall: false, color: 0xb388ff, unlockLevel: 9,
+    biome: 'deepTwilight',
+  },
 
   // ── Event pass exclusives ─────────────────────────────────────────────────
   pearlOrganPipe: {
