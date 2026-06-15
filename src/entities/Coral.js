@@ -65,60 +65,209 @@ export class Coral {
       default:                this._drawGeneric(g, s, c);          break;
     }
 
-    if (this.level > 1) this._drawGrowthDetail(g, s, c, this.level);
+    if (this.level > 1) this._growth(g, s, c, id, this.level);
   }
 
-  /**
-   * Growth overlay for upgraded corals — extra branchlets reaching upward and
-   * a scatter of polyps, both growing in number with level. Stays within the
-   * tile and is seeded by uid so the pattern is stable across redraws/reloads.
-   */
-  _drawGrowthDetail(g, s, c, level) {
-    const extra  = Math.min(4, level - 1);     // 1..4 extra tiers of detail
-    const rand   = this._seededRand((this.uid * 2654435761) >>> 0);
-    const light  = this._lighten(c, 0.45);
-    const bright = this._lighten(c, 0.7);
-    const clampX = (x) => Math.max(s * 0.12, Math.min(s * 0.88, x));
-    const clampY = (y) => Math.max(s * 0.08, Math.min(s * 0.92, y));
-    const midX   = s * 0.5;
+  // ── Upgrade growth — species-specific, deterministic detail per level ───────
+  // Each species' growth extends its OWN motif (branches branch more, domes
+  // gain concentric polyp rings, clusters add members) rather than a generic
+  // overlay, so an upgraded coral reads as a fuller version of itself. All
+  // additions stay within the tile.
 
-    // New branchlets — fine strokes reaching up/out from the coral's body
-    for (let i = 0; i < extra * 2; i++) {
-      const baseX = midX + (rand() - 0.5) * s * 0.24;
-      const baseY = s * (0.55 + rand() * 0.3);
-      const ang   = -Math.PI / 2 + (rand() - 0.5) * 1.7;   // mostly upward, fanned
-      const len   = s * (0.16 + rand() * 0.16);
-      const ex    = clampX(baseX + Math.cos(ang) * len);
-      const ey    = clampY(baseY + Math.sin(ang) * len);
-      g.moveTo(baseX, baseY).lineTo(ex, ey)
-       .stroke({ color: light, width: 2, cap: 'round' });
-      // small fork near the tip for a branching feel
-      if (rand() > 0.4) {
-        const fx = clampX(ex + (rand() - 0.5) * s * 0.16);
-        const fy = clampY(ey - rand() * s * 0.1);
-        g.moveTo(ex, ey).lineTo(fx, fy).stroke({ color: light, width: 1.5, cap: 'round' });
-        g.circle(fx, fy, 1.8).fill(bright);
+  _growth(g, s, c, id, level) {
+    switch (id) {
+      case 'staghorn':     this._growBranch(g, s, c, level, s * 0.50); break;
+      case 'firetip':      this._growBranch(g, s, c, level, s * 0.52); break;
+      case 'elkhorn':      this._growBranch(g, s, c, level, s * 0.55); break;
+      case 'finger':
+      case 'candycane':
+      case 'pillar':
+      case 'phantomPolyp': this._growColumns(g, s, c, level); break;
+      case 'brain':
+      case 'twilightBrain':
+      case 'rainbowCoral': this._growDome(g, s, c, level, s / 2, s * 0.56, s * 0.38); break;
+      case 'star':         this._growDome(g, s, c, level, s / 2, s * 0.58, s * 0.36); break;
+      case 'starter':      this._growDome(g, s, c, level, s / 2, s * 0.65, s * 0.22); break;
+      case 'bubble':       this._growSpheres(g, s, c, level); break;
+      case 'ghost':
+      case 'lettuce':      this._growFan(g, s, c, level); break;
+      case 'seagrass':
+      case 'redSeagrass':
+      case 'seaweed':
+      case 'kelp':         this._growBlades(g, s, c, level); break;
+      case 'sunfire':      this._growRadial(g, s, c, level); break;
+      case 'table':
+      case 'midnightTable': this._growShelf(g, s, c, level); break;
+      case 'toadstool':    this._growMushroom(g, s, c, level); break;
+      case 'barnacles':    this._growCrust(g, s, c, level); break;
+      default:             this._growGeneric(g, s, c, level); break;
+    }
+  }
+
+  /** Branching corals — add symmetric branch pairs fanning wider each level. */
+  _growBranch(g, s, c, level, anchorY) {
+    const gl   = Math.min(4, level - 1);
+    const mid  = s / 2;
+    const tip  = this._lighten(c, 0.6);
+    for (let i = 1; i <= gl; i++) {
+      const spread = 0.14 + i * 0.06;                 // widen outward each tier
+      const topY   = Math.max(s * 0.06, anchorY - s * (0.16 + i * 0.03));
+      const w      = Math.max(2.5, 5 - i);
+      for (const side of [-1, 1]) {
+        const ex = mid + side * s * spread;
+        g.moveTo(mid, anchorY).lineTo(ex, topY).stroke({ color: c, width: w, cap: 'round' });
+        g.circle(ex, topY, 3).fill(tip);
       }
-      g.circle(ex, ey, 2).fill(bright);   // tip polyp
-    }
-
-    // Polyp speckle — added intricacy across the body
-    for (let i = 0; i < extra * 3; i++) {
-      const dx = clampX(s * (0.3 + (rand() - 0.5) * 0.5));
-      const dy = clampY(s * (0.45 + (rand() - 0.5) * 0.6));
-      g.circle(dx, dy, 1.4 + rand() * 1.2).fill({ color: bright, alpha: 0.85 });
     }
   }
 
-  /** Deterministic PRNG (mulberry32) so growth detail is stable per coral. */
-  _seededRand(seed) {
-    let a = seed >>> 0;
-    return function () {
-      a = (a + 0x6d2b79f5) | 0;
-      let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+  /** Column corals — interleave extra columns into the cluster. */
+  _growColumns(g, s, c, level) {
+    const gl    = Math.min(4, level - 1);
+    const light = this._lighten(c, 0.5);
+    const offs  = [0.36, 0.64, 0.16, 0.84];           // insertion order
+    const heights = [0.30, 0.26, 0.34, 0.22];
+    for (let i = 0; i < gl; i++) {
+      const cx  = s * offs[i % offs.length];
+      const top = s * heights[i % heights.length];
+      const cw  = 8;
+      g.roundRect(cx - cw / 2, top, cw, s - top - 4, 4).fill(c);
+      g.circle(cx, top, cw / 2 + 1).fill(light);       // lighter tip
+    }
+  }
+
+  /** Dome corals — add concentric, evenly-spaced polyp rings. */
+  _growDome(g, s, c, level, cx, cy, r) {
+    const gl    = Math.min(4, level - 1);
+    const light = this._lighten(c, 0.55);
+    const dark  = this._darken(c, 0.28);
+    // grow the dome a touch so the rings sit on a fuller body
+    g.circle(cx, cy, r * (1 + gl * 0.04)).fill(c);
+    for (let ring = 1; ring <= gl; ring++) {
+      const rr = r * (0.32 + ring * 0.17);
+      const n  = 4 + ring * 2;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + ring * 0.5;
+        g.circle(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.92, 2)
+         .fill(ring % 2 ? light : dark);
+      }
+    }
+  }
+
+  /** Bubble coral — stack additional spheres into a taller cluster. */
+  _growSpheres(g, s, c, level) {
+    const gl    = Math.min(4, level - 1);
+    const tiers = [[0.5, 0.28, 0.13], [0.38, 0.22, 0.11], [0.62, 0.22, 0.11], [0.5, 0.15, 0.1]];
+    for (let i = 0; i < gl; i++) {
+      const [fx, fy, fr] = tiers[i];
+      g.circle(fx * s, fy * s, fr * s).fill(c);
+      g.circle(fx * s - fr * s * 0.3, fy * s - fr * s * 0.3, fr * s * 0.25).fill(0xffffff);
+    }
+  }
+
+  /** Fan corals — add symmetric fronds spreading from the base. */
+  _growFan(g, s, c, level) {
+    const gl   = Math.min(4, level - 1);
+    const mid  = s / 2;
+    const base = s * 0.75;
+    const dark = this._darken(c, 0.2);
+    for (let i = 1; i <= gl; i++) {
+      const side = i % 2 ? -1 : 1;
+      const off  = 0.1 * Math.ceil(i / 2);
+      const cx   = mid + side * s * off;
+      const top  = base - s * (0.42 + 0.03 * i);
+      g.moveTo(mid, base).lineTo(cx, Math.max(s * 0.08, top))
+       .stroke({ color: i % 2 ? c : dark, width: 2, cap: 'round' });
+    }
+  }
+
+  /** Bladed plants — add more blades to the clump. */
+  _growBlades(g, s, c, level) {
+    const gl   = Math.min(4, level - 1);
+    const dark = this._darken(c, 0.28);
+    const base = s - 2;
+    const offs = [0.28, 0.46, 0.64, 0.82];
+    for (let i = 0; i < gl; i++) {
+      const x    = s * offs[i % offs.length];
+      const h    = s * (0.62 + 0.05 * i);
+      const lean = (i % 2 ? 1 : -1) * 0.06;
+      const tipX = x + lean * s;
+      const tipY = base - h;
+      g.moveTo(x - 3, base).lineTo(x + 3, base)
+       .lineTo(tipX + 1.5, tipY).lineTo(tipX - 1.5, tipY).closePath()
+       .fill(i % 2 ? c : dark);
+    }
+  }
+
+  /** Sunfire — add more radial spokes between the existing ones. */
+  _growRadial(g, s, c, level) {
+    const gl    = Math.min(4, level - 1);
+    const mid   = s / 2;
+    const coreY = s * 0.58;
+    const n     = gl * 2;
+    for (let i = 0; i < n; i++) {
+      const a   = ((i + 0.5) / n) * Math.PI * 2 - Math.PI / 2;
+      const len = s * (0.2 + (i % 2) * 0.08);
+      g.moveTo(mid, coreY).lineTo(mid + Math.cos(a) * len, coreY + Math.sin(a) * len)
+       .stroke({ color: c, width: 2.5, cap: 'round' });
+    }
+  }
+
+  /** Shelf corals — denser polyps on the surface and more tendrils beneath. */
+  _growShelf(g, s, c, level) {
+    const gl    = Math.min(4, level - 1);
+    const light = this._lighten(c, 0.4);
+    const dark  = this._darken(c, 0.25);
+    const n     = 4 + gl * 2;
+    for (let i = 0; i < n; i++) {
+      g.circle(s * 0.14 + i * (s * 0.72 / (n - 1)), s * 0.33, 2).fill(light);
+    }
+    for (let i = 0; i <= gl; i++) {
+      const tx = s * 0.2 + i * (s * 0.6 / Math.max(1, gl));
+      g.moveTo(tx, s * 0.42).lineTo(tx + (i % 2 ? 2 : -2), s * 0.42 + s * (0.06 + 0.02 * gl))
+       .stroke({ color: dark, width: 1.5, alpha: 0.8, cap: 'round' });
+    }
+  }
+
+  /** Toadstool — add more tentacle fringe under a fuller cap. */
+  _growMushroom(g, s, c, level) {
+    const gl   = Math.min(4, level - 1);
+    const mid  = s / 2;
+    const dark = this._darken(c, 0.2);
+    const n    = gl * 2;
+    for (let i = 0; i < n; i++) {
+      const tx = (mid - s * 0.34) + i * (s * 0.68 / Math.max(1, n - 1));
+      g.moveTo(tx, s * 0.5).lineTo(tx + (i % 2 ? 4 : -4), s * 0.63)
+       .stroke({ color: dark, width: 2, cap: 'round' });
+    }
+  }
+
+  /** Barnacles — encrust additional cones onto the substrate. */
+  _growCrust(g, s, c, level) {
+    const gl   = Math.min(4, level - 1);
+    const dark = this._darken(c, 0.35);
+    const yb   = s - 3;
+    const xs   = [0.26, 0.42, 0.58, 0.74];
+    for (let i = 0; i < gl; i++) {
+      const x = s * xs[i % xs.length];
+      const h = s * (0.16 + 0.03 * (i % 2));
+      const bw = 9, tw = 5, yt = yb - h;
+      g.moveTo(x - bw / 2, yb).lineTo(x + bw / 2, yb)
+       .lineTo(x + tw / 2, yt).lineTo(x - tw / 2, yt).closePath().fill(c);
+      g.rect(x - tw / 2, yt - 2, tw, 3).fill(dark);
+    }
+  }
+
+  /** Fallback growth — concentric framing for species without a motif helper. */
+  _growGeneric(g, s, c, level) {
+    const gl    = Math.min(4, level - 1);
+    const light = this._lighten(c, 0.4);
+    for (let i = 1; i <= gl; i++) {
+      const inset = s * (0.2 - i * 0.03);
+      if (inset <= 0) break;
+      g.roundRect(inset, inset, s - 2 * inset, s - 2 * inset, 6)
+       .stroke({ color: light, width: 1.5, alpha: 0.6 });
+    }
   }
 
   // ── Staghorn — branching antler shape ──────────────────────────────────────
