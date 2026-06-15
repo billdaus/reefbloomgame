@@ -227,13 +227,14 @@ export class GridLayer {
 
     badge.eventMode = 'static';
     badge.cursor = 'pointer';
-    // Generous hit area, biased INWARD over the coral's own tile so it's easy
-    // to tap (esp. on touch, where a tile is only ~40px) without reaching far
-    // into neighbouring tiles' badges. Outward spill is kept tiny.
-    const padIn  = Math.round(TILE_SIZE * 0.5);
-    const padOut = 4;
+    // Hit area fills the coral's OWN tile (inset 2px) and never spills into a
+    // neighbour's tile — so every badge is equally, reliably tappable
+    // regardless of placement order, and adjacent badges can't steal taps.
+    const padInX = TILE_SIZE - W - 4;   // left edge → tile's left (−2px)
+    const padInY = TILE_SIZE - H - 4;   // top edge  → tile's top  (−2px)
+    const padOut = 2;
     badge.hitArea = {
-      contains: (x, y) => x >= -padIn && x <= W + padOut && y >= -padIn && y <= H + padOut,
+      contains: (x, y) => x >= -padInX && x <= W + padOut && y >= -padInY && y <= H + padOut,
     };
     badge.on('pointerdown', (e) => {
       e.stopPropagation();

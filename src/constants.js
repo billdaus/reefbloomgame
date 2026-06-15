@@ -39,7 +39,7 @@ export const START_POLYPS  = 0;
 // ─── Coral upgrading (spend Polyps to grow corals) ───────────────────────────
 export const CORAL_MAX_LEVEL       = 5;     // levels 1..5
 export const POLYP_BE_BONUS        = 0.5;   // +50% of base BE/tick per level above 1
-export const POLYP_PER_CORAL_TICK  = 0.06;  // polyps each coral yields per BE tick, ×level
+export const POLYP_PER_CORAL_TICK  = 0.2;   // polyps each coral yields per BE tick, ×level
 
 // ─── Cleaning stations (fish visit to be cleaned; raise harmony) ──────────────
 export const CLEANING_HARMONY_PER    = 5;    // harmony score bonus per station (needs fish)

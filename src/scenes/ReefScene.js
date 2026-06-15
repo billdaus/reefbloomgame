@@ -321,14 +321,17 @@ export class ReefScene {
     saveGame();
   }
 
-  /** A coral's "···" badge was tapped — act based on the current mode. */
+  /**
+   * A coral's "···" badge was tapped. The badge now covers the whole tile, so
+   * delegate to the normal tile-tap handler — it already does the right thing
+   * in every mode (remove → decor-first then coral; placement → stack decor on
+   * tall coral; neutral → open the upgrade menu). This keeps badge taps and
+   * bare tile taps perfectly consistent.
+   */
   _onCoralBadgeTap(uid) {
-    recordInteraction();
     const entry = state.placedCoral.find(c => c.uid === uid);
     if (!entry) return;
-    if (state.removeMode) { this._tryRemoveCoral(entry.col, entry.row); return; }
-    if (state.selectedType) return;   // mid-placement — ignore the badge
-    this._openCoralUpgrade(entry);
+    this._onTileTap({ col: entry.col, row: entry.row });
   }
 
   _openCoralUpgrade(entry) {
@@ -669,14 +672,23 @@ export class ReefScene {
       if (uid > maxUid) maxUid = uid;
     });
 
-    // Respawn fish (positions don't persist — they just swim freely)
-    (data.fishTypes ?? []).forEach(speciesId => {
+    // Respawn fish at their saved positions (legacy saves only have species,
+    // so those fall back to a random spot).
+    const fishEntries = data.fish
+      ?? (data.fishTypes ?? []).map(id => ({ id, x: null, y: null }));
+    fishEntries.forEach(({ id: speciesId, x, y }) => {
       const spec = FISH_SPECIES[speciesId];
       if (!spec) return;
       const uid  = state.nextUid();
       const col  = 2 + Math.floor(Math.random() * 6);
       const row  = 2 + Math.floor(Math.random() * 6);
       const fish = new Fish(spec, col, row, uid);
+      if (typeof x === 'number' && typeof y === 'number') {
+        fish.x = fish.targetX = x;
+        fish.y = fish.targetY = y;
+        fish.container.x = x;
+        fish.container.y = y;
+      }
       state.fish.push(fish);
       state.fishCount++;
       state.fishTierCounts[spec.tier]++;
