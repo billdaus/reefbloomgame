@@ -337,8 +337,8 @@ export class Coral {
     // Two slender antler branches, each topped with an identical fan of
     // tip-nubbed prongs (one more prong per upgrade level).
     this._twoBranchFan(g, s, c, this._stalkCount(2),
-      { forkFrac: 0.55, branchAng: 0.5, branchLenFrac: 0.20, fanLenFrac: 0.30,
-        spread: 1.3, width: 4, trunkW: 5, tip: this._lighten(c, 0.4), tipR: 3.5 });
+      { forkFrac: 0.58, branchAng: 0.85, branchLenFrac: 0.26, fanLenFrac: 0.28,
+        spread: 1.2, width: 4, trunkW: 5, tip: this._lighten(c, 0.4), tipR: 3.5 });
   }
 
   // ── Finger coral — rounded vertical columns ────────────────────────────────
@@ -490,8 +490,8 @@ export class Coral {
     // Two thick antler branches, each topped with an identical fan of
     // blunt-tipped prongs (one more prong per upgrade level).
     this._twoBranchFan(g, s, c, this._stalkCount(2),
-      { forkFrac: 0.60, branchAng: 0.6, branchLenFrac: 0.16, fanLenFrac: 0.26,
-        spread: 1.5, width: 8, trunkW: 8, tip: c, tipR: 4 });
+      { forkFrac: 0.62, branchAng: 0.95, branchLenFrac: 0.22, fanLenFrac: 0.24,
+        spread: 1.4, width: 8, trunkW: 8, tip: c, tipR: 4 });
   }
 
   // ── Pillar coral — tall ribbed column ─────────────────────────────────────
