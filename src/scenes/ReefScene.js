@@ -87,9 +87,6 @@ export class ReefScene {
     this.worldContainer.addChild(this._grid.stationContainer);
     // 3. Short/flat coral — fish Layer A swims over these
     this.worldContainer.addChild(this._grid.shortCoralContainer);
-    // 3b. Clam + quest clam sit on the reef floor (above short coral, below fish)
-    this.worldContainer.addChild(this._clamContainer);
-    this.worldContainer.addChild(this._questClamContainer);
     // 4. Fish Layer A (clownfish, chromis, butterflyfish, seahorse)
     this.worldContainer.addChild(this._fishContainerA);
     // 4b. Particle emissions (Gavin's farts/poops) — drift among Layer-A fish
@@ -108,6 +105,10 @@ export class ReefScene {
     this.worldContainer.addChild(this._grid.badgeContainer);
     // 9c. Tile hover highlight (always topmost in world)
     this.worldContainer.addChild(this._grid.hoverContainer);
+    // 10. Clam + quest clam — always rendered above everything so they're
+    // never hidden behind tall coral or fish and stay easy to tap.
+    this.worldContainer.addChild(this._clamContainer);
+    this.worldContainer.addChild(this._questClamContainer);
 
     // ── UI (no saturation filter) ────────────────────────────────────────────
     this._uiContainer   = new Container();
