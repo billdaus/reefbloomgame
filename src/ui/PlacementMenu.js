@@ -1,6 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import {
-  PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT,
+  PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT, SCREEN_W, SCREEN_H,
   COLORS, CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, CORAL_COST, FISH_COST, TIER_LABEL,
   BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, TIER,
 } from '../constants.js';
@@ -65,6 +65,7 @@ const SCROLL_AREA_H  = PANEL_H - BIOME_HEADER_H - 4 - REMOVE_BTN_H - SORT_ROW_H 
 export class PlacementMenu {
   constructor(onCoralSelect, onFishSelect, onDecorSelect) {
     this.container     = new Container();
+    this.container.visible = false;   // popup — opened via the Build button
     this.onCoralSelect = onCoralSelect;
     this.onFishSelect  = onFishSelect;
     this.onDecorSelect = onDecorSelect ?? (() => {});
@@ -110,16 +111,30 @@ export class PlacementMenu {
   // ── Build ──────────────────────────────────────────────────────────────────
 
   _build() {
+    // 0. Dim overlay behind the popup — tap anywhere outside the panel to close
+    const overlay = new Graphics();
+    overlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0x000000, alpha: 0.35 });
+    overlay.interactive = true;
+    overlay.on('pointerdown', () => this.close());
+    this.container.addChild(overlay);
+
     // 1. Panel background (static)
     const bg = new Graphics();
     bg.roundRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, IS_PORTRAIT ? 0 : 6)
-      .fill({ color: COLORS.panel_bg, alpha: 0.94 });
+      .fill({ color: COLORS.panel_bg, alpha: 0.98 });
     if (IS_PORTRAIT) {
       bg.rect(PANEL_X, PANEL_Y, PANEL_W, 1).fill({ color: COLORS.panel_border, alpha: 1 });
     } else {
       bg.rect(PANEL_X, PANEL_Y, 1, PANEL_H).fill({ color: COLORS.panel_border, alpha: 1 });
     }
     this.container.addChild(bg);
+
+    // 1b. Panel backstop — swallow taps on empty panel area so they don't close
+    const panelHit = new Graphics();
+    panelHit.rect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H).fill({ color: 0xffffff, alpha: 0.001 });
+    panelHit.interactive = true;
+    panelHit.on('pointerdown', (e) => e.stopPropagation());
+    this.container.addChild(panelHit);
 
     // 2. Biome header (current biome + travel button)
     this.container.addChild(this._headerC);
@@ -167,7 +182,27 @@ export class PlacementMenu {
     hitArea.on('pointerupoutside', () => this._onCancel());
     hitArea.on('wheel',            e => this._onWheel(e));
     this.container.addChild(hitArea);
+
+    // 7. Close button (top-right of the panel)
+    const cb = new Container();
+    const cbg = new Graphics();
+    cbg.circle(0, 0, 12).fill({ color: 0x10243a, alpha: 0.95 });
+    cbg.circle(0, 0, 12).stroke({ color: COLORS.panel_border, width: 1.5, alpha: 0.9 });
+    const cx = new Text({ text: '✕', style: { fontSize: 13, fill: 0xcfe6ff, fontFamily: FONT, fontWeight: '700' } });
+    cx.anchor.set(0.5);
+    cb.addChild(cbg, cx);
+    cb.x = PANEL_X + PANEL_W - 16;
+    cb.y = PANEL_Y + 15;
+    cb.interactive = true; cb.cursor = 'pointer';
+    cb.on('pointerdown', (e) => { e.stopPropagation(); this.close(); });
+    this.container.addChild(cb);
   }
+
+  // ── Popup open/close ─────────────────────────────────────────────────────────
+  open()   { this.container.visible = true; }
+  close()  { this.container.visible = false; }
+  toggle() { this.container.visible = !this.container.visible; }
+  isOpen() { return this.container.visible; }
 
   _buildBiomeHeader() {
     this._headerC.removeChildren();
@@ -438,6 +473,7 @@ export class PlacementMenu {
         else if (row.type === 'fish')  this.onFishSelect(row.id);
         else                           this.onDecorSelect(row.id);
         this._updateHighlights();
+        this.close();   // popup dismisses so the reef is tappable to place
       }
     }
     this._dragActive = false;
@@ -508,6 +544,7 @@ export class PlacementMenu {
     this._drawRemoveBtn();
     this._updateHighlights();
     this.onCoralSelect(null);   // refreshes grid hover
+    if (state.removeMode) this.close();   // close so the reef is tappable to remove
   }
 
   _drawRemoveBtn() {

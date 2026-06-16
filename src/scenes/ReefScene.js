@@ -1,6 +1,6 @@
-import { Container, ColorMatrixFilter, Graphics } from 'pixi.js';
+import { Container, ColorMatrixFilter, Graphics, Text } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, STATION_SPAN, STATION_MAX_LEVEL, STATION_CELL, CLEAN_DURATION_TICKS, CLEAN_COOLDOWN_MS, CLEANER_TENURE_TICKS, CLEANER_TENURE_CUSTOMERS, CLEANER_LEAVE_CHANCE, CLEANER_OFFDUTY_MS, CLEANING_ASSIGN_INTERVAL, stationUpgradeCost } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, STATION_SPAN, STATION_MAX_LEVEL, STATION_CELL, CLEAN_DURATION_TICKS, CLEAN_COOLDOWN_MS, CLEANER_TENURE_TICKS, CLEANER_TENURE_CUSTOMERS, CLEANER_LEAVE_CHANCE, CLEANER_OFFDUTY_MS, CLEANING_ASSIGN_INTERVAL, stationUpgradeCost, IS_PORTRAIT, PANEL_H } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -144,6 +144,7 @@ export class ReefScene {
     );
 
     this._uiContainer.addChild(this._menu.container);
+    this._uiContainer.addChild(this._buildMenuLauncher());
     this._uiContainer.addChild(this._hud.container);
     this._uiContainer.addChild(this._rewardModal.container);
     this._uiContainer.addChild(this._shopModal.container);
@@ -346,6 +347,35 @@ export class ReefScene {
     checkEventSnapshots();
     checkLevelUp();
     saveGame();
+  }
+
+  /** Floating launcher that opens/closes the placement-menu popup. */
+  _buildMenuLauncher() {
+    const FONT = 'system-ui, -apple-system, sans-serif';
+    const W = IS_PORTRAIT ? 150 : 168, H = 40;
+    const c = new Container();
+    const bg = new Graphics();
+    const draw = (hover) => {
+      bg.clear();
+      bg.roundRect(0, 0, W, H, 20).fill({ color: hover ? 0x1a6fb0 : 0x12568c, alpha: 0.97 });
+      bg.roundRect(0, 0, W, H, 20).stroke({ color: 0x7fd0ff, width: 2, alpha: 0.9 });
+    };
+    draw(false);
+    const label = new Text({
+      text: '🛠  Build / Shop',
+      style: { fontSize: 15, fill: 0xffffff, fontFamily: FONT, fontWeight: '700' },
+    });
+    label.anchor.set(0.5);
+    label.x = W / 2; label.y = H / 2;
+    c.addChild(bg, label);
+    c.x = (IS_PORTRAIT ? SCREEN_W / 2 : PANEL_X + PANEL_W / 2) - W / 2;
+    c.y = SCREEN_H - H - 12;
+    c.eventMode = 'static';
+    c.cursor = 'pointer';
+    c.on('pointerover', () => draw(true));
+    c.on('pointerout',  () => draw(false));
+    c.on('pointerdown', (e) => { e.stopPropagation(); this._menu.toggle(); });
+    return c;
   }
 
   /**
