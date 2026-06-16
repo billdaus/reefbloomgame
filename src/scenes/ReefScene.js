@@ -146,7 +146,6 @@ export class ReefScene {
     );
 
     this._uiContainer.addChild(this._menu.container);
-    this._uiContainer.addChild(this._buildMenuLauncher());
     this._uiContainer.addChild(this._buildDockAccountBtn());
     this._uiContainer.addChild(this._hud.container);
     this._uiContainer.addChild(this._rewardModal.container);
@@ -396,35 +395,6 @@ export class ReefScene {
     c.on('pointerover', () => draw(true));
     c.on('pointerout',  () => draw(false));
     c.on('pointerdown', (e) => { e.stopPropagation(); this._accountModal.show(); });
-    return c;
-  }
-
-  /** Floating launcher that opens/closes the placement-menu popup. */
-  _buildMenuLauncher() {
-    const FONT = 'system-ui, -apple-system, sans-serif';
-    const W = IS_PORTRAIT ? 150 : 168, H = 40;
-    const c = new Container();
-    const bg = new Graphics();
-    const draw = (hover) => {
-      bg.clear();
-      bg.roundRect(0, 0, W, H, 20).fill({ color: hover ? 0x1a6fb0 : 0x12568c, alpha: 0.97 });
-      bg.roundRect(0, 0, W, H, 20).stroke({ color: 0x7fd0ff, width: 2, alpha: 0.9 });
-    };
-    draw(false);
-    const label = new Text({
-      text: '🛠  Build / Shop',
-      style: { fontSize: 15, fill: 0xffffff, fontFamily: FONT, fontWeight: '700' },
-    });
-    label.anchor.set(0.5);
-    label.x = W / 2; label.y = H / 2;
-    c.addChild(bg, label);
-    c.x = (IS_PORTRAIT ? SCREEN_W / 2 : PANEL_X + PANEL_W / 2) - W / 2;
-    c.y = SCREEN_H - H - 12;
-    c.eventMode = 'static';
-    c.cursor = 'pointer';
-    c.on('pointerover', () => draw(true));
-    c.on('pointerout',  () => draw(false));
-    c.on('pointerdown', (e) => { e.stopPropagation(); this._menu.toggle(); });
     return c;
   }
 

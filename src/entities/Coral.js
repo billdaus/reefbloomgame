@@ -88,6 +88,7 @@ export class Coral {
       case 'candycane':
       case 'pillar':
       case 'lanternCoral':
+      case 'pearlOrganPipe':
       case 'phantomPolyp': this._growColumns(g, s, c, level); break;
       case 'abyssalFan':   this._growFan(g, s, c, level); break;
       case 'wispCoral':    this._growBlades(g, s, c, level); break;
@@ -119,13 +120,20 @@ export class Coral {
     const gl   = Math.min(4, level - 1);
     const mid  = s / 2;
     const tip  = this._lighten(c, 0.6);
+    const dark = this._darken(c, 0.22);
     for (let i = 1; i <= gl; i++) {
-      const spread = 0.14 + i * 0.06;                 // widen outward each tier
-      const topY   = Math.max(s * 0.06, anchorY - s * (0.16 + i * 0.03));
+      const spread = 0.14 + i * 0.06 + (this._jit(i) - 0.5) * 0.06;   // jittered spread
+      const topY   = Math.max(s * 0.06, anchorY - s * (0.16 + i * 0.03 + this._jit(i + 9) * 0.04));
       const w      = Math.max(2.5, 5 - i);
+      const baseY  = anchorY - (this._jit(i + 3) * s * 0.08);
       for (const side of [-1, 1]) {
         const ex = mid + side * s * spread;
-        g.moveTo(mid, anchorY).lineTo(ex, topY).stroke({ color: c, width: w, cap: 'round' });
+        // tapered branch (dark core + lighter overlay) with a small offshoot
+        g.moveTo(mid, baseY).lineTo(ex, topY).stroke({ color: dark, width: w + 1, cap: 'round' });
+        g.moveTo(mid, baseY).lineTo(ex, topY).stroke({ color: c, width: w, cap: 'round' });
+        const ox = ex - side * s * 0.06, oy = topY + s * 0.06;
+        g.moveTo(ex, topY).lineTo(ox + side * s * 0.1, oy - s * 0.12)
+         .stroke({ color: c, width: Math.max(1.5, w - 1.5), cap: 'round' });
         g.circle(ex, topY, 3).fill(tip);
       }
     }
@@ -290,14 +298,28 @@ export class Coral {
 
   /** Fallback growth — concentric framing for species without a motif helper. */
   _growGeneric(g, s, c, level) {
+    // Organic encrusting growth — a cluster of small polyp nubs creeping over
+    // the coral, placed with stable per-coral jitter so it looks natural
+    // rather than a geometric frame.
     const gl    = Math.min(4, level - 1);
-    const light = this._lighten(c, 0.4);
-    for (let i = 1; i <= gl; i++) {
-      const inset = s * (0.2 - i * 0.03);
-      if (inset <= 0) break;
-      g.roundRect(inset, inset, s - 2 * inset, s - 2 * inset, 6)
-       .stroke({ color: light, width: 1.5, alpha: 0.6 });
+    const light = this._lighten(c, 0.42);
+    const dark  = this._darken(c, 0.25);
+    const n = gl * 4;
+    for (let i = 0; i < n; i++) {
+      const a  = this._jit(i) * Math.PI * 2;
+      const rr = s * (0.16 + this._jit(i + 50) * 0.22);
+      const x  = s * 0.5 + Math.cos(a) * rr;
+      const y  = s * 0.55 + Math.sin(a) * rr * 0.85;
+      const r  = 2 + this._jit(i + 100) * 2.4;
+      g.circle(x, y, r).fill(i % 3 === 0 ? dark : c);
+      g.circle(x - r * 0.3, y - r * 0.3, r * 0.4).fill({ color: light, alpha: 0.8 });
     }
+  }
+
+  /** Stable per-coral pseudo-random in [0,1) — same every redraw, varies by coral. */
+  _jit(i) {
+    const x = Math.sin(this.uid * 99.71 + i * 37.13) * 43758.5453;
+    return x - Math.floor(x);
   }
 
   // ── Staghorn — branching antler shape ──────────────────────────────────────
