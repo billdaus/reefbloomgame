@@ -6,6 +6,7 @@ const MARGIN    = 10;
 const DAMPEN    = 0.96;
 const STEER     = 0.12;
 const REPULSE_R = TILE_SIZE * 1.2;   // radius to start avoiding coral
+const SPEED_SCALE = 0.6;             // global slow-down — fish cruise calmly
 
 /** Fish — procedural sprite + simple wander AI. */
 export class Fish {
@@ -26,6 +27,12 @@ export class Fish {
     this.targetAge = 0;
     this.pickTargetCooldown = 0;
     this._angle    = Math.atan2(this.vy || 0, this.vx || 1); // facing angle
+
+    // Home coral — a tile this fish lingers near (assigned by ReefScene based
+    // on per-coral capacity). null = free roamer with no home coral.
+    this.homeUid = null;
+    this.homeCol = null;
+    this.homeRow = null;
 
     // Cleaning-station visit: 'none' | 'toStation' | 'cleaning'
     this._cleanState = 'none';
@@ -2121,7 +2128,7 @@ export class Fish {
   isBeingCleaned() { return this._cleanState === 'cleaning'; }
 
   update(dt, grid, coralSpecies, onEmit, allFish, coralLevels) {
-    const speed = this.spec.speed;
+    const speed = this.spec.speed * SPEED_SCALE;
     const ms    = dt * (60 / 1000) * 16;  // normalise to pixels/frame
 
     // ── Cleaning-station visit overrides normal wandering ───────────────────
@@ -2312,27 +2319,40 @@ export class Fish {
   }
 
   _pickNewTarget(grid) {
-    // Schooling: most of the time, head for a spot near the school's centre so
-    // same-species fish travel together rather than scattering.
+    // Home coral: linger nearby most of the time — hover in a ring around the
+    // home tile. The rest of the time fall through to roaming/exploring.
+    if (this.homeCol != null && this.homeRow != null && Math.random() < 0.7) {
+      const home = tileCenter(this.homeCol, this.homeRow);
+      const r = TILE_SIZE * (0.7 + Math.random() * 1.4);
+      const a = Math.random() * Math.PI * 2;
+      this.targetX = home.x + Math.cos(a) * r;
+      this.targetY = home.y + Math.sin(a) * r;
+      this.pickTargetCooldown = 50 + Math.random() * 80;   // dawdle near home
+      return;
+    }
+
+    // Schooling: head for a spot near the school's centre so same-species fish
+    // travel together rather than scattering.
     if (this._schoolN > 0 && Math.random() < 0.6) {
       const r = TILE_SIZE * (0.4 + Math.random() * 1.2);
       const a = Math.random() * Math.PI * 2;
       this.targetX = this._schoolX + Math.cos(a) * r;
       this.targetY = this._schoolY + Math.sin(a) * r;
-      this.pickTargetCooldown = 25 + Math.random() * 45;
+      this.pickTargetCooldown = 35 + Math.random() * 55;
       return;
     }
 
-    // Occasionally head toward a coral tile, otherwise wander
+    // Explore: thread through the gaps beside corals rather than crossing open
+    // water. Aim just off a random coral so the fish weaves between them.
     const occupiedTiles = getOccupiedTiles(grid);
-    const usesCoral = occupiedTiles.length > 0 && Math.random() < 0.4;
+    const usesCoral = occupiedTiles.length > 0 && Math.random() < 0.6;
 
     if (usesCoral) {
       const pick = occupiedTiles[Math.floor(Math.random() * occupiedTiles.length)];
       const cx   = tileCenter(pick.col, pick.row);
-      // Aim near the coral (not on top of it)
+      // Aim in the gap beside the coral (not on top of it)
       const angle = Math.random() * Math.PI * 2;
-      const dist  = TILE_SIZE * (1.2 + Math.random() * 1.5);
+      const dist  = TILE_SIZE * (1.0 + Math.random() * 1.2);
       this.targetX = cx.x + Math.cos(angle) * dist;
       this.targetY = cx.y + Math.sin(angle) * dist;
     } else {
@@ -2340,7 +2360,7 @@ export class Fish {
       this.targetY = GRID_Y + MARGIN + Math.random() * (GRID_H - MARGIN * 2);
     }
 
-    this.pickTargetCooldown = 30 + Math.random() * 60;
+    this.pickTargetCooldown = 40 + Math.random() * 80;
   }
 
   // ── Event pass exclusives ──────────────────────────────────────────────────

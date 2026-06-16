@@ -340,6 +340,7 @@ export class ReefScene {
     this._recomputeBeMax();
 
     this._grid.placeCoral(spec, col, row, uid, 1);
+    this._assignFishHomes();   // new coral offers fresh homes to roamers
 
     unlockEntry(`coral:${speciesId}`);
     unlockEntry('resource:harmony');
@@ -423,6 +424,7 @@ export class ReefScene {
       if (!newLevel) return null;
       this._grid.upgradeCoral(e.uid, newLevel);
       this._recomputeBeMax();   // vault upgrades raise the BE cap
+      this._assignFishHomes();  // higher level → more fish can call it home
       const spec = CORAL_SPECIES[e.speciesId];
       this._hud.showBonus(`${spec?.name ?? 'Coral'} → Lv ${newLevel} 🪸`);
       unlockEntry('event:coral_upgrade');
@@ -554,6 +556,50 @@ export class ReefScene {
     this._spawnFish(speciesId, spec, col, row);
   }
 
+  /** How many fish a coral can host as their home — grows with each upgrade. */
+  _coralCapacity(level) { return (level ?? 1) + 1; }   // Lv1→2, Lv5→6
+
+  /**
+   * Assign every fish a home coral, respecting per-coral capacity. Fish keep a
+   * valid existing home; the rest are placed at the nearest coral with a free
+   * slot. Fish with nowhere to go become free roamers (home = null). Call after
+   * any change to fish or coral counts/levels.
+   */
+  _assignFishHomes() {
+    const corals = state.placedCoral;
+    const cap = new Map();
+    for (const cc of corals) cap.set(cc.uid, this._coralCapacity(cc.level));
+
+    // Keep still-valid homes, freeing their capacity slot.
+    for (const f of state.fish) {
+      if (f.homeUid == null) continue;
+      const home = corals.find(c => c.uid === f.homeUid);
+      if (home && cap.get(home.uid) > 0) {
+        cap.set(home.uid, cap.get(home.uid) - 1);
+      } else {
+        f.homeUid = f.homeCol = f.homeRow = null;
+      }
+    }
+
+    // Place homeless fish at the nearest coral that still has room.
+    for (const f of state.fish) {
+      if (f.homeUid != null) continue;
+      let best = null, bestD = Infinity;
+      for (const cc of corals) {
+        if (cap.get(cc.uid) <= 0) continue;
+        const ctr = tileCenter(cc.col, cc.row);
+        const d = (ctr.x - f.x) ** 2 + (ctr.y - f.y) ** 2;
+        if (d < bestD) { bestD = d; best = cc; }
+      }
+      if (best) {
+        f.homeUid = best.uid; f.homeCol = best.col; f.homeRow = best.row;
+        cap.set(best.uid, cap.get(best.uid) - 1);
+      } else {
+        f.homeUid = f.homeCol = f.homeRow = null;
+      }
+    }
+  }
+
   _spawnFish(speciesId, spec, col, row) {
     const uid  = state.nextUid();
     const fish = new Fish(spec, col, row, uid);
@@ -585,6 +631,8 @@ export class ReefScene {
     }
 
     if (state.fishCount === 1) this._bubbles.trigger('firstFish');
+
+    this._assignFishHomes();
 
     recordQuestEvent('hatch_fish', 1);
     recordEventProgress('hatch_fish', 1);
@@ -619,6 +667,7 @@ export class ReefScene {
 
     // Remove sprite
     this._grid.removeCoral(entry.uid);
+    this._assignFishHomes();   // re-home any fish that lived here
 
     if (refund > 0) this._hud.showBonus(`+${refund} 🫧`);
     unlockEntry('event:remove');
@@ -660,6 +709,8 @@ export class ReefScene {
     // Remove sprite
     fish.container.parent?.removeChild(fish.container);
     fish.container.destroy({ children: true });
+
+    this._assignFishHomes();   // freed home slot may take in a roamer
 
     if (refund > 0) this._hud.showBonus(`+${refund} 🫧`);
     unlockEntry('event:remove');
@@ -1015,6 +1066,9 @@ export class ReefScene {
       if (spec.layer === 'A') this._fishContainerA.addChild(fish.container);
       else                    this._fishContainerB.addChild(fish.container);
     });
+
+    // Give every restored fish a home coral (respecting per-coral capacity)
+    this._assignFishHomes();
 
     // Ensure UID counter doesn't collide with restored UIDs
     state._nextUid = Math.max(state._nextUid, maxUid + 1);

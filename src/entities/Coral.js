@@ -104,8 +104,9 @@ export class Coral {
       case 'star':         this._growDome(g, s, c, level, s / 2, s * 0.58, s * 0.36); break;
       case 'starter':      this._growDome(g, s, c, level, s / 2, s * 0.65, s * 0.22); break;
       case 'bubble':       this._growSpheres(g, s, c, level); break;
-      case 'ghost':
-      case 'lettuce':      this._growFan(g, s, c, level); break;
+      case 'ghost':        this._growFan(g, s, c, level); break;
+      // lettuce grows more identical leaves in its base draw (see _drawLettuce)
+      case 'lettuce':      break;
       case 'seagrass':
       case 'redSeagrass':
       case 'seaweed':
@@ -400,21 +401,30 @@ export class Coral {
     const mid  = s / 2;
     const base = s * 0.72;
     const dark = this._darken(c, 0.25);
-    // three fan layers
-    [[mid - s * 0.22, 0.55], [mid, 0.42], [mid + s * 0.22, 0.55]].forEach(([cx, topFrac]) => {
+    const w    = s * 0.2;
+    // Ruffled head of identical leaves — 3 at level 1, one more per upgrade.
+    const count = this._stalkCount(3);
+    const span  = s * 0.52;
+    // Build leaf positions, then draw outer (back) leaves first so the centre
+    // leaves layer in front for a full, ruffled head.
+    const leaves = [];
+    for (let i = 0; i < count; i++) {
+      const t  = count === 1 ? 0.5 : i / (count - 1);
+      const cx = mid + (t - 0.5) * span;
+      const topFrac = 0.42 + Math.abs(t - 0.5) * 0.26;   // outer leaves sit lower
+      leaves.push({ cx, topFrac, d: Math.abs(t - 0.5) });
+    }
+    leaves.sort((a, b) => b.d - a.d);
+    for (const { cx, topFrac } of leaves) {
       g.moveTo(cx, base)
-       .lineTo(cx - s * 0.2, s * topFrac)
+       .lineTo(cx - w, s * topFrac)
        .lineTo(cx, s * (topFrac - 0.08))
-       .lineTo(cx + s * 0.2, s * topFrac)
+       .lineTo(cx + w, s * topFrac)
        .closePath()
        .fill(c);
-      g.moveTo(cx, base)
-       .lineTo(cx - s * 0.2, s * topFrac)
-       .stroke({ color: dark, width: 1.5 });
-      g.moveTo(cx, base)
-       .lineTo(cx + s * 0.2, s * topFrac)
-       .stroke({ color: dark, width: 1.5 });
-    });
+      g.moveTo(cx, base).lineTo(cx - w, s * topFrac).stroke({ color: dark, width: 1.5 });
+      g.moveTo(cx, base).lineTo(cx + w, s * topFrac).stroke({ color: dark, width: 1.5 });
+    }
   }
 
   // ── Star coral — dome with raised dots ────────────────────────────────────
