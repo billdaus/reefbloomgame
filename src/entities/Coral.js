@@ -81,10 +81,11 @@ export class Coral {
 
   _growth(g, s, c, id, level) {
     switch (id) {
-      case 'staghorn':     this._growBranch(g, s, c, level, s * 0.50); break;
-      // firetip grows identical fanned protrusions in its base draw
-      case 'firetip':      break;
-      case 'elkhorn':      this._growBranch(g, s, c, level, s * 0.55); break;
+      // firetip / staghorn / elkhorn grow identical fanned protrusions in
+      // their base draw (see _fanBranches) — no overlay growth needed.
+      case 'staghorn':
+      case 'firetip':
+      case 'elkhorn':      break;
       // finger / candycane / pillar grow identical, evenly-spaced stalks in
       // their base draw (see _stalkCluster) — no overlay growth needed.
       case 'finger':
@@ -332,33 +333,10 @@ export class Coral {
 
   // ── Staghorn — branching antler shape ──────────────────────────────────────
   _drawStaghorn(g, s, c) {
-    const mid = s / 2;
-    const sw  = 5;
-    // base trunk
-    g.moveTo(mid, s - 4)
-     .lineTo(mid, s * 0.5)
-     .stroke({ color: c, width: sw, cap: 'round' });
-    // left branch
-    g.moveTo(mid, s * 0.5)
-     .lineTo(mid - s * 0.28, s * 0.15)
-     .stroke({ color: c, width: sw - 1, cap: 'round' });
-    // right branch
-    g.moveTo(mid, s * 0.5)
-     .lineTo(mid + s * 0.28, s * 0.15)
-     .stroke({ color: c, width: sw - 1, cap: 'round' });
-    // left sub-branch
-    g.moveTo(mid - s * 0.14, s * 0.3)
-     .lineTo(mid - s * 0.36, s * 0.1)
-     .stroke({ color: c, width: sw - 2, cap: 'round' });
-    // right sub-branch
-    g.moveTo(mid + s * 0.14, s * 0.3)
-     .lineTo(mid + s * 0.36, s * 0.1)
-     .stroke({ color: c, width: sw - 2, cap: 'round' });
-    // tip dots
-    g.circle(mid - s * 0.28, s * 0.14, 4).fill(c);
-    g.circle(mid + s * 0.28, s * 0.14, 4).fill(c);
-    g.circle(mid - s * 0.36, s * 0.09, 3).fill(c);
-    g.circle(mid + s * 0.36, s * 0.09, 3).fill(c);
+    // Slender antler branches with matching tip nubs, one more per level
+    this._fanBranches(g, s, c, this._stalkCount(4),
+      { trunkTopFrac: 0.5, spread: 1.5, lenFrac: 0.46, width: 4, trunkW: 5,
+        tip: this._lighten(c, 0.4), tipR: 3.5 });
   }
 
   // ── Finger coral — rounded vertical columns ────────────────────────────────
@@ -498,22 +476,10 @@ export class Coral {
 
   // ── Elkhorn — flat spreading antlers ──────────────────────────────────────
   _drawElkhorn(g, s, c) {
-    const mid = s / 2;
-    const sw  = 8;
-    g.moveTo(mid, s - 4).lineTo(mid, s * 0.55).stroke({ color: c, width: sw, cap: 'round' });
-    // left spread
-    g.moveTo(mid, s * 0.55)
-     .lineTo(mid - s * 0.38, s * 0.18)
-     .stroke({ color: c, width: sw, cap: 'round' });
-    // right spread
-    g.moveTo(mid, s * 0.55)
-     .lineTo(mid + s * 0.38, s * 0.18)
-     .stroke({ color: c, width: sw, cap: 'round' });
-    // palmate tips
-    g.moveTo(mid - s * 0.38, s * 0.18).lineTo(mid - s * 0.46, s * 0.06).stroke({ color: c, width: 5, cap: 'round' });
-    g.moveTo(mid - s * 0.38, s * 0.18).lineTo(mid - s * 0.28, s * 0.05).stroke({ color: c, width: 5, cap: 'round' });
-    g.moveTo(mid + s * 0.38, s * 0.18).lineTo(mid + s * 0.46, s * 0.06).stroke({ color: c, width: 5, cap: 'round' });
-    g.moveTo(mid + s * 0.38, s * 0.18).lineTo(mid + s * 0.28, s * 0.05).stroke({ color: c, width: 5, cap: 'round' });
+    // Thick spreading antlers with blunt tips, one more per level
+    this._fanBranches(g, s, c, this._stalkCount(3),
+      { trunkTopFrac: 0.55, spread: 1.7, lenFrac: 0.42, width: 8, trunkW: 8,
+        tip: c, tipR: 4 });
   }
 
   // ── Pillar coral — tall ribbed column ─────────────────────────────────────
@@ -540,26 +506,36 @@ export class Coral {
   }
 
   // ── Firetip coral — branching with bright orange tips ─────────────────────
-  _drawFiretip(g, s, c) {
+  /**
+   * Trunk + `count` identical branches evenly fanned from the trunk top, each
+   * ending in an identical tip protrusion. Shared by firetip/staghorn/elkhorn.
+   */
+  _fanBranches(g, s, c, count, opts = {}) {
+    const {
+      trunkTopFrac = 0.52, spread = 1.3, lenFrac = 0.42,
+      width = 4, trunkW = 5, tip = null, tipR = 5, tipInner = null,
+    } = opts;
     const mid = s / 2;
-    const tip = 0xff5722;
-    const trunkTop = s * 0.52;
-    // Trunk
-    g.moveTo(mid, s - 4).lineTo(mid, trunkTop).stroke({ color: c, width: 5, cap: 'round' });
-    // N identical branches, evenly fanned from the trunk — one more per level,
-    // each ending in an identical bright tip protrusion.
-    const count  = this._stalkCount(3);   // 3..7
-    const spread = 1.1;                    // total fan angle
-    const len    = s * 0.42;
+    const trunkTop = s * trunkTopFrac;
+    const len = s * lenFrac;
+    g.moveTo(mid, s - 4).lineTo(mid, trunkTop).stroke({ color: c, width: trunkW, cap: 'round' });
     for (let i = 0; i < count; i++) {
       const t   = count === 1 ? 0.5 : i / (count - 1);
       const ang = -Math.PI / 2 + (t - 0.5) * spread;
       const ex  = mid + Math.cos(ang) * len;
       const ey  = trunkTop + Math.sin(ang) * len;
-      g.moveTo(mid, trunkTop).lineTo(ex, ey).stroke({ color: c, width: 4, cap: 'round' });
-      g.circle(ex, ey, 5).fill(tip);
-      g.circle(ex, ey, 2.5).fill(0xffccbc);
+      g.moveTo(mid, trunkTop).lineTo(ex, ey).stroke({ color: c, width, cap: 'round' });
+      if (tip !== null) {
+        g.circle(ex, ey, tipR).fill(tip);
+        if (tipInner !== null) g.circle(ex, ey, tipR * 0.5).fill(tipInner);
+      }
     }
+  }
+
+  _drawFiretip(g, s, c) {
+    // Wide-fanning bright-tipped branches, one more per upgrade level
+    this._fanBranches(g, s, c, this._stalkCount(3),
+      { spread: 1.9, lenFrac: 0.42, width: 4, trunkW: 5, tip: 0xff5722, tipR: 5, tipInner: 0xffccbc });
   }
 
   // ── Ghost coral — pale translucent fan ────────────────────────────────────
