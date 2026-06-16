@@ -84,9 +84,11 @@ export class Coral {
       case 'staghorn':     this._growBranch(g, s, c, level, s * 0.50); break;
       case 'firetip':      this._growBranch(g, s, c, level, s * 0.52); break;
       case 'elkhorn':      this._growBranch(g, s, c, level, s * 0.55); break;
+      // finger / candycane / pillar grow identical, evenly-spaced stalks in
+      // their base draw (see _stalkCluster) — no overlay growth needed.
       case 'finger':
       case 'candycane':
-      case 'pillar':
+      case 'pillar':       break;
       case 'lanternCoral':
       case 'pearlOrganPipe':
       case 'phantomPolyp': this._growColumns(g, s, c, level); break;
@@ -168,20 +170,16 @@ export class Coral {
   _growDome(g, s, c, level, cx, cy, r) {
     const gl    = Math.min(4, level - 1);
     const light = this._lighten(c, 0.55);
-    const dark  = this._darken(c, 0.32);
-    // Fuller dome body with a soft top-left highlight
+    const dark  = this._darken(c, 0.28);
+    // grow the dome a touch so the rings sit on a fuller body
     g.circle(cx, cy, r * (1 + gl * 0.04)).fill(c);
-    g.circle(cx - r * 0.28, cy - r * 0.30, r * 0.5).fill({ color: light, alpha: 0.22 });
-    // Concentric rings of raised polyp bumps (dark base + light cap = 3D)
     for (let ring = 1; ring <= gl; ring++) {
-      const rr = r * (0.30 + ring * 0.17);
-      const n  = 5 + ring * 2;
+      const rr = r * (0.32 + ring * 0.17);
+      const n  = 4 + ring * 2;
       for (let i = 0; i < n; i++) {
-        const a  = (i / n) * Math.PI * 2 + ring * 0.5;
-        const px = cx + Math.cos(a) * rr;
-        const py = cy + Math.sin(a) * rr * 0.92;
-        g.circle(px, py, 2.6).fill(dark);
-        g.circle(px - 0.6, py - 0.7, 1.4).fill(light);
+        const a = (i / n) * Math.PI * 2 + ring * 0.5;
+        g.circle(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.92, 2)
+         .fill(ring % 2 ? light : dark);
       }
     }
   }
@@ -363,15 +361,32 @@ export class Coral {
   }
 
   // ── Finger coral — rounded vertical columns ────────────────────────────────
+  /**
+   * Lay out `count` identical, evenly-spaced stalks across the tile and call
+   * drawOne(cx, cw) for each. Stalk width shrinks as the count grows so the
+   * stalks stay distinct and fit — every stalk in a cluster is identical.
+   */
+  _stalkCluster(s, count, baseCw, drawOne) {
+    const m      = s * 0.15;
+    const usable = s - 2 * m;
+    const cw     = count > 1 ? Math.min(baseCw, (usable / count) * 0.85) : baseCw;
+    for (let i = 0; i < count; i++) {
+      const cx = count === 1 ? s / 2 : m + cw / 2 + (usable - cw) * (i / (count - 1));
+      drawOne(cx, cw);
+    }
+  }
+
+  /** Stalk count for a cluster coral — grows by one per upgrade level. */
+  _stalkCount(base) {
+    return base + Math.min(4, (this.level ?? 1) - 1);
+  }
+
   _drawFinger(g, s, c) {
-    const cw    = 10;
-    const offsets = [s * 0.22, s * 0.5, s * 0.78];
-    const heights = [0.22, 0.12, 0.18];
-    offsets.forEach((cx, i) => {
-      const top = s * heights[i];
-      g.roundRect(cx - cw / 2, top, cw, s - top - 4, 5).fill(c);
-      // lighter tip
-      g.circle(cx, top, cw / 2 + 1).fill(this._lighten(c, 0.5));
+    const light = this._lighten(c, 0.5);
+    const top   = s * 0.16;
+    this._stalkCluster(s, this._stalkCount(3), 10, (cx, cw) => {
+      g.roundRect(cx - cw / 2, top, cw, s - top - 4, cw / 2).fill(c);
+      g.circle(cx, top, cw / 2 + 1).fill(light);   // lighter tip
     });
   }
 
@@ -443,15 +458,12 @@ export class Coral {
   // ── Candy cane coral — striped columns ─────────────────────────────────────
   _drawCandyCane(g, s, c) {
     const accent = 0xffffff;
-    const offsets = [s * 0.3, s * 0.5, s * 0.7];
-    const heights = [0.18, 0.10, 0.16];
-    offsets.forEach((cx, i) => {
-      const top = s * heights[i];
-      const h   = s - top - 4;
-      g.roundRect(cx - 5, top, 10, h, 5).fill(c);
-      // candy stripes
+    const top    = s * 0.14;
+    const h      = s - top - 4;
+    this._stalkCluster(s, this._stalkCount(3), 10, (cx, cw) => {
+      g.roundRect(cx - cw / 2, top, cw, h, cw / 2).fill(c);
       for (let y = top + 6; y < top + h - 4; y += 12) {
-        g.rect(cx - 5, y, 10, 5).fill(accent);
+        g.rect(cx - cw / 2, y, cw, 5).fill(accent);   // candy stripes
       }
     });
   }
@@ -495,13 +507,15 @@ export class Coral {
 
   // ── Pillar coral — tall ribbed column ─────────────────────────────────────
   _drawPillar(g, s, c) {
-    const mid  = s / 2;
     const dark = this._darken(c, 0.25);
-    g.roundRect(mid - 10, s * 0.06, 20, s * 0.88, 6).fill(c);
-    // ribs
-    for (let y = s * 0.12; y < s * 0.88; y += 9) {
-      g.moveTo(mid - 10, y).lineTo(mid + 10, y).stroke({ color: dark, width: 1.5 });
-    }
+    const top  = s * 0.06;
+    const h    = s * 0.88;
+    this._stalkCluster(s, this._stalkCount(1), 20, (cx, cw) => {
+      g.roundRect(cx - cw / 2, top, cw, h, 6).fill(c);
+      for (let y = s * 0.12; y < top + h; y += 9) {   // ribs
+        g.moveTo(cx - cw / 2, y).lineTo(cx + cw / 2, y).stroke({ color: dark, width: 1.5 });
+      }
+    });
   }
 
   // ── Starter coral — simple dome with polyp dots ───────────────────────────
