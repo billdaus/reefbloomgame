@@ -2120,7 +2120,7 @@ export class Fish {
   /** True once arrived and lingering at a station (used to sparkle). */
   isBeingCleaned() { return this._cleanState === 'cleaning'; }
 
-  update(dt, grid, coralSpecies, onEmit, allFish) {
+  update(dt, grid, coralSpecies, onEmit, allFish, coralLevels) {
     const speed = this.spec.speed;
     const ms    = dt * (60 / 1000) * 16;  // normalise to pixels/frame
 
@@ -2246,8 +2246,8 @@ export class Fish {
 
     // ── Hard coral block — fish cannot enter a coral they avoid (tall coral
     // for layer A; massive blocksB coral for layer B). Soft repulsion above
-    // steers them off; this clamp guarantees they never pass through.
-    const blockR = TILE_SIZE * 0.55;
+    // steers them off; this clamp guarantees they never pass through. Upgraded
+    // corals have a larger block radius, so fish can't sneak between them.
     for (let r = 0; r < 10; r++) {
       for (let c = 0; c < 10; c++) {
         const sid = grid[r][c];
@@ -2256,6 +2256,8 @@ export class Fish {
         if (!spec) continue;
         if (this.layer === 'B' && !spec.blocksB) continue;
         if (this.layer === 'A' && !spec.tall)   continue;
+        const lvl    = coralLevels ? (coralLevels[r * 10 + c] ?? 1) : 1;
+        const blockR = TILE_SIZE * (0.52 + Math.min(4, lvl - 1) * 0.07);  // grows with level
         const cx = GRID_X + c * TILE_SIZE + TILE_SIZE / 2;
         const cy = GRID_Y + r * TILE_SIZE + TILE_SIZE / 2;
         let bdx = this.x - cx, bdy = this.y - cy;

@@ -89,12 +89,14 @@ export class Coral {
       case 'phantomPolyp': this._growColumns(g, s, c, level); break;
       case 'abyssalFan':   this._growFan(g, s, c, level); break;
       case 'wispCoral':    this._growBlades(g, s, c, level); break;
+      // Circular / dome corals don't change shape on upgrade — they only
+      // produce more BE.
       case 'brain':
       case 'twilightBrain':
-      case 'rainbowCoral': this._growDome(g, s, c, level, s / 2, s * 0.56, s * 0.38); break;
-      case 'star':         this._growDome(g, s, c, level, s / 2, s * 0.58, s * 0.36); break;
-      case 'starter':      this._growDome(g, s, c, level, s / 2, s * 0.65, s * 0.22); break;
-      case 'bubble':       this._growSpheres(g, s, c, level); break;
+      case 'rainbowCoral':
+      case 'star':
+      case 'starter':
+      case 'bubble':       break;
       case 'ghost':
       case 'lettuce':      this._growFan(g, s, c, level); break;
       case 'seagrass':
@@ -131,12 +133,14 @@ export class Coral {
   _growColumns(g, s, c, level) {
     const gl    = Math.min(4, level - 1);
     const light = this._lighten(c, 0.5);
-    const offs  = [0.36, 0.64, 0.16, 0.84];           // insertion order
-    const heights = [0.30, 0.26, 0.34, 0.22];
-    for (let i = 0; i < gl; i++) {
-      const cx  = s * offs[i % offs.length];
-      const top = s * heights[i % heights.length];
-      const cw  = 8;
+    // Two stalks per upgrade level for a fuller, more complete cluster
+    const offs    = [0.30, 0.70, 0.20, 0.80, 0.42, 0.58, 0.12, 0.88];
+    const heights = [0.28, 0.24, 0.34, 0.20, 0.16, 0.30, 0.38, 0.26];
+    const n = Math.min(offs.length, gl * 2);
+    for (let i = 0; i < n; i++) {
+      const cx  = s * offs[i];
+      const top = s * heights[i];
+      const cw  = 7 + (i % 2) * 2;
       g.roundRect(cx - cw / 2, top, cw, s - top - 4, 4).fill(c);
       g.circle(cx, top, cw / 2 + 1).fill(light);       // lighter tip
     }

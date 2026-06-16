@@ -251,8 +251,12 @@ export class ReefScene {
     if (this._questClamEntity) this._questClamEntity.update(dms);
     this._rewardModal.update(dms);
 
+    // Per-tile coral levels so fish blocking grows with upgrades
+    const coralLevels = {};
+    for (const cc of state.placedCoral) coralLevels[cc.row * 10 + cc.col] = cc.level ?? 1;
+
     state.fish.forEach(fish => {
-      fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev), state.fish);
+      fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev), state.fish, coralLevels);
       // Sparkle only over CLIENTS actively being cleaned (not loitering cleaners)
       if (this._activeCleanUids?.has(fish.uid) && Math.random() < 0.16) {
         this._spawnSparkle(fish.x + (Math.random() - 0.5) * 10, fish.y - 6);
