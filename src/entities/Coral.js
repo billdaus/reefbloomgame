@@ -370,10 +370,20 @@ export class Coral {
   _stalkCluster(s, count, baseCw, drawOne) {
     const m      = s * 0.15;
     const usable = s - 2 * m;
-    const cw     = count > 1 ? Math.min(baseCw, (usable / count) * 0.85) : baseCw;
-    for (let i = 0; i < count; i++) {
-      const cx = count === 1 ? s / 2 : m + cw / 2 + (usable - cw) * (i / (count - 1));
-      drawOne(cx, cw);
+    // After the 3rd upgrade (level ≥ 4) split into a back + front row for depth
+    const rows   = (this.level ?? 1) >= 4 ? 2 : 1;
+    const counts = rows === 1 ? [count] : [Math.floor(count / 2), count - Math.floor(count / 2)];
+    const maxIn  = Math.max(...counts);
+    const cw     = maxIn > 1 ? Math.min(baseCw, (usable / maxIn) * 0.85) : baseCw;
+    for (let row = 0; row < counts.length; row++) {
+      const inRow  = counts[row];
+      const isBack = rows === 2 && row === 0;     // drawn first → behind the front row
+      const yShift = isBack ? -s * 0.14 : 0;
+      const rcw    = isBack ? cw * 0.85 : cw;
+      for (let i = 0; i < inRow; i++) {
+        const cx = inRow === 1 ? s / 2 : m + rcw / 2 + (usable - rcw) * (i / (inRow - 1));
+        drawOne(cx, rcw, yShift);
+      }
     }
   }
 
@@ -384,9 +394,9 @@ export class Coral {
 
   _drawFinger(g, s, c) {
     const light = this._lighten(c, 0.5);
-    const top   = s * 0.16;
-    this._stalkCluster(s, this._stalkCount(3), 10, (cx, cw) => {
-      g.roundRect(cx - cw / 2, top, cw, s - top - 4, cw / 2).fill(c);
+    this._stalkCluster(s, this._stalkCount(3), 10, (cx, cw, yShift) => {
+      const top = s * 0.16 + yShift;
+      g.roundRect(cx - cw / 2, top, cw, (s - 4 + yShift) - top, cw / 2).fill(c);
       g.circle(cx, top, cw / 2 + 1).fill(light);   // lighter tip
     });
   }
@@ -459,11 +469,11 @@ export class Coral {
   // ── Candy cane coral — striped columns ─────────────────────────────────────
   _drawCandyCane(g, s, c) {
     const accent = 0xffffff;
-    const top    = s * 0.14;
-    const h      = s - top - 4;
-    this._stalkCluster(s, this._stalkCount(3), 10, (cx, cw) => {
-      g.roundRect(cx - cw / 2, top, cw, h, cw / 2).fill(c);
-      for (let y = top + 6; y < top + h - 4; y += 12) {
+    this._stalkCluster(s, this._stalkCount(3), 10, (cx, cw, yShift) => {
+      const top  = s * 0.14 + yShift;
+      const base = s - 4 + yShift;
+      g.roundRect(cx - cw / 2, top, cw, base - top, cw / 2).fill(c);
+      for (let y = top + 6; y < base - 4; y += 12) {
         g.rect(cx - cw / 2, y, cw, 5).fill(accent);   // candy stripes
       }
     });
@@ -509,11 +519,11 @@ export class Coral {
   // ── Pillar coral — tall ribbed column ─────────────────────────────────────
   _drawPillar(g, s, c) {
     const dark = this._darken(c, 0.25);
-    const top  = s * 0.06;
-    const h    = s * 0.88;
-    this._stalkCluster(s, this._stalkCount(1), 20, (cx, cw) => {
-      g.roundRect(cx - cw / 2, top, cw, h, 6).fill(c);
-      for (let y = s * 0.12; y < top + h; y += 9) {   // ribs
+    this._stalkCluster(s, this._stalkCount(1), 20, (cx, cw, yShift) => {
+      const top  = s * 0.06 + yShift;
+      const base = s * 0.94 + yShift;
+      g.roundRect(cx - cw / 2, top, cw, base - top, 6).fill(c);
+      for (let y = s * 0.12 + yShift; y < base; y += 9) {   // ribs
         g.moveTo(cx - cw / 2, y).lineTo(cx + cw / 2, y).stroke({ color: dark, width: 1.5 });
       }
     });
