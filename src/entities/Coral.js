@@ -333,10 +333,11 @@ export class Coral {
 
   // ── Staghorn — branching antler shape ──────────────────────────────────────
   _drawStaghorn(g, s, c) {
-    // Slender antler branches with matching tip nubs, one more per level
-    this._fanBranches(g, s, c, this._stalkCount(4),
-      { trunkTopFrac: 0.5, spread: 1.5, lenFrac: 0.46, width: 4, trunkW: 5,
-        tip: this._lighten(c, 0.4), tipR: 3.5 });
+    // Two slender antler branches, each topped with an identical fan of
+    // tip-nubbed prongs (one more prong per upgrade level).
+    this._twoBranchFan(g, s, c, this._stalkCount(2),
+      { forkFrac: 0.55, branchAng: 0.5, branchLenFrac: 0.20, fanLenFrac: 0.30,
+        spread: 1.3, width: 4, trunkW: 5, tip: this._lighten(c, 0.4), tipR: 3.5 });
   }
 
   // ── Finger coral — rounded vertical columns ────────────────────────────────
@@ -476,10 +477,11 @@ export class Coral {
 
   // ── Elkhorn — flat spreading antlers ──────────────────────────────────────
   _drawElkhorn(g, s, c) {
-    // Thick spreading antlers with blunt tips, one more per level
-    this._fanBranches(g, s, c, this._stalkCount(3),
-      { trunkTopFrac: 0.55, spread: 1.7, lenFrac: 0.42, width: 8, trunkW: 8,
-        tip: c, tipR: 4 });
+    // Two thick antler branches, each topped with an identical fan of
+    // blunt-tipped prongs (one more prong per upgrade level).
+    this._twoBranchFan(g, s, c, this._stalkCount(2),
+      { forkFrac: 0.60, branchAng: 0.6, branchLenFrac: 0.16, fanLenFrac: 0.26,
+        spread: 1.5, width: 8, trunkW: 8, tip: c, tipR: 4 });
   }
 
   // ── Pillar coral — tall ribbed column ─────────────────────────────────────
@@ -510,25 +512,55 @@ export class Coral {
    * Trunk + `count` identical branches evenly fanned from the trunk top, each
    * ending in an identical tip protrusion. Shared by firetip/staghorn/elkhorn.
    */
-  _fanBranches(g, s, c, count, opts = {}) {
-    const {
-      trunkTopFrac = 0.52, spread = 1.3, lenFrac = 0.42,
-      width = 4, trunkW = 5, tip = null, tipR = 5, tipInner = null,
-    } = opts;
-    const mid = s / 2;
-    const trunkTop = s * trunkTopFrac;
-    const len = s * lenFrac;
-    g.moveTo(mid, s - 4).lineTo(mid, trunkTop).stroke({ color: c, width: trunkW, cap: 'round' });
+  /**
+   * Core fan: draw `count` identical branches evenly fanned around `axisAng`
+   * radiating from (ox, oy), each ending in an identical tip protrusion.
+   */
+  _fanAt(g, ox, oy, axisAng, len, count, c, opts = {}) {
+    const { spread = 1.3, width = 4, tip = null, tipR = 5, tipInner = null } = opts;
     for (let i = 0; i < count; i++) {
       const t   = count === 1 ? 0.5 : i / (count - 1);
-      const ang = -Math.PI / 2 + (t - 0.5) * spread;
-      const ex  = mid + Math.cos(ang) * len;
-      const ey  = trunkTop + Math.sin(ang) * len;
-      g.moveTo(mid, trunkTop).lineTo(ex, ey).stroke({ color: c, width, cap: 'round' });
+      const ang = axisAng + (t - 0.5) * spread;
+      const ex  = ox + Math.cos(ang) * len;
+      const ey  = oy + Math.sin(ang) * len;
+      g.moveTo(ox, oy).lineTo(ex, ey).stroke({ color: c, width, cap: 'round' });
       if (tip !== null) {
         g.circle(ex, ey, tipR).fill(tip);
         if (tipInner !== null) g.circle(ex, ey, tipR * 0.5).fill(tipInner);
       }
+    }
+  }
+
+  /** Single trunk with one fan of identical branches at its top (firetip). */
+  _fanBranches(g, s, c, count, opts = {}) {
+    const { trunkTopFrac = 0.52, lenFrac = 0.42, trunkW = 5, ...fan } = opts;
+    const mid = s / 2;
+    const trunkTop = s * trunkTopFrac;
+    g.moveTo(mid, s - 4).lineTo(mid, trunkTop).stroke({ color: c, width: trunkW, cap: 'round' });
+    this._fanAt(g, mid, trunkTop, -Math.PI / 2, s * lenFrac, count, c, fan);
+  }
+
+  /**
+   * Shared trunk that forks into two diverging branches, with an identical fan
+   * of protrusions at the top of each branch (staghorn / elkhorn antlers).
+   */
+  _twoBranchFan(g, s, c, count, opts = {}) {
+    const {
+      forkFrac = 0.55, branchAng = 0.55, branchLenFrac = 0.18,
+      fanLenFrac = 0.30, trunkW = 5, ...fan
+    } = opts;
+    const mid   = s / 2;
+    const forkY = s * forkFrac;
+    const bLen  = s * branchLenFrac;
+    const fanLen = s * fanLenFrac;
+    // shared trunk up to the fork
+    g.moveTo(mid, s - 4).lineTo(mid, forkY).stroke({ color: c, width: trunkW, cap: 'round' });
+    for (const dir of [-1, 1]) {
+      const axis = -Math.PI / 2 + dir * branchAng;
+      const bx = mid + Math.cos(axis) * bLen;
+      const by = forkY + Math.sin(axis) * bLen;
+      g.moveTo(mid, forkY).lineTo(bx, by).stroke({ color: c, width: trunkW, cap: 'round' });
+      this._fanAt(g, bx, by, axis, fanLen, count, c, fan);
     }
   }
 
