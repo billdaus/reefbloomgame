@@ -165,6 +165,36 @@ export function getHarmonyAdvice() {
   return { harmony: Math.round(s.harmony), status: _harmonyStatus(s.harmony), suggestions };
 }
 
+/**
+ * A reef-aware comment in Bubbles' voice, composed from live state (numbers,
+ * conditions, events) so it's different as the reef changes — not a fixed line.
+ */
+export function getBubblesComment() {
+  const s = state;
+  const h = Math.round(s.harmony);
+  const opts = [];
+
+  opts.push(`Reef readout: ${s.coralCount} coral, ${s.fishCount} fish, ${h} harmony. I compiled that myself.`);
+  if (s.coralCount > 0 && h >= 85)      opts.push(`Harmony at ${h}. Frankly, stunning. I'm taking partial credit.`);
+  else if (s.coralCount > 0 && h < 45)  opts.push(`Harmony's only ${h}. I'm not judging. I'm 30% judging.`);
+
+  const pending = s.placedCoral.reduce((a, c) => a + Math.floor(c.pendingBE ?? 0), 0);
+  if (pending >= 20) opts.push(`About ${pending} Bubble Essence is waiting in your corals — tap a glowing badge to collect it.`);
+
+  if (s.fishCount > 2 && s.placedStations.length === 0) {
+    opts.push(`The fish look itchy. A cleaning station would fix that. Just saying. Repeatedly.`);
+  }
+  if (s.event?.name) opts.push(`The ${s.event.name} is on. Rewards won't claim themselves — I checked, twice.`);
+  if ((s.coralTypesSeen?.size ?? 0) < 4) opts.push(`Try a few different coral species. Variety is, statistically, nice.`);
+  if (s.fishCount === 0) opts.push(`Zero fish detected. The water is very… available.`);
+  if (s.polyps >= 40) opts.push(`${s.polyps} polyps banked. Upgrade a coral, or grab a vault from the Utilities tab.`);
+
+  opts.push(`Everything's nominal. Probably. My sensors are mostly enthusiasm.`);
+  opts.push(`Fun fact: cleaner wrasse eat parasites. We employ several. Excellent hires.`);
+
+  return opts[Math.floor(Math.random() * opts.length)];
+}
+
 const _OPINIONS = {
   dirty:   ['I\'m so itchy… we really need a cleaning station.',
             'My scales could use a good scrub.',

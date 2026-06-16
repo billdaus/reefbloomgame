@@ -195,6 +195,14 @@ export class Bubbles {
     if (line) this._queue.push(line);
   }
 
+  /** Queue an arbitrary (e.g. generated) line for Bubbles to say. */
+  say(text) {
+    if (text) this._queue.push(text);
+  }
+
+  /** Optional generator for idle flavor — returns a contextual comment string. */
+  onGenerate = null;
+
   // ── Update loop ────────────────────────────────────────────────────────────
 
   update(deltaMS) {
@@ -206,7 +214,10 @@ export class Bubbles {
       this._flavorTimer -= deltaMS;
       if (this._flavorTimer <= 0) {
         this._flavorTimer = this._nextFlavor();
-        this.trigger('flavor');
+        // Prefer a generated, reef-aware comment; fall back to scripted flavor
+        const gen = this.onGenerate?.();
+        if (gen) this._queue.push(gen);
+        else this.trigger('flavor');
       }
     }
 

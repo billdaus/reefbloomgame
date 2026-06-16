@@ -19,7 +19,7 @@ import {
 import { initQuests, recordQuestEvent, checkSnapshotQuests, getQuestStatus } from '../systems/QuestSystem.js';
 import { initEventSystem, recordEventProgress, checkEventSnapshots, recordQuestClaimed } from '../systems/EventSystem.js';
 import { initJournal, unlockEntry } from '../systems/JournalSystem.js';
-import { updateHarmonyFilter } from '../systems/HarmonySystem.js';
+import { updateHarmonyFilter, getBubblesComment } from '../systems/HarmonySystem.js';
 import { initLevelSystem, checkLevelUp } from '../systems/LevelSystem.js';
 import { coralLevel, canUpgrade, applyUpgrade } from '../systems/CoralUpgrade.js';
 import { initClamSystem, tickClamSystem, canWatch, collectAdReward, despawnClam } from '../systems/ClamSystem.js';
@@ -71,6 +71,7 @@ export class ReefScene {
 
     // ── Bubbles drone ────────────────────────────────────────────────────────
     this._bubbles = new Bubbles();
+    this._bubbles.onGenerate = () => getBubblesComment();
 
     // ── Seasonal ambience (petals / motes / sparkles) ─────────────────────────
     this._ambience = new SeasonalAmbience();
@@ -146,6 +147,7 @@ export class ReefScene {
 
     this._uiContainer.addChild(this._menu.container);
     this._uiContainer.addChild(this._buildMenuLauncher());
+    this._uiContainer.addChild(this._buildDockAccountBtn());
     this._uiContainer.addChild(this._hud.container);
     this._uiContainer.addChild(this._rewardModal.container);
     this._uiContainer.addChild(this._shopModal.container);
@@ -365,6 +367,36 @@ export class ReefScene {
     let storage = 0;
     for (const c of state.placedCoral) storage += CORAL_SPECIES[c.speciesId]?.storage ?? 0;
     state.coralBufferCap = CORAL_BUFFER_BASE + storage;
+  }
+
+  /** Account button stationed beside Bubbles' dock (bottom-left of the reef). */
+  _buildDockAccountBtn() {
+    const FONT = 'system-ui, -apple-system, sans-serif';
+    const W = 92, H = 26;
+    const c = new Container();
+    const bg = new Graphics();
+    const draw = (hover) => {
+      bg.clear();
+      bg.roundRect(0, 0, W, H, 8).fill({ color: hover ? 0x2a3a5a : 0x10243a, alpha: 0.95 });
+      bg.roundRect(0, 0, W, H, 8).stroke({ color: 0x7fb0e0, width: 1.5, alpha: 0.9 });
+    };
+    draw(false);
+    const label = new Text({
+      text: '👤 Account',
+      style: { fontSize: 12, fill: 0xd8efff, fontFamily: FONT, fontWeight: '600' },
+    });
+    label.anchor.set(0.5);
+    label.x = W / 2; label.y = H / 2;
+    c.addChild(bg, label);
+    // Near the rocky outcrop's "Bubbles' dock" at the bottom-left
+    c.x = GRID_X + 232;
+    c.y = (IS_PORTRAIT ? GRID_Y + GRID_H - 30 : GRID_Y + GRID_H + 14);
+    c.eventMode = 'static';
+    c.cursor = 'pointer';
+    c.on('pointerover', () => draw(true));
+    c.on('pointerout',  () => draw(false));
+    c.on('pointerdown', (e) => { e.stopPropagation(); this._accountModal.show(); });
+    return c;
   }
 
   /** Floating launcher that opens/closes the placement-menu popup. */
