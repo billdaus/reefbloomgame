@@ -179,7 +179,7 @@ export function claimQuest() {
   const q = state.quest;
   if (!q || q.status !== 'complete') return false;
   q.status = 'claimed';
-  if (q.reward.be)     state.be     = Math.min(state.be + q.reward.be, BE_MAX);
+  if (q.reward.be)     state.be     = Math.min(state.be + q.reward.be, state.beMax ?? BE_MAX);
   if (q.reward.pearls) state.pearls += q.reward.pearls;
   _onChange?.();
   return true;

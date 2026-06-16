@@ -31,33 +31,24 @@ export function tickEconomy(deltaMS) {
 }
 
 function _applyCoralTick() {
-  const cap = state.coralBufferCap ?? 120;
+  // BE auto-collects into the wallet (capped at state.beMax, raised by vaults).
+  let earned = state.passiveBEPerTick ?? 0;
   let polyps = 0;
-
-  // Each active-biome coral fills its OWN BE buffer (collected via its upgrade
-  // menu), up to the per-coral cap. Storage corals provide BE buffer but raise
-  // the cap rather than producing their own income.
   state.placedCoral.forEach((entry) => {
     const spec = CORAL_SPECIES[entry.speciesId];
     if (!spec) return;
     const lvl = coralLevel(entry);
     polyps += POLYP_PER_CORAL_TICK * lvl;
-    if (spec.storage) return;                          // vaults store, don't produce
-    entry._beFrac = (entry._beFrac ?? 0) + coralBEPerTick(spec, lvl);
-    const whole = Math.floor(entry._beFrac);
-    if (whole > 0) {
-      entry._beFrac -= whole;
-      entry.pendingBE = Math.min((entry.pendingBE ?? 0) + whole, cap);
-    }
+    if (spec.storage) return;                  // vaults raise the cap, don't produce
+    earned += coralBEPerTick(spec, lvl);
   });
 
-  // Passive income from the inactive biome still auto-banks (you're not there
-  // to collect it).
-  _beCarry += state.passiveBEPerTick ?? 0;
+  _beCarry += earned;
   const wholeBE = Math.floor(_beCarry);
   _beCarry -= wholeBE;
+  const cap = state.beMax ?? BE_MAX;
   if (wholeBE > 0) {
-    state.be = Math.min(state.be + wholeBE, BE_MAX);
+    state.be = Math.min(state.be + wholeBE, cap);
     recordQuestEvent('earn_be', wholeBE);
     recordEventProgress('earn_be', wholeBE);
   }
@@ -76,24 +67,12 @@ function _applyCoralTick() {
   }
 }
 
-/** Collect a coral's buffered BE into the wallet. Returns the amount banked. */
-export function collectCoralBE(entry) {
-  const amt = Math.floor(entry?.pendingBE ?? 0);
-  if (amt <= 0) return 0;
-  state.be = Math.min(state.be + amt, BE_MAX);
-  entry.pendingBE = 0;
-  recordQuestEvent('earn_be', amt);
-  recordEventProgress('earn_be', amt);
-  onBEChange?.(state.be, `+${amt} 🫧`);
-  return amt;
-}
-
 function _checkIdleStreak() {
   const idle = Date.now() - state.lastInteractionTime;
   if (idle >= IDLE_STREAK_MS && !state.idleStreakActive) {
     state.idleStreakActive = true;
     const bonus = IDLE_BONUS_BASE + Math.floor(state.coralCount * 0.5);
-    state.be = Math.min(state.be + bonus, BE_MAX);
+    state.be = Math.min(state.be + bonus, state.beMax ?? BE_MAX);
     onBEChange?.(state.be, `+${bonus} 🫧 (watching...)`);
     recordQuestEvent('idle_streak', 1);
     recordEventProgress('idle_streak', 1);
@@ -141,7 +120,7 @@ export function refundCoral(speciesId) {
   const spec = CORAL_SPECIES[speciesId];
   if (!spec || spec.pearlCost || spec.polypCost) return 0;   // non-BE corals: no BE refund
   const refund = Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
-  state.be = Math.min(state.be + refund, BE_MAX);
+  state.be = Math.min(state.be + refund, state.beMax ?? BE_MAX);
   onBEChange?.(state.be, null);
   return refund;
 }
@@ -162,7 +141,7 @@ export function refundDecor(speciesId) {
   const spec = DECOR_SPECIES[speciesId];
   if (!spec) return 0;
   const refund = Math.floor((spec.cost ?? 0) / 2);
-  state.be = Math.min(state.be + refund, BE_MAX);
+  state.be = Math.min(state.be + refund, state.beMax ?? BE_MAX);
   onBEChange?.(state.be, null);
   return refund;
 }
@@ -172,7 +151,7 @@ export function refundFish(speciesId) {
   const spec = FISH_SPECIES[speciesId];
   if (!spec || spec.pearlCost) return 0;
   const refund = Math.floor((FISH_COST[spec.tier] ?? 0) / 2);
-  state.be = Math.min(state.be + refund, BE_MAX);
+  state.be = Math.min(state.be + refund, state.beMax ?? BE_MAX);
   onBEChange?.(state.be, null);
   return refund;
 }

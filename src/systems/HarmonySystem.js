@@ -178,8 +178,7 @@ export function getBubblesComment() {
   if (s.coralCount > 0 && h >= 85)      opts.push(`Harmony at ${h}. Frankly, stunning. I'm taking partial credit.`);
   else if (s.coralCount > 0 && h < 45)  opts.push(`Harmony's only ${h}. I'm not judging. I'm 30% judging.`);
 
-  const pending = s.placedCoral.reduce((a, c) => a + Math.floor(c.pendingBE ?? 0), 0);
-  if (pending >= 20) opts.push(`About ${pending} Bubble Essence is waiting in your corals — tap a glowing badge to collect it.`);
+  if (s.be >= (s.beMax ?? 999)) opts.push(`Your BE storage is full at ${s.be}. Spend some, or add a vault for more cap.`);
 
   if (s.fishCount > 2 && s.placedStations.length === 0) {
     opts.push(`The fish look itchy. A cleaning station would fix that. Just saying. Repeatedly.`);

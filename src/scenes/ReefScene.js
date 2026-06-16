@@ -1,6 +1,6 @@
 import { Container, ColorMatrixFilter, Graphics, Text } from 'pixi.js';
 import { state } from '../state.js';
-import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, STATION_SPAN, STATION_MAX_LEVEL, STATION_CELL, CLEAN_DURATION_TICKS, CLEAN_COOLDOWN_MS, CLEANER_TENURE_TICKS, CLEANER_TENURE_CUSTOMERS, CLEANER_LEAVE_CHANCE, CLEANER_OFFDUTY_MS, CLEANING_ASSIGN_INTERVAL, stationUpgradeCost, IS_PORTRAIT, PANEL_H, CORAL_BUFFER_BASE } from '../constants.js';
+import { CORAL_SPECIES, FISH_SPECIES, DECOR_SPECIES, GRID_ROWS, GRID_COLS, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL, BE_PER_TICK, BIOMES, PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H, BE_MAX, GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, STATION_SPAN, STATION_MAX_LEVEL, STATION_CELL, CLEAN_DURATION_TICKS, CLEAN_COOLDOWN_MS, CLEANER_TENURE_TICKS, CLEANER_TENURE_CUSTOMERS, CLEANER_LEAVE_CHANCE, CLEANER_OFFDUTY_MS, CLEANING_ASSIGN_INTERVAL, stationUpgradeCost, IS_PORTRAIT, PANEL_H } from '../constants.js';
 import { BackgroundLayer }  from '../layers/BackgroundLayer.js';
 import { GridLayer }        from '../layers/GridLayer.js';
 import { ForegroundLayer }  from '../layers/ForegroundLayer.js';
@@ -12,7 +12,7 @@ import { SeasonalAmbience } from '../entities/SeasonalAmbience.js';
 import {
   initEconomy, tickEconomy,
   spendForCoral, spendForFish, spendForCoralPearl, spendForFishPearl,
-  spendForCoralPolyp, spendPolyps, collectCoralBE,
+  spendForCoralPolyp, spendPolyps,
   spendForDecor, refundDecor,
   recordInteraction, refundCoral, refundFish,
 } from '../systems/BEEconomy.js';
@@ -180,7 +180,7 @@ export class ReefScene {
           this._bubbles.trigger('idleStreak');
         }
       }
-      if (newBE >= BE_MAX) unlockEntry('event:be_max');
+      if (newBE >= (state.beMax ?? BE_MAX)) unlockEntry('event:be_max');
       this._checkLowBE(newBE);
     });
 
@@ -268,13 +268,6 @@ export class ReefScene {
     this._tickStations(dms, dt);
     this._updateParticles(dms);
 
-    // Flag corals whose BE buffer is ready to collect (throttled)
-    this._readyMs = (this._readyMs ?? 0) + dms;
-    if (this._readyMs >= 1000) {
-      this._readyMs = 0;
-      for (const cc of state.placedCoral) this._grid.setCoralReady(cc.uid, (cc.pendingBE ?? 0) >= 1);
-    }
-
     // Auto-save every 30 s
     this._autoSaveMs += dms;
     if (this._autoSaveMs >= 30000) {
@@ -343,7 +336,7 @@ export class ReefScene {
     state.coralCount++;
     state.coralTierCounts[spec.tier]++;
     state.coralTypesSeen.add(speciesId);
-    this._recomputeBufferCap();
+    this._recomputeBeMax();
 
     this._grid.placeCoral(spec, col, row, uid, 1);
 
@@ -361,11 +354,14 @@ export class ReefScene {
     saveGame();
   }
 
-  /** Per-coral BE buffer cap = base + total Storage-coral capacity. */
-  _recomputeBufferCap() {
+  /** BE wallet cap = base + each vault's storage × its level. */
+  _recomputeBeMax() {
     let storage = 0;
-    for (const c of state.placedCoral) storage += CORAL_SPECIES[c.speciesId]?.storage ?? 0;
-    state.coralBufferCap = CORAL_BUFFER_BASE + storage;
+    for (const c of state.placedCoral) {
+      const st = CORAL_SPECIES[c.speciesId]?.storage;
+      if (st) storage += st * Math.max(1, c.level ?? 1);
+    }
+    state.beMax = BE_MAX + storage;
   }
 
   /** Account button stationed beside Bubbles' dock (bottom-left of the reef). */
@@ -425,17 +421,13 @@ export class ReefScene {
       const newLevel = applyUpgrade(e);
       if (!newLevel) return null;
       this._grid.upgradeCoral(e.uid, newLevel);
+      this._recomputeBeMax();   // vault upgrades raise the BE cap
       const spec = CORAL_SPECIES[e.speciesId];
       this._hud.showBonus(`${spec?.name ?? 'Coral'} → Lv ${newLevel} 🪸`);
       unlockEntry('event:coral_upgrade');
       recordInteraction();
       saveGame();
       return newLevel;
-    }, (e) => {
-      // Collect this coral's buffered BE into the wallet
-      const amt = collectCoralBE(e);
-      if (amt > 0) { recordInteraction(); this._grid.setCoralReady(e.uid, false); saveGame(); }
-      return amt;
     });
   }
 
@@ -622,7 +614,7 @@ export class ReefScene {
     state.placedCoral.splice(idx, 1);
     state.coralCount--;
     state.coralTierCounts[spec.tier]--;
-    this._recomputeBufferCap();
+    this._recomputeBeMax();
 
     // Remove sprite
     this._grid.removeCoral(entry.uid);
@@ -889,7 +881,7 @@ export class ReefScene {
     const rewards = collectAdReward();
 
     // Apply BE and pearl rewards immediately
-    state.be     = Math.min(state.be + rewards.be, BE_MAX);
+    state.be     = Math.min(state.be + rewards.be, state.beMax ?? BE_MAX);
     state.pearls += rewards.pearls;
     unlockEntry('event:clam');
     if (rewards.pearls > 0) unlockEntry('resource:pearls');
@@ -913,8 +905,8 @@ export class ReefScene {
   // ── Save / restore ─────────────────────────────────────────────────────────
 
   _restoreFromSave(data) {
-    // Restore resources
-    state.be             = Math.min(data.be ?? state.be, BE_MAX);
+    // Restore resources (clamped to beMax once vaults are rebuilt below)
+    state.be             = data.be ?? state.be;
     state.harmony        = data.harmony ?? state.harmony;
     state.level          = data.level   ?? state.level;
     state.pearls         = data.pearls  ?? state.pearls;
@@ -944,7 +936,8 @@ export class ReefScene {
       this._grid.placeCoral(spec, col, row, uid, lvl);
       if (uid > maxUid) maxUid = uid;
     });
-    this._recomputeBufferCap();
+    this._recomputeBeMax();
+    state.be = Math.min(state.be, state.beMax);
 
     // Rebuild cleaning stations (claim their 2×2 footprints before decor)
     const placeStationAt = (col, row, uid, level) => {
@@ -1111,7 +1104,7 @@ export class ReefScene {
         state.coralCount++;
         state.coralTierCounts[coralSpec.tier]++;
         state.coralTypesSeen.add(speciesId);
-        this._recomputeBufferCap();
+        this._recomputeBeMax();
         this._grid.placeCoral(coralSpec, col, row, uid, 1);
         unlockEntry(`coral:${speciesId}`);
         checkSnapshotQuests();

@@ -92,14 +92,14 @@ export class Coral {
       case 'phantomPolyp': this._growColumns(g, s, c, level); break;
       case 'abyssalFan':   this._growFan(g, s, c, level); break;
       case 'wispCoral':    this._growBlades(g, s, c, level); break;
-      // Circular / dome corals don't change shape on upgrade — they only
-      // produce more BE.
+      // Circular / dome corals grow concentric polyp rings (and the bubble
+      // coral gains more spheres) so upgrades are still visible.
       case 'brain':
       case 'twilightBrain':
-      case 'rainbowCoral':
-      case 'star':
-      case 'starter':
-      case 'bubble':       break;
+      case 'rainbowCoral': this._growDome(g, s, c, level, s / 2, s * 0.56, s * 0.38); break;
+      case 'star':         this._growDome(g, s, c, level, s / 2, s * 0.58, s * 0.36); break;
+      case 'starter':      this._growDome(g, s, c, level, s / 2, s * 0.65, s * 0.22); break;
+      case 'bubble':       this._growSpheres(g, s, c, level); break;
       case 'ghost':
       case 'lettuce':      this._growFan(g, s, c, level); break;
       case 'seagrass':

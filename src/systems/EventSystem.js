@@ -294,7 +294,7 @@ function _checkTierUnlocks() {
     const tier = ev.pass.tiers[i];
     if (qc < tier.threshold) continue;
     ev.tiersUnlocked.push(i);
-    if (tier.reward.be)        state.be     = Math.min(state.be + tier.reward.be, BE_MAX);
+    if (tier.reward.be)        state.be     = Math.min(state.be + tier.reward.be, state.beMax ?? BE_MAX);
     if (tier.reward.pearls)    state.pearls += tier.reward.pearls;
     if (tier.reward.exclusive) _onExclusive?.(tier.reward.exclusive);
   }
@@ -479,7 +479,7 @@ export function claimEvent() {
   const ev = state.event;
   if (!ev || ev.status !== 'complete') return false;
   ev.status = 'claimed';
-  if (ev.reward.be)     state.be     = Math.min(state.be + ev.reward.be, BE_MAX);
+  if (ev.reward.be)     state.be     = Math.min(state.be + ev.reward.be, state.beMax ?? BE_MAX);
   if (ev.reward.pearls) state.pearls += ev.reward.pearls;
   _onChange?.();
   return true;
