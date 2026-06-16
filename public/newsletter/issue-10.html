@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 10 — A Place to Be From. The fish slowed down by forty percent, learned to linger by a coral they call home, and a coral can now house more of them every time it grows." />
+  <title>A Place to Be From — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 10 — settled aqua and seafoam, the colour of a fish that has stopped rushing */
+    :root {
+      --nl-bg-1: #103c44;
+      --nl-bg-2: #0b2d36;
+      --nl-bg-3: #071e26;
+      --nl-bg-4: #03121a;
+      --theme-glow:   rgba(77, 208, 225, 0.16);
+      --theme-accent: #4dd0e1;
+      --theme-rule:   rgba(77, 208, 225, 0.6);
+    }
+    /* Slow drifting motes, like silt that has finally been allowed to settle */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 22% 30%, rgba(77,208,225,0.08) 0, transparent 6%),
+        radial-gradient(circle at 74% 22%, rgba(128,222,234,0.06) 0, transparent 5%),
+        radial-gradient(circle at 60% 78%, rgba(77,208,225,0.07) 0, transparent 6%),
+        radial-gradient(circle at 30% 84%, rgba(178,235,242,0.05) 0, transparent 5%);
+      z-index: 0;
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/">← Back to dispatch</a>
+
+      <div class="byline">
+        <span>Issue 10</span>
+        <span>Week of June 16, 2026</span>
+        <span>Editorial</span>
+      </div>
+      <h1 class="issue-title">A Place to Be From</h1>
+      <p class="issue-deck">For nine issues the fish had everywhere to go and nowhere to be. This week they slowed by nearly half, picked a coral, and began to linger by it — and a coral, for the first time, can decide how many of them it is willing to take in.</p>
+
+      <p class="lede">There is a particular failure mode that aquarium games fall into, and we have been quietly guilty of it since launch: the fish behave like a screensaver. They dart, they ricochet, they cross the whole reef in a breath because nothing they pass is more interesting than the next empty patch of water. It looks like life from a distance and like Brownian motion up close. This week we tried to fix the feeling, and it turned out the fix was not faster fish or cleverer pathfinding. It was the opposite of speed, and it was the simplest possible idea about belonging: everyone should be <em>from</em> somewhere.</p>
+
+      <h3>First, we took the hurry out</h3>
+
+      <p>Every fish in the game now moves at sixty percent of its former pace — a single global multiplier, applied on top of each species' own speed, so the dugong is still ponderous and the chromis is still quick, just forty percent calmer than before. It is astonishing how much this one number changes the room. A reef of darting fish reads as frantic; a reef of cruising fish reads as content. Real reef fish, the ones we keep going back to photographs of, almost never sprint. Sprinting is what you do when something is wrong. The default state of a healthy reef is an unhurried drift, and now ours drifts.</p>
+
+      <p>While they were slowing down, we also taught them to explore the gaps. A roaming fish used to pick a random point in open water and beeline for it; now, most of the time, it aims for the space just beside a coral instead, threading the channels between structures rather than crossing the void. The reef is suddenly somewhere you watch fish move <em>through</em>, not just across.</p>
+
+      <h3>Every fish needs an address</h3>
+
+      <p>The larger change is that each fish is now assigned a home coral — a single tile it considers its own — and roughly seventy percent of the time, when it chooses where to go next, it picks a spot in a loose ring around that home, somewhere between two-thirds of a tile and a little over two tiles out. It hovers, it wanders a short way off, it comes back. The other thirty percent of the time it goes exploring, which is exactly the rhythm you want: a base, and the freedom to leave it. Watch one fish long enough and you will learn where it lives.</p>
+
+      <blockquote>A screensaver has motion. A neighbourhood has residents. The difference is whether anything on screen has a reason to come back.</blockquote>
+
+      <p>The assignment is not decorative bookkeeping. When you place a coral, hatch a fish, remove either, upgrade a coral, or simply reload the page, the whole reef is re-sorted: every fish keeps its home if it still has one, and any fish without a home is given the nearest coral that still has room. Which raises the question of what "room" means — and that is the other half of this week's work.</p>
+
+      <h3>A coral is a landlord now</h3>
+
+      <p>Each coral can host a limited number of residents, and that number is simply its level plus one. A freshly planted, level-one coral takes in two fish. Upgrade it and it takes three, then four, climbing to six tenants at level five. This is the first time coral upgrades have done something for your fish rather than only for your Bubble Essence, and it quietly reframes the entire upgrade economy. A bigger coral was always a bigger sprite and a fatter income; now it is also a bigger house. If your reef is crowded and your fish are roaming homeless because every coral is full, the answer is no longer only "plant more coral." It can also be "make the coral you love able to hold more of the fish that love it."</p>
+
+      <p>Fish with nowhere to go do not vanish or sulk — they become free roamers, drifting the reef at large until a slot opens, at which point the next re-sort takes them in. Nobody is evicted into nothing. There is always, eventually, a home.</p>
+
+      <div class="spotlight">
+        <div class="spotlight-head">
+          <div class="spotlight-swatch" style="background: radial-gradient(circle at 35% 35%, #4dd0e1 0%, #00838f 100%);"></div>
+          <div class="spotlight-meta">
+            <div class="spotlight-eyebrow">Species Spotlight</div>
+            <div class="spotlight-name">Staghorn Coral</div>
+            <div class="spotlight-sci">Acropora cervicornis</div>
+            <span class="spotlight-tier tier-rare">RARE</span>
+          </div>
+        </div>
+        <p>We are spotlighting the staghorn this week partly because it is the season's quiet landlord and partly because it got a face-lift. A Rare-tier coral that unlocks at level three, it now forks into two diverging antler branches, each crowned with an identical fan of prongs — and as you upgrade it, both crowns grow another prong, evenly spaced, so the colony gets visibly more intricate rather than merely larger. This week we spread those antlers wider still, opening the fork so the two branches splay out before they fan.</p>
+        <p>The choice of species is not an accident. In the real Caribbean, <em>Acropora cervicornis</em> is the reef's great housing project — fast-growing thickets whose tangled branches are nursery and shelter to an entire generation of juvenile fish. A coral whose whole biological purpose is to be a place small things live is the right one to introduce the idea that, in Reef Bloom too, a coral is somewhere a fish can be from.</p>
+      </div>
+
+      <p class="signoff">— The Reef Bloom team</p>
+
+      <a class="back-link" href="/newsletter/" style="margin-top:32px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
