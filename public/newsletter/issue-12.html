@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 12 — The Same Reef, Every Window. Part three of three: optional sign-in and cloud save sync mean your reef can follow you between phone, browser and app — built entirely on AWS, and entirely dormant until you ask for it." />
+  <title>The Same Reef, Every Window — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 12 — first light: pale cyan and warm gold, the reef seen from everywhere at once */
+    :root {
+      --nl-bg-1: #1c4a55;
+      --nl-bg-2: #123640;
+      --nl-bg-3: #0a2630;
+      --nl-bg-4: #04161d;
+      --theme-glow:   rgba(255, 224, 160, 0.15);
+      --theme-accent: #ffe0a0;
+      --theme-rule:   rgba(160, 224, 220, 0.6);
+    }
+    /* Dawn light arriving from several directions at once */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 18% 16%, rgba(255,224,160,0.08) 0, transparent 7%),
+        radial-gradient(circle at 84% 22%, rgba(160,224,220,0.07) 0, transparent 6%),
+        radial-gradient(circle at 50% 80%, rgba(255,224,160,0.06) 0, transparent 7%),
+        radial-gradient(circle at 30% 60%, rgba(160,224,220,0.05) 0, transparent 5%);
+      z-index: 0;
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/issue-11.html">← Part 2: A Reef You Can Hold</a>
+
+      <div class="byline">
+        <span>Issue 12</span>
+        <span>Week of June 16, 2026</span>
+        <span>Editorial · Part 3 of 3</span>
+      </div>
+      <h1 class="issue-title">The Same Reef, Every Window</h1>
+      <p class="issue-deck">Part two put the reef in your hand. Part three answers the question that immediately follows: if the reef can live in a browser, a phone, and an app, which copy is the real one? The answer is optional sign-in and cloud save sync — and, in keeping with everything this dispatch believes, it does absolutely nothing until you ask it to.</p>
+
+      <p class="lede">A reef that can be in three places has a problem the old single-window reef never did. Until now, your save has lived in one browser on one machine, written to local storage and never leaving it — which is private and instant and completely stranded. Open the game somewhere else and you start from sand. The final piece of the bigger thing closes that gap: you can now, if you want, sign in, and your reef will follow you between the desktop site, the phone edition, and the app. Three windows, one reef. This is the part that makes the other two parts mean something.</p>
+
+      <h3>Sign-in, the boring-on-purpose way</h3>
+
+      <p>The whole thing is built on AWS and is, by design, almost aggressively unremarkable. Sign-in uses the Cognito Hosted UI — a plain email-and-password account with sign-up and verification handled for us — over the standard authorization-code flow with PKCE. There is no authentication SDK loaded into the game; the entire exchange is, as the source comment cheerfully puts it, "two fetches." Once you are signed in, the game trades your identity token for temporary AWS credentials and talks directly to a single database table.</p>
+
+      <p>That table is DynamoDB, on-demand, and it is guarded by the one detail we want to call out because it is the difference between a feature and a liability: an IAM policy condition — <code>LeadingKeys</code> — that makes it physically impossible for your credentials to read or write any item but your own. You cannot touch another player's reef, and they cannot touch yours, not because the app politely declines but because the permission to do so was never issued. Each save syncs per slot on a newest-wins basis, and an erased slot leaves a tombstone behind so that a deletion travels between your devices as faithfully as a creation does.</p>
+
+      <blockquote>The safest cloud feature is the one that cannot misbehave because it was never given the keys to. We did not ask the code to be trustworthy; we arranged for it to be incapable of betrayal.</blockquote>
+
+      <h3>Dormant until you say otherwise</h3>
+
+      <p>Here is the part that will surprise no one who has read this dispatch for long. All of this is off. Out of the box, with no backend configured, the game renders no sign-in button, loads no cloud code, and keeps your reef exactly where it has always been — in your own browser, local and yours. The entire apparatus stays dormant until a single configuration file is filled in with a real backend; until that moment it is as if none of it exists. Inside the native iOS shell, where browser-style redirect sign-in needs extra native plumbing we have not laid, the feature simply reports itself unavailable and steps aside. Nothing nags. Nothing assumes. Cloud sync is a door you may open, never one you trip over.</p>
+
+      <div class="spotlight">
+        <div class="spotlight-head">
+          <div class="spotlight-swatch" style="background: radial-gradient(circle at 35% 35%, #ffe6a8 0%, #b97f1e 100%);"></div>
+          <div class="spotlight-meta">
+            <div class="spotlight-eyebrow">Infrastructure Spotlight</div>
+            <div class="spotlight-name">infra/reef-auth.yaml</div>
+            <div class="spotlight-sci">CloudFormation · one template</div>
+            <span class="spotlight-tier tier-mythic">SERVERLESS</span>
+          </div>
+        </div>
+        <p>The entire backend — the user pool, the identity pool that vends credentials, the locked-down database table, and the precise IAM permissions that fence each player into their own row — is described in a single CloudFormation template and deployed by one command through a manual workflow. There are no servers to patch, no machine running at three in the morning waiting for traffic that may never come. It is serverless and on-demand, which at the dispatch's honest current scale means it costs approximately nothing, and that is exactly the point.</p>
+        <p>Long-time readers will recognise the through-line. Issues nine and nine-and-a-half were confessions about money — what the reef costs to run, the dream of merely breaking even. A backend that is free when idle is the same value in a different key: we would rather build the thing that can wait quietly for you than the thing that bleeds whether or not you arrive.</p>
+      </div>
+
+      <h3>Where the reef can go</h3>
+
+      <p>So that is the whole of it, finally said out loud across three issues. The bigger thing was never one feature. It was a place, or rather the freedom to be in any of them: a reef that gives its fish a home, that fits in a hand, that can follow you between every screen you own and still be the same reef when you arrive. We spent issues six through eight refusing to name it because, honestly, we were not sure we could build it. It is built. It is yours, in whichever window you like, and — should you ever want it to — everywhere at once.</p>
+
+      <p class="signoff">— The Reef Bloom team</p>
+
+      <a class="back-link" href="/newsletter/issue-10.html" style="margin-top:32px;">↩ Back to Part 1</a>
+      <a class="back-link" href="/newsletter/" style="margin-top:12px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 11 — A Reef You Can Hold. Part two of three: the bigger thing arrives. Reef Bloom now runs as a portrait phone edition and a real iOS app, built from the very same source as the page you already play." />
+  <title>A Reef You Can Hold — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 11 — pocket navy with a cool screen-glow, the colour of a game held close in the dark */
+    :root {
+      --nl-bg-1: #15224a;
+      --nl-bg-2: #0e1838;
+      --nl-bg-3: #090f24;
+      --nl-bg-4: #040713;
+      --theme-glow:   rgba(120, 196, 255, 0.16);
+      --theme-accent: #78c4ff;
+      --theme-rule:   rgba(120, 196, 255, 0.6);
+    }
+    /* The soft rectangle of a screen, casting light upward */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(ellipse 40% 18% at 50% 88%, rgba(120,196,255,0.10) 0, transparent 70%),
+        radial-gradient(circle at 22% 26%, rgba(120,196,255,0.06) 0, transparent 6%),
+        radial-gradient(circle at 78% 30%, rgba(160,210,255,0.05) 0, transparent 5%);
+      z-index: 0;
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/issue-10.html">← Part 1: A Place to Be From</a>
+
+      <div class="byline">
+        <span>Issue 11</span>
+        <span>Week of June 16, 2026</span>
+        <span>Editorial · Part 2 of 3</span>
+      </div>
+      <h1 class="issue-title">A Reef You Can Hold</h1>
+      <p class="issue-deck">The thing we would not name for four issues was never a fish or a mechanic. It was a place — and this is the first of two. Reef Bloom now runs as a portrait phone edition and as a real iOS application, both grown from the exact same source as the page you have always played.</p>
+
+      <p class="lede">In issue eight we promised the bigger thing was "not a species, it is not a system, and it does not change anything about the reef itself," that it only "changes where the reef can go," and that we would explain ourselves "when the thing is in your hands — possibly literally." Here is the literal part. The reef now fits in a hand. Visit the game on a phone, or open <code>/mobile/</code> on anything, and Reef Bloom rearranges itself into a single tall column built for thumbs; and for those who want it off the browser entirely, there is now an iOS app shell, a real icon on a real home screen, running the same game. Part one gave every fish a home coral. Part two gives the whole reef a new address.</p>
+
+      <h3>The same reef, re-proportioned</h3>
+
+      <p>The phone edition is not a cut-down version. It is the same ten-by-ten grid, the same coral, the same fish that learned to slow down and linger this week — simply re-proportioned for a portrait screen. The layout engine measures your viewport and, when it is taller than it is wide, lays the board across the full width with a four-pixel margin on each side, sizing every tile to whatever a tenth of that width comes to. The heads-up display compresses to a tidy fifty-six pixels, and the build menu, which lives in a right-hand column on a desktop, drops to sit directly beneath the grid where your thumb already is. Nothing is hidden; the whole reef is simply stacked instead of spread.</p>
+
+      <p>Even on a wide desktop window, <code>/mobile/</code> will show you the phone layout deliberately, clamping itself to a sensible handset size — up to about 430 by 930 — so you can see exactly what the pocket version looks like without owning the pocket.</p>
+
+      <h3>One source, two editions</h3>
+
+      <p>The part we are quietly proud of is that there is no second codebase. The mobile page is generated from the root page at build time by a small script; it injects a single flag that tells the layout engine to force the portrait view, marks the page as the mobile edition, and points a canonical link back at the desktop site so the two do not compete for the same search results. That is the entire fork. Same code, same saves — your reef is one reef whether you reach it through the wide door or the tall one, and the two start screens link across to each other so you are never stranded on the wrong edition.</p>
+
+      <blockquote>We did not build a mobile game. We taught the game we already had to stand up tall when the screen does, and the reef never noticed the difference.</blockquote>
+
+      <p>This matters more than it sounds. A separate mobile build is a second thing to keep alive — every new coral, every fish, every fix has to be made twice and tested twice, and the day you forget is the day the two versions quietly diverge. By generating the phone edition from the desktop one, we guaranteed that they can never drift apart. There is one reef. It just knows how to hold itself differently depending on what it is being held by.</p>
+
+      <div class="spotlight">
+        <div class="spotlight-head">
+          <div class="spotlight-swatch" style="background: radial-gradient(circle at 35% 30%, #2b6fb8 0%, #0a3a6a 100%);"></div>
+          <div class="spotlight-meta">
+            <div class="spotlight-eyebrow">Platform Spotlight</div>
+            <div class="spotlight-name">Reef Bloom for iOS</div>
+            <div class="spotlight-sci">com.billdaus.reefbloom</div>
+            <span class="spotlight-tier tier-legendary">NATIVE</span>
+          </div>
+        </div>
+        <p>Beyond the browser, there is now a native shell built with Capacitor — the web game wrapped so it can ship to the App Store and live as an icon rather than a bookmark. It carries the same display name, Reef Bloom, and loads the very same built game from the <code>dist</code> folder. The few native touches are the ones that matter on a phone: the content is told never to inset, so the reef runs edge to edge under the notch and home indicator, and the app's backing colour is set to a deep ocean blue — <code>#0a3a6a</code> — so that in the split second before the water renders, the screen is already the sea.</p>
+        <p>It is, deliberately, almost nothing: a frame around the reef you already have. The point was never a different game. The point was that the same reef could exist somewhere it has never been — under glass, in a pocket, behind an icon.</p>
+      </div>
+
+      <p>That is the literal half of the promise: the reef in your hand. But a reef that lives on a phone raises a question the desktop version never had to answer — if the reef can be in two places, which one is the real one? That is part three, and it runs next.</p>
+
+      <p class="signoff">— The Reef Bloom team · continued in Part 3</p>
+
+      <a class="back-link" href="/newsletter/issue-12.html" style="margin-top:32px;">Read Part 3 →</a>
+      <a class="back-link" href="/newsletter/" style="margin-top:12px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
