@@ -256,13 +256,24 @@ export class PlacementMenu {
       decorList.forEach(spec => { cursor = this._addRow('decor', spec, cursor); });
     }
 
+    // Utilities — cleaning stations + storage corals (cost Polyps)
+    const utils = [
+      ...Object.values(CORAL_SPECIES).filter(s => s.utility && _matchesBiome(s, biome)).map(s => ({ spec: s, type: 'coral' })),
+      ...Object.values(DECOR_SPECIES).filter(s => s.utility && _matchesBiome(s, biome)).map(s => ({ spec: s, type: 'decor' })),
+    ];
+    if (utils.length > 0) {
+      cursor += PAD * 2;
+      cursor = this._sectionLabel('UTILITIES', cursor);
+      utils.forEach(({ spec, type }) => { cursor = this._addRow(type, spec, cursor); });
+    }
+
     cursor += PAD;
     this._contentH   = cursor;
     this._maxScrollY = Math.max(0, this._contentH - SCROLL_AREA_H);
   }
 
   _sortedSpecies(collection, type, biome) {
-    const list = Object.values(collection).filter(s => _matchesBiome(s, biome));
+    const list = Object.values(collection).filter(s => _matchesBiome(s, biome) && !s.utility);
     switch (this._sortMode) {
       case 'tier':
         return list.sort((a, b) =>
@@ -379,15 +390,17 @@ export class PlacementMenu {
     name.y = ROW_H / 2 - 12;
     row.addChild(name);
 
-    // Cost — pearl species show 💎 instead of 🫧
+    // Cost — pearls 💎, polyps 🪸 (utility items), else BE 🫧
     const isPearl = !!spec.pearlCost;
+    const isPolyp = !!spec.polypCost;
     const cost    = isPearl  ? spec.pearlCost
+                  : isPolyp  ? spec.polypCost
                   : type === 'decor' ? (spec.cost ?? 0)
                   : type === 'coral' ? CORAL_COST[spec.tier]
                   :                    FISH_COST[spec.tier];
     const costTxt = new Text({
-      text: isPearl ? `${cost} 💎` : `${cost} 🫧`,
-      style: { fontSize: 10, fill: isPearl ? 0xb0bec5 : COLORS.text_secondary, fontFamily: FONT },
+      text: isPearl ? `${cost} 💎` : isPolyp ? `${cost} 🪸` : `${cost} 🫧`,
+      style: { fontSize: 10, fill: isPearl ? 0xb0bec5 : isPolyp ? 0xc8e6a0 : COLORS.text_secondary, fontFamily: FONT },
     });
     costTxt.x = PAD + ICON_SZ + 8;
     costTxt.y = ROW_H / 2 + 1;

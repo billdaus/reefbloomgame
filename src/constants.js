@@ -12,8 +12,9 @@ export {
 export const TICK_MS          = 5000;   // BE tick every 5 s
 export const IDLE_STREAK_MS   = 20000;  // 20 s without touch = idle streak
 export const IDLE_BONUS_BASE  = 12;     // BE awarded on idle streak
-export const BE_MAX           = 999;    // BE hard cap
+export const BE_MAX           = 999;    // BE wallet cap (collected BE)
 export const POLYP_MAX        = 999;    // Polyp hard cap
+export const CORAL_BUFFER_BASE = 120;   // per-coral BE buffer before collection; raised by Storage corals
 
 // Per-tick BE output by tier (coral)
 export const BE_PER_TICK = {
@@ -151,7 +152,7 @@ export const CORAL_SPECIES = {
   // ── Rare ────────────────────────────────────────────────────────────────────
   staghorn: {
     id: 'staghorn', name: 'Staghorn Coral', scientific: 'Acropora cervicornis',
-    tier: TIER.RARE, tall: true, color: 0x00d4e8, unlockLevel: 3,
+    tier: TIER.RARE, tall: true, color: 0x00a6b8, unlockLevel: 3,
   },
   finger: {
     id: 'finger', name: 'Finger Coral', scientific: 'Porites compressa',
@@ -185,7 +186,7 @@ export const CORAL_SPECIES = {
   // ── Epic ────────────────────────────────────────────────────────────────────
   elkhorn: {
     id: 'elkhorn', name: 'Elkhorn Coral', scientific: 'Acropora palmata',
-    tier: TIER.EPIC, tall: true, blocksB: true, color: 0x4dd0e1, unlockLevel: 7,
+    tier: TIER.EPIC, tall: true, blocksB: true, color: 0x37a6b6, unlockLevel: 7,
   },
   pillar: {
     id: 'pillar', name: 'Pillar Coral', scientific: 'Dendrogyra cylindrus',
@@ -267,6 +268,19 @@ export const CORAL_SPECIES = {
     id: 'wispCoral', name: 'Wisp Coral', scientific: '',
     tier: TIER.SUPER_RARE, tall: false, color: 0xb388ff, unlockLevel: 9,
     biome: 'deepTwilight',
+  },
+  // ── Utility: Storage corals (cost Polyps, raise each coral's BE buffer) ────
+  essenceVault: {
+    id: 'essenceVault', name: 'Essence Vault', scientific: '',
+    tier: TIER.RARE, tall: false, color: 0x66bb6a, unlockLevel: 4,
+    polypCost: 20, storage: 200, utility: true,
+    biome: ['coral', 'seagrass', 'deepTwilight'],
+  },
+  grandReservoir: {
+    id: 'grandReservoir', name: 'Grand Reservoir', scientific: '',
+    tier: TIER.EPIC, tall: false, color: 0x26a69a, unlockLevel: 8,
+    polypCost: 60, storage: 500, utility: true,
+    biome: ['coral', 'seagrass', 'deepTwilight'],
   },
 
   // ── Event pass exclusives ─────────────────────────────────────────────────
@@ -748,8 +762,8 @@ export const DECOR_SPECIES = {
   cleaningStation: {
     id: 'cleaningStation', name: 'Cleaning Station',
     kind: 'cleaningStation', tier: TIER.RARE, color: 0x8ad1d8, accentColor: 0xff7043,
-    cost: 40, unlockLevel: 4, biome: ['coral', 'seagrass', 'deepTwilight'],
-    cleaning: true,
+    polypCost: 30, unlockLevel: 4, biome: ['coral', 'seagrass', 'deepTwilight'],
+    cleaning: true, utility: true,
   },
 };
 

@@ -38,7 +38,7 @@ export function getCurrentBiome() {
 export function saveGame() {
   const biomeData = {
     grid:           state.grid.map(row => [...row]),
-    placedCoral:    state.placedCoral.map(c => ({ uid: c.uid, col: c.col, row: c.row, speciesId: c.speciesId, level: c.level ?? 1 })),
+    placedCoral:    state.placedCoral.map(c => ({ uid: c.uid, col: c.col, row: c.row, speciesId: c.speciesId, level: c.level ?? 1, pendingBE: Math.floor(c.pendingBE ?? 0) })),
     placedDecor:    state.placedDecor.map(d => ({ uid: d.uid, col: d.col, row: d.row, speciesId: d.speciesId })),
     placedStations: state.placedStations.map(s => ({ uid: s.uid, col: s.col, row: s.row, level: s.level ?? 1 })),
     fishTypes:      state.fish.map(f => f.speciesId),   // kept for slot-preview counts

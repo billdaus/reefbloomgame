@@ -31,33 +31,42 @@ export function tickEconomy(deltaMS) {
 }
 
 function _applyCoralTick() {
-  // Start with passive income from the inactive biome
-  let earned  = state.passiveBEPerTick ?? 0;
-  let polyps  = 0;
+  const cap = state.coralBufferCap ?? 120;
+  let polyps = 0;
+
+  // Each active-biome coral fills its OWN BE buffer (collected via its upgrade
+  // menu), up to the per-coral cap. Storage corals provide BE buffer but raise
+  // the cap rather than producing their own income.
   state.placedCoral.forEach((entry) => {
     const spec = CORAL_SPECIES[entry.speciesId];
     if (!spec) return;
     const lvl = coralLevel(entry);
-    earned += coralBEPerTick(spec, lvl);       // level-scaled BE
-    polyps += POLYP_PER_CORAL_TICK * lvl;      // higher levels drip faster
+    polyps += POLYP_PER_CORAL_TICK * lvl;
+    if (spec.storage) return;                          // vaults store, don't produce
+    entry._beFrac = (entry._beFrac ?? 0) + coralBEPerTick(spec, lvl);
+    const whole = Math.floor(entry._beFrac);
+    if (whole > 0) {
+      entry._beFrac -= whole;
+      entry.pendingBE = Math.min((entry.pendingBE ?? 0) + whole, cap);
+    }
   });
 
-  // BE — carry the fraction left over by level multipliers between ticks
-  _beCarry += earned;
+  // Passive income from the inactive biome still auto-banks (you're not there
+  // to collect it).
+  _beCarry += state.passiveBEPerTick ?? 0;
   const wholeBE = Math.floor(_beCarry);
   _beCarry -= wholeBE;
-
-  // Polyps — same fractional carry so a small reef still earns them steadily
-  _polypCarry += polyps;
-  const wholePolyps = Math.floor(_polypCarry);
-  _polypCarry -= wholePolyps;
-  if (wholePolyps > 0) state.polyps = Math.min(state.polyps + wholePolyps, POLYP_MAX);
-
   if (wholeBE > 0) {
     state.be = Math.min(state.be + wholeBE, BE_MAX);
     recordQuestEvent('earn_be', wholeBE);
     recordEventProgress('earn_be', wholeBE);
   }
+
+  // Polyps drip automatically with a fractional carry
+  _polypCarry += polyps;
+  const wholePolyps = Math.floor(_polypCarry);
+  _polypCarry -= wholePolyps;
+  if (wholePolyps > 0) state.polyps = Math.min(state.polyps + wholePolyps, POLYP_MAX);
 
   if (wholeBE > 0 || wholePolyps > 0) {
     const parts = [];
@@ -65,6 +74,18 @@ function _applyCoralTick() {
     if (wholePolyps > 0) parts.push(`+${wholePolyps} 🪸`);
     onBEChange?.(state.be, parts.join('  '));
   }
+}
+
+/** Collect a coral's buffered BE into the wallet. Returns the amount banked. */
+export function collectCoralBE(entry) {
+  const amt = Math.floor(entry?.pendingBE ?? 0);
+  if (amt <= 0) return 0;
+  state.be = Math.min(state.be + amt, BE_MAX);
+  entry.pendingBE = 0;
+  recordQuestEvent('earn_be', amt);
+  recordEventProgress('earn_be', amt);
+  onBEChange?.(state.be, `+${amt} 🫧`);
+  return amt;
 }
 
 function _checkIdleStreak() {
@@ -118,7 +139,7 @@ export function spendForFish(speciesId) {
 /** Refund 50% of placement cost when removing coral. */
 export function refundCoral(speciesId) {
   const spec = CORAL_SPECIES[speciesId];
-  if (!spec || spec.pearlCost) return 0;
+  if (!spec || spec.pearlCost || spec.polypCost) return 0;   // non-BE corals: no BE refund
   const refund = Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
   state.be = Math.min(state.be + refund, BE_MAX);
   onBEChange?.(state.be, null);
@@ -162,6 +183,22 @@ export function spendForCoralPearl(speciesId) {
   if (!spec || !spec.pearlCost) return false;
   if (state.pearls < spec.pearlCost) return false;
   state.pearls -= spec.pearlCost;
+  return true;
+}
+
+/** Spend polyps for a polyp-cost coral (Storage corals). Returns true if ok. */
+export function spendForCoralPolyp(speciesId) {
+  const spec = CORAL_SPECIES[speciesId];
+  if (!spec || !spec.polypCost) return false;
+  if (state.polyps < spec.polypCost) return false;
+  state.polyps -= spec.polypCost;
+  return true;
+}
+
+/** Spend polyps directly (e.g. for cleaning stations). Returns true if ok. */
+export function spendPolyps(amount) {
+  if (state.polyps < amount) return false;
+  state.polyps -= amount;
   return true;
 }
 

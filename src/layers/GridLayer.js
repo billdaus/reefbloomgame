@@ -243,11 +243,9 @@ export class GridLayer {
     badge.y = by;
 
     const g = new Graphics();
-    g.roundRect(0, 0, W, H, 8).fill({ color: 0x0a1a08, alpha: 0.8 });
-    g.roundRect(0, 0, W, H, 8).stroke({ color: 0x8bc34a, width: 1.5, alpha: 0.9 });
-    for (let i = 0; i < 3; i++) {
-      g.circle(W / 2 + (i - 1) * 6, H / 2, 2).fill({ color: 0xc8e6a0, alpha: 0.95 });
-    }
+    badge._g = g;
+    badge._w = W; badge._h = H;
+    this._paintCoralBadge(badge, false);
     badge.addChild(g);
 
     badge.eventMode = 'static';
@@ -268,6 +266,28 @@ export class GridLayer {
 
     this.badgeContainer.addChild(badge);
     this._coralBadges.set(uid, badge);
+  }
+
+  /** Paint the coral badge — gold dots when BE is ready to collect, else green. */
+  _paintCoralBadge(badge, ready) {
+    const g = badge._g, W = badge._w, H = badge._h;
+    const border = ready ? 0xffd54f : 0x8bc34a;
+    const dot    = ready ? 0xfff0a0 : 0xc8e6a0;
+    g.clear();
+    g.roundRect(0, 0, W, H, 8).fill({ color: 0x0a1a08, alpha: 0.8 });
+    g.roundRect(0, 0, W, H, 8).stroke({ color: border, width: 1.5, alpha: 0.95 });
+    for (let i = 0; i < 3; i++) {
+      g.circle(W / 2 + (i - 1) * 6, H / 2, 2).fill({ color: dot, alpha: 0.95 });
+    }
+  }
+
+  /** Toggle a coral badge's ready-to-collect highlight. */
+  setCoralReady(uid, ready) {
+    const badge = this._coralBadges.get(uid);
+    if (badge && badge._ready !== ready) {
+      badge._ready = ready;
+      this._paintCoralBadge(badge, ready);
+    }
   }
 
   // ── Decor placement ────────────────────────────────────────────────────────

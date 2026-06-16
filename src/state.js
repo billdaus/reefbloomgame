@@ -1,6 +1,6 @@
 import {
   START_BE, START_HARMONY, START_LEVEL, START_PEARLS, START_POLYPS,
-  GRID_ROWS, GRID_COLS,
+  GRID_ROWS, GRID_COLS, CORAL_BUFFER_BASE,
 } from './constants.js';
 
 export const state = {
@@ -31,7 +31,8 @@ export const state = {
   grid: Array.from({ length: GRID_ROWS }, () => Array(GRID_COLS).fill(null)),
 
   // ── Placed entities ────────────────────────────────────────────────────────
-  placedCoral: [],   // [{ uid, col, row, speciesId, level }]
+  placedCoral: [],   // [{ uid, col, row, speciesId, level, pendingBE }]
+  coralBufferCap: CORAL_BUFFER_BASE,  // per-coral BE buffer cap (raised by Storage corals)
   placedDecor: [],   // [{ uid, col, row, speciesId }] — purely aesthetic props
   placedStations: [], // [{ uid, col, row, level }] — 2×2 cleaning stations (col,row = top-left)
   cleaningActive: 0, // fish currently being cleaned across all stations (drives harmony)

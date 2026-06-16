@@ -63,6 +63,8 @@ export class Coral {
       case 'abyssalFan':      this._drawAbyssalFan(g, s, c);      break;
       case 'lanternCoral':    this._drawLanternCoral(g, s, c);    break;
       case 'wispCoral':       this._drawWispCoral(g, s, c);       break;
+      case 'essenceVault':    this._drawStorageCoral(g, s, c);    break;
+      case 'grandReservoir':  this._drawStorageCoral(g, s, c);    break;
       // Event pass exclusives
       case 'pearlOrganPipe':  this._drawPearlOrganPipe(g, s, c);  break;
       default:                this._drawGeneric(g, s, c);          break;
@@ -133,6 +135,7 @@ export class Coral {
   _growColumns(g, s, c, level) {
     const gl    = Math.min(4, level - 1);
     const light = this._lighten(c, 0.5);
+    const dark  = this._darken(c, 0.28);
     // Two stalks per upgrade level for a fuller, more complete cluster
     const offs    = [0.30, 0.70, 0.20, 0.80, 0.42, 0.58, 0.12, 0.88];
     const heights = [0.28, 0.24, 0.34, 0.20, 0.16, 0.30, 0.38, 0.26];
@@ -141,8 +144,15 @@ export class Coral {
       const cx  = s * offs[i];
       const top = s * heights[i];
       const cw  = 7 + (i % 2) * 2;
-      g.roundRect(cx - cw / 2, top, cw, s - top - 4, 4).fill(c);
+      const bot = s - 4;
+      g.roundRect(cx - cw / 2, top, cw, bot - top, 4).fill(c);
+      // Shaded side for roundness + faint ring segments
+      g.rect(cx + cw / 2 - 2, top + 2, 2, bot - top - 4).fill({ color: dark, alpha: 0.4 });
+      for (let y = top + 8; y < bot - 3; y += 9) {
+        g.moveTo(cx - cw / 2 + 1, y).lineTo(cx + cw / 2 - 1, y).stroke({ color: dark, width: 1, alpha: 0.35 });
+      }
       g.circle(cx, top, cw / 2 + 1).fill(light);       // lighter tip
+      g.circle(cx, top, cw / 2 - 1).fill({ color: 0xffffff, alpha: 0.4 });
     }
   }
 
@@ -177,17 +187,27 @@ export class Coral {
 
   /** Fan corals — add symmetric fronds spreading from the base. */
   _growFan(g, s, c, level) {
-    const gl   = Math.min(4, level - 1);
-    const mid  = s / 2;
-    const base = s * 0.75;
-    const dark = this._darken(c, 0.2);
+    const gl    = Math.min(4, level - 1);
+    const mid   = s / 2;
+    const base  = s * 0.78;
+    const dark  = this._darken(c, 0.2);
+    const light = this._lighten(c, 0.5);
     for (let i = 1; i <= gl; i++) {
       const side = i % 2 ? -1 : 1;
       const off  = 0.1 * Math.ceil(i / 2);
       const cx   = mid + side * s * off;
-      const top  = base - s * (0.42 + 0.03 * i);
-      g.moveTo(mid, base).lineTo(cx, Math.max(s * 0.08, top))
-       .stroke({ color: i % 2 ? c : dark, width: 2, cap: 'round' });
+      const ty   = Math.max(s * 0.08, base - s * (0.42 + 0.03 * i));
+      // Main frond rib (tapered — thicker at the base)
+      g.moveTo(mid, base).lineTo(cx, ty).stroke({ color: i % 2 ? c : dark, width: 2.5, cap: 'round' });
+      // Two cross-veins for a netted sea-fan texture
+      for (let v = 1; v <= 2; v++) {
+        const t  = v / 3;
+        const vx = mid + (cx - mid) * t;
+        const vy = base + (ty - base) * t;
+        const w  = s * 0.06 * (1 - t);
+        g.moveTo(vx - w, vy).lineTo(vx + w, vy).stroke({ color: light, width: 1, alpha: 0.5 });
+      }
+      g.circle(cx, ty, 2).fill(light);   // glowing frond tip
     }
   }
 
@@ -836,6 +856,32 @@ export class Coral {
       g.circle(x + sway, base - h, 1.4).fill(0xffffff);
     });
     g.circle(s * 0.5, base, s * 0.14).fill({ color: c, alpha: 0.15 });
+  }
+
+  // ── Storage coral — a coral-encrusted vault/urn holding glowing essence ────
+  _drawStorageCoral(g, s, c) {
+    const mid  = s / 2;
+    const dark = this._darken(c, 0.35);
+    const light = this._lighten(c, 0.45);
+    // Urn body
+    g.moveTo(s * 0.3, s * 0.92)
+     .lineTo(s * 0.24, s * 0.5)
+     .quadraticCurveTo(mid, s * 0.34, s * 0.76, s * 0.5)
+     .lineTo(s * 0.7, s * 0.92)
+     .closePath().fill(c);
+    g.moveTo(s * 0.24, s * 0.5).quadraticCurveTo(mid, s * 0.34, s * 0.76, s * 0.5)
+     .stroke({ color: dark, width: 2 });
+    // Rim
+    g.roundRect(s * 0.22, s * 0.44, s * 0.56, 6, 3).fill(dark);
+    // Glowing essence pooled inside
+    g.circle(mid, s * 0.6, s * 0.16).fill({ color: 0x90e8ff, alpha: 0.3 });
+    g.circle(mid, s * 0.6, s * 0.09).fill({ color: 0xc8f4ff, alpha: 0.85 });
+    // Rising essence motes
+    [[0.44, 0.5], [0.5, 0.42], [0.57, 0.5]].forEach(([fx, fy]) => {
+      g.circle(s * fx, s * fy, 1.8).fill({ color: 0xe4fcff, alpha: 0.9 });
+    });
+    // Coral nubs along the rim
+    [0.3, 0.5, 0.7].forEach(fx => g.circle(s * fx, s * 0.44, 3).fill(light));
   }
 
   // ── Generic fallback ──────────────────────────────────────────────────────

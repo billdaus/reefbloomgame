@@ -30,10 +30,15 @@ export class CoralUpgradeModal {
     this._onUpgrade = null;
   }
 
-  /** @param entry placedCoral entry  @param onUpgrade (entry) => newLevel|null */
-  show(entry, onUpgrade) {
+  /**
+   * @param entry     placedCoral entry
+   * @param onUpgrade (entry) => newLevel|null
+   * @param onCollect (entry) => amount banked
+   */
+  show(entry, onUpgrade, onCollect) {
     this._entry     = entry;
     this._onUpgrade = onUpgrade;
+    this._onCollect = onCollect;
     this.container.visible = true;
     this._build();
   }
@@ -50,17 +55,19 @@ export class CoralUpgradeModal {
     const spec  = entry ? CORAL_SPECIES[entry.speciesId] : null;
     if (!spec) { this.hide(); return; }
 
+    const isStorage = !!spec.storage;
     const level = coralLevel(entry);
     const maxed = isMaxLevel(entry);
     const cost  = upgradeCost(level);
     const beNow = coralBEPerTick(spec, level);
     const beNext = coralBEPerTick(spec, level + 1);
     const affordable = state.polyps >= cost;
+    const buffered = Math.floor(entry.pendingBE ?? 0);
 
     this._overlay.clear();
     this._overlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0x000000, alpha: 0.62 });
 
-    const pw = 320, ph = 286;
+    const pw = 320, ph = isStorage ? 210 : 340;
     const px = SCREEN_W / 2 - pw / 2;
     const py = SCREEN_H / 2 - ph / 2;
 
@@ -72,6 +79,16 @@ export class CoralUpgradeModal {
     const cx = px + pw / 2;
 
     this._text(`🪸 ${spec.name}`, cx, py + 18, 18, 0xc8e6a0, true, 0.5);
+
+    // ── Storage corals: show their buffer bonus, no upgrade/collect ───────────
+    if (isStorage) {
+      this._text('Storage Coral', cx, py + 46, 13, COLORS.text_secondary, false, 0.5);
+      this._text(`+${spec.storage} 🫧`, cx, py + 78, 22, 0xfff0a0, true, 0.5);
+      this._text('added to every coral’s collect buffer', cx, py + 112, 12, COLORS.text_secondary, false, 0.5);
+      this._content.addChild(this._button('Close', cx - 44, py + ph - 38, 88, 26, true, () => this.hide(), true));
+      return;
+    }
+
     this._text(`Level ${level} / ${CORAL_MAX_LEVEL}`, cx, py + 46, 13, COLORS.text_secondary, false, 0.5);
 
     // Level pips
@@ -87,34 +104,41 @@ export class CoralUpgradeModal {
     }
 
     // Production now → next
-    this._text('Bubble Essence / tick', cx, py + 92, 11, COLORS.text_secondary, false, 0.5);
+    this._text('Bubble Essence / tick', cx, py + 90, 11, COLORS.text_secondary, false, 0.5);
     const prod = maxed
       ? `${this._fmt(beNow)} 🫧  (max)`
       : `${this._fmt(beNow)} 🫧  →  ${this._fmt(beNext)} 🫧`;
-    this._text(prod, cx, py + 110, 16, COLORS.text_primary, true, 0.5);
+    this._text(prod, cx, py + 106, 15, COLORS.text_primary, true, 0.5);
+
+    // Collect buffered BE
+    const cap = state.coralBufferCap ?? 0;
+    this._text(`Buffered: ${buffered} / ${cap} 🫧`, cx, py + 138, 12, 0xc8e6a0, false, 0.5);
+    const collectBtn = this._button(
+      buffered >= 1 ? `Collect  ${buffered} 🫧` : 'Nothing to collect',
+      cx - 120, py + 156, 240, 38, buffered >= 1,
+      () => { if (this._onCollect?.(this._entry) > 0) this._build(); },
+    );
+    this._content.addChild(collectBtn);
 
     // Your polyps
-    this._text(`You have ${state.polyps} 🪸`, cx, py + 150, 13, 0xc8e6a0, false, 0.5);
+    this._text(`You have ${state.polyps} 🪸`, cx, py + 204, 12, 0xc8e6a0, false, 0.5);
 
     // Upgrade button
     if (maxed) {
-      this._text('Fully grown', cx, py + 196, 15, COLORS.text_secondary, true, 0.5);
+      this._text('Fully grown', cx, py + 244, 15, COLORS.text_secondary, true, 0.5);
     } else {
-      const label = `Upgrade  —  ${cost} 🪸`;
       const enabled = affordable;
-      const btn = this._button(label, cx - 120, py + 184, 240, 44, enabled, () => {
+      const btn = this._button(`Upgrade  —  ${cost} 🪸`, cx - 120, py + 226, 240, 42, enabled, () => {
         if (!enabled) return;
         const newLevel = this._onUpgrade?.(this._entry);
-        if (newLevel) this._build();   // refresh in place to show new level/cost
+        if (newLevel) this._build();
       });
       this._content.addChild(btn);
-      if (!affordable) {
-        this._text('Not enough polyps', cx, py + 232, 11, 0xe08080, false, 0.5);
-      }
+      if (!affordable) this._text('Not enough polyps', cx, py + 272, 11, 0xe08080, false, 0.5);
     }
 
     // Close
-    const close = this._button('Close', cx - 44, py + ph - 38, 88, 26, true, () => this.hide(), true);
+    const close = this._button('Close', cx - 44, py + ph - 34, 88, 24, true, () => this.hide(), true);
     this._content.addChild(close);
   }
 

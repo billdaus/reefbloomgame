@@ -139,6 +139,70 @@ export const EVENT_SCHEDULE = [
       ],
     },
   },
+  {
+    id:          'reef_renewal_2026',
+    name:        'Reef Renewal',
+    icon:        '🌊',
+    theme:       0x26c6da,
+    startDate:   '2026-06-18',
+    endDate:     '2026-06-24',
+    description: 'A fresh current sweeps the reef — rebuild, restock, and let it flourish anew.',
+    reward: { be: 300, pearls: 80 },
+    questSets: [
+      { label: 'New Growth', tokenReward: 2, challenges: [
+        { type: 'place_coral',   label: 'Place 8 coral',     target: 8  },
+        { type: 'reach_harmony', label: 'Reach 40 Harmony',  target: 40 },
+      ]},
+      { label: 'Flourishing', tokenReward: 3, challenges: [
+        { type: 'have_fish',  label: 'Have 8 fish alive',    target: 8   },
+        { type: 'earn_be',    label: 'Earn 400 Bubble Essence', target: 400 },
+      ]},
+      { label: 'Renewed Reef', tokenReward: 4, challenges: [
+        { type: 'reach_harmony', label: 'Reach 75 Harmony',   target: 75 },
+        { type: 'place_coral',   label: 'Place 16 coral',     target: 16 },
+      ]},
+    ],
+    pass: {
+      tiers: [
+        { threshold: 1, reward: { be: 100 },                    label: '100 🫧'          },
+        { threshold: 3, reward: { pearls: 25 },                 label: '25 💎'           },
+        { threshold: 5, reward: { be: 250 },                    label: '250 🫧'          },
+        { threshold: 7, reward: { exclusive: 'moonSeahorse' },  label: '🌙 Moon Seahorse' },
+      ],
+    },
+  },
+  {
+    id:          'twilight_festival_2026',
+    name:        'Twilight Festival',
+    icon:        '🌌',
+    theme:       0x7c4dff,
+    startDate:   '2026-06-26',
+    endDate:     '2026-07-02',
+    description: 'The deep lights up for its yearly festival — coax the glow and gather the crowd.',
+    reward: { be: 280, pearls: 90 },
+    questSets: [
+      { label: 'First Glow', tokenReward: 2, challenges: [
+        { type: 'place_coral', label: 'Place 6 coral',      target: 6  },
+        { type: 'have_fish',   label: 'Have 5 fish alive',  target: 5  },
+      ]},
+      { label: 'Deep Revelry', tokenReward: 3, challenges: [
+        { type: 'reach_harmony', label: 'Reach 55 Harmony', target: 55 },
+        { type: 'earn_be',       label: 'Earn 500 Bubble Essence', target: 500 },
+      ]},
+      { label: 'Festival Peak', tokenReward: 4, challenges: [
+        { type: 'have_fish',   label: 'Have 12 fish alive', target: 12 },
+        { type: 'place_coral', label: 'Place 18 coral',     target: 18 },
+      ]},
+    ],
+    pass: {
+      tiers: [
+        { threshold: 1, reward: { be: 75 },                  label: '75 🫧'        },
+        { threshold: 3, reward: { pearls: 20 },              label: '20 💎'        },
+        { threshold: 5, reward: { be: 200 },                 label: '200 🫧'       },
+        { threshold: 8, reward: { exclusive: 'glowEel' },    label: '⚡ Glow Eel'  },
+      ],
+    },
+  },
 ];
 
 const INCREMENTAL_TYPES = new Set(['place_coral', 'hatch_fish', 'earn_be', 'idle_streak']);
