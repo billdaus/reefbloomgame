@@ -2764,27 +2764,31 @@ export class Fish {
     g.circle(-r * 0.58, r * 0.20,  sz * 0.04).fill({ color: cream, alpha: 0.35 });
     g.circle(-r * 0.78, r * 0.22,  sz * 0.035).fill({ color: cream, alpha: 0.35 });
 
-    // ── Cute face — big sparkly eye, rosy blush, tiny smile ────────────
-    const ex  = -r * 0.74;
+    // ── Cute face — huge sparkly eye, rosy cheeks, big smile ───────────
+    const ex  = -r * 0.72;
     const ey  = r * 0.34;
-    const eyR = sz * 0.15;
-    // Big round eye white
+    const eyR = sz * 0.22;                       // big, baby-like eye
+    // Soft pale face patch so the features pop off the hood
+    g.circle(ex + eyR * 0.2, ey + eyR * 0.2, eyR * 1.7).fill({ color: cream, alpha: 0.45 });
+    // Eye white + dark border
     g.circle(ex, ey, eyR).fill(0xffffff);
-    g.circle(ex, ey, eyR).stroke({ color: this._darken(hood, 0.1), width: 0.8, alpha: 0.5 });
-    // Large warm-dark iris/pupil
-    g.circle(ex, ey + eyR * 0.08, eyR * 0.74).fill(0x2a1810);
-    // Big glossy catchlight + a second sparkle
-    g.circle(ex - eyR * 0.24, ey - eyR * 0.26, eyR * 0.36).fill({ color: 0xffffff, alpha: 0.95 });
-    g.circle(ex + eyR * 0.30, ey + eyR * 0.22, eyR * 0.16).fill({ color: 0xffffff, alpha: 0.8 });
-    // Soft upper eyelid for a gentle gaze
-    g.moveTo(ex - eyR * 1.05, ey - eyR * 0.55)
-     .quadraticCurveTo(ex, ey - eyR * 1.2, ex + eyR * 1.05, ey - eyR * 0.55)
-     .stroke({ color: this._darken(hood, 0.15), width: 1, alpha: 0.4 });
+    g.circle(ex, ey, eyR).stroke({ color: 0x2a1810, width: 1.2, alpha: 0.7 });
+    // Big round pupil (fills most of the eye = cuter)
+    g.circle(ex, ey + eyR * 0.10, eyR * 0.82).fill(0x241410);
+    // Two glossy catchlights
+    g.circle(ex - eyR * 0.28, ey - eyR * 0.30, eyR * 0.40).fill({ color: 0xffffff, alpha: 0.97 });
+    g.circle(ex + eyR * 0.34, ey + eyR * 0.26, eyR * 0.20).fill({ color: 0xffffff, alpha: 0.85 });
+    // Gentle eyelid arc
+    g.moveTo(ex - eyR * 1.0, ey - eyR * 0.6)
+     .quadraticCurveTo(ex, ey - eyR * 1.25, ex + eyR * 1.0, ey - eyR * 0.6)
+     .stroke({ color: 0x2a1810, width: 1.2, alpha: 0.45 });
     // Rosy blush cheek
-    g.circle(ex + eyR * 1.35, ey + eyR * 0.95, eyR * 0.62).fill({ color: 0xff9aa2, alpha: 0.38 });
-    // Tiny happy smile below the eye
-    g.moveTo(ex - eyR * 0.45, ey + eyR * 1.25)
-     .quadraticCurveTo(ex + eyR * 0.3, ey + eyR * 2.0, ex + eyR * 1.05, ey + eyR * 1.15)
-     .stroke({ color: this._darken(hood, 0.1), width: 1.3, cap: 'round', alpha: 0.7 });
+    g.circle(ex + eyR * 1.15, ey + eyR * 1.0, eyR * 0.55).fill({ color: 0xff8fa3, alpha: 0.5 });
+    // Big happy smile (filled curve) with a tiny tongue
+    const my = ey + eyR * 1.25;
+    g.moveTo(ex - eyR * 0.55, my)
+     .quadraticCurveTo(ex + eyR * 0.25, my + eyR * 0.95, ex + eyR * 1.05, my - eyR * 0.1)
+     .stroke({ color: 0x6a2f24, width: 2, cap: 'round' });
+    g.circle(ex + eyR * 0.25, my + eyR * 0.5, eyR * 0.18).fill({ color: 0xff7a8a, alpha: 0.85 });
   }
 }

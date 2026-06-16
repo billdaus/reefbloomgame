@@ -1,16 +1,7 @@
 import { state } from '../state.js';
 import {
-  CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX, CLEANING_MISSING_PENALTY,
-  CLEAN_COOLDOWN_MS, FISH_SPECIES,
+  CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX, CLEANING_MISSING_PENALTY, FISH_SPECIES,
 } from '../constants.js';
-
-/** Cleans-per-minute the reef wants: each non-cleaner fish wants one clean
- *  per cooldown window. */
-function _cleaningDemand() {
-  const cleaners = state.fish.filter(f => FISH_SPECIES[f.speciesId]?.cleaner).length;
-  const clients  = Math.max(0, state.fishCount - cleaners);
-  return Math.round(clients * 60000 / CLEAN_COOLDOWN_MS);   // per minute
-}
 
 /**
  * Set saturation via a proper luminance-preserving color matrix.
@@ -151,11 +142,9 @@ export function getHarmonyAdvice() {
     } else if (cleaners < capacity) {
       suggestions.push(`Your stations have ${capacity} slots but only ${cleaners} cleaner${cleaners === 1 ? '' : 's'} — hatch more cleaners to fill them.`);
     }
-    // Throughput check: are stations cleaning fast enough for the population?
-    const demand = _cleaningDemand();
-    const supply = Math.round(s.cleansPerMin ?? 0);
-    if (cleaners > 0 && demand > 0 && supply < demand) {
-      suggestions.push(`Stations clean ~${supply}/min but your reef needs ~${demand}/min — upgrade a station or add cleaners.`);
+    // Capacity check — only flag when capacity is below 10% of the fish count
+    if (s.fishCount > 0 && capacity < s.fishCount * 0.10) {
+      suggestions.push(`Cleaning capacity (${capacity}) is far below your ${s.fishCount} fish — add or upgrade stations.`);
     }
   }
 
@@ -228,10 +217,9 @@ export function getFishOpinions() {
   const pools = [];
   if (state.fishCount > 0 && state.placedStations.length === 0) pools.push('dirty');
   if (state.placedStations.length > 0) {
-    const cleaners = state.fish.filter(f => FISH_SPECIES[f.speciesId]?.cleaner).length;
-    const demand   = _cleaningDemand();
-    const supply   = Math.round(state.cleansPerMin ?? 0);
-    if (cleaners > 0 && demand > 0 && supply < demand) pools.push('crowded');
+    // Fish only complain when cleaning capacity is under 10% of the fish count
+    const capacity = state.placedStations.reduce((a, st) => a + (st.level ?? 1), 0);
+    if (state.fishCount > 0 && capacity < state.fishCount * 0.10) pools.push('crowded');
   }
   if (state.fishCount > 0 && state.fishCount < 4) pools.push('lonely');
   const hasA = state.fishLayerCounts.A > 0, hasB = state.fishLayerCounts.B > 0;

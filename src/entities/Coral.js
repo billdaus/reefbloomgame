@@ -168,16 +168,20 @@ export class Coral {
   _growDome(g, s, c, level, cx, cy, r) {
     const gl    = Math.min(4, level - 1);
     const light = this._lighten(c, 0.55);
-    const dark  = this._darken(c, 0.28);
-    // grow the dome a touch so the rings sit on a fuller body
+    const dark  = this._darken(c, 0.32);
+    // Fuller dome body with a soft top-left highlight
     g.circle(cx, cy, r * (1 + gl * 0.04)).fill(c);
+    g.circle(cx - r * 0.28, cy - r * 0.30, r * 0.5).fill({ color: light, alpha: 0.22 });
+    // Concentric rings of raised polyp bumps (dark base + light cap = 3D)
     for (let ring = 1; ring <= gl; ring++) {
-      const rr = r * (0.32 + ring * 0.17);
-      const n  = 4 + ring * 2;
+      const rr = r * (0.30 + ring * 0.17);
+      const n  = 5 + ring * 2;
       for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2 + ring * 0.5;
-        g.circle(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.92, 2)
-         .fill(ring % 2 ? light : dark);
+        const a  = (i / n) * Math.PI * 2 + ring * 0.5;
+        const px = cx + Math.cos(a) * rr;
+        const py = cy + Math.sin(a) * rr * 0.92;
+        g.circle(px, py, 2.6).fill(dark);
+        g.circle(px - 0.6, py - 0.7, 1.4).fill(light);
       }
     }
   }
@@ -185,11 +189,14 @@ export class Coral {
   /** Bubble coral — stack additional spheres into a taller cluster. */
   _growSpheres(g, s, c, level) {
     const gl    = Math.min(4, level - 1);
+    const dark  = this._darken(c, 0.30);
     const tiers = [[0.5, 0.28, 0.13], [0.38, 0.22, 0.11], [0.62, 0.22, 0.11], [0.5, 0.15, 0.1]];
     for (let i = 0; i < gl; i++) {
       const [fx, fy, fr] = tiers[i];
-      g.circle(fx * s, fy * s, fr * s).fill(c);
-      g.circle(fx * s - fr * s * 0.3, fy * s - fr * s * 0.3, fr * s * 0.25).fill(0xffffff);
+      const X = fx * s, Y = fy * s, R = fr * s;
+      g.circle(X, Y + R * 0.18, R).fill(dark);                                  // shaded underside
+      g.circle(X, Y, R).fill(c);                                                // body
+      g.circle(X - R * 0.3, Y - R * 0.3, R * 0.32).fill({ color: 0xffffff, alpha: 0.85 }); // specular
     }
   }
 
@@ -221,10 +228,11 @@ export class Coral {
 
   /** Bladed plants — add more blades to the clump. */
   _growBlades(g, s, c, level) {
-    const gl   = Math.min(4, level - 1);
-    const dark = this._darken(c, 0.28);
-    const base = s - 2;
-    const offs = [0.28, 0.46, 0.64, 0.82];
+    const gl    = Math.min(4, level - 1);
+    const dark  = this._darken(c, 0.28);
+    const light = this._lighten(c, 0.4);
+    const base  = s - 2;
+    const offs  = [0.28, 0.46, 0.64, 0.82];
     for (let i = 0; i < gl; i++) {
       const x    = s * offs[i % offs.length];
       const h    = s * (0.62 + 0.05 * i);
@@ -234,6 +242,7 @@ export class Coral {
       g.moveTo(x - 3, base).lineTo(x + 3, base)
        .lineTo(tipX + 1.5, tipY).lineTo(tipX - 1.5, tipY).closePath()
        .fill(i % 2 ? c : dark);
+      g.moveTo(x, base).lineTo(tipX, tipY).stroke({ color: light, width: 1, alpha: 0.5 }); // midrib
     }
   }
 
