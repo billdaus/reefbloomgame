@@ -82,7 +82,8 @@ export class Coral {
   _growth(g, s, c, id, level) {
     switch (id) {
       case 'staghorn':     this._growBranch(g, s, c, level, s * 0.50); break;
-      case 'firetip':      this._growBranch(g, s, c, level, s * 0.52); break;
+      // firetip grows identical fanned protrusions in its base draw
+      case 'firetip':      break;
       case 'elkhorn':      this._growBranch(g, s, c, level, s * 0.55); break;
       // finger / candycane / pillar grow identical, evenly-spaced stalks in
       // their base draw (see _stalkCluster) — no overlay growth needed.
@@ -532,15 +533,23 @@ export class Coral {
   _drawFiretip(g, s, c) {
     const mid = s / 2;
     const tip = 0xff5722;
-    g.moveTo(mid, s - 4).lineTo(mid, s * 0.52)
-     .stroke({ color: c, width: 5, cap: 'round' });
-    [[-0.24, 0.18], [0, 0.08], [0.24, 0.18]].forEach(([dx, topY]) => {
-      g.moveTo(mid, s * 0.52)
-       .lineTo(mid + dx * s, s * topY)
-       .stroke({ color: c, width: 4, cap: 'round' });
-      g.circle(mid + dx * s, s * topY, 5).fill(tip);
-      g.circle(mid + dx * s, s * topY, 2.5).fill(0xffccbc);
-    });
+    const trunkTop = s * 0.52;
+    // Trunk
+    g.moveTo(mid, s - 4).lineTo(mid, trunkTop).stroke({ color: c, width: 5, cap: 'round' });
+    // N identical branches, evenly fanned from the trunk — one more per level,
+    // each ending in an identical bright tip protrusion.
+    const count  = this._stalkCount(3);   // 3..7
+    const spread = 1.1;                    // total fan angle
+    const len    = s * 0.42;
+    for (let i = 0; i < count; i++) {
+      const t   = count === 1 ? 0.5 : i / (count - 1);
+      const ang = -Math.PI / 2 + (t - 0.5) * spread;
+      const ex  = mid + Math.cos(ang) * len;
+      const ey  = trunkTop + Math.sin(ang) * len;
+      g.moveTo(mid, trunkTop).lineTo(ex, ey).stroke({ color: c, width: 4, cap: 'round' });
+      g.circle(ex, ey, 5).fill(tip);
+      g.circle(ex, ey, 2.5).fill(0xffccbc);
+    }
   }
 
   // ── Ghost coral — pale translucent fan ────────────────────────────────────
