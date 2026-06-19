@@ -39,6 +39,9 @@ export class Fish {
     this._puff = 0;
     this._puffHold = 0;
 
+    // Maturity: 1 = adult. Bred juveniles start small and grow to full size.
+    this._maturity = 1;
+
     // Cleaning-station visit: 'none' | 'toStation' | 'cleaning'
     this._cleanState = 'none';
     this._cleanX = 0;
@@ -2227,6 +2230,10 @@ export class Fish {
   /** True once arrived and lingering at a station (used to sparkle). */
   isBeingCleaned() { return this._cleanState === 'cleaning'; }
 
+  /** Mark this fish as a newborn juvenile that grows to full size over time. */
+  setJuvenile() { this._maturity = 0; }
+  isMature() { return this._maturity >= 1; }
+
   /** Pufferfish defence: inflate now and hold it for a moment (tap or bump). */
   puff() {
     if (this.spec.id !== 'pufferfish') return;
@@ -2415,12 +2422,16 @@ export class Fish {
     this.container.x = this.x;
     this.container.y = this.y;
 
+    // Juveniles grow from ~half-size to full over ~60s.
+    if (this._maturity < 1) this._maturity = Math.min(1, this._maturity + dt / 3600);
+    const mScale = 0.5 + 0.5 * this._maturity;
+
     const facingRight = Math.cos(this._angle) >= 0;
-    this.container.scale.x  = facingRight ? 1 : -1;
+    this.container.scale.x  = (facingRight ? 1 : -1) * mScale;
     this.container.rotation = facingRight ? this._angle : Math.PI - this._angle;
 
     // Subtle vertical bob
-    this.container.scale.y = 1 + Math.sin(Date.now() * 0.003 + this.uid) * 0.04;
+    this.container.scale.y = (1 + Math.sin(Date.now() * 0.003 + this.uid) * 0.04) * mScale;
 
     // Hide inside the coral at night — fade out once tucked up against home.
     let alphaTarget = 1;

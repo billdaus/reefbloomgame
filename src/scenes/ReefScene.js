@@ -291,6 +291,7 @@ export class ReefScene {
       }
     });
     this._tickStations(dms, dt);
+    this._tickBreeding(dms);
     this._updateParticles(dms);
 
     // Auto-save every 30 s
@@ -733,6 +734,44 @@ export class ReefScene {
     checkEventSnapshots();
     checkLevelUp();
     saveGame();
+    return fish;
+  }
+
+  // ── Breeding — a healthy reef grows its own life ────────────────────────────
+  /**
+   * Periodically, a home coral with a same-species adult pair and spare capacity
+   * may hatch a juvenile (by day, when harmony is high). The juvenile grows to
+   * full size over time. Population is naturally capped by total home capacity.
+   */
+  _tickBreeding(dms) {
+    this._breedTimer = (this._breedTimer ?? 9000) - dms;
+    if (this._breedTimer > 0) return;
+    this._breedTimer = 9000;   // re-check every ~9s
+
+    if ((this._nightFactor ?? 0) > 0.3) return;   // fish breed by day
+    if (state.harmony < 60) return;               // only a thriving reef breeds
+    if (state.fish.length >= 80) return;          // safety cap
+
+    // Eligible corals: a same-species adult pair homed here + a free home slot.
+    const eligible = [];
+    for (const cc of state.placedCoral) {
+      const homed = state.fish.filter(f => f.homeUid === cc.uid);
+      if (homed.length >= this._coralCapacity(cc.level)) continue;   // full
+      const counts = {};
+      for (const f of homed) if (f.isMature?.()) counts[f.speciesId] = (counts[f.speciesId] ?? 0) + 1;
+      const speciesId = Object.keys(counts).find(id => counts[id] >= 2);
+      if (speciesId) eligible.push({ cc, speciesId });
+    }
+    if (!eligible.length || Math.random() > 0.5) return;   // not every check breeds
+
+    const { cc, speciesId } = eligible[Math.floor(Math.random() * eligible.length)];
+    const spec = FISH_SPECIES[speciesId];
+    if (!spec) return;
+    const baby = this._spawnFish(speciesId, spec, cc.col, cc.row);
+    baby?.setJuvenile();
+    const ctr = tileCenter(cc.col, cc.row);
+    for (let i = 0; i < 5; i++) this._spawnSparkle(ctr.x + (Math.random() - 0.5) * 16, ctr.y - 4);
+    this._hud.showBonus(`🐣 A baby ${spec.name} hatched!`);
   }
 
   // ── Removal ───────────────────────────────────────────────────────────────
