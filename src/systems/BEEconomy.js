@@ -67,6 +67,28 @@ function _applyCoralTick() {
   }
 }
 
+/** BE produced per tick across all active corals + passive income (no apply). */
+export function beRatePerTick() {
+  let earned = state.passiveBEPerTick ?? 0;
+  state.placedCoral.forEach((entry) => {
+    const spec = CORAL_SPECIES[entry.speciesId];
+    if (!spec || spec.storage) return;
+    earned += coralBEPerTick(spec, coralLevel(entry));
+  });
+  return earned;
+}
+
+/** Polyps produced per tick across all corals (no apply). */
+export function polypRatePerTick() {
+  let polyps = 0;
+  state.placedCoral.forEach((entry) => {
+    const spec = CORAL_SPECIES[entry.speciesId];
+    if (!spec) return;
+    polyps += POLYP_PER_CORAL_TICK * coralLevel(entry);
+  });
+  return polyps;
+}
+
 function _checkIdleStreak() {
   const idle = Date.now() - state.lastInteractionTime;
   if (idle >= IDLE_STREAK_MS && !state.idleStreakActive) {

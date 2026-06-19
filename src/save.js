@@ -84,6 +84,8 @@ export function saveGame() {
   full.event              = state.event;
   full.eventUnlocked      = state.eventUnlocked ?? [];
   full.timeOfDay          = state.timeOfDay;
+  full.loginStreak        = state.loginStreak ?? 0;
+  full.lastLoginDate      = state.lastLoginDate ?? null;
   full.account            = state.account;
   if (state.profile) full.profile = state.profile;
 
@@ -127,6 +129,9 @@ export function loadGame() {
     event:              full.event              ?? null,
     eventUnlocked:      full.eventUnlocked      ?? [],
     timeOfDay:          full.timeOfDay          ?? 0.30,
+    loginStreak:        full.loginStreak        ?? 0,
+    lastLoginDate:      full.lastLoginDate      ?? null,
+    savedAt:            full.savedAt            ?? null,
     account:            full.account            ?? null,
     profile:            full.profile            ?? null,
     grid:           biomeData.grid           ?? null,

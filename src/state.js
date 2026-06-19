@@ -67,6 +67,10 @@ export const state = {
   // ── Day/night cycle ────────────────────────────────────────────────────────
   timeOfDay: 0.30,   // 0..1 (midnight=0, sunrise=.25, noon=.5, sunset=.75)
 
+  // ── Retention: daily login streak ───────────────────────────────────────────
+  loginStreak: 0,        // consecutive days played
+  lastLoginDate: null,   // toDateString() of the last day a streak reward was given
+
   // ── Account (placeholder — feature not yet live) ───────────────────────────
   account: null,   // null = not signed in; { displayName, joinDate } when active
 

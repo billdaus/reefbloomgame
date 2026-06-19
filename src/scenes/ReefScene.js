@@ -38,6 +38,8 @@ import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
 import { CameraController } from './CameraController.js';
 import { isTapSuppressed } from '../input/gesture.js';
+import { applyReturnRewards } from '../systems/RetentionSystem.js';
+import { WelcomeBackModal } from '../ui/WelcomeBackModal.js';
 
 export class ReefScene {
   constructor(app) {
@@ -162,6 +164,8 @@ export class ReefScene {
     this._uiContainer.addChild(this._advisorModal.container);
     this._uiContainer.addChild(this._accountModal.container);
     this._uiContainer.addChild(this._eventModal.container);
+    this._welcomeModal = new WelcomeBackModal();
+    this._uiContainer.addChild(this._welcomeModal.container);
 
     // Expose layout + travel callback for DOM travel button/modal (see index.html)
     window._rfLayout   = { PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H };
@@ -242,6 +246,12 @@ export class ReefScene {
       () => { this._eventModal.refresh(); this._ambience.refresh(); saveGame(); },
       (speciesId) => this._grantExclusiveSpecies(speciesId),
     );
+
+    // ── Welcome Back — idle earnings while away + daily login-streak bonus ────
+    // Runs after restore (so the BE rate, cap and streak are known). saved.savedAt
+    // is the previous session's timestamp; null for a brand-new slot.
+    const returnReward = applyReturnRewards(saved?.savedAt ?? null, Date.now());
+    if (returnReward) { this._welcomeModal.show(returnReward); saveGame(); }
   }
 
   // ── Game loop ──────────────────────────────────────────────────────────────
@@ -1048,6 +1058,8 @@ export class ReefScene {
     state.event   = data.event   ?? null;
     state.eventUnlocked = data.eventUnlocked ?? [];
     state.timeOfDay = data.timeOfDay ?? 0.30;
+    state.loginStreak = data.loginStreak ?? 0;
+    state.lastLoginDate = data.lastLoginDate ?? null;
     state.account = data.account ?? null;
     state.profile = data.profile ?? null;
     state.harmonySmoothed = state.harmony;
