@@ -8,6 +8,11 @@ export {
   PANEL_X, PANEL_Y, PANEL_W, PANEL_H,
 } from './layout.js';
 
+// ─── Build version ───────────────────────────────────────────────────────────
+// Bump for a major revision, or after every 5 minor revisions.
+//   Indev MAJOR.MINOR.PATCH  (patch = minor-revision counter, 0–4 between bumps)
+export const GAME_VERSION = 'Indev 1.0.1';
+
 // ─── Economy ─────────────────────────────────────────────────────────────────
 export const TICK_MS          = 5000;   // BE tick every 5 s
 export const IDLE_STREAK_MS   = 20000;  // 20 s without touch = idle streak

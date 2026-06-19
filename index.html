@@ -288,6 +288,20 @@
     }
     .sp-version-link:hover { color: #fff; text-decoration: underline; }
 
+    /* Persistent build-version badge (start page + in-game) */
+    #version-badge {
+      position: fixed;
+      right: 7px;
+      bottom: 5px;
+      z-index: 9998;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      color: rgba(210, 235, 255, 0.45);
+      pointer-events: none;
+      user-select: none;
+    }
+
     /* ── Slot selection page ────────────────────────────────────────────────── */
     #slot-page { z-index: 205; opacity: 0; }
     #slot-page.visible { opacity: 1; }
@@ -1168,5 +1182,7 @@
     });
 
   </script>
+
+  <div id="version-badge">Indev 1.0.1</div>
 </body>
 </html>

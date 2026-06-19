@@ -1,6 +1,6 @@
 import { Application } from 'pixi.js';
 import { ReefScene }   from './scenes/ReefScene.js';
-import { SCREEN_W, SCREEN_H, IS_PORTRAIT } from './constants.js';
+import { SCREEN_W, SCREEN_H, IS_PORTRAIT, GAME_VERSION } from './constants.js';
 import { setCurrentSlot, setCurrentBiome, getSlotPreview, clearSlot, clearBiome, getBiomePreview,
          getProfile, defaultProfile } from './save.js';
 import { isAuthAvailable, onAuthChange, signIn, signOutUser, initAuth } from './auth.js';
@@ -8,6 +8,10 @@ import { initCloudSave, onCloudSynced } from './cloudsave.js';
 import { state } from './state.js';
 
 async function main() {
+  // Keep the version badge in sync with the single source of truth.
+  const vb = document.getElementById('version-badge');
+  if (vb) vb.textContent = GAME_VERSION;
+
   // Complete a Cognito sign-in redirect right away if one is in flight
   // (auth codes are short-lived) — no-op while sign-in isn't configured.
   initAuth();
