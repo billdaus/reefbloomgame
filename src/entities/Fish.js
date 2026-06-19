@@ -145,6 +145,8 @@ export class Fish {
       // Event pass exclusives
       case 'sakuraAnthias':     this._drawSakuraAnthias(g, sz, c, ac);     break;
       case 'opah':              this._drawOpah(g, sz, c, ac);              break;
+      case 'pearlfish':         this._drawPearlfish(g, sz, c, ac);         break;
+      case 'twilightLantern':   this._drawTwilightLantern(g, sz, c, ac);   break;
       case 'gavin':             this._drawGavin(g, sz, c, ac);             break;
       default:                  this._drawOvalFish(g, sz, c, ac, false);   break;
     }
@@ -2480,6 +2482,31 @@ export class Fish {
      .lineTo(hw * 1.0,   0)
      .lineTo(hw * 0.82,  hh * 0.06)
      .closePath().fill(ac);
+  }
+
+  /** Pearlfish (event) — pearly oval body with a nacreous sheen. */
+  _drawPearlfish(g, sz, c, ac) {
+    this._drawOvalFish(g, sz, c, ac, false);
+    // nacre sheen highlights
+    g.circle(-sz * 0.05, -sz * 0.18, sz * 0.22).fill({ color: 0xffffff, alpha: 0.35 });
+    g.circle(sz * 0.3, sz * 0.05, sz * 0.12).fill({ color: 0xbfe0ff, alpha: 0.3 });
+    g.circle(-sz * 0.35, sz * 0.12, sz * 0.1).fill({ color: 0xffe0f0, alpha: 0.3 });
+  }
+
+  /** Twilight Lanternfish (event) — dark body, glowing photophores + lure. */
+  _drawTwilightLantern(g, sz, c, ac) {
+    this._drawOvalFish(g, sz, c, ac, false);
+    // row of glowing photophores along the belly
+    for (let i = 0; i < 4; i++) {
+      g.circle(-sz * 0.45 + i * sz * 0.28, sz * 0.32, 1.8).fill(ac);
+      g.circle(-sz * 0.45 + i * sz * 0.28, sz * 0.32, 0.9).fill(0xffffff);
+    }
+    // dangling lantern lure from the brow
+    g.moveTo(sz * 0.55, -sz * 0.3)
+     .quadraticCurveTo(sz * 0.95, -sz * 0.55, sz * 0.9, -sz * 0.72)
+     .stroke({ color: ac, width: 1.5 });
+    g.circle(sz * 0.9, -sz * 0.74, 2.6).fill(ac);
+    g.circle(sz * 0.9, -sz * 0.74, 1.3).fill(0xffffff);
   }
 
   /**

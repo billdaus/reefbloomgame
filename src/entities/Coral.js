@@ -67,6 +67,11 @@ export class Coral {
       case 'grandReservoir':  this._drawStorageCoral(g, s, c);    break;
       // Event pass exclusives
       case 'pearlOrganPipe':  this._drawPearlOrganPipe(g, s, c);  break;
+      case 'blossomCoral':    this._drawBlossomCoral(g, s, c);    break;
+      case 'auroraCoral':     this._drawAuroraCoral(g, s, c);     break;
+      case 'tideCoral':       this._drawTideCoral(g, s, c);       break;
+      case 'frondCoral':      this._drawFrondCoral(g, s, c);      break;
+      case 'orchidCoral':     this._drawOrchidCoral(g, s, c);     break;
       default:                this._drawGeneric(g, s, c);          break;
     }
 
@@ -116,6 +121,12 @@ export class Coral {
       case 'midnightTable': this._growShelf(g, s, c, level); break;
       case 'toadstool':    this._growMushroom(g, s, c, level); break;
       case 'barnacles':    this._growCrust(g, s, c, level); break;
+      // Event exclusives — reuse the matching growth styles
+      case 'blossomCoral': this._growDome(g, s, c, level, s / 2, s * 0.6, s * 0.26); break;
+      case 'tideCoral':    this._growSpheres(g, s, c, level); break;
+      case 'frondCoral':   this._growBlades(g, s, c, level); break;
+      case 'orchidCoral':  this._growFan(g, s, c, level); break;
+      case 'auroraCoral':  break;   // grows identical fanned tips in its base draw
       default:             this._growGeneric(g, s, c, level); break;
     }
   }
@@ -1049,6 +1060,74 @@ export class Coral {
      .fill({ color: c, alpha: 0.75 });
     g.roundRect(-w * 0.75, -s * 0.12, w * 1.68, s * 0.14, 4)
      .stroke({ color: 0xd4c5b0, width: 1 });
+  }
+
+  // ── Blossom Coral (event) — pink mound studded with little flowers ──────────
+  _drawBlossomCoral(g, s, c) {
+    const mid = s / 2;
+    const dark  = this._darken(c, 0.2);
+    const light = this._lighten(c, 0.55);
+    g.circle(mid, s * 0.74, s * 0.3).fill(dark);
+    g.circle(mid, s * 0.72, s * 0.26).fill(c);
+    const flowers = [[0, -0.04], [-0.16, 0.06], [0.16, 0.06], [-0.08, 0.18], [0.1, 0.18], [0, 0.12]];
+    for (const [dx, dy] of flowers) {
+      const fx = mid + dx * s, fy = s * 0.6 + dy * s;
+      for (let k = 0; k < 5; k++) {
+        const a = k / 5 * Math.PI * 2 - Math.PI / 2;
+        g.circle(fx + Math.cos(a) * 3, fy + Math.sin(a) * 3, 2.4).fill(light);
+      }
+      g.circle(fx, fy, 1.8).fill(0xfff0a0);
+    }
+  }
+
+  // ── Aurora Coral (event) — glowing fanned branches with bright tips ─────────
+  _drawAuroraCoral(g, s, c) {
+    this._fanBranches(g, s, c, this._stalkCount(4),
+      { spread: 1.7, lenFrac: 0.42, width: 4, trunkW: 5,
+        tip: this._lighten(c, 0.5), tipR: 4, tipInner: 0xffffff });
+  }
+
+  // ── Moontide Coral (event) — rounded blue lobes ─────────────────────────────
+  _drawTideCoral(g, s, c) {
+    const dark = this._darken(c, 0.22), light = this._lighten(c, 0.45);
+    const lobes = [[0.5, 0.72, 0.2], [0.32, 0.66, 0.15], [0.68, 0.66, 0.15], [0.5, 0.54, 0.16]];
+    for (const [fx, fy, r] of lobes) {
+      g.circle(s * fx, s * fy, s * r).fill(dark);
+      g.circle(s * fx, s * fy - 1, s * r * 0.82).fill(c);
+      g.circle(s * fx - s * r * 0.28, s * fy - s * r * 0.3, s * r * 0.32).fill(light);
+    }
+  }
+
+  // ── Verdant Frond (event) — green swaying fronds ────────────────────────────
+  _drawFrondCoral(g, s, c) {
+    const dark = this._darken(c, 0.25), light = this._lighten(c, 0.45);
+    const base = s * 0.92, n = 5;
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0.5 : i / (n - 1);
+      const x = s * 0.22 + t * s * 0.56;
+      const sway = (i % 2 ? 1 : -1) * 6;
+      g.moveTo(x, base).quadraticCurveTo(x + sway, s * 0.5, x + sway * 0.6, s * 0.14)
+       .stroke({ color: i % 2 ? c : dark, width: 4, cap: 'round' });
+      g.circle(x + sway * 0.6, s * 0.14, 2).fill(light);
+    }
+  }
+
+  // ── Twilight Orchid (event) — purple soft-coral fan with glowing polyps ──────
+  _drawOrchidCoral(g, s, c) {
+    const dark = this._darken(c, 0.22), glow = this._lighten(c, 0.55);
+    const mid = s / 2, fork = s * 0.5;
+    g.moveTo(mid, s * 0.92).lineTo(mid, fork).stroke({ color: dark, width: 6, cap: 'round' });
+    const n = 7;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const ang = -Math.PI / 2 + (t - 0.5) * 1.8;
+      const len = s * 0.4;
+      const ex = mid + Math.cos(ang) * len, ey = fork + Math.sin(ang) * len;
+      g.moveTo(mid, fork)
+       .quadraticCurveTo(mid + Math.cos(ang) * len * 0.5, fork + Math.sin(ang) * len * 0.5, ex, ey)
+       .stroke({ color: c, width: 3, cap: 'round' });
+      g.circle(ex, ey, 2.6).fill(glow);
+    }
   }
 
   // ── Helper: polygon ellipse (g.ellipse unreliable in PixiJS v8) ────────────

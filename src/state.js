@@ -62,6 +62,7 @@ export const state = {
 
   // ── Limited time event ─────────────────────────────────────────────────────
   event: null,   // { id, name, icon, theme, description, startDate, endDate, status, challenges, reward }
+  eventUnlocked: [],   // speciesIds earned from event passes — placeable from the Event tab forever
 
   // ── Account (placeholder — feature not yet live) ───────────────────────────
   account: null,   // null = not signed in; { displayName, joinDate } when active

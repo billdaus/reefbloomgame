@@ -1017,6 +1017,7 @@ export class ReefScene {
     state.clamWatchDate  = data.clamWatchDate  ?? '';
     state.quest   = data.quest   ?? null;
     state.event   = data.event   ?? null;
+    state.eventUnlocked = data.eventUnlocked ?? [];
     state.account = data.account ?? null;
     state.profile = data.profile ?? null;
     state.harmonySmoothed = state.harmony;
@@ -1188,38 +1189,23 @@ export class ReefScene {
   // ── Exclusive species grant (event pass tier reward) ───────────────────────
 
   _grantExclusiveSpecies(speciesId) {
+    // Event-pass reward: add the species to the permanent Event collection so
+    // the player can place it from the Event tab in the build menu (rather than
+    // dropping a single instance into the reef). Unlocking the first one reveals
+    // the tab. Persists across events and biomes.
     const fishSpec  = FISH_SPECIES[speciesId];
     const coralSpec = CORAL_SPECIES[speciesId];
+    const spec = fishSpec ?? coralSpec;
+    if (!spec) return;
 
-    if (fishSpec) {
-      const col = 1 + Math.floor(Math.random() * (GRID_COLS - 2));
-      const row = 1 + Math.floor(Math.random() * (GRID_ROWS - 2));
-      this._spawnFish(speciesId, fishSpec, col, row);
-      this._hud.showBonus(`${fishSpec.name} unlocked! 🎉`);
-    } else if (coralSpec) {
-      // Find a free tile
-      let placed = false;
-      for (let attempt = 0; attempt < 40 && !placed; attempt++) {
-        const col = Math.floor(Math.random() * GRID_COLS);
-        const row = Math.floor(Math.random() * GRID_ROWS);
-        if (state.grid[row][col] !== null) continue;
-        const uid = state.nextUid();
-        state.grid[row][col] = speciesId;
-        state.placedCoral.push({ uid, col, row, speciesId, level: 1, pendingBE: 0 });
-        state.coralCount++;
-        state.coralTierCounts[coralSpec.tier]++;
-        state.coralTypesSeen.add(speciesId);
-        this._recomputeBeMax();
-        this._grid.placeCoral(coralSpec, col, row, uid, 1);
-        unlockEntry(`coral:${speciesId}`);
-        checkSnapshotQuests();
-        checkEventSnapshots();
-        checkLevelUp();
-        placed = true;
-      }
-      this._hud.showBonus(`${coralSpec.name} unlocked! 🎉`);
-      saveGame();
-    }
+    if (!Array.isArray(state.eventUnlocked)) state.eventUnlocked = [];
+    if (state.eventUnlocked.includes(speciesId)) return;   // already owned
+    state.eventUnlocked.push(speciesId);
+
+    unlockEntry(`${fishSpec ? 'fish' : 'coral'}:${speciesId}`);
+    this._menu.rebuild();   // surface the Event tab / new row immediately
+    this._hud.showBonus(`${spec.name} unlocked — find it in the Event tab! 🎉`);
+    saveGame();
   }
 
   /** Compute BE/tick from all inactive biomes' saved coral and cache it in state. */

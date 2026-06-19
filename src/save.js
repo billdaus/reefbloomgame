@@ -82,6 +82,7 @@ export function saveGame() {
   full.clamWatchDate  = state.clamWatchDate;
   full.quest              = state.quest;
   full.event              = state.event;
+  full.eventUnlocked      = state.eventUnlocked ?? [];
   full.account            = state.account;
   if (state.profile) full.profile = state.profile;
 
@@ -123,6 +124,7 @@ export function loadGame() {
     clamWatchDate:  full.clamWatchDate,
     quest:              full.quest              ?? null,
     event:              full.event              ?? null,
+    eventUnlocked:      full.eventUnlocked      ?? [],
     account:            full.account            ?? null,
     profile:            full.profile            ?? null,
     grid:           biomeData.grid           ?? null,

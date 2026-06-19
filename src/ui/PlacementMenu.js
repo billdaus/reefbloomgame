@@ -197,6 +197,18 @@ export class PlacementMenu {
     let cursor = PAD;
     const biome = state.biome;
 
+    // EVENT — species earned from event passes. Shown in every biome once you've
+    // unlocked at least one (i.e. finished a pass). Bypasses biome filtering.
+    const eventList = (state.eventUnlocked ?? [])
+      .map(id => CORAL_SPECIES[id] ? { spec: CORAL_SPECIES[id], type: 'coral' }
+               : FISH_SPECIES[id]  ? { spec: FISH_SPECIES[id],  type: 'fish' } : null)
+      .filter(Boolean);
+    if (eventList.length > 0) {
+      cursor = this._sectionLabel('✨ EVENT — PASS REWARDS', cursor);
+      eventList.forEach(({ spec, type }) => { cursor = this._addRow(type, spec, cursor); });
+      cursor += PAD * 2;
+    }
+
     const coralLabel =
       biome === 'seagrass'     ? 'SEAGRASS'
     : biome === 'deepTwilight' ? 'DEEP STRUCTURES'

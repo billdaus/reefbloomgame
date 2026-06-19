@@ -23,7 +23,7 @@ export const BE_PER_TICK = {
 
 // Coral placement cost by tier (BE) — legendary/mythic use pearls, not listed here
 export const CORAL_COST = {
-  common: 5, uncommon: 10, rare: 20, superRare: 25, epic: 60,
+  common: 5, uncommon: 10, rare: 20, superRare: 25, epic: 60, legendary: 150, mythic: 300,
 };
 
 // Fish hatch cost by tier (BE) — pearl species carry pearlCost on the spec instead
@@ -288,6 +288,31 @@ export const CORAL_SPECIES = {
     id: 'pearlOrganPipe', name: 'Pearl Organ Pipe', scientific: 'Tubipora musica (pearl form)',
     tier: TIER.LEGENDARY, tall: true, blocksB: false, color: 0xf0e6d3, unlockLevel: 1,
     eventId: 'pearl_tide_2026',
+  },
+  blossomCoral: {
+    id: 'blossomCoral', name: 'Blossom Coral', scientific: 'Acropora floralis',
+    tier: TIER.LEGENDARY, tall: false, color: 0xff7fb0, unlockLevel: 1,
+    eventId: 'coral_bloom_2026',
+  },
+  auroraCoral: {
+    id: 'auroraCoral', name: 'Aurora Coral', scientific: 'Euphyllia lux',
+    tier: TIER.LEGENDARY, tall: true, color: 0x76ff03, unlockLevel: 1,
+    eventId: 'bioluminescence_2026',
+  },
+  tideCoral: {
+    id: 'tideCoral', name: 'Moontide Coral', scientific: 'Lobophyllia lunaris',
+    tier: TIER.LEGENDARY, tall: false, color: 0x5aa6f0, unlockLevel: 1,
+    eventId: 'moonfish_migration_2026',
+  },
+  frondCoral: {
+    id: 'frondCoral', name: 'Verdant Frond', scientific: 'Pavona renovata',
+    tier: TIER.LEGENDARY, tall: true, color: 0x2bbf6a, unlockLevel: 1,
+    eventId: 'reef_renewal_2026',
+  },
+  orchidCoral: {
+    id: 'orchidCoral', name: 'Twilight Orchid', scientific: 'Dendronephthya noctis',
+    tier: TIER.LEGENDARY, tall: true, color: 0x9c64ff, unlockLevel: 1,
+    eventId: 'twilight_festival_2026',
   },
 };
 
@@ -689,6 +714,18 @@ export const FISH_SPECIES = {
     tier: TIER.LEGENDARY, layer: 'B', color: 0x546e7a, accentColor: 0xff5722,
     size: 38, speed: 0.75, unlockLevel: 1,
     eventId: 'moonfish_migration_2026',
+  },
+  pearlfish: {
+    id: 'pearlfish', name: 'Pearlfish', scientific: 'Margarites nacreus',
+    tier: TIER.LEGENDARY, layer: 'A', color: 0xf3ead6, accentColor: 0xfff6e0,
+    size: 18, speed: 0.9, unlockLevel: 1,
+    eventId: 'pearl_tide_2026',
+  },
+  twilightLantern: {
+    id: 'twilightLantern', name: 'Twilight Lanternfish', scientific: 'Myctophum noctis',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x4a2b8c, accentColor: 0x9c64ff,
+    size: 22, speed: 0.8, unlockLevel: 1,
+    eventId: 'twilight_festival_2026',
   },
 
   // ── Gavin ────────────────────────────────────────────────────────────────

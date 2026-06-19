@@ -35,8 +35,8 @@ export const EVENT_SCHEDULE = [
       tiers: [
         { threshold: 1, reward: { be: 100 },              label: '100 🫧'          },
         { threshold: 3, reward: { pearls: 20 },           label: '20 💎'           },
-        { threshold: 5, reward: { be: 200 },              label: '200 🫧'          },
-        { threshold: 7, reward: { exclusive: 'sakuraAnthias' }, label: '🌸 Sakura Anthias' },
+        { threshold: 5, reward: { exclusive: 'blossomCoral' },  label: '🌸 Blossom Coral'  },
+        { threshold: 7, reward: { exclusive: 'sakuraAnthias' }, label: '🐟 Sakura Anthias' },
       ],
     },
   },
@@ -68,8 +68,8 @@ export const EVENT_SCHEDULE = [
       tiers: [
         { threshold: 1, reward: { be: 50 },                       label: '50 🫧'           },
         { threshold: 3, reward: { pearls: 20 },                   label: '20 💎'           },
-        { threshold: 5, reward: { exclusive: 'glowEel' },         label: '⚡ Glow Eel'      },
-        { threshold: 8, reward: { exclusive: 'moonSeahorse' },    label: '🌙 Moon Seahorse' },
+        { threshold: 5, reward: { exclusive: 'auroraCoral' },     label: '✨ Aurora Coral' },
+        { threshold: 8, reward: { exclusive: 'glowEel' },         label: '⚡ Glow Eel'      },
       ],
     },
   },
@@ -102,7 +102,7 @@ export const EVENT_SCHEDULE = [
       tiers: [
         { threshold: 1, reward: { be: 75 },               label: '75 🫧'   },
         { threshold: 3, reward: { pearls: 15 },           label: '15 💎'   },
-        { threshold: 5, reward: { be: 150 },              label: '150 🫧'  },
+        { threshold: 5, reward: { exclusive: 'tideCoral' }, label: '🌊 Moontide Coral' },
         { threshold: 7, reward: { exclusive: 'opah' },    label: '🐟 Opah' },
       ],
     },
@@ -135,7 +135,8 @@ export const EVENT_SCHEDULE = [
       tiers: [
         { threshold: 1, reward: { be: 75 },                          label: '75 🫧'            },
         { threshold: 3, reward: { pearls: 30 },                      label: '30 💎'            },
-        { threshold: 6, reward: { exclusive: 'pearlOrganPipe' },     label: '💎 Pearl Organ Pipe' },
+        { threshold: 5, reward: { exclusive: 'pearlOrganPipe' },     label: '💎 Pearl Organ Pipe' },
+        { threshold: 7, reward: { exclusive: 'pearlfish' },          label: '🐟 Pearlfish'     },
       ],
     },
   },
@@ -166,7 +167,7 @@ export const EVENT_SCHEDULE = [
       tiers: [
         { threshold: 1, reward: { be: 100 },                    label: '100 🫧'          },
         { threshold: 3, reward: { pearls: 25 },                 label: '25 💎'           },
-        { threshold: 5, reward: { be: 250 },                    label: '250 🫧'          },
+        { threshold: 5, reward: { exclusive: 'frondCoral' },    label: '🌿 Verdant Frond' },
         { threshold: 7, reward: { exclusive: 'moonSeahorse' },  label: '🌙 Moon Seahorse' },
       ],
     },
@@ -198,8 +199,8 @@ export const EVENT_SCHEDULE = [
       tiers: [
         { threshold: 1, reward: { be: 75 },                  label: '75 🫧'        },
         { threshold: 3, reward: { pearls: 20 },              label: '20 💎'        },
-        { threshold: 5, reward: { be: 200 },                 label: '200 🫧'       },
-        { threshold: 8, reward: { exclusive: 'glowEel' },    label: '⚡ Glow Eel'  },
+        { threshold: 5, reward: { exclusive: 'orchidCoral' }, label: '🪻 Twilight Orchid' },
+        { threshold: 8, reward: { exclusive: 'twilightLantern' }, label: '🏮 Twilight Lanternfish' },
       ],
     },
   },
