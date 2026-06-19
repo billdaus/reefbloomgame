@@ -2212,8 +2212,14 @@ export class Fish {
     this._puffHold = 95;   // ~1.5s held inflated; refreshed by repeat bumps
   }
 
-  update(dt, grid, coralSpecies, onEmit, allFish, coralLevels) {
-    const speed = this.spec.speed * SPEED_SCALE;
+  /** Nocturnal fish stay active at night; everyone else tucks in at home. */
+  _isNocturnal() { return this.spec.biome === 'deepTwilight' || !!this.spec.nocturnal; }
+
+  update(dt, grid, coralSpecies, onEmit, allFish, coralLevels, night = 0) {
+    // At night most fish retreat to their home coral and settle (slow, tucked).
+    this._hiding = night > 0.55 && !this._isNocturnal()
+                   && this.homeCol != null && this._cleanState === 'none';
+    const speed = this.spec.speed * SPEED_SCALE * (this._hiding ? 0.5 : 1);
     const ms    = dt * (60 / 1000) * 16;  // normalise to pixels/frame
 
     // ── Cleaning-station visit overrides normal wandering ───────────────────
@@ -2418,6 +2424,17 @@ export class Fish {
   }
 
   _pickNewTarget(grid) {
+    // Night: tuck right up against the home coral and stay put.
+    if (this._hiding && this.homeCol != null) {
+      const home = tileCenter(this.homeCol, this.homeRow);
+      const r = TILE_SIZE * (0.12 + Math.random() * 0.22);
+      const a = Math.random() * Math.PI * 2;
+      this.targetX = home.x + Math.cos(a) * r;
+      this.targetY = home.y + Math.sin(a) * r;
+      this.pickTargetCooldown = 80 + Math.random() * 60;
+      return;
+    }
+
     // Home coral: linger nearby most of the time — hover in a ring around the
     // home tile. The rest of the time fall through to roaming/exploring.
     if (this.homeCol != null && this.homeRow != null && Math.random() < 0.7) {

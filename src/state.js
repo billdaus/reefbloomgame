@@ -64,6 +64,9 @@ export const state = {
   event: null,   // { id, name, icon, theme, description, startDate, endDate, status, challenges, reward }
   eventUnlocked: [],   // speciesIds earned from event passes — placeable from the Event tab forever
 
+  // ── Day/night cycle ────────────────────────────────────────────────────────
+  timeOfDay: 0.30,   // 0..1 (midnight=0, sunrise=.25, noon=.5, sunset=.75)
+
   // ── Account (placeholder — feature not yet live) ───────────────────────────
   account: null,   // null = not signed in; { displayName, joinDate } when active
 

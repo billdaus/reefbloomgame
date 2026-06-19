@@ -359,7 +359,7 @@ export const FISH_SPECIES = {
   octopus: {
     id: 'octopus', name: 'Octopus', scientific: 'Octopus vulgaris',
     tier: TIER.RARE, layer: 'B', color: 0xd84315, accentColor: 0xff8a65,
-    size: 20, speed: 0.7, unlockLevel: 4,
+    size: 20, speed: 0.7, unlockLevel: 4, nocturnal: true,
   },
   // ── Super Rare ───────────────────────────────────────────────────────────────
   moorishIdol: {
@@ -386,12 +386,12 @@ export const FISH_SPECIES = {
   cuttlefish: {
     id: 'cuttlefish', name: 'Cuttlefish', scientific: 'Sepia spp.',
     tier: TIER.EPIC, layer: 'B', color: 0xce93d8, accentColor: 0x9c27b0,
-    size: 26, speed: 0.8, unlockLevel: 7,
+    size: 26, speed: 0.8, unlockLevel: 7, nocturnal: true,
   },
   morayEel: {
     id: 'morayEel', name: 'Moray Eel', scientific: 'Gymnothorax spp.',
     tier: TIER.EPIC, layer: 'B', color: 0xa1887f, accentColor: 0x5d4037,
-    size: 30, speed: 0.7, unlockLevel: 7,
+    size: 30, speed: 0.7, unlockLevel: 7, nocturnal: true,
   },
   // ── Legendary ────────────────────────────────────────────────────────────────
   dolphin: {
@@ -464,7 +464,7 @@ export const FISH_SPECIES = {
   blueRibbonEel: {
     id: 'blueRibbonEel', name: 'Blue Ribbon Eel', scientific: 'Rhinomuraena quaesita',
     tier: TIER.LEGENDARY, layer: 'B', color: 0x1565c0, accentColor: 0xffff00,
-    size: 30, speed: 0.6, unlockLevel: 10,
+    size: 30, speed: 0.6, unlockLevel: 10, nocturnal: true,
   },
   napoleonWrasse: {
     id: 'napoleonWrasse', name: 'Napoleon Wrasse', scientific: 'Cheilinus undulatus',
@@ -474,7 +474,7 @@ export const FISH_SPECIES = {
   giantMoray: {
     id: 'giantMoray', name: 'Giant Moray', scientific: 'Gymnothorax javanicus',
     tier: TIER.MYTHIC, layer: 'B', color: 0x4e342e, accentColor: 0xd7ccc8,
-    size: 44, speed: 0.6, unlockLevel: 14,
+    size: 44, speed: 0.6, unlockLevel: 14, nocturnal: true,
   },
   // ── Seagrass Basin — Benthic ─────────────────────────────────────────────────
   horseshoeCrab: {

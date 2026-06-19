@@ -83,6 +83,7 @@ export function saveGame() {
   full.quest              = state.quest;
   full.event              = state.event;
   full.eventUnlocked      = state.eventUnlocked ?? [];
+  full.timeOfDay          = state.timeOfDay;
   full.account            = state.account;
   if (state.profile) full.profile = state.profile;
 
@@ -125,6 +126,7 @@ export function loadGame() {
     quest:              full.quest              ?? null,
     event:              full.event              ?? null,
     eventUnlocked:      full.eventUnlocked      ?? [],
+    timeOfDay:          full.timeOfDay          ?? 0.30,
     account:            full.account            ?? null,
     profile:            full.profile            ?? null,
     grid:           biomeData.grid           ?? null,

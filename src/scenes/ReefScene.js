@@ -43,10 +43,12 @@ export class ReefScene {
   constructor(app) {
     this.app = app;
 
-    // ── World container (harmony saturation filter applied here) ────────────
+    // ── World container (harmony saturation + day/night filters applied here)
     this.worldContainer = new Container();
-    this._satFilter = new ColorMatrixFilter();
-    this.worldContainer.filters = [this._satFilter];
+    this._satFilter   = new ColorMatrixFilter();   // harmony (updated by HarmonySystem)
+    this._nightFilter = new ColorMatrixFilter();   // day/night darkening + cool tint
+    this.worldContainer.filters = [this._satFilter, this._nightFilter];
+    this._nightFactor = 0;
 
     // ── Fish containers ──────────────────────────────────────────────────────
     this._fishContainerA = new Container();
@@ -258,6 +260,7 @@ export class ReefScene {
     tickEconomy(dms);
     tickClamSystem(dms);
     updateHarmonyFilter(this.worldContainer);
+    this._updateDayNight(dms);
     checkLevelUp();
 
     if (this._clamEntity)      this._clamEntity.update(dms);
@@ -269,7 +272,7 @@ export class ReefScene {
     for (const cc of state.placedCoral) coralLevels[cc.row * 10 + cc.col] = cc.level ?? 1;
 
     state.fish.forEach(fish => {
-      fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev), state.fish, coralLevels);
+      fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev), state.fish, coralLevels, this._nightFactor);
       // Sparkle only over CLIENTS actively being cleaned (not loitering cleaners)
       if (this._activeCleanUids?.has(fish.uid) && Math.random() < 0.16) {
         this._spawnSparkle(fish.x + (Math.random() - 0.5) * 10, fish.y - 6);
@@ -403,6 +406,32 @@ export class ReefScene {
     c.on('pointerout',  () => draw(false));
     c.on('pointerdown', (e) => { e.stopPropagation(); this._accountModal.show(); });
     return c;
+  }
+
+  /**
+   * Advance the day/night cycle and darken the reef accordingly. timeOfDay runs
+   * 0→1 over DAY_MS (midnight=0, sunrise=0.25, noon=0.5, sunset=0.75). The night
+   * factor (0 day → 1 deep night) darkens + cools the world and is fed to fish
+   * so most retreat to their home coral after dark.
+   */
+  _updateDayNight(dms) {
+    const DAY_MS = 240000;   // 4-minute full day
+    state.timeOfDay = (((state.timeOfDay ?? 0.30) + dms / DAY_MS) % 1 + 1) % 1;
+    const elevation = Math.sin((state.timeOfDay - 0.25) * Math.PI * 2);  // -1..1
+    const target = Math.max(0, Math.min(1, -elevation * 1.6));            // night strength
+    // Ease so the transition is smooth even after big dt gaps
+    this._nightFactor += (target - this._nightFactor) * Math.min(1, dms / 600);
+    this._applyNightMatrix(this._nightFilter, this._nightFactor);
+  }
+
+  _applyNightMatrix(filter, night) {
+    const b = 1 - night * 0.5;   // darken to 50% at deep night
+    filter.matrix = [
+      b,   0,        0,       0, 0,
+      0,   b * 1.02, 0,       0, 0,
+      0,   0,        b * 1.16, 0, night * 0.04,   // keep blue up + tiny moonlight lift
+      0,   0,        0,       1, 0,
+    ];
   }
 
   /** Mobile on-screen zoom controls (＋ / － / recenter) for the reef camera. */
@@ -1018,6 +1047,7 @@ export class ReefScene {
     state.quest   = data.quest   ?? null;
     state.event   = data.event   ?? null;
     state.eventUnlocked = data.eventUnlocked ?? [];
+    state.timeOfDay = data.timeOfDay ?? 0.30;
     state.account = data.account ?? null;
     state.profile = data.profile ?? null;
     state.harmonySmoothed = state.harmony;
