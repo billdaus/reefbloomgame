@@ -71,6 +71,12 @@ export const state = {
   loginStreak: 0,        // consecutive days played
   lastLoginDate: null,   // toDateString() of the last day a streak reward was given
 
+  // ── Milestones / activity counters ──────────────────────────────────────────
+  achievements: [],      // unlocked achievement ids
+  bredCount: 0,          // total fish hatched by breeding
+  feedCount: 0,          // total food pellets eaten
+  sawNight: false,       // has the player witnessed a full night
+
   // ── Account (placeholder — feature not yet live) ───────────────────────────
   account: null,   // null = not signed in; { displayName, joinDate } when active
 

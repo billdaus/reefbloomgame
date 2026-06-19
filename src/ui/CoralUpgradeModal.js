@@ -75,6 +75,22 @@ export class CoralUpgradeModal {
     this._content.removeChildren();
     const cx = px + pw / 2;
 
+    // Shelters: specialized fish homes — show capacity & specialty, no upgrade.
+    if (spec.shelter) {
+      this._text(`🏠 ${spec.name}`, cx, py + 18, 18, 0xc8e6a0, true, 0.5);
+      this._text('Specialized fish home', cx, py + 50, 12, COLORS.text_secondary, false, 0.5);
+      this._text(`Houses ${spec.homeCap ?? 6} fish`, cx, py + 100, 17, 0xc8e6a0, true, 0.5);
+      const fav = spec.homeFor === 'A' ? 'surface (Layer A) fish'
+                : spec.homeFor === 'B' ? 'deep (Layer B) fish'
+                : spec.homeFor === 'nocturnal' ? 'nocturnal fish'
+                : 'any fish';
+      this._text(`Favours ${fav}`, cx, py + 132, 12, COLORS.text_secondary, false, 0.5);
+      this._text('Produces no Bubble Essence', cx, py + 160, 11, 0x90a0b0, false, 0.5);
+      const close = this._button('Close', cx - 44, py + ph - 34, 88, 24, true, () => this.hide(), true);
+      this._content.addChild(close);
+      return;
+    }
+
     this._text(`🪸 ${spec.name}`, cx, py + 18, 18, 0xc8e6a0, true, 0.5);
     this._text(`Level ${level} / ${CORAL_MAX_LEVEL}`, cx, py + 46, 13, COLORS.text_secondary, false, 0.5);
 

@@ -39,7 +39,7 @@ function _applyCoralTick() {
     if (!spec) return;
     const lvl = coralLevel(entry);
     polyps += POLYP_PER_CORAL_TICK * lvl;
-    if (spec.storage) return;                  // vaults raise the cap, don't produce
+    if (spec.storage || spec.shelter) return;  // vaults/shelters don't produce BE
     earned += coralBEPerTick(spec, lvl);
   });
 
@@ -72,7 +72,7 @@ export function beRatePerTick() {
   let earned = state.passiveBEPerTick ?? 0;
   state.placedCoral.forEach((entry) => {
     const spec = CORAL_SPECIES[entry.speciesId];
-    if (!spec || spec.storage) return;
+    if (!spec || spec.storage || spec.shelter) return;
     earned += coralBEPerTick(spec, coralLevel(entry));
   });
   return earned;

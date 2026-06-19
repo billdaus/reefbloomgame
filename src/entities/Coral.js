@@ -65,6 +65,9 @@ export class Coral {
       case 'wispCoral':       this._drawWispCoral(g, s, c);       break;
       case 'essenceVault':    this._drawStorageCoral(g, s, c);    break;
       case 'grandReservoir':  this._drawStorageCoral(g, s, c);    break;
+      // Shelters — specialized fish homes
+      case 'anemoneHome':     this._drawAnemoneHome(g, s, c);     break;
+      case 'reefCave':        this._drawReefCave(g, s, c);        break;
       // Event pass exclusives
       case 'pearlOrganPipe':  this._drawPearlOrganPipe(g, s, c);  break;
       case 'blossomCoral':    this._drawBlossomCoral(g, s, c);    break;
@@ -128,6 +131,8 @@ export class Coral {
       case 'frondCoral':   this._growBlades(g, s, c, level); break;
       case 'orchidCoral':  this._growFan(g, s, c, level); break;
       case 'auroraCoral':  break;   // grows identical fanned tips in its base draw
+      case 'anemoneHome':
+      case 'reefCave':     break;   // shelters are static (not upgradable)
       default:             this._growGeneric(g, s, c, level); break;
     }
   }
@@ -968,6 +973,44 @@ export class Coral {
   }
 
   // ── Storage coral — a coral-encrusted vault/urn holding glowing essence ────
+  // ── Anemone Haven (shelter) — soft column foot with a crown of tentacles ────
+  _drawAnemoneHome(g, s, c) {
+    const mid = s / 2;
+    const dark = this._darken(c, 0.25), light = this._lighten(c, 0.5);
+    g.roundRect(mid - s * 0.14, s * 0.55, s * 0.28, s * 0.4, 6).fill(dark);   // foot
+    g.ellipse(mid, s * 0.55, s * 0.26, s * 0.12).fill(c);                     // oral disc
+    const n = 14;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const bx = mid + (t - 0.5) * s * 0.46;
+      const sway = Math.sin(i * 1.3) * 4;
+      g.moveTo(bx, s * 0.55)
+       .quadraticCurveTo(bx + sway, s * 0.34, bx + sway * 1.4, s * 0.16)
+       .stroke({ color: i % 2 ? c : light, width: 2.4, cap: 'round' });
+      g.circle(bx + sway * 1.4, s * 0.16, 2).fill(light);
+    }
+  }
+
+  // ── Reef Grotto (shelter) — rocky mound with a dark cave mouth ──────────────
+  _drawReefCave(g, s, c) {
+    const mid = s / 2;
+    const dark = this._darken(c, 0.3), light = this._lighten(c, 0.25);
+    g.moveTo(s * 0.1, s * 0.95)
+     .quadraticCurveTo(s * 0.04, s * 0.42, mid, s * 0.28)
+     .quadraticCurveTo(s * 0.96, s * 0.42, s * 0.9, s * 0.95)
+     .closePath().fill(c);
+    g.ellipse(mid, s * 0.42, s * 0.3, s * 0.16).fill({ color: light, alpha: 0.4 });
+    // dark cave mouth
+    g.moveTo(mid - s * 0.16, s * 0.95)
+     .quadraticCurveTo(mid - s * 0.16, s * 0.5, mid, s * 0.5)
+     .quadraticCurveTo(mid + s * 0.16, s * 0.5, mid + s * 0.16, s * 0.95)
+     .closePath().fill(0x05080c);
+    g.moveTo(mid - s * 0.16, s * 0.95).quadraticCurveTo(mid, s * 0.46, mid + s * 0.16, s * 0.95)
+     .stroke({ color: dark, width: 2 });
+    g.circle(s * 0.28, s * 0.7, 3).fill(dark);
+    g.circle(s * 0.74, s * 0.66, 3).fill(dark);
+  }
+
   _drawStorageCoral(g, s, c) {
     const mid  = s / 2;
     const dark = this._darken(c, 0.35);

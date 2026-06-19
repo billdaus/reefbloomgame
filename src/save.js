@@ -86,6 +86,10 @@ export function saveGame() {
   full.timeOfDay          = state.timeOfDay;
   full.loginStreak        = state.loginStreak ?? 0;
   full.lastLoginDate      = state.lastLoginDate ?? null;
+  full.achievements       = state.achievements ?? [];
+  full.bredCount          = state.bredCount ?? 0;
+  full.feedCount          = state.feedCount ?? 0;
+  full.sawNight           = state.sawNight ?? false;
   full.account            = state.account;
   if (state.profile) full.profile = state.profile;
 
@@ -131,6 +135,10 @@ export function loadGame() {
     timeOfDay:          full.timeOfDay          ?? 0.30,
     loginStreak:        full.loginStreak        ?? 0,
     lastLoginDate:      full.lastLoginDate      ?? null,
+    achievements:       full.achievements       ?? [],
+    bredCount:          full.bredCount          ?? 0,
+    feedCount:          full.feedCount          ?? 0,
+    sawNight:           full.sawNight           ?? false,
     savedAt:            full.savedAt            ?? null,
     account:            full.account            ?? null,
     profile:            full.profile            ?? null,

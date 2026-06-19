@@ -45,6 +45,9 @@ export class Fish {
     // Set at night when tucked into the home coral (rendered behind corals).
     this._tucked = false;
 
+    // Feeding: counts down after eating; fed pairs breed readily.
+    this._fedTimer = 0;
+
     // Cleaning-station visit: 'none' | 'toStation' | 'cleaning'
     this._cleanState = 'none';
     this._cleanX = 0;
@@ -2250,7 +2253,7 @@ export class Fish {
   /** Nocturnal fish stay active at night; everyone else tucks in at home. */
   _isNocturnal() { return this.spec.biome === 'deepTwilight' || !!this.spec.nocturnal; }
 
-  update(dt, grid, coralSpecies, onEmit, allFish, coralLevels, night = 0) {
+  update(dt, grid, coralSpecies, onEmit, allFish, coralLevels, night = 0, food = null) {
     const nf = Math.max(0, Math.min(1, night));
     // Bioluminescent glow brightens at night; body resists the night darkening.
     if (this._glow) {
@@ -2268,6 +2271,19 @@ export class Fish {
     const speed = this.spec.speed * SPEED_SCALE * (this._hiding ? 0.5 : 1);
     const ms    = dt * (60 / 1000) * 16;  // normalise to pixels/frame
 
+    // Feeding — head for the nearest food pellet, overriding the usual wander.
+    if (this._fedTimer > 0) this._fedTimer -= dt;
+    this._seekingFood = false;
+    if (food && food.length && this._cleanState === 'none' && !this._hiding) {
+      let best = null, bd = (TILE_SIZE * 3) ** 2;
+      for (const p of food) {
+        const ddx = p.x - this.x, ddy = p.y - this.y;
+        const d = ddx * ddx + ddy * ddy;
+        if (d < bd) { bd = d; best = p; }
+      }
+      if (best) { this.targetX = best.x; this.targetY = best.y; this._seekingFood = true; }
+    }
+
     // ── Cleaning-station visit overrides normal wandering ───────────────────
     if (this._cleanState !== 'none') {
       this.targetX = this._cleanX;
@@ -2282,7 +2298,7 @@ export class Fish {
 
     if (this._cleanState === 'toStation') {
       if (dist < TILE_SIZE * 0.6) this._cleanState = 'cleaning';  // arrived; settle in
-    } else if (this._cleanState === 'none' && (dist < 8 || this.pickTargetCooldown <= 0)) {
+    } else if (this._cleanState === 'none' && !this._seekingFood && (dist < 8 || this.pickTargetCooldown <= 0)) {
       this._pickNewTarget(grid);
     }
 
@@ -2434,8 +2450,8 @@ export class Fish {
     this.container.x = this.x;
     this.container.y = this.y;
 
-    // Juveniles grow from ~half-size to full over ~60s.
-    if (this._maturity < 1) this._maturity = Math.min(1, this._maturity + dt / 3600);
+    // Juveniles grow from ~half-size to full slowly (~3 minutes).
+    if (this._maturity < 1) this._maturity = Math.min(1, this._maturity + dt / 10800);
     const mScale = 0.5 + 0.5 * this._maturity;
 
     const facingRight = Math.cos(this._angle) >= 0;

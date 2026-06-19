@@ -40,6 +40,8 @@ import { CameraController } from './CameraController.js';
 import { isTapSuppressed } from '../input/gesture.js';
 import { applyReturnRewards } from '../systems/RetentionSystem.js';
 import { WelcomeBackModal } from '../ui/WelcomeBackModal.js';
+import { initAchievements, checkAchievements } from '../systems/AchievementSystem.js';
+import { AchievementsModal } from '../ui/AchievementsModal.js';
 
 export class ReefScene {
   constructor(app) {
@@ -58,6 +60,9 @@ export class ReefScene {
     // Fish tucked into their home coral at night render here — below the corals,
     // so the coral occludes them (they look hidden inside it).
     this._hiddenFishContainer = new Container();
+    // Food pellets dropped by the Feed action
+    this._foodContainer = new Container();
+    this._food = [];
 
     // ── Gavin emission particles (farts + poops) ─────────────────────────────
     this._particleContainer = new Container();
@@ -108,6 +113,8 @@ export class ReefScene {
     this.worldContainer.addChild(this._grid.tallCoralContainer);
     // 6. Fish Layer B (moray, cuttlefish, moorish idol, yellow tang)
     this.worldContainer.addChild(this._fishContainerB);
+    // 6b. Food pellets — drift among the fish
+    this.worldContainer.addChild(this._foodContainer);
     // 7. Foreground bubbles
     this.worldContainer.addChild(this._foreground.container);
     // 8. Seasonal ambience (petals / motes / sparkles — above fish, below drone)
@@ -161,6 +168,8 @@ export class ReefScene {
 
     this._uiContainer.addChild(this._menu.container);
     this._uiContainer.addChild(this._buildDockAccountBtn());
+    this._uiContainer.addChild(this._dockPill('🍤 Feed', GRID_X + 120, () => this._dropFood()));
+    this._uiContainer.addChild(this._dockPill('🏆', GRID_X + 330, () => this._achievementsModal.show()));
     this._uiContainer.addChild(this._hud.container);
     this._uiContainer.addChild(this._rewardModal.container);
     this._uiContainer.addChild(this._shopModal.container);
@@ -173,6 +182,8 @@ export class ReefScene {
     this._uiContainer.addChild(this._eventModal.container);
     this._welcomeModal = new WelcomeBackModal();
     this._uiContainer.addChild(this._welcomeModal.container);
+    this._achievementsModal = new AchievementsModal();
+    this._uiContainer.addChild(this._achievementsModal.container);
 
     // Expose layout + travel callback for DOM travel button/modal (see index.html)
     window._rfLayout   = { PANEL_X, PANEL_Y, PANEL_W, SCREEN_W, SCREEN_H };
@@ -257,6 +268,9 @@ export class ReefScene {
       (speciesId) => this._grantExclusiveSpecies(speciesId),
     );
 
+    initAchievements((a) => this._hud.showBonus(`🏆 ${a.name}!`));
+    checkAchievements();   // backfill any already-met on load
+
     // ── Welcome Back — idle earnings while away + daily login-streak bonus ────
     // Runs after restore (so the BE rate, cap and streak are known). saved.savedAt
     // is the previous session's timestamp; null for a brand-new slot.
@@ -292,7 +306,7 @@ export class ReefScene {
     for (const cc of state.placedCoral) coralLevels[cc.row * 10 + cc.col] = cc.level ?? 1;
 
     state.fish.forEach(fish => {
-      fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev), state.fish, coralLevels, this._nightFactor);
+      fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev), state.fish, coralLevels, this._nightFactor, this._food);
       // Tucked-in fish drop below the corals (occluded); others ride their layer.
       const want = fish._tucked
         ? this._hiddenFishContainer
@@ -305,6 +319,8 @@ export class ReefScene {
     });
     this._tickStations(dms, dt);
     this._tickBreeding(dms);
+    this._tickFood(dms);
+    this._tickAchievements(dms);
     this._updateParticles(dms);
 
     // Auto-save every 30 s
@@ -402,6 +418,31 @@ export class ReefScene {
       if (st) storage += st * Math.max(1, c.level ?? 1);
     }
     state.beMax = BE_MAX + storage;
+  }
+
+  /** A small dock pill button (Feed, Achievements). */
+  _dockPill(label, x, onTap) {
+    const FONT = 'system-ui, -apple-system, sans-serif';
+    const c = new Container();
+    const bg = new Graphics();
+    const t = new Text({ text: label, style: { fontSize: 12, fill: 0xd8efff, fontFamily: FONT, fontWeight: '600' } });
+    const W = Math.max(40, t.width + 20), H = 26;
+    const draw = (hover) => {
+      bg.clear();
+      bg.roundRect(0, 0, W, H, 8).fill({ color: hover ? 0x2a3a5a : 0x10243a, alpha: 0.95 });
+      bg.roundRect(0, 0, W, H, 8).stroke({ color: 0x7fb0e0, width: 1.5, alpha: 0.9 });
+    };
+    draw(false);
+    t.anchor.set(0.5); t.x = W / 2; t.y = H / 2;
+    c.addChild(bg, t);
+    c.x = x;
+    c.y = (IS_PORTRAIT ? GRID_Y + GRID_H - 30 : GRID_Y + GRID_H + 14);
+    c.eventMode = 'static';
+    c.cursor = 'pointer';
+    c.on('pointerover', () => draw(true));
+    c.on('pointerout',  () => draw(false));
+    c.on('pointerdown', (e) => { e.stopPropagation(); onTap(); });
+    return c;
   }
 
   /** Account button stationed beside Bubbles' dock (bottom-left of the reef). */
@@ -664,7 +705,21 @@ export class ReefScene {
   }
 
   /** How many fish a coral can host as their home — grows with each upgrade. */
-  _coralCapacity(level) { return (level ?? 1) + 1; }   // Lv1→2, Lv5→6
+  /** How many fish a coral/shelter can home. Shelters use a flat homeCap (no
+   *  BE); normal corals scale with upgrade level (Lv1→2 … Lv5→6). */
+  _homeCapacity(entry) {
+    const spec = CORAL_SPECIES[entry.speciesId];
+    if (spec?.shelter) return spec.homeCap ?? 6;
+    return (entry.level ?? 1) + 1;
+  }
+
+  /** True if this shelter is specialized for (and should prefer) this fish. */
+  _shelterMatches(spec, fish) {
+    if (!spec?.shelter || !spec.homeFor) return false;
+    if (spec.homeFor === 'A' || spec.homeFor === 'B') return fish.layer === spec.homeFor;
+    if (spec.homeFor === 'nocturnal') return fish._isNocturnal?.() ?? false;
+    return false;
+  }
 
   /**
    * Assign every fish a home coral, respecting per-coral capacity. Fish keep a
@@ -675,7 +730,7 @@ export class ReefScene {
   _assignFishHomes() {
     const corals = state.placedCoral;
     const cap = new Map();
-    for (const cc of corals) cap.set(cc.uid, this._coralCapacity(cc.level));
+    for (const cc of corals) cap.set(cc.uid, this._homeCapacity(cc));
 
     // Keep still-valid homes, freeing their capacity slot.
     for (const f of state.fish) {
@@ -695,7 +750,9 @@ export class ReefScene {
       for (const cc of corals) {
         if (cap.get(cc.uid) <= 0) continue;
         const ctr = tileCenter(cc.col, cc.row);
-        const d = (ctr.x - f.x) ** 2 + (ctr.y - f.y) ** 2;
+        let d = (ctr.x - f.x) ** 2 + (ctr.y - f.y) ** 2;
+        // Specialized shelters strongly attract their kind of fish.
+        if (this._shelterMatches(CORAL_SPECIES[cc.speciesId], f)) d -= 1e7;
         if (d < bestD) { bestD = d; best = cc; }
       }
       if (best) {
@@ -762,29 +819,96 @@ export class ReefScene {
     this._breedTimer = 9000;   // re-check every ~9s
 
     if ((this._nightFactor ?? 0) > 0.3) return;   // fish breed by day
-    if (state.harmony < 60) return;               // only a thriving reef breeds
     if (state.fish.length >= 80) return;          // safety cap
 
-    // Eligible corals: a same-species adult pair homed here + a free home slot.
+    // Eligible homes: a same-species adult pair + a free slot. A FED pair (both
+    // recently fed) breeds at lower harmony and far more readily.
     const eligible = [];
     for (const cc of state.placedCoral) {
       const homed = state.fish.filter(f => f.homeUid === cc.uid);
-      if (homed.length >= this._coralCapacity(cc.level)) continue;   // full
-      const counts = {};
-      for (const f of homed) if (f.isMature?.()) counts[f.speciesId] = (counts[f.speciesId] ?? 0) + 1;
-      const speciesId = Object.keys(counts).find(id => counts[id] >= 2);
-      if (speciesId) eligible.push({ cc, speciesId });
+      if (homed.length >= this._homeCapacity(cc)) continue;   // full
+      const adults = {}, fed = {};
+      for (const f of homed) if (f.isMature?.()) {
+        adults[f.speciesId] = (adults[f.speciesId] ?? 0) + 1;
+        if (f._fedMs > 0) fed[f.speciesId] = (fed[f.speciesId] ?? 0) + 1;
+      }
+      const speciesId = Object.keys(adults).find(id => adults[id] >= 2);
+      if (!speciesId) continue;
+      const isFed = (fed[speciesId] ?? 0) >= 2;
+      if (state.harmony < (isFed ? 40 : 60)) continue;
+      eligible.push({ cc, speciesId, isFed });
     }
-    if (!eligible.length || Math.random() > 0.5) return;   // not every check breeds
+    if (!eligible.length) return;
 
-    const { cc, speciesId } = eligible[Math.floor(Math.random() * eligible.length)];
-    const spec = FISH_SPECIES[speciesId];
+    const pick = eligible[Math.floor(Math.random() * eligible.length)];
+    if (Math.random() > (pick.isFed ? 0.85 : 0.5)) return;   // fed pairs breed readily
+
+    const spec = FISH_SPECIES[pick.speciesId];
     if (!spec) return;
-    const baby = this._spawnFish(speciesId, spec, cc.col, cc.row);
+    const baby = this._spawnFish(pick.speciesId, spec, pick.cc.col, pick.cc.row);
     baby?.setJuvenile();
-    const ctr = tileCenter(cc.col, cc.row);
+    state.bredCount = (state.bredCount ?? 0) + 1;
+    const ctr = tileCenter(pick.cc.col, pick.cc.row);
     for (let i = 0; i < 5; i++) this._spawnSparkle(ctr.x + (Math.random() - 0.5) * 16, ctr.y - 4);
     this._hud.showBonus(`🐣 A baby ${spec.name} hatched!`);
+  }
+
+  // ── Feeding ─────────────────────────────────────────────────────────────────
+  /** Scatter food pellets the fish swarm to eat; fed pairs breed faster. */
+  _dropFood() {
+    if ((this._feedCooldown ?? 0) > 0) return;
+    this._feedCooldown = 12000;   // 12s between feedings
+    for (let i = 0; i < 10; i++) {
+      const x = GRID_X + 20 + Math.random() * (GRID_W - 40);
+      const y = GRID_Y + 20 + Math.random() * (GRID_H * 0.45);
+      const g = new Graphics();
+      g.circle(0, 0, 2.6).fill(0xffe0a0);
+      g.circle(0, 0, 1.1).fill(0xfff6e0);
+      g.x = x; g.y = y;
+      this._foodContainer.addChild(g);
+      this._food.push({ gfx: g, x, y, vy: 0.18 + Math.random() * 0.16, life: 0, ph: Math.random() * 6 });
+    }
+    this._hud.showBonus('🍤 Feeding time!');
+  }
+
+  _tickFood(dms) {
+    if (this._feedCooldown > 0) this._feedCooldown -= dms;
+    if (!this._food.length) return;
+    const ds = dms / 16;
+    const eatR2 = (TILE_SIZE * 0.5) ** 2;
+    for (let i = this._food.length - 1; i >= 0; i--) {
+      const p = this._food[i];
+      p.life += dms;
+      p.y += p.vy * ds;
+      p.x += Math.sin(p.life * 0.004 + p.ph) * 0.25;
+      p.gfx.x = p.x; p.gfx.y = p.y;
+      let eaten = false;
+      for (const f of state.fish) {
+        if (f._cleanState !== 'none' || f._hiding) continue;
+        const dx = f.x - p.x, dy = f.y - p.y;
+        if (dx * dx + dy * dy < eatR2) {
+          f._fedTimer = 1800;   // ~30s well-fed
+          state.feedCount = (state.feedCount ?? 0) + 1;
+          this._spawnSparkle(p.x, p.y - 2);
+          eaten = true;
+          break;
+        }
+      }
+      if (eaten || p.life > 14000 || p.y > GRID_Y + GRID_H - 8) {
+        this._foodContainer.removeChild(p.gfx);
+        p.gfx.destroy();
+        this._food.splice(i, 1);
+      }
+    }
+  }
+
+  // ── Achievements ────────────────────────────────────────────────────────────
+  _tickAchievements(dms) {
+    this._achTimer = (this._achTimer ?? 0) - dms;
+    if (this._achTimer > 0) return;
+    this._achTimer = 1500;
+    if ((this._nightFactor ?? 0) > 0.7) state.sawNight = true;
+    checkAchievements();
   }
 
   // ── Removal ───────────────────────────────────────────────────────────────
@@ -1116,6 +1240,10 @@ export class ReefScene {
     state.timeOfDay = data.timeOfDay ?? 0.30;
     state.loginStreak = data.loginStreak ?? 0;
     state.lastLoginDate = data.lastLoginDate ?? null;
+    state.achievements = data.achievements ?? [];
+    state.bredCount = data.bredCount ?? 0;
+    state.feedCount = data.feedCount ?? 0;
+    state.sawNight = data.sawNight ?? false;
     state.account = data.account ?? null;
     state.profile = data.profile ?? null;
     state.harmonySmoothed = state.harmony;
@@ -1311,7 +1439,8 @@ export class ReefScene {
     const inactive = getInactiveBiomesPlacedCoral();
     state.passiveBEPerTick = inactive.reduce((sum, { speciesId }) => {
       const spec = CORAL_SPECIES[speciesId];
-      return sum + (spec ? (BE_PER_TICK[spec.tier] ?? 0) : 0);
+      if (!spec || spec.storage || spec.shelter) return sum;   // non-producers
+      return sum + (BE_PER_TICK[spec.tier] ?? 0);
     }, 0);
   }
 

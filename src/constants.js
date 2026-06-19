@@ -11,7 +11,7 @@ export {
 // ─── Build version ───────────────────────────────────────────────────────────
 // Bump for a major revision, or after every 5 minor revisions.
 //   Indev MAJOR.MINOR.PATCH  (patch = minor-revision counter, 0–4 between bumps)
-export const GAME_VERSION = 'Indev 1.0.1';
+export const GAME_VERSION = 'Indev 1.1.0';
 
 // ─── Economy ─────────────────────────────────────────────────────────────────
 export const TICK_MS          = 5000;   // BE tick every 5 s
@@ -301,6 +301,19 @@ export const CORAL_SPECIES = {
     id: 'grandReservoir', name: 'Grand Reservoir', scientific: '',
     tier: TIER.EPIC, tall: false, color: 0x26a69a, unlockLevel: 8,
     polypCost: 60, storage: 500, utility: true,
+    biome: ['coral', 'seagrass', 'deepTwilight'],
+  },
+  // ── Shelters — specialized fish homes (no BE; provide home capacity) ────────
+  anemoneHome: {
+    id: 'anemoneHome', name: 'Anemone Haven', scientific: 'Heteractis magnifica',
+    tier: TIER.RARE, tall: false, color: 0xff7043,
+    shelter: true, homeCap: 6, homeFor: 'A', polypCost: 30, utility: true, unlockLevel: 4,
+    biome: ['coral', 'seagrass', 'deepTwilight'],
+  },
+  reefCave: {
+    id: 'reefCave', name: 'Reef Grotto', scientific: '',
+    tier: TIER.EPIC, tall: false, color: 0x6d6f86,
+    shelter: true, homeCap: 6, homeFor: 'nocturnal', polypCost: 40, utility: true, unlockLevel: 6,
     biome: ['coral', 'seagrass', 'deepTwilight'],
   },
 
