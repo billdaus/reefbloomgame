@@ -1,4 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
+import { IS_PORTRAIT } from '../constants.js';
+import { isTapSuppressed } from '../input/gesture.js';
 
 /**
  * Clam — animated shell that spawns in the reef to offer an ad reward.
@@ -17,7 +19,11 @@ export class Clam {
     this.container.y = y;
     this.container.interactive = true;
     this.container.cursor = 'pointer';
-    this.container.on('pointerdown', (e) => { e.stopPropagation(); onTap(); });
+    this.container.on(IS_PORTRAIT ? 'pointerup' : 'pointerdown', (e) => {
+      e.stopPropagation();
+      if (isTapSuppressed()) return;
+      onTap();
+    });
 
     this._draw();
   }

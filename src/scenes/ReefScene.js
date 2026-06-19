@@ -36,6 +36,8 @@ import { StationUpgradeModal } from '../ui/StationUpgradeModal.js';
 import { HarmonyAdvisorModal } from '../ui/HarmonyAdvisorModal.js';
 import { tileCenter } from '../utils/grid.js';
 import { saveGame, loadGame, setCurrentBiome, getInactiveBiomesPlacedCoral } from '../save.js';
+import { CameraController } from './CameraController.js';
+import { isTapSuppressed } from '../input/gesture.js';
 
 export class ReefScene {
   constructor(app) {
@@ -168,6 +170,13 @@ export class ReefScene {
 
     app.stage.addChild(this.worldContainer);
     app.stage.addChild(this._uiContainer);
+
+    // Mobile: pinch-zoom / drag-pan camera over the reef + on-screen zoom
+    // controls. The camera transforms only worldContainer, so the UI stays put.
+    if (IS_PORTRAIT) {
+      this._camera = new CameraController(app, this.worldContainer);
+      this._uiContainer.addChild(this._buildZoomControls());
+    }
 
     // ── Systems ──────────────────────────────────────────────────────────────
     // Journal init first — cross-slot, no save interaction
@@ -396,6 +405,47 @@ export class ReefScene {
     return c;
   }
 
+  /** Mobile on-screen zoom controls (＋ / － / recenter) for the reef camera. */
+  _buildZoomControls() {
+    const FONT = 'system-ui, -apple-system, sans-serif';
+    const S = 38, GAP = 8;
+    const wrap = new Container();
+
+    const makeBtn = (glyph, onTap, idx) => {
+      const b  = new Container();
+      const bg = new Graphics();
+      const draw = (hover) => {
+        bg.clear();
+        bg.roundRect(0, 0, S, S, 10).fill({ color: hover ? 0x2a3a5a : 0x10243a, alpha: 0.9 });
+        bg.roundRect(0, 0, S, S, 10).stroke({ color: 0x7fb0e0, width: 1.5, alpha: 0.9 });
+      };
+      draw(false);
+      const t = new Text({
+        text: glyph,
+        style: { fontSize: 20, fill: 0xd8efff, fontFamily: FONT, fontWeight: '700' },
+      });
+      t.anchor.set(0.5);
+      t.x = S / 2; t.y = S / 2 + 1;
+      b.addChild(bg, t);
+      b.y = idx * (S + GAP);
+      b.eventMode = 'static';
+      b.cursor = 'pointer';
+      b.hitArea = { contains: (x, y) => x >= 0 && x <= S && y >= 0 && y <= S };
+      b.on('pointerover', () => draw(true));
+      b.on('pointerout',  () => draw(false));
+      b.on('pointerdown', (e) => { e.stopPropagation(); onTap(); });
+      return b;
+    };
+
+    wrap.addChild(makeBtn('+', () => this._camera?.zoomIn(),  0));
+    wrap.addChild(makeBtn('−', () => this._camera?.zoomOut(), 1));   // −
+    wrap.addChild(makeBtn('⌂', () => this._camera?.reset(),   2));   // ⌂ recenter
+    // Bottom-right corner of the grid viewport
+    wrap.x = GRID_X + GRID_W - S - 6;
+    wrap.y = GRID_Y + GRID_H - (S * 3 + GAP * 2) - 6;
+    return wrap;
+  }
+
   /**
    * A coral's "···" badge was tapped. The badge IS the upgrade button, so it
    * opens the upgrade menu in every mode EXCEPT remove (where the tap removes)
@@ -618,8 +668,8 @@ export class ReefScene {
       const sz = spec.size * 1.5;
       return x >= -sz && x <= sz && y >= -sz && y <= sz;
     }};
-    fish.container.on('pointerdown', (e) => {
-      if (!state.removeMode) return;
+    fish.container.on(IS_PORTRAIT ? 'pointerup' : 'pointerdown', (e) => {
+      if (!state.removeMode || isTapSuppressed()) return;
       e.stopPropagation();
       this._removeFish(fish);
     });
@@ -1057,8 +1107,8 @@ export class ReefScene {
         const sz = spec.size * 1.5;
         return x >= -sz && x <= sz && y >= -sz && y <= sz;
       }};
-      fish.container.on('pointerdown', (e) => {
-        if (!state.removeMode) return;
+      fish.container.on(IS_PORTRAIT ? 'pointerup' : 'pointerdown', (e) => {
+        if (!state.removeMode || isTapSuppressed()) return;
         e.stopPropagation();
         this._removeFish(fish);
       });

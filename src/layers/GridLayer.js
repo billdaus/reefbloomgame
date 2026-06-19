@@ -2,9 +2,10 @@ import { Container, Graphics } from 'pixi.js';
 import {
   GRID_X, GRID_Y, GRID_W, GRID_H,
   TILE_SIZE, GRID_COLS, GRID_ROWS,
-  COLORS, CORAL_SPECIES, DECOR_SPECIES, STATION_SPAN,
+  COLORS, CORAL_SPECIES, DECOR_SPECIES, STATION_SPAN, IS_PORTRAIT,
 } from '../constants.js';
 import { worldToTile } from '../utils/grid.js';
+import { isTapSuppressed } from '../input/gesture.js';
 import { Coral } from '../entities/Coral.js';
 import { Decor } from '../entities/Decor.js';
 import { CleaningStation } from '../entities/CleaningStation.js';
@@ -100,14 +101,17 @@ export class GridLayer {
     hitArea.cursor = 'crosshair';
 
     hitArea.on('pointermove',  (e) => this._onMove(e));
-    hitArea.on('pointerdown',  (e) => this._onTap(e));
+    // On mobile the board pans/zooms, so place on release (after we know the
+    // touch was a tap, not a drag). On desktop, place immediately on press.
+    hitArea.on(IS_PORTRAIT ? 'pointerup' : 'pointerdown', (e) => this._onTap(e));
     hitArea.on('pointerleave', () => { this._hoveredTile = null; this._drawHover(); });
 
     this.container.addChild(hitArea);
   }
 
   _onMove(e) {
-    const pos  = e.global;
+    // Local position accounts for the mobile camera transform (zoom/pan).
+    const pos  = e.getLocalPosition(this.container);
     const tile = worldToTile(pos.x, pos.y);
     const key  = tile ? `${tile.col},${tile.row}` : null;
     const prev = this._hoveredTile ? `${this._hoveredTile.col},${this._hoveredTile.row}` : null;
@@ -118,7 +122,9 @@ export class GridLayer {
   }
 
   _onTap(e) {
-    const tile = worldToTile(e.global.x, e.global.y);
+    if (isTapSuppressed()) return;   // this touch was a pan/pinch, not a tap
+    const pos  = e.getLocalPosition(this.container);
+    const tile = worldToTile(pos.x, pos.y);
     if (tile) this.onTileTap(tile);
   }
 
@@ -259,8 +265,9 @@ export class GridLayer {
     badge.hitArea = {
       contains: (x, y) => x >= -padInX && x <= W + padOut && y >= -padInY && y <= H + padOut,
     };
-    badge.on('pointerdown', (e) => {
+    badge.on(IS_PORTRAIT ? 'pointerup' : 'pointerdown', (e) => {
       e.stopPropagation();
+      if (isTapSuppressed()) return;   // ignore the tap that ends a pan
       this.onCoralTap?.(uid);
     });
 
@@ -373,8 +380,9 @@ export class GridLayer {
     badge.hitArea = {
       contains: (x, y) => x >= -padX && x <= W + padX && y >= -padTop && y <= H + 2,
     };
-    badge.on('pointerdown', (e) => {
+    badge.on(IS_PORTRAIT ? 'pointerup' : 'pointerdown', (e) => {
       e.stopPropagation();
+      if (isTapSuppressed()) return;
       this.onStationTap?.(uid);
     });
 
