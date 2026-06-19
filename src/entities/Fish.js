@@ -1988,8 +1988,9 @@ export class Fish {
     g.circle(hw * 0.52, -hh * 0.20, sz * 0.07).fill(0x111111);
   }
 
-  /** Moon Seahorse — spiral tail, bioluminescent ring bands, glowing coronet and eye. */
+  /** Moon Seahorse — same anatomy as the others, with a bioluminescent glow. */
   _drawMoonSeahorse(g, sz, bodyColor, accentColor) {
+    const dark = this._darken(bodyColor, 0.22);
     const bw = sz * 0.55;
     const bh = sz * 1.05;
 
@@ -1997,66 +1998,106 @@ export class Fish {
     this._ellipse(g, 0, 0, bw * 0.85, bh * 0.52);
     g.fill({ color: accentColor, alpha: 0.12 });
 
-    // Trunk
-    g.moveTo(-bw * 0.5, -bh * 0.5)
-     .lineTo( bw * 0.5, -bh * 0.5)
-     .lineTo( bw * 0.35, bh * 0.3)
-     .lineTo( bw * 0.12, bh * 0.5)
-     .lineTo(-bw * 0.12, bh * 0.5)
-     .lineTo(-bw * 0.35, bh * 0.3)
+    // ── Trunk — convex on snout (right) side, flat on dorsal (left) side ──
+    g.moveTo(-bw * 0.38, -bh * 0.50)
+     .lineTo( bw * 0.40, -bh * 0.50)
+     .lineTo( bw * 0.52, -bh * 0.28)  // chest bulge
+     .lineTo( bw * 0.50,  bh * 0.05)  // belly right
+     .lineTo( bw * 0.30,  bh * 0.30)  // lower trunk right
+     .lineTo( bw * 0.12,  bh * 0.50)  // tail junction right
+     .lineTo(-bw * 0.10,  bh * 0.50)  // tail junction left
+     .lineTo(-bw * 0.32,  bh * 0.28)  // lower trunk left
+     .lineTo(-bw * 0.40,  bh * 0.00)  // belly left
+     .lineTo(-bw * 0.42, -bh * 0.28)  // chest left
      .closePath().fill(bodyColor);
 
-    // Bioluminescent ring bands
-    [-bh * 0.08, bh * 0.15, bh * 0.33].forEach(ry => {
-      this._ellipse(g, 0, ry, bw * 0.42, bh * 0.07);
-      g.fill({ color: accentColor, alpha: 0.65 });
+    // Bony rings — glowing bands, narrowing toward tail, each with a dorsal spine
+    const ringYs = [-0.30, -0.13, 0.03, 0.17, 0.30, 0.39, 0.46].map(t => t * bh);
+    ringYs.forEach((ry, i) => {
+      const taper = 1 - i / ringYs.length * 0.36;
+      const xR =  bw * 0.50 * taper;
+      const xL = -bw * 0.40 * taper;
+      g.moveTo(xL, ry).lineTo(xR, ry)
+       .stroke({ color: accentColor, width: 1.4, cap: 'round', alpha: 0.85 });
+      g.moveTo(xL, ry)
+       .lineTo(xL - sz * 0.09, ry - sz * 0.06)
+       .stroke({ color: accentColor, width: 1.1, cap: 'round' });
     });
 
-    // Spiral tail
-    const scx = bw * 0.28, scy = bh * 0.5 + sz * 0.44;
-    const r0 = sz * 0.52, steps = 48;
+    // ── Spiral tail ─────────────────────────────────────────────────────
+    const scx = bw * 0.28, scy = bh * 0.50 + sz * 0.34;
+    const r0 = sz * 0.27, steps = 48;
     const totalAngle = Math.PI * 3.0, startAngle = -Math.PI * 1.25;
 
-    g.moveTo(0, bh * 0.5);
+    g.moveTo(0, bh * 0.50);
     for (let i = 1; i <= steps; i++) {
       const t = i / steps;
-      g.lineTo(scx + Math.cos(startAngle + t * totalAngle) * r0 * (1 - t * 0.7),
-               scy + Math.sin(startAngle + t * totalAngle) * r0 * (1 - t * 0.7));
+      g.lineTo(scx + Math.cos(startAngle + t * totalAngle) * r0 * (1 - t * 0.70),
+               scy + Math.sin(startAngle + t * totalAngle) * r0 * (1 - t * 0.70));
     }
     g.stroke({ color: bodyColor, width: sz * 0.22, cap: 'round', join: 'round' });
 
     // Glowing accent stripe on tail
-    g.moveTo(0, bh * 0.5);
+    g.moveTo(0, bh * 0.50);
     for (let i = 1; i <= steps; i++) {
       const t = i / steps;
-      g.lineTo(scx + Math.cos(startAngle + t * totalAngle) * r0 * (1 - t * 0.7),
-               scy + Math.sin(startAngle + t * totalAngle) * r0 * (1 - t * 0.7));
+      g.lineTo(scx + Math.cos(startAngle + t * totalAngle) * r0 * (1 - t * 0.70),
+               scy + Math.sin(startAngle + t * totalAngle) * r0 * (1 - t * 0.70));
     }
-    g.stroke({ color: accentColor, width: 1.8, cap: 'round', join: 'round' });
+    g.stroke({ color: accentColor, width: 1.2, cap: 'round', join: 'round', alpha: 0.9 });
 
-    // Head
-    this._ellipse(g, bw * 0.05, -bh * 0.56, bw * 0.46, bw * 0.3);
+    // ── Dorsal fin — fan shape with radiating rays ───────────────────────
+    const dfx = -bw * 0.44, dfy = -bh * 0.18;
+    g.moveTo(dfx, dfy + sz * 0.10)
+     .lineTo(dfx - sz * 0.28, dfy - sz * 0.08)
+     .lineTo(dfx - sz * 0.16, dfy - sz * 0.36)
+     .lineTo(dfx + sz * 0.04, dfy - sz * 0.28)
+     .lineTo(dfx + sz * 0.10, dfy - sz * 0.04)
+     .closePath().fill({ color: accentColor, alpha: 0.72 });
+    [[sz * 0.22, sz * 0.28], [sz * 0.28, sz * 0.38], [sz * 0.20, sz * 0.14]].forEach(([rx, ry]) => {
+      g.moveTo(dfx, dfy + sz * 0.06)
+       .lineTo(dfx - rx, dfy - ry)
+       .stroke({ color: accentColor, width: 0.8, alpha: 0.55 });
+    });
+
+    // ── Pectoral fin — small fan behind gills ────────────────────────────
+    g.moveTo(bw * 0.48, -bh * 0.30)
+     .lineTo(bw * 0.48 + sz * 0.20, -bh * 0.40)
+     .lineTo(bw * 0.48 + sz * 0.26, -bh * 0.24)
+     .lineTo(bw * 0.48 + sz * 0.14, -bh * 0.17)
+     .closePath().fill({ color: accentColor, alpha: 0.60 });
+
+    // ── Head ────────────────────────────────────────────────────────────
+    this._ellipse(g, bw * 0.05, -bh * 0.56, bw * 0.46, bw * 0.30);
     g.fill(bodyColor);
 
-    // Glowing coronet bumps
-    g.circle(-bw * 0.12, -bh * 0.5 - sz * 0.24, sz * 0.09).fill(accentColor);
-    g.circle( bw * 0.12, -bh * 0.5 - sz * 0.24, sz * 0.09).fill(accentColor);
+    // ── Coronet — 4 tapered spines with glowing knob tips ────────────────
+    const crx = bw * 0.00, cry = -bh * 0.50;
+    [
+      [-sz * 0.10, -sz * 0.22],
+      [-sz * 0.02, -sz * 0.27],
+      [ sz * 0.08, -sz * 0.23],
+      [ sz * 0.16, -sz * 0.14],
+    ].forEach(([dx, dy]) => {
+      g.moveTo(crx, cry)
+       .lineTo(crx + dx, cry + dy)
+       .stroke({ color: accentColor, width: 2.2, cap: 'round' });
+      g.circle(crx + dx, cry + dy, sz * 0.055).fill(accentColor);
+    });
 
-    // Snout
-    g.moveTo(bw * 0.44, -bh * 0.38)
-     .lineTo(bw * 0.44 + sz * 0.5, -bh * 0.31)
-     .lineTo(bw * 0.44, -bh * 0.24)
-     .closePath().fill(accentColor);
+    // ── Snout — parallel-sided tube ──────────────────────────────────────
+    const snx = bw * 0.44, sny = -bh * 0.31;
+    g.moveTo(snx, sny - sz * 0.055)
+     .lineTo(snx + sz * 0.55, sny - sz * 0.028)
+     .lineTo(snx + sz * 0.55, sny + sz * 0.028)
+     .lineTo(snx, sny + sz * 0.055)
+     .closePath().fill(dark);
 
-    // Dorsal fin
-    g.moveTo(-bw * 0.5, -bh * 0.1)
-     .lineTo(-bw * 0.5 - sz * 0.3, -bh * 0.16)
-     .lineTo(-bw * 0.5, -bh * 0.3)
-     .closePath().fill({ color: accentColor, alpha: 0.7 });
-
-    // Glowing eye
-    g.circle(bw * 0.26, -bh * 0.4, sz * 0.13).fill(accentColor);
-    g.circle(bw * 0.28, -bh * 0.38, sz * 0.07).fill(0x080820);
+    // ── Glowing eye — iris ring + pupil + specular highlight ─────────────
+    g.circle(bw * 0.26, -bh * 0.42, sz * 0.13).fill(accentColor);
+    g.circle(bw * 0.26, -bh * 0.42, sz * 0.09).fill(0xffffff);
+    g.circle(bw * 0.27, -bh * 0.415, sz * 0.065).fill(0x080820);
+    g.circle(bw * 0.30, -bh * 0.428, sz * 0.025).fill(0xffffff);
   }
 
   /** Glow Eel — slender dark body with vivid bioluminescent crossbands. */
