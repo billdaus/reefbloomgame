@@ -96,9 +96,10 @@ export class Coral {
       case 'finger':
       case 'candycane':
       case 'pillar':       break;
+      case 'pearlOrganPipe': this._growColumns(g, s, c, level); break;
+      // lantern & phantom grow richer in their base draw (scaled by level)
       case 'lanternCoral':
-      case 'pearlOrganPipe':
-      case 'phantomPolyp': this._growColumns(g, s, c, level); break;
+      case 'phantomPolyp': break;
       case 'abyssalFan':   this._growFan(g, s, c, level); break;
       case 'wispCoral':    this._growBlades(g, s, c, level); break;
       // Circular / dome corals grow concentric polyp rings (and the bubble
@@ -855,23 +856,25 @@ export class Coral {
   }
 
   // ── Phantom Polyp — translucent tall column with glowing tips ─────────────
+  // ── Phantom Polyp — cluster of ghostly translucent glowing tubes ────────────
   _drawPhantomPolyp(g, s, c) {
-    const mid   = s / 2;
-    const glow  = this._lighten(c, 0.55);
-    const dark  = this._darken(c, 0.2);
-    const cols  = [s * 0.28, s * 0.5, s * 0.72];
-    const tops  = [s * 0.18, s * 0.08, s * 0.14];
-    cols.forEach((cx, i) => {
-      const top = tops[i];
-      const h   = s - top - 4;
-      g.roundRect(cx - 5, top, 10, h, 5).fill({ color: dark, alpha: 0.7 });
-      // Glow vein running up center
-      g.moveTo(cx, top + h * 0.7).lineTo(cx, top + 4)
-       .stroke({ color: glow, width: 1.5, alpha: 0.8 });
-      // Glowing tip
-      g.circle(cx, top, 5).fill({ color: glow, alpha: 0.9 });
-      g.circle(cx, top, 3).fill(0xffffff);
-    });
+    const glow  = this._lighten(c, 0.6);
+    const count = 3 + Math.min(5, (this.level ?? 1) - 1);   // 3 → 8 tubes
+    const m = s * 0.15, usable = s - 2 * m;
+    const cw = Math.min(12, (usable / Math.max(1, count)) * 0.92);
+    for (let i = 0; i < count; i++) {
+      const cx  = count === 1 ? s / 2 : m + cw / 2 + (usable - cw) * (i / (count - 1));
+      const top = s * (0.12 + 0.12 * Math.abs(Math.sin(i * 1.7 + 0.5)));
+      const h   = s - 4 - top;
+      // translucent ghostly tube
+      g.roundRect(cx - cw / 2, top, cw, h, cw / 2).fill({ color: c, alpha: 0.4 });
+      g.roundRect(cx - cw / 2, top, cw, h, cw / 2).stroke({ color: glow, width: 1, alpha: 0.45 });
+      // inner glow vein
+      g.roundRect(cx - 1.5, top + 4, 3, h - 8, 1.5).fill({ color: glow, alpha: 0.5 });
+      // soft glowing mouth (not a stark white dot)
+      g.circle(cx, top + 1, cw / 2).fill({ color: glow, alpha: 0.85 });
+      g.circle(cx, top + 1, cw / 2 - 2).fill({ color: 0xffffff, alpha: 0.4 });
+    }
   }
 
   // ── Midnight Table Coral — dark shelf with bioluminescent edge trim ────────
@@ -917,18 +920,31 @@ export class Coral {
   }
 
   // ── Lantern Coral — tall stalk hung with luminous bulbs ───────────────────
+  // ── Lantern Coral — arching stems strung with glowing lantern bulbs ─────────
   _drawLanternCoral(g, s, c) {
-    const mid  = s / 2;
-    const dark = this._darken(c, 0.35);
+    const dark = this._darken(c, 0.3);
     const glow = this._lighten(c, 0.6);
-    g.roundRect(mid - 4, s * 0.1, 8, s * 0.82, 4).fill(dark);   // stalk
-    const bulbs = [[mid - 9, 0.3], [mid + 9, 0.45], [mid - 8, 0.6], [mid + 7, 0.74]];
-    bulbs.forEach(([bx, fy]) => {
-      g.moveTo(mid, s * fy - 4).lineTo(bx, s * fy).stroke({ color: dark, width: 1.5 });
-      g.circle(bx, s * fy + 4, 5).fill({ color: c, alpha: 0.9 });
-      g.circle(bx, s * fy + 4, 2.4).fill(glow);
-    });
-    g.circle(mid, s * 0.1, 4).fill(glow);   // crown light
+    const mid  = s / 2;
+    const baseY = s - 4;
+    const stalks = 1 + Math.min(4, (this.level ?? 1) - 1);   // 1 → 5 stems
+    const qpt = (a, b, d, t) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * b + t * t * d;
+    for (let k = 0; k < stalks; k++) {
+      const tt = stalks === 1 ? 0.5 : k / (stalks - 1);
+      const spreadX = (tt - 0.5) * s * 0.62;
+      const ctlX = mid + spreadX * 0.4, ctlY = s * 0.5;
+      const topX = mid + spreadX,        topY = s * (0.12 + Math.abs(tt - 0.5) * 0.16);
+      // arching stem
+      g.moveTo(mid, baseY).quadraticCurveTo(ctlX, ctlY, topX, topY)
+       .stroke({ color: dark, width: 3.2, cap: 'round' });
+      // glowing lantern bulbs strung along it
+      for (let b = 1; b <= 3; b++) {
+        const bt = b / 3.3;
+        const bx = qpt(mid, ctlX, topX, bt), by = qpt(baseY, ctlY, topY, bt);
+        g.circle(bx, by, 4.6).fill({ color: c, alpha: 0.95 });
+        g.circle(bx, by, 2.1).fill(glow);
+      }
+      g.circle(topX, topY, 3.4).fill(glow);   // crown light
+    }
   }
 
   // ── Wisp Coral — low cluster of wispy luminous tendrils ───────────────────
