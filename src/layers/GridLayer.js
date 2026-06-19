@@ -1,4 +1,4 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, ColorMatrixFilter } from 'pixi.js';
 import {
   GRID_X, GRID_Y, GRID_W, GRID_H,
   TILE_SIZE, GRID_COLS, GRID_ROWS,
@@ -60,7 +60,8 @@ export class GridLayer {
     // Bioluminescent coral glow — one container whose alpha is driven by night.
     this.coralGlowContainer = new Container();
     this.coralGlowContainer.alpha = 0;
-    this._coralGlows = new Map();   // uid → glow Graphics
+    this._coralGlows = new Map();        // uid → glow Graphics
+    this._coralBodyFilters = new Map();  // uid → brightness filter (biolum corals)
 
     this._coralSprites   = new Map();   // uid → Coral instance
     this._coralBadges    = new Map();   // uid → badge Container
@@ -231,11 +232,22 @@ export class GridLayer {
     g.y = GRID_Y + row * TILE_SIZE + TILE_SIZE * 0.55;
     this.coralGlowContainer.addChild(g);
     this._coralGlows.set(uid, g);
+
+    // Counter-brightness so a glowing coral isn't dimmed by the night darkening.
+    const coral = this._coralSprites.get(uid);
+    if (coral) {
+      const f = new ColorMatrixFilter();
+      coral.container.filters = [f];
+      this._coralBodyFilters.set(uid, f);
+    }
   }
 
-  /** Fade the bioluminescent coral glows with the day/night cycle. */
+  /** Drive bioluminescent corals with the day/night cycle (glow + brightness). */
   setNight(night) {
-    this.coralGlowContainer.alpha = Math.max(0, Math.min(1, night));
+    const nf = Math.max(0, Math.min(1, night));
+    this.coralGlowContainer.alpha = nf;
+    const bright = 1 / (1 - nf * 0.5);   // cancels the world night darkening
+    this._coralBodyFilters.forEach(f => f.brightness(bright, false));
   }
 
   /** Re-scale a placed coral's sprite to a new upgrade level. */
@@ -264,6 +276,7 @@ export class GridLayer {
       glow.destroy();
       this._coralGlows.delete(uid);
     }
+    this._coralBodyFilters.delete(uid);
   }
 
   /** Remove all coral sprites (used when switching biomes). */

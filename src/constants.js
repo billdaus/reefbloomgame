@@ -36,6 +36,12 @@ export const FISH_COST = {
   common: 2, uncommon: 5, rare: 10, superRare: 25, epic: 60, legendary: 150, mythic: 300,
 };
 
+// Day-hiders — fish that tuck into their home coral by DAY and emerge at NIGHT
+// (the inverse of normal fish). Mostly crevice-dwelling nocturnal hunters.
+export const DAY_HIDER_SPECIES = new Set([
+  'morayEel', 'giantMoray', 'blueRibbonEel', 'octopus', 'anglerfish', 'flashlightFish',
+]);
+
 // Bioluminescent species (fish + coral) — emit a soft glow at night.
 export const BIOLUM_SPECIES = new Set([
   // fish

@@ -1,5 +1,5 @@
-import { Container, Graphics } from 'pixi.js';
-import { GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, BIOLUM_SPECIES } from '../constants.js';
+import { Container, Graphics, ColorMatrixFilter } from 'pixi.js';
+import { GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, BIOLUM_SPECIES, DAY_HIDER_SPECIES } from '../constants.js';
 import { tileCenter, getOccupiedTiles } from '../utils/grid.js';
 
 const MARGIN    = 10;
@@ -57,11 +57,15 @@ export class Fish {
     this._drawBody();
 
     // Bioluminescent species carry a soft glow behind the body, lit at night.
+    // Their body also gets a counter-brightness filter so the night darkening
+    // doesn't dim a creature that is, itself, a light source.
     if (BIOLUM_SPECIES.has(this.speciesId)) {
       this._glow = new Graphics();
       this._glow.alpha = 0;
       this._drawGlow();
       this.container.addChildAt(this._glow, 0);   // behind the body
+      this._bodyFilter = new ColorMatrixFilter();
+      this._body.filters = [this._bodyFilter];
     }
 
     this.container.x = this.x;
@@ -2247,15 +2251,20 @@ export class Fish {
   _isNocturnal() { return this.spec.biome === 'deepTwilight' || !!this.spec.nocturnal; }
 
   update(dt, grid, coralSpecies, onEmit, allFish, coralLevels, night = 0) {
-    // Bioluminescent glow brightens at night with a gentle living pulse.
+    const nf = Math.max(0, Math.min(1, night));
+    // Bioluminescent glow brightens at night; body resists the night darkening.
     if (this._glow) {
       const pulse = 0.5 + Math.sin(Date.now() * 0.004 + this.uid) * 0.18;
-      this._glow.alpha = Math.max(0, Math.min(1, night)) * pulse;
+      this._glow.alpha = nf * pulse;
+      this._bodyFilter.brightness(1 / (1 - nf * 0.5), false);   // cancels world darkening
     }
 
-    // At night most fish retreat to their home coral and settle (slow, tucked).
-    this._hiding = night > 0.55 && !this._isNocturnal()
-                   && this.homeCol != null && this._cleanState === 'none';
+    // Hiding: normal fish tuck in at NIGHT; day-hiders tuck in by DAY and come
+    // out after dark. Either way they retreat to their home coral and settle.
+    const wantsHide = DAY_HIDER_SPECIES.has(this.speciesId)
+      ? nf < 0.45
+      : (nf > 0.55 && !this._isNocturnal());
+    this._hiding = wantsHide && this.homeCol != null && this._cleanState === 'none';
     const speed = this.spec.speed * SPEED_SCALE * (this._hiding ? 0.5 : 1);
     const ms    = dt * (60 / 1000) * 16;  // normalise to pixels/frame
 

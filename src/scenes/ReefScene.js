@@ -245,6 +245,9 @@ export class ReefScene {
     const saved = loadGame();
     if (saved) this._restoreFromSave(saved);
     this._hud.refreshAccountAvatar();
+    // The menu was built before the save loaded — rebuild so restored Event-tab
+    // unlocks (and level locks) show immediately after a refresh.
+    this._menu.rebuild();
 
     // initQuests MUST come after _restoreFromSave — its onChange fires saveGame()
     // immediately if today's date is new, and state must be fully populated first.
