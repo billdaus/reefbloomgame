@@ -302,6 +302,40 @@
       user-select: none;
     }
 
+    /* ── Feedback tool ───────────────────────────────────────────────────────── */
+    #feedback-btn {
+      position: fixed; left: 8px; bottom: 6px; z-index: 9998;
+      font-family: system-ui, -apple-system, sans-serif; font-size: 11px; font-weight: 600;
+      padding: 5px 11px; border-radius: 16px; cursor: pointer;
+      background: rgba(16, 36, 58, 0.82); color: rgba(216, 239, 255, 0.92);
+      border: 1px solid rgba(127, 176, 224, 0.55); backdrop-filter: blur(6px);
+    }
+    #feedback-btn:hover { background: rgba(42, 58, 90, 0.92); }
+    #feedback-modal {
+      display: none; position: fixed; inset: 0; z-index: 10000;
+      background: rgba(2, 10, 26, 0.66); align-items: center; justify-content: center;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    #feedback-modal .fb-card {
+      width: min(420px, 90vw); background: #081016; border: 1px solid #4a7a30;
+      border-radius: 14px; padding: 20px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    }
+    #feedback-modal h3 { margin: 0 0 4px; color: #c8e6a0; font-size: 18px; }
+    #feedback-modal p  { margin: 0 0 12px; color: rgba(210,235,255,0.6); font-size: 12px; }
+    #feedback-text {
+      width: 100%; min-height: 120px; resize: vertical; box-sizing: border-box;
+      background: #0c1a26; color: #eaf6ff; border: 1px solid #2a4a5a; border-radius: 8px;
+      padding: 10px; font-family: inherit; font-size: 13px; line-height: 1.4;
+    }
+    #feedback-modal .fb-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+    #feedback-modal button {
+      padding: 9px 20px; border-radius: 20px; font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: inherit; border: none;
+    }
+    #feedback-cancel { background: transparent; color: rgba(255,255,255,0.55); border: 1px solid rgba(255,255,255,0.2) !important; }
+    #feedback-send   { background: #2e6a18; color: #fff; }
+    #feedback-send:hover { background: #3a8420; }
+
     /* ── Slot selection page ────────────────────────────────────────────────── */
     #slot-page { z-index: 205; opacity: 0; }
     #slot-page.visible { opacity: 1; }
@@ -1184,5 +1218,46 @@
   </script>
 
   <div id="version-badge">Indev 1.0.1</div>
+
+  <button id="feedback-btn" type="button">💬 Feedback</button>
+  <div id="feedback-modal">
+    <div class="fb-card">
+      <h3>Send feedback</h3>
+      <p>Found a bug or have an idea? Tell us — it opens your email app.</p>
+      <textarea id="feedback-text" placeholder="What's on your mind?"></textarea>
+      <div class="fb-row">
+        <button id="feedback-cancel" type="button">Cancel</button>
+        <button id="feedback-send" type="button">Send</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var btn    = document.getElementById('feedback-btn');
+      var modal  = document.getElementById('feedback-modal');
+      var ta     = document.getElementById('feedback-text');
+      if (!btn || !modal) return;
+      function open()  { modal.style.display = 'flex'; setTimeout(function () { ta.focus(); }, 30); }
+      function close() { modal.style.display = 'none'; }
+      btn.addEventListener('click', open);
+      document.getElementById('feedback-cancel').addEventListener('click', close);
+      modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+      document.getElementById('feedback-send').addEventListener('click', function () {
+        var msg = (ta.value || '').trim();
+        if (!msg) { close(); return; }
+        var ver = (document.getElementById('version-badge') || {}).textContent || '';
+        var ctx = '';
+        try {
+          var s = window._rfGetState && window._rfGetState();
+          if (s) ctx = '\n— biome: ' + s.biome + ', level: ' + s.level;
+        } catch (e) {}
+        var body = encodeURIComponent(msg + '\n\n---\n' + ver + ctx);
+        var subj = encodeURIComponent('Reef Bloom feedback');
+        window.location.href = 'mailto:bill@billdaus.com?subject=' + subj + '&body=' + body;
+        ta.value = '';
+        close();
+      });
+    })();
+  </script>
 </body>
 </html>

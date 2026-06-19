@@ -197,17 +197,20 @@ export class PlacementMenu {
     let cursor = PAD;
     const biome = state.biome;
 
-    // EVENT — species earned from event passes. Shown in every biome once you've
-    // unlocked at least one (i.e. finished a pass). Bypasses biome filtering.
+    // EVENT — species earned from event passes. The section is always present
+    // (persistent tab); when nothing is unlocked yet it shows a hint. Bypasses
+    // biome filtering so unlocked event species are placeable in any biome.
     const eventList = (state.eventUnlocked ?? [])
       .map(id => CORAL_SPECIES[id] ? { spec: CORAL_SPECIES[id], type: 'coral' }
                : FISH_SPECIES[id]  ? { spec: FISH_SPECIES[id],  type: 'fish' } : null)
       .filter(Boolean);
+    cursor = this._sectionLabel('✨ EVENT — PASS REWARDS', cursor);
     if (eventList.length > 0) {
-      cursor = this._sectionLabel('✨ EVENT — PASS REWARDS', cursor);
       eventList.forEach(({ spec, type }) => { cursor = this._addRow(type, spec, cursor); });
-      cursor += PAD * 2;
+    } else {
+      cursor = this._hintLine('Finish an event pass to earn exclusive coral & fish.', cursor);
     }
+    cursor += PAD * 2;
 
     const coralLabel =
       biome === 'seagrass'     ? 'SEAGRASS'
@@ -341,6 +344,19 @@ export class PlacementMenu {
     return y + 20;
   }
 
+  /** A muted, wrapped hint line (used for the empty Event section). */
+  _hintLine(text, y) {
+    const t = new Text({
+      text,
+      style: { fontSize: 10, fill: COLORS.text_dim, fontFamily: FONT, fontStyle: 'italic',
+               wordWrap: true, wordWrapWidth: PANEL_W - PAD * 2 },
+    });
+    t.x = PAD;
+    t.y = y;
+    this._scrollContent.addChild(t);
+    return y + Math.max(18, t.height + 6);
+  }
+
   _addRow(type, spec, y) {
     const row = new Container();
     row.x = 0;
@@ -391,6 +407,22 @@ export class PlacementMenu {
     tierLabel.x = PANEL_W - 56;
     tierLabel.y = ROW_H / 2 - 4;
     row.addChild(tierLabel);
+
+    // Placement tag — fish swim layer (A/B) or coral profile (Tall/Flat),
+    // right-aligned under the rarity so players can see where it sits.
+    const tagStr = type === 'fish'  ? (spec.layer === 'B' ? 'Layer B' : 'Layer A')
+                 : type === 'coral' ? (spec.tall ? 'Tall' : 'Flat')
+                 : null;
+    if (tagStr) {
+      const tag = new Text({
+        text: tagStr,
+        style: { fontSize: 8, fill: COLORS.text_dim, fontFamily: FONT, letterSpacing: 0.5 },
+      });
+      tag.anchor.set(1, 0);
+      tag.x = PANEL_W - 10;
+      tag.y = ROW_H / 2 + 5;
+      row.addChild(tag);
+    }
 
     // Lock overlay (dim + text)
     const lockDim = new Graphics();
