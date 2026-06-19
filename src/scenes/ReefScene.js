@@ -91,6 +91,8 @@ export class ReefScene {
     this.worldContainer.addChild(this._grid.decorContainer);
     // 2c. Cleaning stations — 2×2 structures on the floor, below coral and fish
     this.worldContainer.addChild(this._grid.stationContainer);
+    // 2d. Bioluminescent coral glow — behind the coral, lit at night
+    this.worldContainer.addChild(this._grid.coralGlowContainer);
     // 3. Short/flat coral — fish Layer A swims over these
     this.worldContainer.addChild(this._grid.shortCoralContainer);
     // 4. Fish Layer A (clownfish, chromis, butterflyfish, seahorse)
@@ -432,6 +434,8 @@ export class ReefScene {
     // Ease so the transition is smooth even after big dt gaps
     this._nightFactor += (target - this._nightFactor) * Math.min(1, dms / 600);
     this._applyNightMatrix(this._nightFilter, this._nightFactor);
+    this._bg.setNight(this._nightFactor);          // deepen the backdrop
+    this._grid.setNight(this._nightFactor);        // light bioluminescent corals
   }
 
   _applyNightMatrix(filter, night) {

@@ -2,7 +2,7 @@ import { Container, Graphics } from 'pixi.js';
 import {
   GRID_X, GRID_Y, GRID_W, GRID_H,
   TILE_SIZE, GRID_COLS, GRID_ROWS,
-  COLORS, CORAL_SPECIES, DECOR_SPECIES, STATION_SPAN, IS_PORTRAIT,
+  COLORS, CORAL_SPECIES, DECOR_SPECIES, STATION_SPAN, IS_PORTRAIT, BIOLUM_SPECIES,
 } from '../constants.js';
 import { worldToTile } from '../utils/grid.js';
 import { isTapSuppressed } from '../input/gesture.js';
@@ -56,6 +56,11 @@ export class GridLayer {
     this.hoverContainer = new Container();
     this._hoverGfx = new Graphics();
     this.hoverContainer.addChild(this._hoverGfx);
+
+    // Bioluminescent coral glow — one container whose alpha is driven by night.
+    this.coralGlowContainer = new Container();
+    this.coralGlowContainer.alpha = 0;
+    this._coralGlows = new Map();   // uid → glow Graphics
 
     this._coralSprites   = new Map();   // uid → Coral instance
     this._coralBadges    = new Map();   // uid → badge Container
@@ -209,7 +214,26 @@ export class GridLayer {
     }
 
     this._coralSprites.set(uid, coral);
+    if (BIOLUM_SPECIES.has(coralSpec.id)) this._addCoralGlow(uid, col, row, coralSpec);
     this._addCoralBadge(uid, col, row);
+  }
+
+  /** Soft glow halo behind a bioluminescent coral (lit at night via setNight). */
+  _addCoralGlow(uid, col, row, spec) {
+    const g = new Graphics();
+    const R = TILE_SIZE * 0.72;
+    g.circle(0, 0, R).fill({ color: spec.color, alpha: 0.10 });
+    g.circle(0, 0, R * 0.62).fill({ color: spec.color, alpha: 0.16 });
+    g.circle(0, 0, R * 0.32).fill({ color: 0xffffff, alpha: 0.16 });
+    g.x = GRID_X + col * TILE_SIZE + TILE_SIZE / 2;
+    g.y = GRID_Y + row * TILE_SIZE + TILE_SIZE * 0.55;
+    this.coralGlowContainer.addChild(g);
+    this._coralGlows.set(uid, g);
+  }
+
+  /** Fade the bioluminescent coral glows with the day/night cycle. */
+  setNight(night) {
+    this.coralGlowContainer.alpha = Math.max(0, Math.min(1, night));
   }
 
   /** Re-scale a placed coral's sprite to a new upgrade level. */
@@ -230,6 +254,13 @@ export class GridLayer {
       badge.parent?.removeChild(badge);
       badge.destroy({ children: true });
       this._coralBadges.delete(uid);
+    }
+
+    const glow = this._coralGlows.get(uid);
+    if (glow) {
+      glow.parent?.removeChild(glow);
+      glow.destroy();
+      this._coralGlows.delete(uid);
     }
   }
 

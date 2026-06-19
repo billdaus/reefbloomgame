@@ -34,7 +34,18 @@ export class BackgroundLayer {
     this.container.addChild(this._twilightGroup);
     this.container.addChild(this._sharedGroup);
 
+    // Night wash — deepens the whole backdrop after dark (alpha driven by setNight)
+    this._nightOverlay = new Graphics();
+    this._nightOverlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0x030914, alpha: 0.66 });
+    this._nightOverlay.alpha = 0;
+    this.container.addChild(this._nightOverlay);
+
     this._twilightGroup.visible = false; // default: coral biome
+  }
+
+  /** Darken the backdrop with the day/night cycle (0 = day, 1 = deep night). */
+  setNight(night) {
+    this._nightOverlay.alpha = Math.max(0, Math.min(1, night));
   }
 
   // ── Theme switch ───────────────────────────────────────────────────────────

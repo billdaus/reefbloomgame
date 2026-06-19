@@ -1,5 +1,5 @@
 import { Container, Graphics } from 'pixi.js';
-import { GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE } from '../constants.js';
+import { GRID_X, GRID_Y, GRID_W, GRID_H, TILE_SIZE, BIOLUM_SPECIES } from '../constants.js';
 import { tileCenter, getOccupiedTiles } from '../utils/grid.js';
 
 const MARGIN    = 10;
@@ -50,11 +50,30 @@ export class Fish {
     this.container.addChild(this._body);
     this._drawBody();
 
+    // Bioluminescent species carry a soft glow behind the body, lit at night.
+    if (BIOLUM_SPECIES.has(this.speciesId)) {
+      this._glow = new Graphics();
+      this._glow.alpha = 0;
+      this._drawGlow();
+      this.container.addChildAt(this._glow, 0);   // behind the body
+    }
+
     this.container.x = this.x;
     this.container.y = this.y;
   }
 
   // ── Drawing ───────────────────────────────────────────────────────────────
+
+  /** Soft radial glow halo for bioluminescent species (shown at night). */
+  _drawGlow() {
+    const g   = this._glow;
+    const col = this.spec.accentColor ?? 0x66ccff;
+    const R   = this.spec.size * 2.1;
+    g.clear();
+    g.circle(0, 0, R).fill({ color: col, alpha: 0.10 });
+    g.circle(0, 0, R * 0.62).fill({ color: col, alpha: 0.16 });
+    g.circle(0, 0, R * 0.32).fill({ color: this._lighten(col, 0.45), alpha: 0.26 });
+  }
 
   _drawBody() {
     const g   = this._body;
@@ -2216,6 +2235,12 @@ export class Fish {
   _isNocturnal() { return this.spec.biome === 'deepTwilight' || !!this.spec.nocturnal; }
 
   update(dt, grid, coralSpecies, onEmit, allFish, coralLevels, night = 0) {
+    // Bioluminescent glow brightens at night with a gentle living pulse.
+    if (this._glow) {
+      const pulse = 0.5 + Math.sin(Date.now() * 0.004 + this.uid) * 0.18;
+      this._glow.alpha = Math.max(0, Math.min(1, night)) * pulse;
+    }
+
     // At night most fish retreat to their home coral and settle (slow, tucked).
     this._hiding = night > 0.55 && !this._isNocturnal()
                    && this.homeCol != null && this._cleanState === 'none';

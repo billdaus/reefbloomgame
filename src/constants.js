@@ -31,6 +31,16 @@ export const FISH_COST = {
   common: 2, uncommon: 5, rare: 10, superRare: 25, epic: 60, legendary: 150, mythic: 300,
 };
 
+// Bioluminescent species (fish + coral) — emit a soft glow at night.
+export const BIOLUM_SPECIES = new Set([
+  // fish
+  'glowEel', 'moonSeahorse', 'anglerfish', 'gulperEel', 'lanternfish', 'flashlightFish',
+  'dragonfish', 'viperfish', 'barreleye', 'twilightLantern', 'glowfinAngelfish', 'abyssalRay',
+  'twilightWhaleShark',
+  // coral
+  'auroraCoral', 'lanternCoral', 'orchidCoral', 'twilightBrain', 'phantomPolyp', 'wispCoral',
+]);
+
 // Starting resources
 export const START_BE      = 20;
 export const START_HARMONY = 50;
