@@ -55,6 +55,9 @@ export class ReefScene {
     // ── Fish containers ──────────────────────────────────────────────────────
     this._fishContainerA = new Container();
     this._fishContainerB = new Container();
+    // Fish tucked into their home coral at night render here — below the corals,
+    // so the coral occludes them (they look hidden inside it).
+    this._hiddenFishContainer = new Container();
 
     // ── Gavin emission particles (farts + poops) ─────────────────────────────
     this._particleContainer = new Container();
@@ -91,6 +94,8 @@ export class ReefScene {
     this.worldContainer.addChild(this._grid.decorContainer);
     // 2c. Cleaning stations — 2×2 structures on the floor, below coral and fish
     this.worldContainer.addChild(this._grid.stationContainer);
+    // 2c2. Fish hidden in their coral at night — below the corals so they're occluded
+    this.worldContainer.addChild(this._hiddenFishContainer);
     // 2d. Bioluminescent coral glow — behind the coral, lit at night
     this.worldContainer.addChild(this._grid.coralGlowContainer);
     // 3. Short/flat coral — fish Layer A swims over these
@@ -285,6 +290,11 @@ export class ReefScene {
 
     state.fish.forEach(fish => {
       fish.update(dt, state.grid, CORAL_SPECIES, (ev) => this._onGavinEmit(ev), state.fish, coralLevels, this._nightFactor);
+      // Tucked-in fish drop below the corals (occluded); others ride their layer.
+      const want = fish._tucked
+        ? this._hiddenFishContainer
+        : (fish.spec.layer === 'A' ? this._fishContainerA : this._fishContainerB);
+      if (fish.container.parent !== want) want.addChild(fish.container);
       // Sparkle only over CLIENTS actively being cleaned (not loitering cleaners)
       if (this._activeCleanUids?.has(fish.uid) && Math.random() < 0.16) {
         this._spawnSparkle(fish.x + (Math.random() - 0.5) * 10, fish.y - 6);

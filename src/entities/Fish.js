@@ -42,6 +42,9 @@ export class Fish {
     // Maturity: 1 = adult. Bred juveniles start small and grow to full size.
     this._maturity = 1;
 
+    // Set at night when tucked into the home coral (rendered behind corals).
+    this._tucked = false;
+
     // Cleaning-station visit: 'none' | 'toStation' | 'cleaning'
     this._cleanState = 'none';
     this._cleanX = 0;
@@ -2433,14 +2436,14 @@ export class Fish {
     // Subtle vertical bob
     this.container.scale.y = (1 + Math.sin(Date.now() * 0.003 + this.uid) * 0.04) * mScale;
 
-    // Hide inside the coral at night — fade out once tucked up against home.
-    let alphaTarget = 1;
+    // Hide inside the coral at night — flag when tucked up against home so
+    // ReefScene can drop the fish to the layer below the corals (occluded).
+    this._tucked = false;
     if (this._hiding && this.homeCol != null) {
       const home = tileCenter(this.homeCol, this.homeRow);
-      const hd = Math.hypot(this.x - home.x, this.y - home.y);
-      if (hd < TILE_SIZE * 0.6) alphaTarget = 0.1;   // tucked in / out of sight
+      if (Math.hypot(this.x - home.x, this.y - home.y) < TILE_SIZE * 0.6) this._tucked = true;
     }
-    this.container.alpha += (alphaTarget - this.container.alpha) * Math.min(1, 0.05 * dt);
+    if (this.container.alpha !== 1) this.container.alpha = 1;   // clear any old fade state
 
     // Chaotic species emit particles on a randomised cadence
     if (this.spec.chaotic && onEmit) {
