@@ -64,15 +64,17 @@ export class Fish {
 
   // ── Drawing ───────────────────────────────────────────────────────────────
 
-  /** Soft radial glow halo for bioluminescent species (shown at night). */
+  /** Cast-light halo for bioluminescent species — additive, lights the area at night. */
   _drawGlow() {
     const g   = this._glow;
     const col = this.spec.accentColor ?? 0x66ccff;
-    const R   = this.spec.size * 2.1;
+    const R   = this.spec.size * 3.4;        // large pool of cast light
+    g.blendMode = 'add';                      // brightens the dark scene around it
     g.clear();
-    g.circle(0, 0, R).fill({ color: col, alpha: 0.10 });
-    g.circle(0, 0, R * 0.62).fill({ color: col, alpha: 0.16 });
-    g.circle(0, 0, R * 0.32).fill({ color: this._lighten(col, 0.45), alpha: 0.26 });
+    g.circle(0, 0, R).fill({ color: col, alpha: 0.06 });
+    g.circle(0, 0, R * 0.66).fill({ color: col, alpha: 0.10 });
+    g.circle(0, 0, R * 0.40).fill({ color: col, alpha: 0.16 });
+    g.circle(0, 0, R * 0.20).fill({ color: this._lighten(col, 0.55), alpha: 0.28 });
   }
 
   _drawBody() {
@@ -2419,6 +2421,15 @@ export class Fish {
 
     // Subtle vertical bob
     this.container.scale.y = 1 + Math.sin(Date.now() * 0.003 + this.uid) * 0.04;
+
+    // Hide inside the coral at night — fade out once tucked up against home.
+    let alphaTarget = 1;
+    if (this._hiding && this.homeCol != null) {
+      const home = tileCenter(this.homeCol, this.homeRow);
+      const hd = Math.hypot(this.x - home.x, this.y - home.y);
+      if (hd < TILE_SIZE * 0.6) alphaTarget = 0.1;   // tucked in / out of sight
+    }
+    this.container.alpha += (alphaTarget - this.container.alpha) * Math.min(1, 0.05 * dt);
 
     // Chaotic species emit particles on a randomised cadence
     if (this.spec.chaotic && onEmit) {

@@ -221,10 +221,12 @@ export class GridLayer {
   /** Soft glow halo behind a bioluminescent coral (lit at night via setNight). */
   _addCoralGlow(uid, col, row, spec) {
     const g = new Graphics();
-    const R = TILE_SIZE * 0.72;
-    g.circle(0, 0, R).fill({ color: spec.color, alpha: 0.10 });
-    g.circle(0, 0, R * 0.62).fill({ color: spec.color, alpha: 0.16 });
-    g.circle(0, 0, R * 0.32).fill({ color: 0xffffff, alpha: 0.16 });
+    const R = TILE_SIZE * 1.25;              // pool of cast light around the coral
+    g.blendMode = 'add';                      // brightens the dark scene at night
+    g.circle(0, 0, R).fill({ color: spec.color, alpha: 0.06 });
+    g.circle(0, 0, R * 0.64).fill({ color: spec.color, alpha: 0.11 });
+    g.circle(0, 0, R * 0.36).fill({ color: spec.color, alpha: 0.18 });
+    g.circle(0, 0, R * 0.18).fill({ color: 0xffffff, alpha: 0.22 });
     g.x = GRID_X + col * TILE_SIZE + TILE_SIZE / 2;
     g.y = GRID_Y + row * TILE_SIZE + TILE_SIZE * 0.55;
     this.coralGlowContainer.addChild(g);
