@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 12.5 — Anything But the App Store. A special confession: since promising the iOS app we've shipped a day/night cycle, bioluminescence, breeding, and a dozen other things — to the web game — and made approximately zero progress toward actually submitting the app." />
+  <title>Anything But the App Store — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 12.5 (Special) — the indigo of a late night spent on the wrong task, lit by one amber lamp */
+    :root {
+      --nl-bg-1: #1e2148;
+      --nl-bg-2: #141633;
+      --nl-bg-3: #0c0d22;
+      --nl-bg-4: #060611;
+      --theme-glow:   rgba(255, 193, 110, 0.15);
+      --theme-accent: #ffc16e;
+      --theme-rule:   rgba(255, 193, 110, 0.55);
+    }
+    /* One warm desk lamp; everything else dark and undone */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 82% 84%, rgba(255,193,110,0.12) 0, transparent 9%),
+        radial-gradient(circle at 20% 22%, rgba(140,160,255,0.06) 0, transparent 6%),
+        radial-gradient(circle at 60% 18%, rgba(140,160,255,0.05) 0, transparent 5%);
+      z-index: 0;
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/">← Back to dispatch</a>
+
+      <div class="byline">
+        <span>Issue 12.5</span>
+        <span>June 19, 2026</span>
+        <span>Special Issue</span>
+      </div>
+      <h1 class="issue-title">Anything But the App Store</h1>
+      <p class="issue-deck">Three issues ago we promised the reef a home on your phone — a real icon, in the App Store. In the days since we have, instead, given the reef a whole day and night, taught it to glow, let it breed, and built it a doorbell. To the web game. The native app has not moved an inch, and honesty demands we say so.</p>
+
+      <p class="lede">In Issue 11 we wrote, with some pride, that Reef Bloom now had "a native shell built with Capacitor — the web game wrapped so it can ship to the App Store and live as an icon rather than a bookmark." That shell still exists. It is still named Reef Bloom; it still answers to <code>com.billdaus.reefbloom</code>; it still loads the very same built game from the <code>dist</code> folder. What it has not done, in the days since, is go anywhere near an actual App Store. No certificates, no provisioning profiles, no screenshots, no review submission. The icon is real. The home screen it lives on is still only ours. This is a special issue about everything we did to avoid that one task.</p>
+
+      <h3>What we built instead</h3>
+
+      <p>It has, in our defence, been a productive avoidance. The reef now keeps time: a full day/night cycle runs every four minutes, dimming the water to around half-light at its darkest and warming it back at dawn. With nightfall came behaviour — most fish now retreat into their home coral and tuck out of sight to sleep, while a nocturnal crew (the morays, the blue ribbon eel, the octopus, the anglerfish, the flashlight fish) does the opposite, hiding through the day and emerging only after dark.</p>
+
+      <p>The dark, naturally, demanded light. Bioluminescent species — glow eels, anglerfish, the moon seahorse, the new event corals among them — now cast a real pool of light into the night water, and because a creature that is itself a lamp should not be dimmed by the dark, their bodies hold full brightness while everything around them fades. We are extremely pleased with this. It is not in the App Store.</p>
+
+      <div class="spotlight">
+        <div class="spotlight-head">
+          <div class="spotlight-swatch" style="background: radial-gradient(circle at 35% 30%, #ffd79a 0%, #b5651d 100%);"></div>
+          <div class="spotlight-meta">
+            <div class="spotlight-eyebrow">Feature Spotlight</div>
+            <div class="spotlight-name">The Reef Breeds</div>
+            <div class="spotlight-sci">a living, self-growing reef</div>
+            <span class="spotlight-tier tier-legendary">NEW</span>
+          </div>
+        </div>
+        <p>The headline addition is life that makes more of itself. By day, when harmony sits at sixty or above, a coral that hosts a same-species pair and still has room can hatch a juvenile — which arrives at half size and grows to full over about a minute before it, too, can breed. Population is capped naturally by how many fish your corals can home, so the way to a busier reef is a healthier, better-upgraded one. A reef that raises its own young is, we'd argue, a more compelling reason to come back than a fresh app icon. We are aware this is the kind of thing a person says to avoid making an app icon.</p>
+      </div>
+
+      <h3>And the small comforts</h3>
+
+      <p>The rest of the avoidance, briefly: returning players now get a <em>Welcome Back</em> — idle earnings for up to eight hours away, plus a daily login streak that escalates for a week. Distant background fauna — schools, rays, drifting jellyfish — now pass by behind the reef, pure animation, no purpose but mood. The pufferfish inflates when you tap or bump it. There is a build-version badge in the corner, reading <code>Indev 1.0.1</code>, because a thing with a version number feels like a thing that is going somewhere. There is now a feedback button, so you can tell us, directly, to go work on the app. And the Event tab is finally permanent, holding the exclusive coral and fish each pass awards. We even went back and redrew two corals that looked, in your words and ours, bad.</p>
+
+      <blockquote>It is much easier to give a fish a bedtime than to give Apple a screenshot. So we gave the fish a bedtime. We gave them several.</blockquote>
+
+      <h3>The thing we are not doing</h3>
+
+      <p>So let the record show the shape of the procrastination plainly. The hard part of shipping to iOS was never the game — the game already runs inside the shell. The hard part is the unglamorous wall after it: a developer account, signing identities, provisioning, App Store Connect, privacy disclosures, a review queue, and the native sign-in plumbing we admitted in our own code we never laid (inside the app, browser-style sign-in simply reports itself unavailable and steps aside). None of that is hard the way a day/night cycle is hard. It is hard the way folding laundry is hard: trivial, joyless, and therefore eternally deferred in favour of literally anything with a glow effect.</p>
+
+      <p>We are not promising a date, because Issue 11 already gestured at one and look where that got us. We are promising only the truth, which the Dispatch has made something of a habit: the app is built, the app is not shipped, and the reason is that building reefs is a delight and filing paperwork is not. The next time we tell you the app has arrived, it will have actually arrived. Until then, the reef keeps its little day and its little night, the lanterns come on at dusk, the fish go to bed, and somewhere a Capacitor build sits in a folder, fully grown, waiting for us to do the boring thing.</p>
+
+      <p class="signoff">— The Reef Bloom team</p>
+
+      <a class="back-link" href="/newsletter/" style="margin-top:32px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
