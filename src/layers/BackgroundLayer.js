@@ -32,6 +32,15 @@ export class BackgroundLayer {
 
     this.container.addChild(this._coralGroup);
     this.container.addChild(this._twilightGroup);
+
+    // Background fauna — distant silhouettes drifting past. Purely cosmetic:
+    // no grid, no collision, no gameplay. Behind the seafloor/rock foreground.
+    this._faunaContainer = new Container();
+    this._faunaContainer.interactiveChildren = false;
+    this.container.addChild(this._faunaContainer);
+    this._fauna = [];
+    for (let i = 0; i < 3; i++) this._spawnFauna(true);
+
     this.container.addChild(this._sharedGroup);
 
     // Night wash — deepens the whole backdrop after dark (alpha driven by setNight)
@@ -41,6 +50,73 @@ export class BackgroundLayer {
     this.container.addChild(this._nightOverlay);
 
     this._twilightGroup.visible = false; // default: coral biome
+  }
+
+  // ── Background fauna (cosmetic drifting silhouettes) ─────────────────────────
+
+  _spawnFauna(initial = false) {
+    const TYPES = ['fish', 'fish', 'school', 'ray', 'jelly'];
+    const type  = TYPES[Math.floor(Math.random() * TYPES.length)];
+    const dir   = Math.random() < 0.5 ? 1 : -1;
+    const scale = 0.5 + Math.random() * 0.9;
+
+    const g = new Graphics();
+    this._drawFauna(g, type);
+    g.scale.set(dir * scale, scale);
+    g.alpha = type === 'jelly' ? 0.15 : 0.18;
+
+    const baseY  = SCREEN_H * (0.12 + Math.random() * 0.52);
+    const margin = 120 * scale;
+    g.x = initial ? Math.random() * SCREEN_W : (dir === 1 ? -margin : SCREEN_W + margin);
+    g.y = baseY;
+
+    const speed = type === 'jelly' ? 0.004
+                : type === 'ray'   ? 0.010
+                :                    0.018 + Math.random() * 0.020;
+    this._faunaContainer.addChild(g);
+    this._fauna.push({ g, type, dir, scale, vx: dir * speed, baseY, phase: Math.random() * Math.PI * 2 });
+  }
+
+  _updateFauna(dms) {
+    for (let i = this._fauna.length - 1; i >= 0; i--) {
+      const f = this._fauna[i];
+      f.g.x += f.vx * dms;
+      f.phase += dms * 0.002;
+      f.g.y = f.baseY + Math.sin(f.phase) * (f.type === 'jelly' ? 12 : 6);
+      if (f.type === 'jelly') f.g.scale.y = f.scale * (1 + Math.sin(f.phase * 2) * 0.14);
+
+      const off = 140 * f.scale;
+      if ((f.dir === 1 && f.g.x > SCREEN_W + off) || (f.dir === -1 && f.g.x < -off)) {
+        this._faunaContainer.removeChild(f.g);
+        f.g.destroy();
+        this._fauna.splice(i, 1);
+        this._spawnFauna(false);   // keep the population steady
+      }
+    }
+  }
+
+  /** Draw a hazy distant silhouette (facing +x). */
+  _drawFauna(g, type) {
+    const c = 0x3a5a78;
+    if (type === 'fish') {
+      g.ellipse(0, 0, 16, 7).fill(c);
+      g.moveTo(-13, 0).lineTo(-24, -8).lineTo(-24, 8).closePath().fill(c);
+    } else if (type === 'school') {
+      for (let i = 0; i < 7; i++) {
+        const ox = (Math.random() - 0.5) * 30, oy = (Math.random() - 0.5) * 18;
+        g.ellipse(ox, oy, 4, 2).fill(c);
+        g.moveTo(ox - 3, oy).lineTo(ox - 7, oy - 2).lineTo(ox - 7, oy + 2).closePath().fill(c);
+      }
+    } else if (type === 'ray') {
+      g.moveTo(0, -5).lineTo(-30, 2).lineTo(0, 9).lineTo(30, 2).closePath().fill(c);  // wings
+      g.moveTo(-3, 6).lineTo(-2, 26).lineTo(-5, 24).closePath().fill(c);              // tail
+    } else { // jelly
+      g.ellipse(0, 0, 12, 9).fill(c);
+      for (let i = 0; i < 5; i++) {
+        const x = -8 + i * 4;
+        g.moveTo(x, 7).quadraticCurveTo(x + 2, 18, x, 27).stroke({ color: c, width: 1.5 });
+      }
+    }
   }
 
   /** Darken the backdrop with the day/night cycle (0 = day, 1 = deep night). */
@@ -463,5 +539,7 @@ export class BackgroundLayer {
     if (this._twilightGroup.visible) {
       this._redrawBioParticles(t);
     }
+
+    this._updateFauna(deltaMS);
   }
 }
