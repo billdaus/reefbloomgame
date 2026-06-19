@@ -34,6 +34,11 @@ export class Fish {
     this.homeCol = null;
     this.homeRow = null;
 
+    // Pufferfish inflation: _puff 0 (relaxed) → 1 (puffed); _puffHold counts
+    // down the time held inflated after a tap or bump.
+    this._puff = 0;
+    this._puffHold = 0;
+
     // Cleaning-station visit: 'none' | 'toStation' | 'cleaning'
     this._cleanState = 'none';
     this._cleanX = 0;
@@ -683,31 +688,62 @@ export class Fish {
      .closePath().fill(this._darken(bodyColor, 0.18));
   }
 
-  /** Pufferfish — round spotted body, short spines, small tail. */
+  /** Pufferfish — round spotted body that inflates (_puff 0→1) when tapped/bumped. */
   _drawPufferfish(g, sz, bodyColor, accentColor) {
-    const r = sz * 0.88;
-    // Tail fin
-    g.moveTo(-r * 0.82, -r * 0.26).lineTo(-r * 1.18, 0).lineTo(-r * 0.82, r * 0.26)
-     .closePath().fill(bodyColor);
-    // Round body
-    this._ellipse(g, 0, 0, r, r * 0.92);
-    g.fill(bodyColor);
-    // Spots
-    [[-r * 0.28, -r * 0.34], [r * 0.12, -r * 0.44], [r * 0.42, -r * 0.18],
-     [-r * 0.44,  r * 0.12], [r * 0.2,   r * 0.32], [-r * 0.12, r * 0.42]].forEach(([cx, cy]) => {
-      g.circle(cx, cy, sz * 0.1).fill(accentColor);
+    const p     = this._puff ?? 0;                 // 0 relaxed → 1 fully puffed
+    const dark  = this._darken(bodyColor, 0.26);
+    const light = this._lighten(bodyColor, 0.4);
+    const belly = this._lighten(bodyColor, 0.62);
+
+    // Relaxed body is smaller & a touch oval; puffed swells into a round ball.
+    const r  = sz * (0.74 + p * 0.36);
+    const ry = r * (0.84 + p * 0.16);
+
+    // ── Tail (tucks in as the body swells) ───────────────────────────────
+    const tl = sz * (0.42 - p * 0.16);
+    g.moveTo(-r * 0.78, -tl * 0.7)
+     .quadraticCurveTo(-r * 0.78 - tl, -tl * 0.3, -r * 0.78 - tl, 0)
+     .quadraticCurveTo(-r * 0.78 - tl,  tl * 0.3, -r * 0.78,  tl * 0.7)
+     .closePath().fill(dark);
+
+    // ── Body with dorsal shading + pale belly ────────────────────────────
+    this._ellipse(g, 0, 0, r, ry); g.fill(bodyColor);
+    this._ellipse(g, 0, -ry * 0.42, r * 0.9, ry * 0.5); g.fill({ color: dark, alpha: 0.22 });
+    this._ellipse(g, -r * 0.04, ry * 0.44, r * 0.72, ry * 0.42); g.fill({ color: belly, alpha: 0.55 });
+
+    // ── Mottled spots ────────────────────────────────────────────────────
+    [[-0.3, -0.34], [0.12, -0.46], [0.46, -0.16], [-0.46, 0.14], [0.24, 0.36],
+     [-0.14, 0.46], [-0.02, -0.04], [0.34, 0.08]].forEach(([fx, fy]) => {
+      g.circle(r * fx, ry * fy, sz * 0.085).fill({ color: dark, alpha: 0.55 });
     });
-    // Spines
-    [[-r*0.5,-r*0.5],[0,-r*0.9],[r*0.55,-r*0.38],[r*0.88,0],[r*0.55,r*0.38],[0,r*0.9],[-r*0.5,r*0.5]].forEach(([sx, sy]) => {
-      const m = 1 / Math.hypot(sx, sy);
-      g.moveTo(sx, sy).lineTo(sx + sx * m * sz * 0.18, sy + sy * m * sz * 0.18)
-       .stroke({ color: this._darken(bodyColor, 0.22), width: 1.5, cap: 'round' });
-    });
-    // Snout & pectoral fin
-    g.moveTo(r * 0.85, -r * 0.12).lineTo(r * 1.1, 0).lineTo(r * 0.85, r * 0.12).closePath().fill(bodyColor);
-    g.moveTo(r * 0.2, r * 0.52).lineTo(r * 0.46, r * 0.9).lineTo(r * 0.62, r * 0.45).closePath().fill({ color: bodyColor, alpha: 0.7 });
-    g.circle(r * 0.55, -r * 0.3, sz * 0.13).fill(0xffffff);
-    g.circle(r * 0.57, -r * 0.28, sz * 0.08).fill(0x111111);
+
+    // ── Spines — laid flat when relaxed, bristling outward when puffed ────
+    const spineN   = 16;
+    const spineLen = sz * (0.05 + p * 0.3);
+    for (let i = 0; i < spineN; i++) {
+      const a  = (i / spineN) * Math.PI * 2 + 0.2;
+      const bx = Math.cos(a) * r * 0.95, by = Math.sin(a) * ry * 0.95;
+      const ex = Math.cos(a) * (r + spineLen), ey = Math.sin(a) * (ry + spineLen);
+      g.moveTo(bx, by).lineTo(ex, ey).stroke({ color: dark, width: 1.1 + p * 0.7, cap: 'round' });
+    }
+
+    // ── Beak mouth ───────────────────────────────────────────────────────
+    g.moveTo(r * 0.84, -sz * 0.07)
+     .lineTo(r * (0.98 + p * 0.05), 0)
+     .lineTo(r * 0.84,  sz * 0.07)
+     .closePath().fill(dark);
+    g.moveTo(r * 0.86, 0).lineTo(r * 0.96, 0).stroke({ color: belly, width: 1 });
+
+    // ── Pectoral fin ─────────────────────────────────────────────────────
+    g.moveTo(r * 0.18, ry * 0.5)
+     .quadraticCurveTo(r * 0.5, ry * 0.96, r * 0.6, ry * 0.44)
+     .closePath().fill({ color: light, alpha: 0.7 });
+
+    // ── Eye — widens a little when startled (puffed) ─────────────────────
+    const er = sz * (0.14 + p * 0.04);
+    g.circle(r * 0.5, -ry * 0.34, er).fill(0xffffff);
+    g.circle(r * 0.52, -ry * 0.33, er * 0.6).fill(0x111111);
+    g.circle(r * 0.56, -ry * 0.38, er * 0.22).fill(0xffffff);
   }
 
   /** Spotted Eagle Ray — kite-shaped disc, white spots, long whip tail, duck-bill snout. */
@@ -2170,6 +2206,12 @@ export class Fish {
   /** True once arrived and lingering at a station (used to sparkle). */
   isBeingCleaned() { return this._cleanState === 'cleaning'; }
 
+  /** Pufferfish defence: inflate now and hold it for a moment (tap or bump). */
+  puff() {
+    if (this.spec.id !== 'pufferfish') return;
+    this._puffHold = 95;   // ~1.5s held inflated; refreshed by repeat bumps
+  }
+
   update(dt, grid, coralSpecies, onEmit, allFish, coralLevels) {
     const speed = this.spec.speed * SPEED_SCALE;
     const ms    = dt * (60 / 1000) * 16;  // normalise to pixels/frame
@@ -2254,6 +2296,7 @@ export class Fish {
         const od  = Math.sqrt(odx * odx + ody * ody);
         const minD = (this.spec.size + o.spec.size) * 0.8;
         if (od <= minD) {
+          if (this.spec.id === 'pufferfish') this.puff();   // bumped by another fish
           if (od > 0.01) {
             const force = (minD - od) / minD * speed * 1.1;
             this.vx += (odx / od) * force * dt;
@@ -2313,6 +2356,7 @@ export class Fish {
         let bdx = this.x - cx, bdy = this.y - cy;
         const bd = Math.sqrt(bdx * bdx + bdy * bdy);
         if (bd < blockR) {
+          if (this.spec.id === 'pufferfish') this.puff();      // bumped into coral
           if (bd < 0.01) { bdx = 1; bdy = 0; }                 // dead-centre fallback
           const nx = bdx / (bd || 1), ny = bdy / (bd || 1);
           this.x = cx + nx * blockR;                           // push to the surface
@@ -2358,6 +2402,18 @@ export class Fish {
         // Next emission in 1.2 – 3.0 seconds (60fps frames)
         this._emitCooldown = 72 + Math.random() * 108;
       }
+    }
+
+    // ── Pufferfish inflation — quick puff on tap/bump, then slow deflate ─────
+    if (this.spec.id === 'pufferfish') {
+      const prev = this._puff;
+      if (this._puffHold > 0) {
+        this._puffHold -= dt;
+        this._puff = Math.min(1, this._puff + 0.18 * dt);   // inflate fast
+      } else {
+        this._puff = Math.max(0, this._puff - 0.04 * dt);   // deflate slowly
+      }
+      if (Math.abs(this._puff - prev) > 0.012) this._drawBody();   // redraw on change
     }
   }
 

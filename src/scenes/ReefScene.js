@@ -669,9 +669,9 @@ export class ReefScene {
       return x >= -sz && x <= sz && y >= -sz && y <= sz;
     }};
     fish.container.on(IS_PORTRAIT ? 'pointerup' : 'pointerdown', (e) => {
-      if (!state.removeMode || isTapSuppressed()) return;
-      e.stopPropagation();
-      this._removeFish(fish);
+      if (isTapSuppressed()) return;
+      if (state.removeMode) { e.stopPropagation(); this._removeFish(fish); return; }
+      if (fish.spec.id === 'pufferfish') { e.stopPropagation(); fish.puff(); }
     });
 
     if (spec.layer === 'A') {
@@ -1109,9 +1109,9 @@ export class ReefScene {
         return x >= -sz && x <= sz && y >= -sz && y <= sz;
       }};
       fish.container.on(IS_PORTRAIT ? 'pointerup' : 'pointerdown', (e) => {
-        if (!state.removeMode || isTapSuppressed()) return;
-        e.stopPropagation();
-        this._removeFish(fish);
+        if (isTapSuppressed()) return;
+        if (state.removeMode) { e.stopPropagation(); this._removeFish(fish); return; }
+        if (fish.spec.id === 'pufferfish') { e.stopPropagation(); fish.puff(); }
       });
 
       if (spec.layer === 'A') this._fishContainerA.addChild(fish.container);
