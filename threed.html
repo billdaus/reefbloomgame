@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Reef Bloom — 3D (Experimental)</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #04121f; overflow: hidden; }
+    #app3d { display: block; width: 100vw; height: 100vh; }
+    #hint {
+      position: fixed; left: 12px; bottom: 12px; z-index: 2;
+      font: 13px/1.4 system-ui, sans-serif; color: #9fc4dc;
+      background: rgba(0,0,0,0.35); padding: 6px 10px; border-radius: 8px;
+      pointer-events: none;
+    }
+    #back {
+      position: fixed; left: 12px; top: 12px; z-index: 2;
+      font: 13px system-ui, sans-serif; color: #cfe6f4; text-decoration: none;
+      background: rgba(0,0,0,0.35); padding: 6px 10px; border-radius: 8px;
+    }
+    #version-badge-3d {
+      position: fixed; right: 10px; bottom: 8px; z-index: 2;
+      font: 12px system-ui, sans-serif; color: #7fa8c0; letter-spacing: 1px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <a id="back" href="/">← Classic</a>
+  <canvas id="app3d"></canvas>
+  <div id="version-badge-3d">3Dev 1.0</div>
+  <div id="hint">3D vertical slice — drag to orbit, scroll to zoom. Watch the vent erupt.</div>
+  <script type="module">
+    import { initVentPrototype } from './src/3d/VentPrototype.js';
+    initVentPrototype(document.getElementById('app3d'));
+  </script>
+</body>
+</html>

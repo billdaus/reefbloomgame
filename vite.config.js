@@ -12,6 +12,7 @@ export default defineConfig({
       input: {
         main:   'index.html',
         mobile: 'mobile/index.html',
+        threed: 'threed.html',
       },
     },
   },
