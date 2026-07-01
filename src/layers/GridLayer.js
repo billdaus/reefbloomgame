@@ -68,6 +68,7 @@ export class GridLayer {
     this._stationSprites = new Map();   // uid → CleaningStation instance
     this._stationBadges  = new Map();   // uid → badge Container
     this._decorSprites   = new Map();   // uid → Graphics container
+    this._animatedDecor  = new Map();   // uid → Decor instance (has update(dms))
     this._hoveredTile  = null;
 
     this._drawFloor();
@@ -351,6 +352,9 @@ export class GridLayer {
     decor.container.y = GRID_Y + row * TILE_SIZE;
     this.decorContainer.addChild(decor.container);
     this._decorSprites.set(uid, decor.container);
+    if (typeof decor.update === 'function' && decor.spec.kind === 'vent') {
+      this._animatedDecor.set(uid, decor);
+    }
   }
 
   removeDecor(uid) {
@@ -359,6 +363,12 @@ export class GridLayer {
     sprite.parent?.removeChild(sprite);
     sprite.destroy({ children: true });
     this._decorSprites.delete(uid);
+    this._animatedDecor.delete(uid);
+  }
+
+  /** Tick animated decor (e.g. erupting hydrothermal vents). */
+  update(dms) {
+    this._animatedDecor.forEach(d => d.update(dms));
   }
 
   clearAllDecor() {

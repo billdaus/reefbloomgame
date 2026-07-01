@@ -1,9 +1,20 @@
 import { Graphics } from 'pixi.js';
 import { TILE_SIZE } from '../constants.js';
 
+// Hydrothermal vent eruption cycle (ms) and its on/off intensity envelope.
+const VENT_PERIOD = 5200;
+function ventIntensity(p) {
+  if (p < 0.12) return p / 0.12;            // ramp up
+  if (p < 0.48) return 1;                   // full eruption
+  if (p < 0.62) return 1 - (p - 0.48) / 0.14; // ramp down
+  return 0;                                 // dormant
+}
+
 /**
- * Decor — static, purely aesthetic props placed on the grid.
- * No BE generation, no animation. Container origin is the tile's top-left.
+ * Decor — purely aesthetic props placed on the grid. No BE generation.
+ * Most kinds are static (drawn once); animated kinds (e.g. the hydrothermal
+ * vent) expose update(dms) and are ticked by GridLayer. Container origin is
+ * the tile's top-left.
  */
 export class Decor {
   constructor(speciesData, col, row, uid) {
@@ -31,9 +42,90 @@ export class Decor {
       case 'orb':       this._drawOrb(g, s);       break;
       case 'fossil':    this._drawFossil(g, s);    break;
       case 'cairn':     this._drawCairn(g, s);     break;
+      case 'vent':      this._drawVent(g, s);      break;
       case 'cleaningStation': this._drawCleaningStation(g, s); break;
       default:          this._drawPebble(g, s);    break;
     }
+  }
+
+  // ── Hydrothermal vent — black-smoker chimney with an erupting plume ─────────
+  // Static rock spire drawn onto the container; the animated plume lives on a
+  // child Graphics redrawn each frame by update(dms).
+  _drawVent(g, s) {
+    const c  = this.spec.color;        // dark chimney rock
+    const a  = this.spec.accentColor;  // hot vent glow
+    const cx = s / 2;
+    const baseY = s * 0.94;
+
+    // Ground shadow
+    g.ellipse(cx, s - 2, s * 0.34, 2.5).fill({ color: 0x000000, alpha: 0.42 });
+
+    // Tapered chimney spire — wide sooty base narrowing to the mouth
+    const mouthX = cx - s * 0.04;
+    const mouthY = s * 0.30;
+    g.moveTo(cx - s * 0.24, baseY);
+    g.bezierCurveTo(cx - s * 0.20, s * 0.62, mouthX - s * 0.10, s * 0.42, mouthX - s * 0.06, mouthY);
+    g.lineTo(mouthX + s * 0.06, mouthY);
+    g.bezierCurveTo(cx + s * 0.20, s * 0.46, cx + s * 0.22, s * 0.64, cx + s * 0.24, baseY);
+    g.closePath();
+    g.fill(c);
+
+    // Mineral banding / soot streaks
+    g.moveTo(cx - s * 0.16, s * 0.78);
+    g.quadraticCurveTo(cx, s * 0.72, cx + s * 0.16, s * 0.80)
+      .stroke({ color: 0x161a22, width: 1.2, alpha: 0.7 });
+    g.moveTo(cx - s * 0.12, s * 0.58);
+    g.quadraticCurveTo(cx, s * 0.54, cx + s * 0.12, s * 0.60)
+      .stroke({ color: 0x161a22, width: 1, alpha: 0.6 });
+    // A couple of warm mineral flecks near the base
+    g.circle(cx - s * 0.10, s * 0.86, 1.2).fill({ color: a, alpha: 0.5 });
+    g.circle(cx + s * 0.08, s * 0.90, 1).fill({ color: a, alpha: 0.4 });
+
+    // Dark mouth opening
+    g.ellipse(mouthX, mouthY, s * 0.06, s * 0.03).fill(0x0c0e13);
+
+    // Animated plume layer (redrawn in update)
+    this._mouthX = mouthX;
+    this._mouthY = mouthY;
+    this._plume  = new Graphics();
+    g.addChild(this._plume);
+    this._t = (this.uid * 260.7) % VENT_PERIOD;  // desync vents from each other
+    this._drawPlume(0);
+  }
+
+  /** Redraw the vent plume for eruption intensity k (0 dormant → 1 full). */
+  _drawPlume(k) {
+    const g = this._plume;
+    const s = TILE_SIZE;
+    const mx = this._mouthX;
+    const my = this._mouthY;
+    g.clear();
+    if (k <= 0.001) return;
+
+    // Heat glow at the mouth
+    g.circle(mx, my, s * 0.14 * (0.6 + 0.4 * k)).fill({ color: 0xffcaa0, alpha: 0.18 * k });
+    g.circle(mx, my, s * 0.06).fill({ color: this.spec.accentColor, alpha: 0.9 * k });
+    g.circle(mx, my, s * 0.03).fill({ color: 0xfff1d6, alpha: 0.9 * k });
+
+    // Billowing smoke puffs rising above the mouth
+    const N = 5;
+    for (let i = 0; i < N; i++) {
+      const ph  = ((this._t / 1400) + i / N) % 1;   // 0 (at mouth) → 1 (top)
+      const py  = my - ph * s * 0.92;
+      const wob = Math.sin(this._t / 500 + i * 2.1) * s * 0.05 * ph;
+      const r   = s * 0.045 + ph * s * 0.13;
+      const a   = k * (1 - ph) * 0.5;
+      const tint = i % 2 ? 0x2a2d36 : 0x352a20;
+      g.circle(mx + wob, py, r).fill({ color: tint, alpha: a });
+    }
+  }
+
+  /** Advance the eruption cycle. Only present on animated decor. */
+  update(dms) {
+    if (this.spec.kind !== 'vent') return;
+    this._t += dms;
+    const p = (this._t / VENT_PERIOD) % 1;
+    this._drawPlume(ventIntensity(p));
   }
 
   // ── Cleaning station — a pale coral knob staffed by cleaner shrimp ──────────

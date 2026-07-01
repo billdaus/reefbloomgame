@@ -285,6 +285,7 @@ export class ReefScene {
     const dt  = ticker.deltaTime;
 
     this._bg.update(dms);
+    this._grid.update(dms);
     this._foreground.update(dms);
     this._ambience.update(dms);
     this._bubbles.update(dms);

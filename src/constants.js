@@ -829,6 +829,11 @@ export const DECOR_SPECIES = {
     kind: 'cairn', tier: TIER.UNCOMMON, color: 0x2c3540, accentColor: 0x10151c,
     cost: 25, unlockLevel: 9, biome: 'deepTwilight',
   },
+  hydroVent: {
+    id: 'hydroVent', name: 'Hydrothermal Vent',
+    kind: 'vent', tier: TIER.RARE, color: 0x2b2f3a, accentColor: 0xff6a3d,
+    cost: 40, unlockLevel: 8, biome: 'deepTwilight',
+  },
   // ── Functional — available in every biome ─────────────────────────────────
   cleaningStation: {
     id: 'cleaningStation', name: 'Cleaning Station',
