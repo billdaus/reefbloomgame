@@ -19,7 +19,9 @@ const TILE = 2;
 const HALF = (GRID * TILE) / 2;
 const VENT_PERIOD = 5.2;
 const TICK_SEC = TICK_MS / 1000;        // BE/polyp tick cadence in seconds
-const SAVE_KEY = 'reefbloom_3d_save_v1';
+const SAVE_KEY_BASE = 'reefbloom_3d_save_v1';
+const SLOT_KEY = 'reefbloom_3d_slot';
+const slotKey = (s) => `${SAVE_KEY_BASE}_s${s}`;
 
 const BIOLUM = ['auroraCoral', 'twilightBrain', 'phantomPolyp', 'wispCoral', 'lanternCoral'];
 
@@ -57,30 +59,17 @@ function gradientTexture(stops) {
 
 function hex(n) { return `#${n.toString(16).padStart(6, '0')}`; }
 
-function starterCorals() {
+// Full Classic catalog (all biomes; event-pass exclusives excluded from the shop,
+// mirroring Classic). Sorted by unlock level then tier for a sensible palette order.
+const byUnlock = (a, b) => (a.unlockLevel ?? 1) - (b.unlockLevel ?? 1)
+  || (BE_PER_TICK[a.tier] ?? 0) - (BE_PER_TICK[b.tier] ?? 0);
+function allCorals() {
   return Object.values(CORAL_SPECIES)
-    .filter(s => (!s.biome || s.biome === 'coral')
-      && !s.pearlCost && !s.polypCost && !s.utility
-      && CORAL_COST[s.tier] != null)
-    .slice(0, 7);
+    .filter(s => !s.eventId && s.color != null).sort(byUnlock);
 }
-function starterFish() {
+function allFish() {
   return Object.values(FISH_SPECIES)
-    .filter(s => (!s.biome || s.biome === 'coral' || s.biome === 'both')
-      && s.layer && s.color != null && FISH_COST[s.tier] != null && !s.pearlCost)
-    .slice(0, 6);
-}
-const inCoral = (b) => !b || b === 'coral' || b === 'both'
-  || (Array.isArray(b) && b.includes('coral'));
-function pearlCorals() {
-  return Object.values(CORAL_SPECIES)
-    .filter(s => s.pearlCost && !s.utility && s.color != null && inCoral(s.biome))
-    .slice(0, 3);
-}
-function pearlFish() {
-  return Object.values(FISH_SPECIES)
-    .filter(s => s.pearlCost && s.layer && s.color != null && inCoral(s.biome))
-    .slice(0, 3);
+    .filter(s => !s.eventId && s.color != null && s.layer).sort(byUnlock);
 }
 
 // ── Coral geometry — a distinct silhouette per species family ──────────────────
@@ -271,7 +260,8 @@ export function initReefScene3D(canvas) {
   const placedFish = [];      // { id, cx, cz, R, y, w, phase, bob, bobw } (saved)
   let be = START_BE, polyps = START_POLYPS, pearls = START_PEARLS;
   let harmony = START_HARMONY, level = START_LEVEL;
-  let incomePerSec = 0, polypPerSec = 0;
+  let incomePerSec = 0, polypPerSec = 0, beMax = BE_MAX;
+  let onProgress = () => {};   // set once the palette exists — refreshes lock states
 
   function levelScaleFor(lvl) { return 1 + (lvl - 1) * 0.14; }
 
@@ -288,17 +278,24 @@ export function initReefScene3D(canvas) {
     return group;
   }
 
-  // BE/polyp rates, recomputed whenever a coral is placed or upgraded.
+  // BE/polyp rates, recomputed whenever a coral is placed, upgraded, or removed.
   // Classic: BE/tick = base × (1 + (level-1)·POLYP_BE_BONUS); polyps/tick = 0.2 × level.
+  // Utility corals (storage/shelter) yield no BE but still drip polyps, and storage
+  // corals raise the wallet cap (beMax) by their `storage` value.
   function recomputeRates() {
-    let bePerTick = 0, polypPerTick = 0;
+    let bePerTick = 0, polypPerTick = 0, storage = 0;
     for (const e of placedCorals) {
-      const tier = CORAL_SPECIES[e.id]?.tier;
-      bePerTick += (BE_PER_TICK[tier] ?? 1) * (1 + (e.level - 1) * POLYP_BE_BONUS);
+      const spec = CORAL_SPECIES[e.id];
+      if (!spec) continue;
+      if (!spec.utility) {
+        bePerTick += (BE_PER_TICK[spec.tier] ?? 1) * (1 + (e.level - 1) * POLYP_BE_BONUS);
+      }
       polypPerTick += POLYP_PER_CORAL_TICK * e.level;
+      storage += spec.storage ?? 0;
     }
     incomePerSec = bePerTick / TICK_SEC;
     polypPerSec = polypPerTick / TICK_SEC;
+    beMax = BE_MAX + storage;
   }
 
   // Classic HarmonySystem.computeHarmony (station terms omitted — no stations in 3D).
@@ -333,8 +330,8 @@ export function initReefScene3D(canvas) {
     }
   }
 
-  // Recompute reef-composition stats after any placement/upgrade.
-  function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); }
+  // Recompute reef-composition stats after any placement/removal.
+  function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); onProgress(); }
 
   function tryUpgrade(group) {
     const e = group.userData.entry;
@@ -355,20 +352,63 @@ export function initReefScene3D(canvas) {
       phase: i * 1.37, bob: 0.4 + (i % 3) * 0.2, bobw: 0.6 + (i % 3) * 0.3,
     };
   }
-  function attachFish(spec, st) { st.g = makeFish(spec); scene.add(st.g); fishes.push(st); }
+  function attachFish(spec, st, placed = false) {
+    st.g = makeFish(spec);
+    st.g.userData = { placed, stateRef: st };   // `placed` fish are player-owned & removable
+    scene.add(st.g); fishes.push(st);
+    return st.g;
+  }
   const fishSaveData = st => ({
     id: st.id, cx: st.cx, cz: st.cz, R: st.R, y: st.y, w: st.w,
     phase: st.phase, bob: st.bob, bobw: st.bobw });
 
+  // ── Removal (Classic: 50% BE refund; 0 for pearl/utility items; no restrictions) ──
+  function removeCoralGroup(group) {
+    const e = group.userData.entry, spec = group.userData.spec;
+    if (!e || !spec) return;
+    const refund = (spec.pearlCost || spec.utility) ? 0 : Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
+    be = Math.min(be + refund, beMax);
+    const ci = corals.indexOf(group); if (ci >= 0) corals.splice(ci, 1);
+    const pi = placedCorals.indexOf(e); if (pi >= 0) placedCorals.splice(pi, 1);
+    const tile = tileAt(e.c, e.r); if (tile) tile.userData.occupied = false;
+    scene.remove(group); disposeGroup(group);
+    recomputeRates(); refreshProgress(); refreshHud(); save();
+    if (refund > 0) flash(rateEl, `+${refund} BE`, '#7fd8b0');
+  }
+  function removeFishGroup(group) {
+    const st = group.userData.stateRef;
+    if (!st || !group.userData.placed) return;   // ambient school isn't removable
+    const spec = FISH_SPECIES[st.id];
+    const refund = spec?.pearlCost ? 0 : Math.floor((FISH_COST[spec?.tier] ?? 0) / 2);
+    be = Math.min(be + refund, beMax);
+    const fi = fishes.indexOf(st); if (fi >= 0) fishes.splice(fi, 1);
+    const pi = placedFish.indexOf(group.userData.saveRef); if (pi >= 0) placedFish.splice(pi, 1);
+    scene.remove(group); disposeGroup(group);
+    refreshProgress(); refreshHud(); save();
+    if (refund > 0) flash(rateEl, `+${refund} BE`, '#7fd8b0');
+  }
+
+  // ── Save slots (two independent reefs) ───────────────────────────────────────
+  let slot = localStorage.getItem(SLOT_KEY) || '1';
+  if (slot !== '1' && slot !== '2') slot = '1';
+  try {
+    // Migrate the pre-slots single save into slot 1 the first time.
+    const legacy = localStorage.getItem(SAVE_KEY_BASE);
+    if (legacy && !localStorage.getItem(slotKey('1'))) {
+      localStorage.setItem(slotKey('1'), legacy);
+      localStorage.removeItem(SAVE_KEY_BASE);
+    }
+  } catch (e) { /* ignore */ }
+
   function save() {
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({
+      localStorage.setItem(slotKey(slot), JSON.stringify({
         be, polyps, pearls, harmony, level,
         corals: placedCorals, fish: placedFish }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
-    try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; }
+    try { return JSON.parse(localStorage.getItem(slotKey(slot))); } catch (e) { return null; }
   }
 
   // ── HUD refs ─────────────────────────────────────────────────────────────────
@@ -388,48 +428,98 @@ export function initReefScene3D(canvas) {
     if (pearlEl) pearlEl.textContent = Math.floor(pearls);
   }
 
-  // ── Palette UI (coral + fish + pearl groups) ─────────────────────────────────
-  const paletteEl = document.getElementById('palette');
-  const coralSpecs = starterCorals();
-  const fishSpecs = starterFish();
-  const pearlCoralSpecs = pearlCorals();
-  const pearlFishSpecs = pearlFish();
-  let selected = { type: 'coral', spec: coralSpecs[0] };
+  // ── Save-slot switcher (two independent reefs) ────────────────────────────────
+  const slotsEl = document.getElementById('slots');
+  if (slotsEl) {
+    ['1', '2'].forEach(s => {
+      const b = document.createElement('button');
+      b.className = 'slot-btn' + (s === slot ? ' active' : '');
+      b.textContent = `Slot ${s}`;
+      b.onclick = () => {
+        if (s === slot) return;
+        save();                              // persist current slot
+        localStorage.setItem(SLOT_KEY, s);
+        location.reload();                   // clean teardown → reload into the new slot
+      };
+      slotsEl.appendChild(b);
+    });
+  }
 
-  const priceOf = (spec, type) =>
-    spec.pearlCost ? { n: spec.pearlCost, unit: '💎' }
-      : { n: (type === 'coral' ? CORAL_COST : FISH_COST)[spec.tier], unit: 'BE' };
+  // ── Palette UI (full Classic catalog, level-gated) ────────────────────────────
+  const paletteEl = document.getElementById('palette');
+  const coralSpecs = allCorals();
+  const fishSpecs = allFish();
+  let selected = { type: 'coral', spec: coralSpecs.find(s => !s.utility && !s.pearlCost) };
+
+  // Cost currency by which field the spec carries: pearls 💎, polyps 🪸, else BE 🫧.
+  function priceOf(spec, type) {
+    if (spec.pearlCost) return { n: spec.pearlCost, unit: '💎' };
+    if (spec.polypCost) return { n: spec.polypCost, unit: '🪸' };
+    return { n: (type === 'coral' ? CORAL_COST : FISH_COST)[spec.tier] ?? 0, unit: '🫧' };
+  }
+
+  const rows = [];   // { btn, need }  for lock refresh
+  function clearSel() { rows.forEach(r => r.btn.classList.remove('sel')); }
 
   function label(text) {
     const l = document.createElement('div');
     l.textContent = text;
     l.style.cssText = 'width:100%;text-align:center;font-size:10px;letter-spacing:3px;'
-      + 'text-transform:uppercase;color:#7fb8d4;margin:2px 0;';
+      + 'text-transform:uppercase;color:#7fb8d4;margin:4px 0 1px;';
     paletteEl.appendChild(l);
   }
   function button(spec, type) {
     const { n, unit } = priceOf(spec, type);
+    const need = spec.unlockLevel ?? 1;
     const btn = document.createElement('button');
     btn.className = 'coral-btn';
     btn.innerHTML = `<span class="dot" style="background:${hex(spec.color)}"></span>`
-      + `${spec.name}<small>${n} ${unit}</small>`;
+      + `${spec.name}<small>${n} ${unit}</small>`
+      + (need > 1 ? `<span class="lv">Lv${need}</span>` : '');
     btn.onclick = () => {
+      if ((spec.unlockLevel ?? 1) > level) { flash(rateEl, `unlocks at Lv ${need}`); return; }
       selected = { type, spec };
-      [...paletteEl.querySelectorAll('.coral-btn')].forEach(b => b.classList.remove('sel'));
-      btn.classList.add('sel');
+      removeBtn.classList.remove('on');
+      clearSel(); btn.classList.add('sel');
     };
     if (spec === selected.spec) btn.classList.add('sel');
+    rows.push({ btn, need });
     paletteEl.appendChild(btn);
   }
+  function refreshLocks() { for (const r of rows) r.btn.classList.toggle('locked', r.need > level); }
+
+  // Remove-mode toggle (Classic ✕ REMOVE): tap a coral or fish to remove it.
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'coral-btn remove-btn';
+  removeBtn.innerHTML = '✕ Remove';
+  removeBtn.onclick = () => {
+    if (selected.type === 'remove') {
+      selected = { type: 'coral', spec: coralSpecs.find(s => !s.utility && !s.pearlCost) };
+      removeBtn.classList.remove('on');
+    } else {
+      selected = { type: 'remove' };
+      removeBtn.classList.add('on');
+    }
+    clearSel();
+  };
+  paletteEl.appendChild(removeBtn);
+
   label('Coral · click a tile');
-  coralSpecs.forEach(s => button(s, 'coral'));
+  coralSpecs.filter(s => !s.utility && !s.pearlCost).forEach(s => button(s, 'coral'));
   label('Fish · click the water');
-  fishSpecs.forEach(s => button(s, 'fish'));
-  if (pearlCoralSpecs.length || pearlFishSpecs.length) {
+  fishSpecs.filter(s => !s.pearlCost).forEach(s => button(s, 'fish'));
+  const pearlC = coralSpecs.filter(s => s.pearlCost);
+  const pearlF = fishSpecs.filter(s => s.pearlCost);
+  if (pearlC.length || pearlF.length) {
     label('Pearl species · 💎');
-    pearlCoralSpecs.forEach(s => button(s, 'coral'));
-    pearlFishSpecs.forEach(s => button(s, 'fish'));
+    pearlC.forEach(s => button(s, 'coral'));
+    pearlF.forEach(s => button(s, 'fish'));
   }
+  const utilC = coralSpecs.filter(s => s.utility);
+  if (utilC.length) { label('Utility coral · 🪸 polyps'); utilC.forEach(s => button(s, 'coral')); }
+
+  onProgress = refreshLocks;   // keep lock states in sync with level-ups
+  refreshLocks();
 
   // ── Pearl shop (basic hook — packs grant pearls, mirroring Classic) ───────────
   const shopOverlay = document.createElement('div');
@@ -471,7 +561,10 @@ export function initReefScene3D(canvas) {
     });
     (saved.fish ?? []).forEach(d => {
       const spec = FISH_SPECIES[d.id];
-      if (spec) { const st = { ...d }; attachFish(spec, st); placedFish.push(fishSaveData(st)); }
+      if (spec) {
+        const st = { ...d }, g = attachFish(spec, st, true);
+        const rec = fishSaveData(st); placedFish.push(rec); g.userData.saveRef = rec;
+      }
     });
   }
   // Ambient school for baseline life (not saved, not counted toward progression)
@@ -497,25 +590,39 @@ export function initReefScene3D(canvas) {
     if (selected.type === 'coral' && t && !t.userData.occupied) { t.material = hoverMat; hovered = t; }
     else { if (hovered) hovered.material = sandMat; hovered = null; }
   });
-  // Deduct a placement cost (pearls for pearl species, else BE). Returns false if unaffordable.
+  // Deduct a placement cost by currency (pearls / polyps / BE). False if unaffordable.
   function charge(spec, costTable) {
     if (spec.pearlCost) {
       if (pearls < spec.pearlCost) { flash(rateEl, 'not enough 💎'); return false; }
       pearls -= spec.pearlCost;
+    } else if (spec.polypCost) {
+      if (polyps < spec.polypCost) { flash(rateEl, 'not enough 🪸'); return false; }
+      polyps -= spec.polypCost;
     } else {
-      const cost = costTable[spec.tier];
-      if (be < cost) { flash(rateEl, 'not enough BE'); return false; }
+      const cost = costTable[spec.tier] ?? 0;
+      if (be < cost) { flash(rateEl, 'not enough 🫧'); return false; }
       be -= cost;
     }
     return true;
   }
+  // Resolve a raycast hit to the owning coral / fish group (or null).
+  const ancestorWith = (obj, key) => { let g = obj; while (g && !g.userData[key]) g = g.parent; return g; };
+
   renderer.domElement.addEventListener('pointerdown', ev => {
     setPtr(ev);
+
+    if (selected.type === 'remove') {
+      const cHit = ray.intersectObjects(corals, true)[0]?.object;
+      if (cHit) { const g = ancestorWith(cHit, 'entry'); if (g) removeCoralGroup(g); return; }
+      const fHit = ray.intersectObjects(fishes.map(f => f.g), true)[0]?.object;
+      if (fHit) { const g = ancestorWith(fHit, 'stateRef'); if (g) removeFishGroup(g); return; }
+      return;
+    }
+
     // Click a placed coral to upgrade it (spends polyps) — takes priority over placement.
     const coralHit = ray.intersectObjects(corals, true)[0]?.object;
     if (coralHit) {
-      let g = coralHit;
-      while (g && !g.userData.entry) g = g.parent;
+      const g = ancestorWith(coralHit, 'entry');
       if (g) { tryUpgrade(g); return; }
     }
     if (selected.type === 'coral') {
@@ -529,7 +636,8 @@ export function initReefScene3D(canvas) {
       if (!hit) return;
       if (!charge(selected.spec, FISH_COST)) return;
       const st = fishState(selected.spec, hit.point.x, hit.point.z, fishes.length);
-      attachFish(selected.spec, st); placedFish.push(fishSaveData(st));
+      const g = attachFish(selected.spec, st, true);
+      const rec = fishSaveData(st); placedFish.push(rec); g.userData.saveRef = rec;
       refreshProgress(); refreshHud(); save();
     }
   });
@@ -549,7 +657,7 @@ export function initReefScene3D(canvas) {
     const dt = clock.getDelta();
     const t = clock.getElapsedTime();
 
-    be = Math.min(be + incomePerSec * dt, BE_MAX);
+    be = Math.min(be + incomePerSec * dt, beMax);
     polyps = Math.min(polyps + polypPerSec * dt, POLYP_MAX);
     refreshHud();
 
@@ -612,11 +720,18 @@ export function initReefScene3D(canvas) {
   return { stop() { running = false; clearInterval(saveTimer); save(); } };
 }
 
-function flash(el, msg) {
+function flash(el, msg, color = '#ff8a80') {
   if (!el) return;
   const prev = el.textContent;
-  el.textContent = msg; el.style.color = '#ff8a80';
+  el.textContent = msg; el.style.color = color;
   setTimeout(() => { el.textContent = prev; el.style.color = ''; }, 900);
+}
+
+function disposeGroup(g) {
+  g.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());
+  });
 }
 
 function buildVent(scene, pos) {
