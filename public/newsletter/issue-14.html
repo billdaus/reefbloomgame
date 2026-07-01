@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 14 — A Reef With Depth. We promised an iOS app and, instead of submitting it, built a whole third dimension: an experimental 3D mode you reach from a new Play 3D button, sitting quietly beside the Classic game that isn't going anywhere." />
+  <title>A Reef With Depth — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 14 — depth: deep ocean blues with a cool cyan light and one warm ember from the vent */
+    :root {
+      --nl-bg-1: #10314f;
+      --nl-bg-2: #0b2338;
+      --nl-bg-3: #06182a;
+      --nl-bg-4: #030d18;
+      --theme-glow:   rgba(120, 200, 255, 0.15);
+      --theme-accent: #7fd8ff;
+      --theme-rule:   rgba(120, 200, 255, 0.55);
+    }
+    /* Cool light from above, and a single warm glow rising from a vent below */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 20% 14%, rgba(120,200,255,0.09) 0, transparent 7%),
+        radial-gradient(circle at 82% 20%, rgba(160,224,255,0.06) 0, transparent 6%),
+        radial-gradient(circle at 74% 82%, rgba(255,120,60,0.07) 0, transparent 6%),
+        radial-gradient(circle at 32% 66%, rgba(120,200,255,0.05) 0, transparent 5%);
+      z-index: 0;
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/issue-12.5.html">← Special: Anything But the App Store</a>
+
+      <div class="byline">
+        <span>Issue 14</span>
+        <span>Week of June 29, 2026</span>
+        <span>Editorial</span>
+      </div>
+      <h1 class="issue-title">A Reef With Depth</h1>
+      <p class="issue-deck">Three weeks ago this dispatch confessed, in an issue actually titled <em>Anything But the App Store</em>, that we would apparently do anything rather than submit the iOS app we keep promising. Consider this issue the evidence for the prosecution. We have not submitted the app. We have, instead, built a third dimension.</p>
+
+      <p class="lede">There is a new button on the start screen. The old one, the one that has said <em>Play Now</em> since the beginning, now says <strong>Play Classic</strong> — because it turns out we needed the word. Beside it sits a second button, <strong>Play 3D</strong>, and it opens something the reef has never been before: a seafloor you can orbit around, tiles you click to plant real coral on, and a Bubble-Essence meter ticking up in the corner exactly as it always has — only now the coral casts shadows and the camera can swing behind it. It is early. It is honest about being early. But it is real, and it is live, and you can stand in it today.</p>
+
+      <h3>Two games, one of them not going anywhere</h3>
+
+      <p>The first thing to say, loudly, is that <strong>Classic is untouched</strong>. Not deprecated, not "legacy," not quietly starved of attention while the shiny thing gets fed. The 2D reef you have been growing — every coral, every fish, every save in every slot — is exactly where it was, plays exactly as it did, and got its own small gift this week besides: a hydrothermal vent you can place in the Deep Twilight, a black-smoker chimney that erupts on a slow cycle and then goes dark, out of sync with every other vent you plant. Classic is now labelled <em>Alpha</em>, because after a year of this it has earned the promotion. It is the game. 3D is the experiment running alongside it.</p>
+
+      <p>We were careful about the seam between them. The two modes share the game's actual numbers — the same starting Bubble Essence, the same coral costs by tier, the same income each species pays out — but the 3D reef ships as its own thing, loaded only when you ask for it. A player who never touches <em>Play 3D</em> never downloads a byte of the 3D engine. Nothing about the new dimension makes the old one heavier.</p>
+
+      <blockquote>We did not want to replace the reef. We wanted to see whether it could be walked around. Those are very different promises, and only one of them risks the thing people already love.</blockquote>
+
+      <h3>What is actually in there</h3>
+
+      <p>Not the whole game — let us be plain, because this dispatch does not do hype. What is in there is a vertical slice: a grid of seafloor tiles you can hover and click, a small palette of real coral species drawn as three-dimensional shapes that bloom into place with a little overshoot, a live economy that spends and earns just like home, and — because it is where this all started — the same hydrothermal vent from Classic, standing off in the dark as scenery, glowing and erupting on its cycle. There are not yet fish. There is not yet a menu, a biome to travel to, or your save loaded from the cloud. Those are the next dimensions to add, one at a time, and we would rather show you an honest small thing that works than a grand mockup that doesn't.</p>
+
+      <div class="spotlight">
+        <div class="spotlight-head">
+          <div class="spotlight-swatch" style="background: radial-gradient(circle at 35% 35%, #aee7ff 0%, #1d6fa8 100%);"></div>
+          <div class="spotlight-meta">
+            <div class="spotlight-eyebrow">Version Spotlight</div>
+            <div class="spotlight-name">3Dev 1.1</div>
+            <div class="spotlight-sci">a parallel version line · three.js</div>
+            <span class="spotlight-tier tier-mythic">EXPERIMENTAL</span>
+          </div>
+        </div>
+        <p>The 3D mode carries its own version badge in its own corner: <strong>3Dev</strong>, currently 1.1, ticking up independently of Classic's <em>Alpha</em>. Two badges, two tracks, one reef underneath. We wanted the experimental thing to be clearly labelled as experimental — no one should wander in expecting the finished game, and no one leaving should think Classic had changed under their feet.</p>
+        <p>It runs on three.js, a genuine 3D engine, rather than a clever trick of shading applied to the flat art. That was the fork in the road, and we took the expensive branch: real geometry, real lights, real fog, a real camera you control. It is more work by an order of magnitude. It is also the only version of "3D" that could ever grow into the whole reef instead of a single pretty screenshot.</p>
+      </div>
+
+      <h3>The app, the app, the app</h3>
+
+      <p>Yes. We know. Somewhere in issue eleven we promised a real iOS app, and issue twelve-and-a-half was a full page of contrition about how we keep shipping everything <em>except</em> that app. And here we are again, having spent the week teaching the reef to have depth instead of standing in the queue at the App Store. There is no defence, only the same quiet truth that has run through this dispatch from the start: we build the thing we cannot stop thinking about, and this week it was a coral you could walk around. The app is still coming. So, apparently, is a reef in three dimensions. Open <em>Play 3D</em>, plant something, and swing the camera around behind it — then tell us we spent the week badly.</p>
+
+      <p class="signoff">— The Reef Bloom team</p>
+
+      <a class="back-link" href="/newsletter/" style="margin-top:32px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
