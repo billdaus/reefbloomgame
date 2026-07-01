@@ -9,17 +9,32 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
-  CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, BE_PER_TICK, START_BE,
+  CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, BE_PER_TICK,
+  START_BE, START_POLYPS, START_PEARLS, START_HARMONY, START_LEVEL,
+  BE_MAX, POLYP_MAX, POLYP_BE_BONUS, POLYP_PER_CORAL_TICK, CORAL_MAX_LEVEL, TICK_MS,
 } from '../constants.js';
 
 const GRID = 7;
 const TILE = 2;
 const HALF = (GRID * TILE) / 2;
 const VENT_PERIOD = 5.2;
-const INCOME_SCALE = 0.5;
+const TICK_SEC = TICK_MS / 1000;        // BE/polyp tick cadence in seconds
 const SAVE_KEY = 'reefbloom_3d_save_v1';
 
 const BIOLUM = ['auroraCoral', 'twilightBrain', 'phantomPolyp', 'wispCoral', 'lanternCoral'];
+
+// Milestone requirements to REACH each level [coralCount, fishCount, harmony],
+// mirroring Classic's LevelSystem. Index === level being reached (1 = start).
+const MAX_LEVEL = 15;
+const LEVEL_REQS = [
+  null, null,
+  [3, 0, 0], [6, 2, 0], [12, 4, 60], [18, 7, 75], [24, 10, 78], [30, 13, 80],
+  [38, 17, 82], [46, 21, 85], [55, 25, 87], [64, 29, 89], [74, 34, 91],
+  [84, 39, 93], [95, 45, 95], [100, 50, 98],
+];
+
+// Polyps FROM level L → L+1 (Classic CoralUpgrade.upgradeCost = 4 * L).
+const upgradeCost = (level) => 4 * level;
 
 function ventIntensity(p) {
   if (p < 0.12) return p / 0.12;
@@ -54,6 +69,18 @@ function starterFish() {
     .filter(s => (!s.biome || s.biome === 'coral' || s.biome === 'both')
       && s.layer && s.color != null && FISH_COST[s.tier] != null && !s.pearlCost)
     .slice(0, 6);
+}
+const inCoral = (b) => !b || b === 'coral' || b === 'both'
+  || (Array.isArray(b) && b.includes('coral'));
+function pearlCorals() {
+  return Object.values(CORAL_SPECIES)
+    .filter(s => s.pearlCost && !s.utility && s.color != null && inCoral(s.biome))
+    .slice(0, 3);
+}
+function pearlFish() {
+  return Object.values(FISH_SPECIES)
+    .filter(s => s.pearlCost && s.layer && s.color != null && inCoral(s.biome))
+    .slice(0, 3);
 }
 
 // ── Coral geometry — a distinct silhouette per species family ──────────────────
@@ -238,18 +265,88 @@ export function initReefScene3D(canvas) {
   const tileAt = (c, r) => tiles.find(t => t.userData.c === c && t.userData.r === r);
 
   // ── State + persistence ──────────────────────────────────────────────────────
-  const corals = [];          // { group, seed, grow }
+  const corals = [];          // THREE groups; userData { grow, seed, spec, entry, levelScale }
   const fishes = [];          // motion state incl. .g mesh
-  const placedCorals = [];    // { c, r, id }   (saved)
+  const placedCorals = [];    // { c, r, id, level }   (saved)
   const placedFish = [];      // { id, cx, cz, R, y, w, phase, bob, bobw } (saved)
-  let be = START_BE, incomePerSec = 0;
+  let be = START_BE, polyps = START_POLYPS, pearls = START_PEARLS;
+  let harmony = START_HARMONY, level = START_LEVEL;
+  let incomePerSec = 0, polypPerSec = 0;
 
-  function addCoral(spec, tile) {
+  function levelScaleFor(lvl) { return 1 + (lvl - 1) * 0.14; }
+
+  function addCoral(spec, tile, lvl = 1) {
     tile.userData.occupied = true;
     const group = makeCoral(spec);
     group.position.set(tile.position.x, 0.1, tile.position.z);
+    const entry = { c: tile.userData.c, r: tile.userData.r, id: spec.id, level: lvl };
+    group.userData.spec = spec;
+    group.userData.entry = entry;
+    group.userData.levelScale = levelScaleFor(lvl);
     scene.add(group); corals.push(group);
-    incomePerSec += (BE_PER_TICK[spec.tier] ?? 1) * INCOME_SCALE;
+    placedCorals.push(entry);
+    return group;
+  }
+
+  // BE/polyp rates, recomputed whenever a coral is placed or upgraded.
+  // Classic: BE/tick = base × (1 + (level-1)·POLYP_BE_BONUS); polyps/tick = 0.2 × level.
+  function recomputeRates() {
+    let bePerTick = 0, polypPerTick = 0;
+    for (const e of placedCorals) {
+      const tier = CORAL_SPECIES[e.id]?.tier;
+      bePerTick += (BE_PER_TICK[tier] ?? 1) * (1 + (e.level - 1) * POLYP_BE_BONUS);
+      polypPerTick += POLYP_PER_CORAL_TICK * e.level;
+    }
+    incomePerSec = bePerTick / TICK_SEC;
+    polypPerSec = polypPerTick / TICK_SEC;
+  }
+
+  // Classic HarmonySystem.computeHarmony (station terms omitted — no stations in 3D).
+  function computeHarmony() {
+    const coralCount = placedCorals.length;
+    if (coralCount === 0) return Math.max(harmony, 20);
+    const coralTypes = new Set(placedCorals.map(c => c.id)).size;
+    const fishCount = placedFish.length;
+    const fishTypes = new Set(placedFish.map(f => f.id)).size;
+    let A = 0, B = 0;
+    for (const f of placedFish) {
+      const ly = FISH_SPECIES[f.id]?.layer;
+      if (ly === 'A') A++; else if (ly === 'B') B++;
+    }
+    let score = Math.min(coralTypes * 8, 40);
+    score += Math.min(fishCount * 5, 20) + Math.min(fishTypes * 5, 10);
+    score += (A > 0 && B > 0) ? 15 : (A > 0 || B > 0) ? 7 : 0;
+    if (fishCount > 0) {
+      score += Math.round((Math.min(fishCount, coralCount) / Math.max(fishCount, coralCount)) * 15);
+    }
+    score = Math.max(0, score);
+    return Math.min(Math.max(score, harmony * 0.9), 100);   // ratchet, cap 100
+  }
+
+  function checkLevelUp() {
+    while (level < MAX_LEVEL) {
+      const req = LEVEL_REQS[level + 1];
+      if (!req) break;
+      const [c, f, h] = req;
+      if (placedCorals.length >= c && placedFish.length >= f && harmony >= h) level++;
+      else break;
+    }
+  }
+
+  // Recompute reef-composition stats after any placement/upgrade.
+  function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); }
+
+  function tryUpgrade(group) {
+    const e = group.userData.entry;
+    if (!e) return;
+    if (e.level >= CORAL_MAX_LEVEL) { flash(rateEl, 'max level'); return; }
+    const cost = upgradeCost(e.level);
+    if (polyps < cost) { flash(rateEl, `need ${cost} 🌱`); return; }
+    polyps -= cost;
+    e.level++;
+    group.userData.levelScale = levelScaleFor(e.level);
+    group.userData.grow = Math.min(group.userData.grow, 0.82);   // small re-grow ease
+    recomputeRates(); refreshHud(); save();   // upgrade affects rates only, not harmony/level inputs
   }
   function fishState(spec, cx, cz, i) {
     return {
@@ -266,20 +363,42 @@ export function initReefScene3D(canvas) {
   function save() {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        be, corals: placedCorals, fish: placedFish }));
+        be, polyps, pearls, harmony, level,
+        corals: placedCorals, fish: placedFish }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
     try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; }
   }
 
-  // ── Palette UI (coral + fish groups) ─────────────────────────────────────────
+  // ── HUD refs ─────────────────────────────────────────────────────────────────
   const beEl = document.getElementById('be-count');
   const rateEl = document.getElementById('be-rate');
+  const hmEl = document.getElementById('hm-count');
+  const lvlEl = document.getElementById('lvl-count');
+  const polypEl = document.getElementById('polyp-count');
+  const pearlEl = document.getElementById('pearl-count');
+
+  function refreshHud() {
+    if (beEl) beEl.textContent = Math.floor(be);
+    if (rateEl) rateEl.textContent = `+${incomePerSec.toFixed(1)}/s`;
+    if (hmEl) hmEl.textContent = Math.round(harmony);
+    if (lvlEl) lvlEl.textContent = level;
+    if (polypEl) polypEl.textContent = Math.floor(polyps);
+    if (pearlEl) pearlEl.textContent = Math.floor(pearls);
+  }
+
+  // ── Palette UI (coral + fish + pearl groups) ─────────────────────────────────
   const paletteEl = document.getElementById('palette');
   const coralSpecs = starterCorals();
   const fishSpecs = starterFish();
+  const pearlCoralSpecs = pearlCorals();
+  const pearlFishSpecs = pearlFish();
   let selected = { type: 'coral', spec: coralSpecs[0] };
+
+  const priceOf = (spec, type) =>
+    spec.pearlCost ? { n: spec.pearlCost, unit: '💎' }
+      : { n: (type === 'coral' ? CORAL_COST : FISH_COST)[spec.tier], unit: 'BE' };
 
   function label(text) {
     const l = document.createElement('div');
@@ -288,11 +407,12 @@ export function initReefScene3D(canvas) {
       + 'text-transform:uppercase;color:#7fb8d4;margin:2px 0;';
     paletteEl.appendChild(l);
   }
-  function button(spec, type, cost) {
+  function button(spec, type) {
+    const { n, unit } = priceOf(spec, type);
     const btn = document.createElement('button');
     btn.className = 'coral-btn';
     btn.innerHTML = `<span class="dot" style="background:${hex(spec.color)}"></span>`
-      + `${spec.name}<small>${cost} BE</small>`;
+      + `${spec.name}<small>${n} ${unit}</small>`;
     btn.onclick = () => {
       selected = { type, spec };
       [...paletteEl.querySelectorAll('.coral-btn')].forEach(b => b.classList.remove('sel'));
@@ -302,34 +422,64 @@ export function initReefScene3D(canvas) {
     paletteEl.appendChild(btn);
   }
   label('Coral · click a tile');
-  coralSpecs.forEach(s => button(s, 'coral', CORAL_COST[s.tier]));
+  coralSpecs.forEach(s => button(s, 'coral'));
   label('Fish · click the water');
-  fishSpecs.forEach(s => button(s, 'fish', FISH_COST[s.tier]));
-
-  function refreshHud() {
-    if (beEl) beEl.textContent = Math.floor(be);
-    if (rateEl) rateEl.textContent = `+${incomePerSec.toFixed(1)}/s`;
+  fishSpecs.forEach(s => button(s, 'fish'));
+  if (pearlCoralSpecs.length || pearlFishSpecs.length) {
+    label('Pearl species · 💎');
+    pearlCoralSpecs.forEach(s => button(s, 'coral'));
+    pearlFishSpecs.forEach(s => button(s, 'fish'));
   }
+
+  // ── Pearl shop (basic hook — packs grant pearls, mirroring Classic) ───────────
+  const shopOverlay = document.createElement('div');
+  shopOverlay.id = 'shop-overlay';
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.innerHTML = '<div style="font-size:16px;font-weight:700;">💎 Pearl Shop</div>'
+    + '<div style="font-size:11px;color:#9fc4dc;margin:4px 0 12px;">'
+    + 'Support the reef — each pack grants pearls.</div>';
+  [{ pearls: 10, price: '$0.99' }, { pearls: 35, price: '$2.99' }, { pearls: 60, price: '$4.99' }]
+    .forEach(p => {
+      const row = document.createElement('button');
+      row.className = 'shop-pack';
+      row.innerHTML = `<span>💎 ${p.pearls} pearls</span><span>${p.price}</span>`;
+      row.onclick = () => { pearls += p.pearls; refreshHud(); save(); };
+      panel.appendChild(row);
+    });
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'shop-close'; closeBtn.textContent = 'Close';
+  closeBtn.onclick = () => { shopOverlay.style.display = 'none'; };
+  panel.appendChild(closeBtn);
+  shopOverlay.appendChild(panel);
+  shopOverlay.onclick = e => { if (e.target === shopOverlay) shopOverlay.style.display = 'none'; };
+  document.body.appendChild(shopOverlay);
+  document.getElementById('shop-btn')?.addEventListener('click',
+    () => { shopOverlay.style.display = 'flex'; });
 
   // ── Restore saved reef ───────────────────────────────────────────────────────
   const saved = load();
   if (saved) {
     be = saved.be ?? START_BE;
-    (saved.corals ?? []).forEach(({ c, r, id }) => {
+    polyps = saved.polyps ?? START_POLYPS;
+    pearls = saved.pearls ?? START_PEARLS;
+    harmony = saved.harmony ?? START_HARMONY;
+    level = saved.level ?? START_LEVEL;
+    (saved.corals ?? []).forEach(({ c, r, id, level: lv }) => {
       const spec = CORAL_SPECIES[id], tile = tileAt(c, r);
-      if (spec && tile && !tile.userData.occupied) { addCoral(spec, tile); placedCorals.push({ c, r, id }); }
+      if (spec && tile && !tile.userData.occupied) addCoral(spec, tile, lv ?? 1);
     });
     (saved.fish ?? []).forEach(d => {
       const spec = FISH_SPECIES[d.id];
       if (spec) { const st = { ...d }; attachFish(spec, st); placedFish.push(fishSaveData(st)); }
     });
   }
-  // Ambient school for baseline life (not saved)
+  // Ambient school for baseline life (not saved, not counted toward progression)
   for (let i = 0; i < 8; i++) {
     const spec = fishSpecs[i % fishSpecs.length];
     attachFish(spec, fishState(spec, (i % 3 - 1) * 1.5, (i % 2 ? 1 : -1) * 1.2, i + 20));
   }
-  refreshHud();
+  recomputeRates(); refreshProgress(); refreshHud();
 
   // ── Pointer picking ──────────────────────────────────────────────────────────
   const ray = new THREE.Raycaster();
@@ -347,25 +497,40 @@ export function initReefScene3D(canvas) {
     if (selected.type === 'coral' && t && !t.userData.occupied) { t.material = hoverMat; hovered = t; }
     else { if (hovered) hovered.material = sandMat; hovered = null; }
   });
+  // Deduct a placement cost (pearls for pearl species, else BE). Returns false if unaffordable.
+  function charge(spec, costTable) {
+    if (spec.pearlCost) {
+      if (pearls < spec.pearlCost) { flash(rateEl, 'not enough 💎'); return false; }
+      pearls -= spec.pearlCost;
+    } else {
+      const cost = costTable[spec.tier];
+      if (be < cost) { flash(rateEl, 'not enough BE'); return false; }
+      be -= cost;
+    }
+    return true;
+  }
   renderer.domElement.addEventListener('pointerdown', ev => {
     setPtr(ev);
+    // Click a placed coral to upgrade it (spends polyps) — takes priority over placement.
+    const coralHit = ray.intersectObjects(corals, true)[0]?.object;
+    if (coralHit) {
+      let g = coralHit;
+      while (g && !g.userData.entry) g = g.parent;
+      if (g) { tryUpgrade(g); return; }
+    }
     if (selected.type === 'coral') {
       const t = ray.intersectObjects(tiles, false)[0]?.object;
       if (!t || t.userData.occupied) return;
-      const cost = CORAL_COST[selected.spec.tier];
-      if (be < cost) { flash(rateEl, 'not enough BE'); return; }
-      be -= cost; addCoral(selected.spec, t);
-      placedCorals.push({ c: t.userData.c, r: t.userData.r, id: selected.spec.id });
-      refreshHud(); save();
+      if (!charge(selected.spec, CORAL_COST)) return;
+      addCoral(selected.spec, t);
+      recomputeRates(); refreshProgress(); refreshHud(); save();
     } else {
       const hit = ray.intersectObject(floor, false)[0];
       if (!hit) return;
-      const cost = FISH_COST[selected.spec.tier];
-      if (be < cost) { flash(rateEl, 'not enough BE'); return; }
-      be -= cost;
+      if (!charge(selected.spec, FISH_COST)) return;
       const st = fishState(selected.spec, hit.point.x, hit.point.z, fishes.length);
       attachFish(selected.spec, st); placedFish.push(fishSaveData(st));
-      refreshHud(); save();
+      refreshProgress(); refreshHud(); save();
     }
   });
 
@@ -384,13 +549,18 @@ export function initReefScene3D(canvas) {
     const dt = clock.getDelta();
     const t = clock.getElapsedTime();
 
-    be += incomePerSec * dt; refreshHud();
+    be = Math.min(be + incomePerSec * dt, BE_MAX);
+    polyps = Math.min(polyps + polypPerSec * dt, POLYP_MAX);
+    refreshHud();
 
     for (const g of corals) {
+      const ls = g.userData.levelScale ?? 1;
       if (g.userData.grow < 1) {
         g.userData.grow = Math.min(1, g.userData.grow + dt * 2.2);
         const s = g.userData.grow;
-        g.scale.setScalar(s * (1 + 0.12 * (1 - s)));
+        g.scale.setScalar(s * ls * (1 + 0.12 * (1 - s)));
+      } else {
+        g.scale.setScalar(ls);   // hold at level-scaled size (updates on upgrade)
       }
       g.rotation.z = Math.sin(t * 0.8 + g.userData.seed) * 0.04;
     }

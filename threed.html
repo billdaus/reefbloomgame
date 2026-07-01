@@ -16,13 +16,37 @@
     }
     #hud {
       position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 3;
-      display: flex; gap: 16px; align-items: baseline;
+      display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap;
+      justify-content: center; max-width: 94vw;
       background: rgba(0,0,0,0.38); padding: 8px 16px; border-radius: 12px;
       color: #eaf6ff;
     }
+    #hud .stat { font-size: 15px; display: inline-flex; align-items: baseline; gap: 4px; }
     #hud .be { font-size: 20px; font-weight: 700; }
     #hud .be::before { content: "💧 "; }
-    #hud .rate { font-size: 13px; color: #7fd8b0; }
+    #hud .rate { font-size: 12px; color: #7fd8b0; margin-left: 4px; }
+    #hud .shop { cursor: pointer; }
+    #hud .shop:hover { color: #bfe6ff; }
+
+    #shop-overlay {
+      position: fixed; inset: 0; z-index: 5; display: none;
+      align-items: center; justify-content: center; background: rgba(2,12,20,0.6);
+    }
+    #shop-overlay .panel {
+      background: #0d3550; border: 1px solid #2f6f92; border-radius: 14px;
+      padding: 20px 22px; min-width: 232px; color: #eaf6ff;
+    }
+    .shop-pack {
+      display: flex; justify-content: space-between; gap: 24px; width: 100%;
+      background: rgba(20,80,120,0.5); border: 1px solid #2f6f92; color: #eaf6ff;
+      border-radius: 8px; padding: 9px 12px; margin: 5px 0; cursor: pointer;
+      font: inherit; font-size: 13px;
+    }
+    .shop-pack:hover { background: rgba(30,110,150,0.75); }
+    .shop-close {
+      width: 100%; margin-top: 8px; background: none; border: none;
+      color: #9fc4dc; cursor: pointer; font: inherit; font-size: 12px; padding: 6px;
+    }
 
     #palette {
       position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 3;
@@ -53,13 +77,16 @@
 <body>
   <a id="back" href="/">← Classic</a>
   <div id="hud">
-    <span class="be" id="be-count">0</span>
-    <span class="rate" id="be-rate">+0.0/s</span>
+    <span class="stat be"><span id="be-count">0</span><small class="rate" id="be-rate">+0.0/s</small></span>
+    <span class="stat" title="Harmony">⚖ <span id="hm-count">50</span></span>
+    <span class="stat" title="Level">⭐ <span id="lvl-count">1</span></span>
+    <span class="stat" title="Polyps · click a coral to upgrade it">🌱 <span id="polyp-count">0</span></span>
+    <span class="stat shop" id="shop-btn" title="Pearls · tap for the shop">💎 <span id="pearl-count">0</span></span>
   </div>
   <canvas id="app3d"></canvas>
   <div id="palette"></div>
-  <div id="hint">Pick a coral, click a tile to plant it. Drag to orbit · scroll to zoom.</div>
-  <div id="version-badge-3d">3Dev 1.2</div>
+  <div id="hint">Plant coral on a tile · click a coral to upgrade it · drag to orbit · scroll to zoom.</div>
+  <div id="version-badge-3d">3Dev 1.3</div>
   <script type="module">
     import { initReefScene3D } from './src/3d/ReefScene3D.js';
     initReefScene3D(document.getElementById('app3d'));
