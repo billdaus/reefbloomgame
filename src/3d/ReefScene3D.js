@@ -15,7 +15,9 @@ import {
   START_BE, START_POLYPS, START_PEARLS, START_HARMONY, START_LEVEL,
   BE_MAX, POLYP_MAX, POLYP_BE_BONUS, POLYP_PER_CORAL_TICK, CORAL_MAX_LEVEL, TICK_MS,
   BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL,
+  BIOLUM_SPECIES, DAY_HIDER_SPECIES,
 } from '../constants.js';
+import { LINES as BUBBLES_LINES } from '../entities/bubblesLines.js';
 
 const TILE = 2;
 const VENT_PERIOD = 5.2;
@@ -50,7 +52,9 @@ function matchesBiome(spec, biomeId) {
 const biomeIcons = (spec) =>
   Object.keys(ZONES).filter(id => matchesBiome(spec, id)).map(id => BIOMES[id].icon).join('');
 
-const BIOLUM = ['auroraCoral', 'twilightBrain', 'phantomPolyp', 'wispCoral', 'lanternCoral'];
+// Classic's day/night: 4-minute day, timeOfDay 0→1 (midnight 0, sunrise 0.25,
+// noon 0.5, sunset 0.75); night factor eases toward clamp(-elevation·1.6, 0, 1).
+const DAY_MS = 240000;
 
 // Milestone requirements to REACH each level [coralCount, fishCount, harmony],
 // mirroring Classic's LevelSystem. Index === level being reached (1 = start).
@@ -383,12 +387,12 @@ function shapeOf(spec) {
 // every placement has its own silhouette instead of six identical clones.
 const BODY = {
   branch(g, { mat, tipMat }, rnd) {
-    const N = 7 + Math.floor(rnd() * 3);
+    const N = 8 + Math.floor(rnd() * 4);
     for (let i = 0; i < N; i++) {
       const a = (i / N) * Math.PI * 2 + rnd() * 0.6;
       const lean = 0.18 + rnd() * 0.35;
       const h1 = 0.7 + rnd() * 0.9;
-      const r0 = 0.05 + rnd() * 0.025;
+      const r0 = 0.042 + rnd() * 0.022;
       // Lower segment: tapered, leaning outward from the base.
       const arm = new THREE.Group();
       arm.position.set(Math.cos(a) * 0.18, 0.2, Math.sin(a) * 0.18);
@@ -418,9 +422,10 @@ const BODY = {
       }
     }
   },
-  brain(g, { mat, darkMat }, rnd) {
-    // Lumpy hemisphere: displace vertices with layered sine noise.
-    const geo = new THREE.SphereGeometry(0.62, 26, 18, 0, Math.PI * 2, 0, Math.PI * 0.55);
+  brain(g, { mat }, rnd) {
+    // Lumpy hemisphere: layered sine-noise displacement; the meandering
+    // ridge-and-valley detail comes from the skin's pattern-aligned bump map.
+    const geo = new THREE.SphereGeometry(0.62, 34, 24, 0, Math.PI * 2, 0, Math.PI * 0.55);
     const pos = geo.attributes.position;
     const o1 = rnd() * 10, o2 = rnd() * 10;
     const v = new THREE.Vector3();
@@ -428,21 +433,12 @@ const BODY = {
       v.fromBufferAttribute(pos, i);
       const n = Math.sin(v.x * 9 + o1) * Math.cos(v.z * 8 + o2) * 0.5
         + Math.sin(v.x * 17 + v.z * 15 + o1) * 0.5;
-      v.multiplyScalar(1 + n * 0.09);
+      v.multiplyScalar(1 + n * 0.1);
       pos.setXYZ(i, v.x, v.y, v.z);
     }
     geo.computeVertexNormals();
     const dome = new THREE.Mesh(geo, mat);
     dome.position.y = 0.18; dome.scale.y = 0.72; g.add(dome);
-    // Meandering darker grooves hugging the dome.
-    for (let i = 0; i < 6; i++) {
-      const groove = new THREE.Mesh(
-        new THREE.TorusGeometry(0.34 + rnd() * 0.2, 0.035, 6, 22, 2 + rnd() * 3), darkMat);
-      groove.position.y = 0.2 + rnd() * 0.16;
-      groove.rotation.set(Math.PI / 2 + (rnd() - 0.5) * 0.7, rnd() * Math.PI * 2, rnd() * 0.6);
-      groove.scale.y = 0.8;
-      g.add(groove);
-    }
   },
   plate(g, { mat, tipMat }, rnd) {
     // A stem holding two or three broad, thin, tilted tables.
@@ -503,61 +499,184 @@ function makeCoral(spec) {
   const g = new THREE.Group();
   const rnd = mulberry32(spec.id.length * 977 + coralCounter++ * 7919);
   // Slightly desaturated, rough, and barely emissive — real corals aren't neon;
-  // bioluminescent species genuinely glow.
-  const glow = BIOLUM.includes(spec.id) ? 0.55 : 0.04;
+  // bioluminescent species genuinely glow (and brighter after dark).
+  const biolum = BIOLUM_SPECIES.has(spec.id);
+  const glow = biolum ? 0.55 : 0.04;
   const color = new THREE.Color(spec.color).lerp(new THREE.Color(0x8a8a80), 0.18);
   // The individual's skin carries the color; white base keeps the pattern true.
+  // The same skin drives the bump map, so ridges, rings, and pores that are
+  // painted dark also sit physically lower — pattern-aligned relief.
+  const tex = coralTexture(spec, coralCounter % TEX_VARIANTS);
   const mat = new THREE.MeshStandardMaterial({
-    color: 0xffffff, map: coralTexture(spec, coralCounter % TEX_VARIANTS), roughness: 0.75,
+    color: 0xffffff, map: tex, roughness: 0.8,
     emissive: color, emissiveIntensity: glow,
-    bumpMap: bumpTex, bumpScale: 0.015 });
+    bumpMap: tex, bumpScale: 0.045 });
   const tipMat = new THREE.MeshStandardMaterial({
     color: color.clone().lerp(new THREE.Color(0xfff6e8), 0.45), roughness: 0.6,
     emissive: color, emissiveIntensity: glow + 0.06 });
-  const darkMat = new THREE.MeshStandardMaterial({
-    color: color.clone().multiplyScalar(0.45), roughness: 0.85 });
   const base = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0), coralRock);
   base.scale.set(1, 0.35, 1); base.position.y = 0.08;
   base.rotation.y = rnd() * Math.PI; g.add(base);
-  (BODY[shapeOf(spec)] || BODY.brain)(g, { mat, tipMat, darkMat }, rnd);
+  // Per-individual proportions: the body grows inside its own jittered frame,
+  // so two corals of one species differ in girth and height, not just pattern.
+  const inner = new THREE.Group();
+  inner.scale.set(0.82 + rnd() * 0.36, 0.78 + rnd() * 0.5, 0.82 + rnd() * 0.36);
+  g.add(inner);
+  (BODY[shapeOf(spec)] || BODY.brain)(inner, { mat, tipMat }, rnd);
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   g.rotation.y = rnd() * Math.PI * 2;
   g.scale.setScalar(0.01);
-  g.userData = { grow: 0, seed: rnd() * 6.28 };
+  g.userData = { grow: 0, seed: rnd() * 6.28, glowMats: biolum ? [mat, tipMat] : null };
   return g;
+}
+
+// Build a flat fin mesh from an outline. Points are [x, y] for lineTo or
+// [cpx, cpy, x, y] for a quadratic curve; the shape is drawn in the xy plane
+// with +x pointing tailward, then yawed so +x maps onto -z (backward).
+function finMesh(pts, mat, yaw = Math.PI / 2) {
+  const s = new THREE.Shape();
+  s.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i];
+    if (p.length === 4) s.quadraticCurveTo(p[0], p[1], p[2], p[3]);
+    else s.lineTo(p[0], p[1]);
+  }
+  const m = new THREE.Mesh(new THREE.ShapeGeometry(s), mat);
+  m.rotation.y = yaw;
+  return m;
 }
 
 let fishCounter = 1;
 function makeFish(spec) {
   const g = new THREE.Group();
+  const variant = fishCounter++;
+  // Per-individual build: each fish gets its own proportions — some longer,
+  // some deeper-bodied, with bigger or smaller fins — plus its own skin.
+  const rnd = mulberry32(hashId(spec.id) + variant * 31337);
+  const biolum = BIOLUM_SPECIES.has(spec.id);
+  const tex = fishTexture(spec, variant % TEX_VARIANTS);
   const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff, map: fishTexture(spec, fishCounter++ % TEX_VARIANTS), roughness: 0.45,
-    bumpMap: bumpTex, bumpScale: 0.006 });
+    color: 0xffffff, map: tex, roughness: 0.35,
+    emissive: new THREE.Color(spec.accentColor ?? spec.color), emissiveIntensity: 0,
+    bumpMap: tex, bumpScale: 0.004 });
   const finMat = new THREE.MeshStandardMaterial({
-    color: spec.accentColor ?? spec.color, roughness: 0.5,
-    side: THREE.DoubleSide, transparent: true, opacity: 0.92 });
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x0a1420, roughness: 0.2 });
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12), bodyMat);
-  body.scale.set(0.42, 0.55, 1.15); g.add(body);               // nose points +z
-  for (const s of [-1, 1]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), eyeMat);
-    eye.position.set(s * 0.17, 0.1, 0.42); g.add(eye);
-    const pec = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.32, 4), finMat);
-    pec.position.set(s * 0.22, -0.05, 0.12);
-    pec.rotation.set(-Math.PI / 2, 0, s * 0.9); pec.scale.set(0.35, 1, 1); g.add(pec);
+    color: spec.accentColor ?? spec.color, roughness: 0.4,
+    side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+
+  // Body: a sphere sculpted into a fusiform profile — deep at the shoulder,
+  // pinched at the caudal peduncle, tapering toward the snout. Nose points +z.
+  const geo = new THREE.SphereGeometry(0.5, 28, 18);
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const u = v.z / 0.5;                                     // -1 tail … +1 nose
+    const pinch = 1 - 0.72 * smoothstep(0.15, 0.95, -u);     // caudal peduncle
+    const snout = 1 - 0.28 * smoothstep(0.55, 1, u);         // taper to the mouth
+    v.x *= pinch * snout;
+    v.y *= (pinch * 0.4 + 0.6) * snout;
+    pos.setXYZ(i, v.x, v.y, v.z);
   }
-  // Caudal fin as its own pivot so the render loop can wag it.
+  geo.computeVertexNormals();
+  const body = new THREE.Mesh(geo, bodyMat);
+  const deep = 0.85 + rnd() * 0.35;                          // deep-bodied ↔ slender
+  body.scale.set(
+    0.36 * (0.85 + rnd() * 0.3), 0.62 * deep, 1.18 * (0.9 + rnd() * 0.25));
+  g.add(body);
+
+  // Eyes: white sclera + dark pupil, set high on the head.
+  const scleraMat = new THREE.MeshStandardMaterial({ color: 0xe8eef2, roughness: 0.25 });
+  const pupilMat = new THREE.MeshStandardMaterial({ color: 0x0a1420, roughness: 0.15 });
+  for (const s of [-1, 1]) {
+    const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), scleraMat);
+    sclera.position.set(s * 0.125, 0.11, 0.4); g.add(sclera);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), pupilMat);
+    pupil.position.set(s * 0.152, 0.11, 0.425); g.add(pupil);
+    // Pectoral fin: a small fan swept back along the flank.
+    const pec = finMesh([
+      [0, 0], [0.16, 0.08, 0.27, 0.02], [0.2, -0.1, 0.24, -0.13], [0.08, -0.1, 0, 0]],
+      finMat, s > 0 ? 1.15 : 1.98);
+    pec.position.set(s * 0.16, -0.02, 0.24);
+    pec.scale.setScalar(0.85 + rnd() * 0.4);
+    g.add(pec);
+  }
+
+  // Caudal fin: forked, on its own pivot so the render loop can wag it.
   const tailPivot = new THREE.Group();
-  tailPivot.position.z = -0.5; g.add(tailPivot);
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.55, 3), finMat);
-  tail.rotation.x = -Math.PI / 2; tail.position.z = -0.28; tail.scale.set(0.14, 1, 1);
+  tailPivot.position.z = -0.48; g.add(tailPivot);
+  const tail = finMesh([
+    [0, 0.05],
+    [0.35, 0.14, 0.55, 0.42],                                // upper lobe
+    [0.3, 0.1, 0.2, 0],                                      // fork notch
+    [0.3, -0.1, 0.55, -0.42],                                // lower lobe
+    [0.35, -0.14, 0, -0.05]],
+    finMat);
+  tail.scale.set(0.85 + rnd() * 0.4, 0.8 + rnd() * 0.45, 1);
   tailPivot.add(tail);
-  const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.36, 4), finMat);
-  dorsal.position.set(0, 0.3, -0.05); dorsal.scale.set(0.24, 1, 1.5);
-  dorsal.rotation.x = -0.25; g.add(dorsal);
-  g.scale.setScalar(((spec.size ?? 14) / 16) * 0.55);
+
+  // Dorsal sail along the back, small anal fin below the rear.
+  const dorsal = finMesh([
+    [0, 0], [0.08, 0.3, 0.26, 0.28], [0.42, 0.14, 0.55, 0.01], [0.28, -0.04, 0, 0]],
+    finMat);
+  dorsal.position.set(0, 0.26 * deep, 0.28);
+  dorsal.scale.set(0.9 + rnd() * 0.35, 0.7 + rnd() * 0.55, 1);
+  g.add(dorsal);
+  const anal = finMesh([
+    [0, 0], [0.1, -0.16, 0.24, -0.15], [0.3, -0.06, 0.32, 0.01], [0.16, 0.03, 0, 0]],
+    finMat);
+  anal.position.set(0, -0.2 * deep, -0.05);
+  g.add(anal);
+
+  g.scale.setScalar(((spec.size ?? 14) / 16) * 0.55 * (0.92 + rnd() * 0.16));
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   g.userData.tail = tailPivot;
+  g.userData.baseScale = g.scale.x;
+  g.userData.glowMat = biolum ? bodyMat : null;
+  g.userData.hider = DAY_HIDER_SPECIES.has(spec.id);
+  return g;
+}
+
+// ── Bubbles the drone — Classic's snarky reef observer, in 3D ─────────────────
+// Same silhouette language as the Pixi sprite: teal shell, pale face plate,
+// side fins, yellow sensor lens, cyan antenna bulb and thruster.
+function makeDrone() {
+  const g = new THREE.Group();
+  const shell = new THREE.MeshStandardMaterial({ color: 0x5090b8, roughness: 0.35, metalness: 0.25 });
+  const plate = new THREE.MeshStandardMaterial({ color: 0x80b4d8, roughness: 0.3, metalness: 0.2 });
+  const finM = new THREE.MeshStandardMaterial({ color: 0x3a6a8a, roughness: 0.5 });
+  const eyeMat = new THREE.MeshStandardMaterial({
+    color: 0xffd740, emissive: 0xffd740, emissiveIntensity: 0.35, roughness: 0.25 });
+  const glowMat = new THREE.MeshStandardMaterial({
+    color: 0x40c8ff, emissive: 0x40c8ff, emissiveIntensity: 0.8, roughness: 0.3 });
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.5, 6, 14), shell);
+  body.rotation.x = Math.PI / 2; g.add(body);                  // nose points +z
+  const face = new THREE.Mesh(new THREE.SphereGeometry(0.28, 14, 12), plate);
+  face.position.z = 0.34; face.scale.set(0.95, 0.85, 0.7); g.add(face);
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), eyeMat);
+  eye.position.set(0, 0.02, 0.52); g.add(eye);
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0xfffff0, roughness: 0.15 }));
+  pupil.position.set(0.02, 0.05, 0.62); g.add(pupil);
+  for (const s of [-1, 1]) {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 0.26), finM);
+    fin.position.set(s * 0.44, 0.02, -0.08);
+    fin.rotation.z = s * -0.28; g.add(fin);
+  }
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 6), finM);
+  mast.position.set(0, 0.42, -0.05); g.add(mast);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), glowMat);
+  bulb.position.set(0, 0.55, -0.05); g.add(bulb);
+  const thrust = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), glowMat);
+  thrust.position.z = -0.62; g.add(thrust);
+  const prop = new THREE.Group();
+  prop.position.z = -0.56;
+  for (const r of [0, Math.PI / 2]) {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.02), finM);
+    blade.rotation.z = r; prop.add(blade);
+  }
+  g.add(prop);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData = { prop, eyeMat, glowMat };
   return g;
 }
 
@@ -595,7 +714,8 @@ export function initReefScene3D(canvas) {
   controls.listenToKeyEvents(window);
 
   // ── Lighting ────────────────────────────────────────────────────────────────
-  scene.add(new THREE.HemisphereLight(0xcdeefc, 0x46483a, 1.05));
+  const hemi = new THREE.HemisphereLight(0xcdeefc, 0x46483a, 1.05);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xeaf6ff, 1.7);
   sun.position.set(6, 22, 8);
   sun.castShadow = true;
@@ -766,6 +886,7 @@ export function initReefScene3D(canvas) {
   const seen = new Set();     // journal — every species ever placed (saved)
   let be = START_BE, polyps = START_POLYPS, pearls = START_PEARLS;
   let harmony = START_HARMONY, level = START_LEVEL;
+  let timeOfDay = 0.3, nightFactor = 0;   // day/night cycle (saved)
   let incomePerSec = 0, polypPerSec = 0, beMax = BE_MAX;
   let onProgress = () => {};   // set once the palette exists — refreshes lock states
 
@@ -831,6 +952,7 @@ export function initReefScene3D(canvas) {
   }
 
   function checkLevelUp() {
+    const before = level;
     while (level < MAX_LEVEL) {
       const req = LEVEL_REQS[level + 1];
       if (!req) break;
@@ -838,6 +960,7 @@ export function initReefScene3D(canvas) {
       if (placedCorals.length >= c && placedFish.length >= f && harmony >= h) level++;
       else break;
     }
+    if (level > before) droneTrigger('levelUp');
   }
 
   // Recompute reef-composition stats after any placement/removal.
@@ -922,7 +1045,7 @@ export function initReefScene3D(canvas) {
   function save() {
     try {
       localStorage.setItem(slotKey(slot), JSON.stringify({
-        be, polyps, pearls, harmony, level,
+        be, polyps, pearls, harmony, level, timeOfDay,
         corals: placedCorals, fish: placedFish, seen: [...seen] }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
@@ -1354,6 +1477,7 @@ export function initReefScene3D(canvas) {
     pearls = saved.pearls ?? START_PEARLS;
     harmony = saved.harmony ?? START_HARMONY;
     level = saved.level ?? START_LEVEL;
+    timeOfDay = saved.timeOfDay ?? 0.3;
     (saved.corals ?? []).forEach(({ b, c, r, id, level: lv }) => {
       const spec = CORAL_SPECIES[id], tile = tileAt(b ?? 'coral', c, r);
       if (spec && tile && !tile.userData.occupied) addCoral(spec, tile, lv ?? 1);
@@ -1369,6 +1493,115 @@ export function initReefScene3D(canvas) {
     (saved.seen ?? []).forEach(id => seen.add(id));
   }
   recomputeRates(); refreshProgress(); refreshHud();
+
+  // ── Bubbles the drone — dock, speech overlay, and state machine ──────────────
+  const drone = makeDrone();
+  const dockY = terrainHeight(10.5, 9.5);
+  const DOCK_POS = new THREE.Vector3(10.5, dockY + 1.1, 9.5);
+  const dockRock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9, 0), rockMat);
+  dockRock.position.set(10.5, dockY + 0.2, 9.5);
+  dockRock.scale.y = 0.55; dockRock.castShadow = true; scene.add(dockRock);
+  drone.position.copy(DOCK_POS);
+  scene.add(drone);
+
+  // Speak positions hover over the home reef, where the camera usually looks.
+  const SPEAK_POS = [
+    new THREE.Vector3(0, 4.5, 2), new THREE.Vector3(-4, 3.8, -4),
+    new THREE.Vector3(6, 4.2, -3), new THREE.Vector3(3, 4.6, 5),
+    new THREE.Vector3(-6, 4, 4),
+  ];
+  const speechEl = document.createElement('div');
+  speechEl.id = 'bubbles-speech';
+  document.body.appendChild(speechEl);
+
+  let droneState = 'docked';
+  const droneTarget = DOCK_POS.clone();
+  const dronePos = DOCK_POS.clone();
+  const droneQueue = [];
+  let speechTimer = 0;
+  let flavorTimer = 30 + Math.random() * 45;
+  let droneReady = false;          // suppress triggers fired during restore
+  let lowBEAt = -999;
+
+  function droneTrigger(event) {
+    if (!droneReady) return;
+    const pool = BUBBLES_LINES[event];
+    if (!pool) return;
+    droneQueue.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+  function droneSpeak(text) {
+    droneState = 'speaking';
+    speechEl.textContent = text;
+    speechEl.style.display = 'block';
+    speechTimer = Math.min(Math.max(text.length * 0.052, 2.5), 6);   // read time
+  }
+  function droneUpdate(dt, t, nf) {
+    if (droneState === 'docked' && droneQueue.length === 0) {
+      flavorTimer -= dt;
+      if (flavorTimer <= 0) {
+        flavorTimer = 45 + Math.random() * 45;
+        droneTrigger('flavor');
+      }
+    }
+    if (droneState === 'docked' && droneQueue.length > 0) {
+      droneState = 'floating';
+      droneTarget.copy(SPEAK_POS[Math.floor(Math.random() * SPEAK_POS.length)]);
+    } else if (droneState === 'floating' || droneState === 'returning') {
+      const step = 5.5 * dt;
+      const d = droneTarget.distanceTo(dronePos);
+      if (d < Math.max(step, 0.25)) {
+        dronePos.copy(droneTarget);
+        if (droneState === 'floating') droneSpeak(droneQueue.shift());
+        else droneState = 'docked';
+      } else {
+        dronePos.lerp(droneTarget, step / d);
+      }
+    } else if (droneState === 'speaking') {
+      speechTimer -= dt;
+      if (speechTimer <= 0) {
+        if (droneQueue.length) droneSpeak(droneQueue.shift());
+        else {
+          speechEl.style.display = 'none';
+          droneState = 'returning';
+          droneTarget.copy(DOCK_POS);
+        }
+      }
+    }
+    // Bob, face travel direction, spin the prop, light up after dark.
+    drone.position.copy(dronePos);
+    drone.position.y += Math.sin(t * 1.6) * (droneState === 'docked' ? 0.06 : 0.14);
+    const moving = droneState === 'floating' || droneState === 'returning';
+    if (moving) {
+      const dx = droneTarget.x - dronePos.x, dz = droneTarget.z - dronePos.z;
+      if (dx * dx + dz * dz > 0.01) {
+        const want = Math.atan2(dx, dz);
+        let dy = want - drone.rotation.y;
+        while (dy > Math.PI) dy -= Math.PI * 2;
+        while (dy < -Math.PI) dy += Math.PI * 2;
+        drone.rotation.y += dy * Math.min(1, dt * 5);
+      }
+    }
+    drone.rotation.z = Math.sin(t * 1.1) * 0.05;
+    drone.userData.prop.rotation.z += dt * (moving ? 22 : 7);
+    drone.userData.eyeMat.emissiveIntensity = 0.35 + nf * 1.1;   // headlight at night
+    drone.userData.glowMat.emissiveIntensity = 0.8 + nf * 0.8;
+    // Project the speech bubble to screen space above the drone.
+    if (droneState === 'speaking') {
+      const v = drone.position.clone();
+      v.y += 0.85;
+      v.project(camera);
+      if (v.z < 1) {
+        const px = clamp((v.x * 0.5 + 0.5) * window.innerWidth, 130, window.innerWidth - 130);
+        const py = clamp((-v.y * 0.5 + 0.5) * window.innerHeight, 90, window.innerHeight - 30);
+        speechEl.style.left = `${px}px`;
+        speechEl.style.top = `${py}px`;
+        speechEl.style.display = 'block';
+      } else {
+        speechEl.style.display = 'none';
+      }
+    }
+  }
+  droneReady = true;
 
   // ── Pointer picking ──────────────────────────────────────────────────────────
   const ray = new THREE.Raycaster();
@@ -1398,7 +1631,12 @@ export function initReefScene3D(canvas) {
       polyps -= spec.polypCost;
     } else {
       const cost = costTable[spec.tier] ?? 0;
-      if (be < cost) { flash(rateEl, 'not enough 🫧'); return false; }
+      if (be < cost) {
+        flash(rateEl, 'not enough 🫧');
+        const now = performance.now() / 1000;
+        if (now - lowBEAt > 45) { lowBEAt = now; droneTrigger('lowBE'); }
+        return false;
+      }
       be -= cost;
     }
     return true;
@@ -1421,6 +1659,9 @@ export function initReefScene3D(canvas) {
   renderer.domElement.addEventListener('pointerdown', ev => {
     setPtr(ev);
 
+    // Poking Bubbles takes priority — it has sensors, and feelings.
+    if (ray.intersectObject(drone, true).length) { droneTrigger('tapped'); return; }
+
     if (selected.type === 'remove') {
       const cHit = ray.intersectObjects(corals, true)[0]?.object;
       if (cHit) { const g = ancestorWith(cHit, 'entry'); if (g) removeCoralGroup(g); return; }
@@ -1441,6 +1682,7 @@ export function initReefScene3D(canvas) {
       if (!zoneCheck(selected.spec, t.userData.biome)) return;
       if (!charge(selected.spec, CORAL_COST)) return;
       addCoral(selected.spec, t);
+      if (placedCorals.length === 1) droneTrigger('firstCoral');
       recomputeRates(); refreshProgress(); refreshHud(); save();
     } else {
       const hit = ray.intersectObject(floor, false)[0];
@@ -1451,6 +1693,7 @@ export function initReefScene3D(canvas) {
       const st = fishState(selected.spec, hit.point.x, hit.point.z, fishes.length, zone);
       const g = attachFish(selected.spec, st, true);
       const rec = fishSaveData(st); placedFish.push(rec); g.userData.saveRef = rec;
+      if (placedFish.length === 1) droneTrigger('firstFish');
       refreshProgress(); refreshHud(); save();
     }
   });
@@ -1477,8 +1720,56 @@ export function initReefScene3D(canvas) {
     color: 0xbfe6ff, size: 0.12, transparent: true, opacity: 0.5, depthWrite: false }));
   scene.add(snow);
 
+  // ── Bubbles — essence streaming up from the living reef ─────────────────────
+  const BUBBLE_N = 90;
+  const brng = mulberry32(2025);
+  const bubbleGeo = new THREE.BufferGeometry();
+  const bpArr = new Float32Array(BUBBLE_N * 3);
+  const bubbleData = [];
+  function bubbleSpawn(i) {
+    let x, z, y;
+    if (corals.length && brng() < 0.8) {
+      // Most bubbles rise from placed corals — the reef literally makes essence.
+      const src = corals[Math.floor(brng() * corals.length)];
+      x = src.position.x + (brng() - 0.5) * 1.2;
+      z = src.position.z + (brng() - 0.5) * 1.2;
+      y = src.position.y + 0.3 + brng() * 0.8;
+    } else {
+      x = (brng() - 0.5) * 64;
+      z = (brng() - 0.5) * 32;
+      y = terrainHeight(x, z) + 0.3;
+    }
+    bpArr[i * 3] = x; bpArr[i * 3 + 1] = y; bpArr[i * 3 + 2] = z;
+    bubbleData[i] = {
+      baseX: x, speed: 0.5 + brng() * 0.9,
+      wobA: brng() * 6.28, wobW: 1 + brng() * 2,
+      top: y + 7 + brng() * 6,
+    };
+  }
+  for (let i = 0; i < BUBBLE_N; i++) bubbleSpawn(i);
+  bubbleGeo.setAttribute('position', new THREE.BufferAttribute(bpArr, 3));
+  const bubbleSprite = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 32;
+    const ctx = c.getContext('2d');
+    const grd = ctx.createRadialGradient(16, 16, 2, 16, 16, 15);
+    grd.addColorStop(0, 'rgba(255,255,255,0.9)');
+    grd.addColorStop(0.5, 'rgba(220,240,255,0.2)');
+    grd.addColorStop(0.85, 'rgba(205,235,255,0.6)');   // bright rim
+    grd.addColorStop(1, 'rgba(205,235,255,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(16, 16, 15, 0, 7); ctx.fill();
+    return new THREE.CanvasTexture(c);
+  })();
+  const bubbles = new THREE.Points(bubbleGeo, new THREE.PointsMaterial({
+    map: bubbleSprite, color: 0xcfeeff, size: 0.32, transparent: true,
+    opacity: 0.8, depthWrite: false, sizeAttenuation: true }));
+  scene.add(bubbles);
+
   // ── Render loop ──────────────────────────────────────────────────────────────
   const clock = new THREE.Clock();
+  const SUN_DAY = new THREE.Color(0xeaf6ff), SUN_NIGHT = new THREE.Color(0x8fb3e8);
+  const FOG_DAY = new THREE.Color(0x11486a), FOG_NIGHT = new THREE.Color(0x071726);
   let running = true;
   function frame() {
     if (!running) return;
@@ -1490,6 +1781,20 @@ export function initReefScene3D(canvas) {
     polyps = Math.min(polyps + polypPerSec * dt, POLYP_MAX);
     refreshHud();
 
+    // Day/night — Classic's cycle: darken and cool the water, light the biolums.
+    timeOfDay = (timeOfDay + (dt * 1000) / DAY_MS) % 1;
+    const elevation = Math.sin((timeOfDay - 0.25) * Math.PI * 2);
+    const nTarget = clamp(-elevation * 1.6, 0, 1);
+    nightFactor += (nTarget - nightFactor) * Math.min(1, dt / 0.6);
+    const nf = nightFactor;
+    sun.intensity = 1.7 - nf * 1.35;
+    sun.color.copy(SUN_DAY).lerp(SUN_NIGHT, nf);
+    hemi.intensity = 1.05 - nf * 0.65;
+    fill.intensity = 0.5 - nf * 0.25;
+    scene.backgroundIntensity = 1 - nf * 0.72;
+    scene.fog.color.copy(FOG_DAY).lerp(FOG_NIGHT, nf);
+    floorMat.emissiveIntensity = 0.13 * (1 - nf * 0.75);   // moonlit caustics are faint
+
     for (const g of corals) {
       const ls = g.userData.levelScale ?? 1;
       if (g.userData.grow < 1) {
@@ -1500,6 +1805,9 @@ export function initReefScene3D(canvas) {
         g.scale.setScalar(ls);   // hold at level-scaled size (updates on upgrade)
       }
       g.rotation.z = Math.sin(t * 0.8 + g.userData.seed) * 0.04;
+      if (g.userData.glowMats) {
+        for (const m of g.userData.glowMats) m.emissiveIntensity = 0.5 + nf * 0.85;
+      }
     }
     for (const f of fishes) {
       const ang = f.phase + t * f.w;
@@ -1509,9 +1817,26 @@ export function initReefScene3D(canvas) {
       const heading = Math.atan2(-Math.sin(ang) * f.w, Math.cos(ang) * f.w);
       f.g.rotation.y = heading + Math.sin(t * 6 + f.phase) * 0.1;
       if (f.g.userData.tail) f.g.userData.tail.rotation.y = Math.sin(t * 7 + f.phase) * 0.5;
+      // Nocturnal crevice-dwellers tuck away by day and emerge after dark.
+      if (f.g.userData.hider) {
+        f.g.scale.setScalar(f.g.userData.baseScale * (0.06 + 0.94 * nf));
+      }
+      if (f.g.userData.glowMat) f.g.userData.glowMat.emissiveIntensity = nf * 0.9;
     }
     for (const w of weeds) w.rotation.z = Math.sin(t * 0.9 + w.userData.seed) * 0.12;
-    for (const o of orbs) o.material.emissiveIntensity = 0.75 + Math.sin(t * 1.6 + o.userData.seed) * 0.35;
+    for (const o of orbs) {
+      o.material.emissiveIntensity = 0.75 + nf * 0.5 + Math.sin(t * 1.6 + o.userData.seed) * 0.35;
+    }
+
+    const bpos = bubbles.geometry.attributes.position;
+    for (let i = 0; i < BUBBLE_N; i++) {
+      const d = bubbleData[i];
+      let y = bpos.getY(i) + d.speed * dt;
+      if (y > d.top) { bubbleSpawn(i); y = bpArr[i * 3 + 1]; }
+      bpos.setY(i, y);
+      bpos.setX(i, d.baseX + Math.sin(t * d.wobW + d.wobA) * 0.18);
+    }
+    bpos.needsUpdate = true;
 
     caustics.offset.x = t * 0.012 + Math.sin(t * 0.35) * 0.006;
     caustics.offset.y = t * 0.008 + Math.cos(t * 0.28) * 0.006;
@@ -1524,6 +1849,7 @@ export function initReefScene3D(canvas) {
     }
     sposArr.needsUpdate = true;
 
+    droneUpdate(dt, t, nf);
     plumeUpdate(t, ventIntensity((t / VENT_PERIOD) % 1));
     controls.target.x = clamp(controls.target.x, -46, 46);
     controls.target.z = clamp(controls.target.z, -30, 30);
