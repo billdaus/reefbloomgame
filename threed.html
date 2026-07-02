@@ -39,10 +39,55 @@
       position: fixed; inset: 0; z-index: 5; display: none;
       align-items: center; justify-content: center; background: rgba(2,12,20,0.6);
     }
-    #shop-overlay .panel {
+    #shop-overlay .panel, .modal3d .panel {
       background: #0d3550; border: 1px solid #2f6f92; border-radius: 14px;
       padding: 20px 22px; min-width: 232px; color: #eaf6ff;
     }
+    .modal3d {
+      position: fixed; inset: 0; z-index: 5; display: none;
+      align-items: center; justify-content: center; background: rgba(2,12,20,0.6);
+    }
+    .modal3d .panel {
+      max-height: 84vh; display: flex; flex-direction: column;
+      min-width: 320px; max-width: 440px; width: 92vw;
+    }
+    .m-title { font-size: 16px; font-weight: 700; }
+    .m-sub { font-size: 11px; color: #9fc4dc; margin-top: 3px; }
+    .m-body {
+      overflow-y: auto; margin-top: 8px; min-height: 0;
+      scrollbar-width: thin; scrollbar-color: #2f6f92 transparent;
+    }
+    .m-tabs { display: flex; gap: 6px; margin-top: 10px; }
+    .m-tab {
+      font: inherit; font-size: 12px; color: #cfe6f4; cursor: pointer;
+      background: rgba(0,0,0,0.35); border: 1px solid transparent;
+      padding: 4px 10px; border-radius: 8px;
+    }
+    .m-tab.active { border-color: #7fd8ff; background: rgba(20,80,120,0.7); }
+    .m-sec {
+      font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+      color: #7fb8d4; margin: 10px 0 4px;
+    }
+    .m-row {
+      display: flex; align-items: center; gap: 8px; font-size: 12.5px;
+      padding: 5px 2px; border-bottom: 1px solid rgba(47,111,146,0.25);
+    }
+    .m-row .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+    .m-row small { color: #9fc4dc; margin-left: auto; text-align: right; flex: none; }
+    .m-row.locked { opacity: 0.45; }
+    .m-bar {
+      height: 8px; border-radius: 4px; background: #12293a;
+      overflow: hidden; margin: 3px 0 10px;
+    }
+    .m-bar span { display: block; height: 100%; background: #46c08a; border-radius: 4px; }
+    .m-bar span.full { background: #ffd54f; }
+    #menu3d { position: fixed; right: 12px; top: 12px; z-index: 3; display: flex; gap: 6px; }
+    .menu-btn {
+      font: inherit; font-size: 12px; color: #cfe6f4; cursor: pointer;
+      background: rgba(0,0,0,0.35); border: 1px solid transparent;
+      padding: 5px 10px; border-radius: 8px;
+    }
+    .menu-btn:hover { border-color: #7fd8ff; color: #eaf6ff; }
     .shop-pack {
       display: flex; justify-content: space-between; gap: 24px; width: 100%;
       background: rgba(20,80,120,0.5); border: 1px solid #2f6f92; color: #eaf6ff;
@@ -96,6 +141,7 @@
 <body>
   <a id="back" href="/">← Classic</a>
   <div id="slots"></div>
+  <div id="menu3d"></div>
   <div id="hud">
     <span class="stat be"><span id="be-count">0</span><small class="rate" id="be-rate">+0.0/s</small></span>
     <span class="stat" title="Harmony">⚖ <span id="hm-count">50</span></span>
@@ -105,8 +151,8 @@
   </div>
   <canvas id="app3d"></canvas>
   <div id="palette"></div>
-  <div id="hint">Plant coral · click a coral to upgrade · ✕ Remove to sell · drag to orbit.</div>
-  <div id="version-badge-3d">3Dev 1.5</div>
+  <div id="hint">🌿 Seagrass west · 🪸 Coral Reef centre · 🌌 Twilight east — plant in the matching biome · click a coral to upgrade · ✕ Remove to sell · drag to orbit.</div>
+  <div id="version-badge-3d">3Dev 2.2</div>
   <script type="module">
     import { initReefScene3D } from './src/3d/ReefScene3D.js';
     initReefScene3D(document.getElementById('app3d'));

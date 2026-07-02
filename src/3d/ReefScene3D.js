@@ -1,8 +1,10 @@
-// Reef Bloom — 3D reef (Phase 1 of the three.js render track).
-// A playable slice of the actual game in 3D: a seafloor grid you click to
-// place distinct coral species on, placeable fish, a live Bubble-Essence
-// economy using Classic's numbers, its own saved reef, and the vent.
-// No biomes yet — this is the coral reef only.
+// Reef Bloom — 3D reef (three.js render track).
+// A playable slice of the actual game in 3D: all three Classic biomes laid out
+// side by side on one continuous seafloor — Seagrass Basin to the west, the
+// Coral Reef in the centre, and the Deep Twilight basin dropping away to the
+// east. Each biome has its own placement grid, terrain, and species list
+// (biome-exclusive per Classic's rules), with a live Bubble-Essence economy
+// using Classic's numbers and its own saved reef.
 //
 // Self-contained: reuses Classic's DATA (species, costs, income) and its own
 // localStorage slot, but not Classic's save. Run `npm run dev` → /threed.html.
@@ -12,16 +14,41 @@ import {
   CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, BE_PER_TICK,
   START_BE, START_POLYPS, START_PEARLS, START_HARMONY, START_LEVEL,
   BE_MAX, POLYP_MAX, POLYP_BE_BONUS, POLYP_PER_CORAL_TICK, CORAL_MAX_LEVEL, TICK_MS,
+  BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL,
 } from '../constants.js';
 
-const GRID = 7;
 const TILE = 2;
-const HALF = (GRID * TILE) / 2;
 const VENT_PERIOD = 5.2;
 const TICK_SEC = TICK_MS / 1000;        // BE/polyp tick cadence in seconds
 const SAVE_KEY_BASE = 'reefbloom_3d_save_v1';
 const SLOT_KEY = 'reefbloom_3d_slot';
 const slotKey = (s) => `${SAVE_KEY_BASE}_s${s}`;
+
+// Three biome zones on one seafloor. Each has its own grid; the twilight
+// basin sits on a deep shelf east of the reef, the seagrass flats a touch
+// shallower to the west. Zone membership for free water (fish) is by x band.
+const ZONES = {
+  seagrass:     { id: 'seagrass',     cx: -26, cz: 0, grid: 6, floorY: 0.5,  unlock: SEAGRASS_UNLOCK_LEVEL },
+  coral:        { id: 'coral',        cx: 0,   cz: 0, grid: 7, floorY: -0.1, unlock: 1 },
+  deepTwilight: { id: 'deepTwilight', cx: 26,  cz: 0, grid: 6, floorY: -4.5, unlock: DEEP_TWILIGHT_UNLOCK_LEVEL },
+};
+function zoneAt(x) {
+  if (x < -13.5) return ZONES.seagrass;
+  if (x > 13.5) return ZONES.deepTwilight;
+  return ZONES.coral;
+}
+
+// Classic's biome membership rule (PlacementMenu._matchesBiome): no biome
+// field = coral-only; 'both' = coral + seagrass; arrays list biomes explicitly.
+function matchesBiome(spec, biomeId) {
+  const b = spec.biome;
+  if (!b || b === 'coral') return biomeId === 'coral';
+  if (b === 'both') return biomeId === 'coral' || biomeId === 'seagrass';
+  if (Array.isArray(b)) return b.includes(biomeId);
+  return b === biomeId;
+}
+const biomeIcons = (spec) =>
+  Object.keys(ZONES).filter(id => matchesBiome(spec, id)).map(id => BIOMES[id].icon).join('');
 
 const BIOLUM = ['auroraCoral', 'twilightBrain', 'phantomPolyp', 'wispCoral', 'lanternCoral'];
 
@@ -37,6 +64,12 @@ const LEVEL_REQS = [
 
 // Polyps FROM level L → L+1 (Classic CoralUpgrade.upgradeCost = 4 * L).
 const upgradeCost = (level) => 4 * level;
+
+const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+function smoothstep(a, b, x) {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+}
 
 function ventIntensity(p) {
   if (p < 0.12) return p / 0.12;
@@ -71,6 +104,41 @@ function mulberry32(seed) {
   };
 }
 
+// ── Procedural textures (everything is "textured" from these canvases) ────────
+// Tileable grain/blotch noise — sand, rock, and bump detail all come from here.
+function grainTexture({ base, dark, light, blotches = 8, grains = 1400, seed = 11 }) {
+  const size = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+  const rnd = mulberry32(seed);
+  const wrapped = (draw) => {
+    for (const dx of [-size, 0, size]) for (const dy of [-size, 0, size]) draw(dx, dy);
+  };
+  // Large soft blotches for low-frequency variation.
+  ctx.filter = 'blur(14px)';
+  for (let i = 0; i < blotches; i++) {
+    const x = rnd() * size, y = rnd() * size, r = 26 + rnd() * 52;
+    ctx.fillStyle = i % 2 ? dark : light;
+    ctx.globalAlpha = 0.16;
+    wrapped((dx, dy) => { ctx.beginPath(); ctx.arc(x + dx, y + dy, r, 0, 7); ctx.fill(); });
+  }
+  ctx.filter = 'none';
+  // Fine speckle grain.
+  ctx.globalAlpha = 0.28;
+  for (let i = 0; i < grains; i++) {
+    const x = rnd() * size, y = rnd() * size, s = 1 + rnd() * 1.6;
+    ctx.fillStyle = rnd() < 0.5 ? dark : light;
+    wrapped((dx, dy) => ctx.fillRect(x + dx, y + dy, s, s));
+  }
+  ctx.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
 // Tileable caustic-style light web, used as the seafloor's animated emissive map.
 function causticTexture(size = 256) {
   const c = document.createElement('canvas');
@@ -99,6 +167,174 @@ function causticTexture(size = 256) {
   return t;
 }
 
+// ── Species-specific textures ─────────────────────────────────────────────────
+// Every species gets its own procedural skin, styled by its shape family and
+// painted in its own colors. Cached per species — instances share one texture.
+function hashId(id) {
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+const css = (c) => `#${c.getHexString()}`;
+
+const coralTexCache = new Map();
+function coralTexture(spec) {
+  let t = coralTexCache.get(spec.id);
+  if (t) return t;
+  const size = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const col = new THREE.Color(spec.color).lerp(new THREE.Color(0x8a8a80), 0.18);
+  const dark = css(col.clone().multiplyScalar(0.58));
+  const light = css(col.clone().lerp(new THREE.Color(0xffffff), 0.4));
+  ctx.fillStyle = css(col);
+  ctx.fillRect(0, 0, size, size);
+  const rnd = mulberry32(hashId(spec.id));
+  const shape = shapeOf(spec);
+  if (shape === 'brain') {
+    // Meandering ridge-and-valley lines.
+    ctx.lineWidth = 3.5;
+    for (let i = 0; i < 10; i++) {
+      const y0 = (i + 0.5) * (size / 10);
+      ctx.strokeStyle = i % 2 ? dark : light;
+      ctx.beginPath();
+      for (let x = -8; x <= size + 8; x += 8) {
+        const y = y0 + Math.sin(x * 0.11 + i * 2.2 + rnd() * 0.5) * 4.5;
+        if (x === -8) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  } else if (shape === 'plate') {
+    // Concentric growth rings.
+    ctx.lineWidth = 1.6;
+    for (let r = 6; r < size; r += 7 + Math.floor(rnd() * 5)) {
+      ctx.strokeStyle = rnd() < 0.5 ? dark : light;
+      ctx.beginPath(); ctx.arc(size / 2, size / 2, r, 0, 7); ctx.stroke();
+    }
+  } else if (shape === 'grass') {
+    // Lengthwise blade streaks.
+    ctx.globalAlpha = 0.5;
+    for (let i = 0; i < 26; i++) {
+      const x = rnd() * size;
+      ctx.strokeStyle = rnd() < 0.5 ? dark : light;
+      ctx.lineWidth = 1 + rnd() * 2;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + (rnd() - 0.5) * 10, size); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  } else if (shape === 'bubble') {
+    // Soft translucent cells.
+    ctx.globalAlpha = 0.16;
+    for (let i = 0; i < 14; i++) {
+      ctx.fillStyle = rnd() < 0.6 ? light : dark;
+      ctx.beginPath(); ctx.arc(rnd() * size, rnd() * size, 10 + rnd() * 22, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  } else {
+    // branch / polyp — fine polyp pores.
+    ctx.globalAlpha = 0.55;
+    for (let i = 0; i < 150; i++) {
+      ctx.fillStyle = rnd() < 0.75 ? dark : light;
+      ctx.beginPath(); ctx.arc(rnd() * size, rnd() * size, 0.8 + rnd() * 1.8, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  coralTexCache.set(spec.id, t);
+  return t;
+}
+
+// Fish skins: iconic banded/spotted species get their real markings in their
+// accent color; everyone else gets counter-shading plus a lateral stripe.
+const FISH_BANDED = new Set([
+  'clownfish', 'zebraGoby', 'zebrafish', 'banggaiCardinalfish', 'pajamaCardinalfish',
+  'harlequinTuskfish', 'butterflyfish', 'moorishIdol', 'seaUrchin']);
+const FISH_SPOTTED = new Set([
+  'spottedEagleRay', 'pufferfish', 'mandarinfish', 'rainbowGoby', 'twilightWhaleShark',
+  'flashlightFish', 'giantSquid']);
+const fishTexCache = new Map();
+function fishTexture(spec) {
+  let t = fishTexCache.get(spec.id);
+  if (t) return t;
+  const w = 128, h = 64;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  const base = new THREE.Color(spec.color);
+  const acc = new THREE.Color(spec.accentColor ?? 0xffffff);
+  ctx.fillStyle = css(base);
+  ctx.fillRect(0, 0, w, h);
+  // Counter-shading: darker dorsal (top of texture = top of fish).
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, css(base.clone().multiplyScalar(0.6)));
+  grad.addColorStop(0.45, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  const rnd = mulberry32(hashId(spec.id));
+  ctx.fillStyle = css(acc);
+  if (FISH_BANDED.has(spec.id)) {
+    const bands = 3 + (hashId(spec.id) % 2);
+    for (let i = 0; i < bands; i++) {
+      const x = ((i + 0.5) / bands) * w;
+      const bw = 7 + rnd() * 6;
+      ctx.fillRect(x - bw / 2, 0, bw, h);
+    }
+  } else if (FISH_SPOTTED.has(spec.id)) {
+    ctx.globalAlpha = 0.85;
+    for (let i = 0; i < 26; i++) {
+      ctx.beginPath();
+      ctx.arc(rnd() * w, rnd() * h, 1.6 + rnd() * 2.6, 0, 7);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  } else {
+    // Lateral stripe along the flank.
+    ctx.globalAlpha = 0.7;
+    ctx.fillRect(0, h * 0.52, w, 4);
+    ctx.globalAlpha = 1;
+  }
+  t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  fishTexCache.set(spec.id, t);
+  return t;
+}
+
+const sandTex = grainTexture({
+  base: '#e3cf9b', dark: '#bfa268', light: '#fff3cf', blotches: 6, grains: 1600, seed: 11 });
+sandTex.repeat.set(30, 30);
+const rockTex = grainTexture({
+  base: '#8a8a86', dark: '#55524c', light: '#b5b3ac', blotches: 12, grains: 900, seed: 23 });
+const bumpTex = grainTexture({
+  base: '#808080', dark: '#5a5a5a', light: '#a8a8a8', blotches: 10, grains: 1200, seed: 37 });
+bumpTex.repeat.set(3, 3);
+const tileTex = sandTex.clone();
+tileTex.repeat.set(1.5, 1.5);
+
+// ── Terrain — one continuous heightfield under all three biomes ───────────────
+// Gentle waves, a shelf dropping east into the twilight basin, slightly raised
+// seagrass flats west, dune ridges rising beyond the play field, and a flat
+// plateau blended in under each biome's grid.
+function terrainHeight(x, z) {
+  let h = -0.2 + Math.sin(x * 0.08) * Math.cos(z * 0.07) * 0.9
+    + Math.sin(x * 0.21 + z * 0.13) * 0.35;
+  h -= smoothstep(13, 21, x) * 4.4;
+  h += smoothstep(13, 20, -x) * 0.7;
+  const d = Math.max(Math.abs(x) - 46, Math.abs(z) - 28);
+  if (d > 0) {
+    h += Math.min(d * 0.3, 10) * (0.72 + 0.28 * Math.sin(x * 0.07 + Math.cos(z * 0.09) * 2));
+  }
+  for (const zn of Object.values(ZONES)) {
+    const half = (zn.grid * TILE) / 2 + 1.4;
+    const dist = Math.max(Math.abs(x - zn.cx) - half, Math.abs(z - zn.cz) - half);
+    const k = 1 - smoothstep(0, 4, dist);
+    if (k > 0) h = h * (1 - k) + zn.floorY * k;
+  }
+  return h;
+}
+
 // Full Classic catalog (all biomes; event-pass exclusives excluded from the shop,
 // mirroring Classic). Sorted by unlock level then tier for a sensible palette order.
 const byUnlock = (a, b) => (a.unlockLevel ?? 1) - (b.unlockLevel ?? 1)
@@ -111,9 +347,17 @@ function allFish() {
   return Object.values(FISH_SPECIES)
     .filter(s => !s.eventId && s.color != null && s.layer).sort(byUnlock);
 }
+// Biome a species is listed under in the palette (placement may allow more).
+function primaryBiome(spec) {
+  const b = spec.biome;
+  if (!b || b === 'coral' || b === 'both') return 'coral';
+  if (Array.isArray(b)) return b.includes('coral') ? 'coral' : b[0];
+  return b;
+}
 
 // ── Coral geometry — a distinct silhouette per species family ──────────────────
-const coralRock = new THREE.MeshStandardMaterial({ color: 0x736e5e, roughness: 1, flatShading: true });
+const coralRock = new THREE.MeshStandardMaterial({
+  color: 0x8f887a, roughness: 1, flatShading: true, map: rockTex });
 coralRock.userData.shared = true;
 
 function shapeOf(spec) {
@@ -123,6 +367,7 @@ function shapeOf(spec) {
   if (['star', 'starter'].includes(id)) return 'polyp';
   if (['bubble'].includes(id)) return 'bubble';
   if (['brain', 'ghost'].includes(id)) return 'brain';
+  if (['seaweed', 'seagrass', 'redSeagrass', 'kelp'].includes(id)) return 'grass';
   return spec.tall ? 'branch' : 'brain';
 }
 
@@ -230,6 +475,19 @@ const BODY = {
       g.add(b);
     }
   },
+  // Seagrass vegetation: a clump of tall, slightly bowed blades.
+  grass(g, { mat, tipMat }, rnd) {
+    const N = 9 + Math.floor(rnd() * 5);
+    for (let i = 0; i < N; i++) {
+      const a = rnd() * Math.PI * 2, rr = rnd() * 0.42;
+      const h = 0.9 + rnd() * 1.3;
+      const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.05, h, 5), i % 3 ? mat : tipMat);
+      blade.position.set(Math.cos(a) * rr, h / 2 + 0.08, Math.sin(a) * rr);
+      blade.rotation.z = (rnd() - 0.5) * 0.5;
+      blade.rotation.x = (rnd() - 0.5) * 0.5;
+      g.add(blade);
+    }
+  },
 };
 
 let coralCounter = 1;
@@ -240,8 +498,11 @@ function makeCoral(spec) {
   // bioluminescent species genuinely glow.
   const glow = BIOLUM.includes(spec.id) ? 0.55 : 0.04;
   const color = new THREE.Color(spec.color).lerp(new THREE.Color(0x8a8a80), 0.18);
+  // The species skin carries the color; white base keeps the pattern true.
   const mat = new THREE.MeshStandardMaterial({
-    color, roughness: 0.75, emissive: color, emissiveIntensity: glow });
+    color: 0xffffff, map: coralTexture(spec), roughness: 0.75,
+    emissive: color, emissiveIntensity: glow,
+    bumpMap: bumpTex, bumpScale: 0.015 });
   const tipMat = new THREE.MeshStandardMaterial({
     color: color.clone().lerp(new THREE.Color(0xfff6e8), 0.45), roughness: 0.6,
     emissive: color, emissiveIntensity: glow + 0.06 });
@@ -260,18 +521,15 @@ function makeCoral(spec) {
 
 function makeFish(spec) {
   const g = new THREE.Group();
-  const color = new THREE.Color(spec.color);
-  const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.45 });
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, map: fishTexture(spec), roughness: 0.45,
+    bumpMap: bumpTex, bumpScale: 0.006 });
   const finMat = new THREE.MeshStandardMaterial({
     color: spec.accentColor ?? spec.color, roughness: 0.5,
     side: THREE.DoubleSide, transparent: true, opacity: 0.92 });
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0x0a1420, roughness: 0.2 });
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12), bodyMat);
   body.scale.set(0.42, 0.55, 1.15); g.add(body);               // nose points +z
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10),
-    new THREE.MeshStandardMaterial({
-      color: color.clone().lerp(new THREE.Color(0xffffff), 0.5), roughness: 0.4 }));
-  belly.scale.set(0.36, 0.4, 0.95); belly.position.y = -0.1; g.add(belly);
   for (const s of [-1, 1]) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), eyeMat);
     eye.position.set(s * 0.17, 0.1, 0.42); g.add(eye);
@@ -308,117 +566,209 @@ export function initReefScene3D(canvas) {
 
   const scene = new THREE.Scene();
   scene.background = gradientTexture([[0.0, '#2b86a8'], [0.45, '#155579'], [1.0, '#062232']]);
-  scene.fog = new THREE.FogExp2(0x11486a, 0.014);
+  scene.fog = new THREE.FogExp2(0x11486a, 0.011);
 
   const camera = new THREE.PerspectiveCamera(
     50, window.innerWidth / window.innerHeight, 0.1, 400);
-  camera.position.set(0, 11, 21);
+  camera.position.set(0, 15, 32);
 
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, 2, 0);
+  controls.target.set(0, 1.5, 0);
   controls.enableDamping = true; controls.dampingFactor = 0.06;
   controls.maxPolarAngle = Math.PI * 0.49;
-  controls.minDistance = 7; controls.maxDistance = 70;
+  controls.minDistance = 7; controls.maxDistance = 90;
 
   // ── Lighting ────────────────────────────────────────────────────────────────
-  scene.add(new THREE.HemisphereLight(0xcdeefc, 0x2e4440, 1.05));
+  scene.add(new THREE.HemisphereLight(0xcdeefc, 0x46483a, 1.05));
   const sun = new THREE.DirectionalLight(0xeaf6ff, 1.7);
   sun.position.set(6, 22, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -28; sun.shadow.camera.right = 28;
-  sun.shadow.camera.top = 28; sun.shadow.camera.bottom = -28;
-  sun.shadow.camera.far = 60;
+  sun.shadow.camera.left = -46; sun.shadow.camera.right = 46;
+  sun.shadow.camera.top = 34; sun.shadow.camera.bottom = -34;
+  sun.shadow.camera.far = 80;
   sun.shadow.bias = -0.0005;
   scene.add(sun);
   const fill = new THREE.DirectionalLight(0x3f93c4, 0.5);
   fill.position.set(-10, 6, -6); scene.add(fill);
+  // Cold, dim glow over the twilight basin so the deep shelf reads as its own world.
+  const twiLight = new THREE.PointLight(0x4a7bd0, 30, 46, 1.6);
+  twiLight.position.set(ZONES.deepTwilight.cx, 7, 0); scene.add(twiLight);
 
-  // ── Seafloor ─────────────────────────────────────────────────────────────────
-  const floorGeo = new THREE.PlaneGeometry(240, 240, 60, 60);
+  // ── Seafloor — one heightfield across all three biomes ──────────────────────
+  const floorGeo = new THREE.PlaneGeometry(240, 240, 120, 120);
   const fp = floorGeo.attributes.position;
+  const fc = new Float32Array(fp.count * 3);
+  const cCor = new THREE.Color(0xc2a96e);   // golden reef sand
+  const cSea = new THREE.Color(0x86a05f);   // warm grassy flats
+  const cTwi = new THREE.Color(0x22344f);   // dark twilight silt
+  const tint = new THREE.Color();
   for (let i = 0; i < fp.count; i++) {
-    const x = fp.getX(i), y = fp.getY(i);
-    fp.setZ(i, Math.sin(x * 0.08) * Math.cos(y * 0.07) * 1.1 + Math.sin(x * 0.21 + y * 0.13) * 0.35);
+    const x = fp.getX(i), z = -fp.getY(i);   // plane is rotated -90° about X
+    fp.setZ(i, terrainHeight(x, z));
+    tint.copy(cCor)
+      .lerp(cSea, smoothstep(12, 20, -x))
+      .lerp(cTwi, smoothstep(11, 19, x));
+    const v = 0.93 + 0.07 * Math.sin(x * 12.9 + z * 7.7) * Math.sin(x * 3.1 - z * 5.3);
+    fc[i * 3] = tint.r * v; fc[i * 3 + 1] = tint.g * v; fc[i * 3 + 2] = tint.b * v;
   }
+  floorGeo.setAttribute('color', new THREE.BufferAttribute(fc, 3));
   floorGeo.computeVertexNormals();
   // Animated caustic light web plays over the sand via the emissive channel.
   const caustics = causticTexture();
   caustics.repeat.set(26, 26);
-  // Sand seen through a few metres of water: desaturated blue-green, not cream.
   const floorMat = new THREE.MeshStandardMaterial({
-    color: 0x64887f, roughness: 1,
+    color: 0xffffff, roughness: 1, map: sandTex, vertexColors: true,
     emissive: 0xaadfe8, emissiveIntensity: 0.13, emissiveMap: caustics });
   const floor = new THREE.Mesh(floorGeo, floorMat);
-  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.2;
+  floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true; scene.add(floor);
 
-  const rockMat = new THREE.MeshStandardMaterial({ color: 0x6e6a5c, roughness: 1, flatShading: true });
+  const rockMat = new THREE.MeshStandardMaterial({
+    color: 0x9aa0a0, roughness: 1, flatShading: true, map: rockTex });
   const weeds = [];
-  for (let i = 0; i < 26; i++) {
-    const a = i * 2.399, r = HALF + 3 + (i % 6) * 2.4;
+  function weedTuft(x, z, blades, hue) {
+    const weed = new THREE.Group();
+    for (let b = 0; b < blades; b++) {
+      const h = 1.2 + ((b * 7) % 5) * 0.4;
+      const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.11, h, 5),
+        new THREE.MeshStandardMaterial({ color: hue, roughness: 0.8 }));
+      blade.position.set((b - blades / 2) * 0.16, h / 2, ((b * 13) % 3 - 1) * 0.12);
+      blade.rotation.z = ((b * 11) % 5 - 2) * 0.06;
+      weed.add(blade);
+    }
+    weed.position.set(x, terrainHeight(x, z), z);
+    weed.userData.seed = x * 0.7 + z * 1.3;
+    enableShadows(weed);
+    scene.add(weed); weeds.push(weed);
+    return weed;
+  }
+
+  // Coral-zone scatter: rocks and a few weed tufts around the reef grid.
+  for (let i = 0; i < 22; i++) {
+    const a = i * 2.399, r = 8.5 + (i % 5) * 0.9;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (i % 3) {
       const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + (i % 4) * 0.4, 0), rockMat);
-      rock.position.set(Math.cos(a) * r, -0.1, Math.sin(a) * r);
+      rock.position.set(x, terrainHeight(x, z) + 0.1, z);
       rock.rotation.set(a, a * 1.7, a * 0.5); rock.scale.y = 0.65;
       rock.castShadow = true; scene.add(rock);
     } else {
-      const weed = new THREE.Group();
-      const blades = 3 + (i % 3);
-      for (let b = 0; b < blades; b++) {
-        const h = 1.6 + (b % 3) * 0.7;
-        const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.14, h, 5),
-          new THREE.MeshStandardMaterial({ color: 0x2f7d54, roughness: 0.8 }));
-        blade.position.set((b - blades / 2) * 0.18, h / 2, 0); weed.add(blade);
-      }
-      weed.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-      weed.userData.seed = a; enableShadows(weed); scene.add(weed); weeds.push(weed);
+      weedTuft(x, z, 3 + (i % 3), 0x2f7d54);
+    }
+  }
+  // Seagrass-zone scatter: dense grass tufts across the flats around the grid.
+  {
+    const rnd = mulberry32(97);
+    const zn = ZONES.seagrass;
+    for (let i = 0; i < 42; i++) {
+      const a = rnd() * Math.PI * 2, r = 7.6 + rnd() * 8.5;
+      const x = clamp(zn.cx + Math.cos(a) * r, -44, -14.5), z = clamp(Math.sin(a) * r, -24, 24);
+      weedTuft(x, z, 4 + Math.floor(rnd() * 3), [0x2f7d54, 0x3f8f4f, 0x557f3f][i % 3]);
+    }
+  }
+  // Twilight-zone scatter: dark rock spires and faint glowing orbs on the shelf.
+  const orbs = [];
+  {
+    const rnd = mulberry32(53);
+    const zn = ZONES.deepTwilight;
+    const spireMat = new THREE.MeshStandardMaterial({
+      color: 0x3a4356, roughness: 1, flatShading: true, map: rockTex });
+    for (let i = 0; i < 7; i++) {
+      const a = rnd() * Math.PI * 2, r = 8 + rnd() * 8;
+      const x = clamp(zn.cx + Math.cos(a) * r, 14.5, 44), z = clamp(Math.sin(a) * r, -24, 24);
+      const spire = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), spireMat);
+      spire.position.set(x, terrainHeight(x, z) + 1.2, z);
+      spire.scale.set(0.7 + rnd() * 0.7, 2.2 + rnd() * 2.6, 0.7 + rnd() * 0.7);
+      spire.rotation.y = rnd() * Math.PI;
+      spire.castShadow = true; scene.add(spire);
+    }
+    for (let i = 0; i < 9; i++) {
+      const a = rnd() * Math.PI * 2, r = 5 + rnd() * 10;
+      const x = clamp(zn.cx + Math.cos(a) * r, 15, 43), z = clamp(Math.sin(a) * r, -22, 22);
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.16 + rnd() * 0.14, 10, 10),
+        new THREE.MeshStandardMaterial({
+          color: 0x11202e, emissive: 0x40e0ff, emissiveIntensity: 0.9, roughness: 0.4 }));
+      orb.position.set(x, terrainHeight(x, z) + 0.25, z);
+      orb.userData.seed = rnd() * 6.28;
+      scene.add(orb); orbs.push(orb);
+    }
+  }
+  // Boulders out on the dunes so the distance isn't empty.
+  {
+    const rnd = mulberry32(71);
+    for (let i = 0; i < 14; i++) {
+      const a = rnd() * Math.PI * 2, r = 40 + rnd() * 45;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(1 + rnd() * 2.2, 0), rockMat);
+      rock.position.set(x, terrainHeight(x, z) + 0.3, z);
+      rock.rotation.set(a, a * 2.1, a * 0.6); rock.scale.y = 0.55 + rnd() * 0.3;
+      rock.castShadow = true; scene.add(rock);
     }
   }
 
-  // ── Grid tiles ───────────────────────────────────────────────────────────────
+  // ── Grid tiles (one grid per biome) ──────────────────────────────────────────
   // Tiles read as raked sand patches, not game-board squares — a shade lighter
-  // than the seafloor with a soft edge, glowing only on hover.
+  // than the local seafloor with a soft edge, glowing only on hover.
   const tileGeo = new THREE.BoxGeometry(TILE * 0.9, 0.12, TILE * 0.9);
-  const sandMat = new THREE.MeshStandardMaterial({
-    color: 0x74988c, roughness: 1, transparent: true, opacity: 0.6 });
+  const tileMats = {
+    coral: new THREE.MeshStandardMaterial({
+      color: 0xdcc48c, roughness: 1, map: tileTex, transparent: true, opacity: 0.6 }),
+    seagrass: new THREE.MeshStandardMaterial({
+      color: 0x9db26f, roughness: 1, map: tileTex, transparent: true, opacity: 0.6 }),
+    deepTwilight: new THREE.MeshStandardMaterial({
+      color: 0x3d5570, roughness: 1, map: tileTex, transparent: true, opacity: 0.65 }),
+  };
+  const lockedMat = new THREE.MeshStandardMaterial({
+    color: 0x2a3540, roughness: 1, transparent: true, opacity: 0.22 });
   const hoverMat = new THREE.MeshStandardMaterial({
     color: 0x9fe8f0, roughness: 0.8, emissive: 0x2aa6c4, emissiveIntensity: 0.5,
     transparent: true, opacity: 0.85 });
   const tiles = [];
-  for (let r = 0; r < GRID; r++) {
-    for (let c = 0; c < GRID; c++) {
-      const t = new THREE.Mesh(tileGeo, sandMat);
-      t.position.set(c * TILE - HALF + TILE / 2, 0.06, r * TILE - HALF + TILE / 2);
-      t.userData = { c, r, occupied: false };
-      t.receiveShadow = true;
-      scene.add(t); tiles.push(t);
+  for (const zn of Object.values(ZONES)) {
+    const half = (zn.grid * TILE) / 2;
+    for (let r = 0; r < zn.grid; r++) {
+      for (let c = 0; c < zn.grid; c++) {
+        const t = new THREE.Mesh(tileGeo, tileMats[zn.id]);
+        t.position.set(
+          zn.cx + c * TILE - half + TILE / 2, zn.floorY + 0.16,
+          zn.cz + r * TILE - half + TILE / 2);
+        t.userData = { biome: zn.id, c, r, occupied: false, baseMat: tileMats[zn.id] };
+        t.receiveShadow = true;
+        scene.add(t); tiles.push(t);
+      }
     }
   }
-  const tileAt = (c, r) => tiles.find(t => t.userData.c === c && t.userData.r === r);
+  const tileAt = (b, c, r) => tiles.find(t =>
+    t.userData.biome === b && t.userData.c === c && t.userData.r === r);
 
   // ── State + persistence ──────────────────────────────────────────────────────
   const corals = [];          // THREE groups; userData { grow, seed, spec, entry, levelScale }
   const fishes = [];          // motion state incl. .g mesh
-  const placedCorals = [];    // { c, r, id, level }   (saved)
-  const placedFish = [];      // { id, cx, cz, R, y, w, phase, bob, bobw } (saved)
+  const placedCorals = [];    // { b, c, r, id, level }   (saved)
+  const placedFish = [];      // { id, b, cx, cz, R, y, w, phase, bob, bobw } (saved)
+  const seen = new Set();     // journal — every species ever placed (saved)
   let be = START_BE, polyps = START_POLYPS, pearls = START_PEARLS;
   let harmony = START_HARMONY, level = START_LEVEL;
   let incomePerSec = 0, polypPerSec = 0, beMax = BE_MAX;
   let onProgress = () => {};   // set once the palette exists — refreshes lock states
+
+  const zoneUnlocked = (zid) => level >= ZONES[zid].unlock;
 
   function levelScaleFor(lvl) { return 1 + (lvl - 1) * 0.14; }
 
   function addCoral(spec, tile, lvl = 1) {
     tile.userData.occupied = true;
     const group = makeCoral(spec);
-    group.position.set(tile.position.x, 0.1, tile.position.z);
-    const entry = { c: tile.userData.c, r: tile.userData.r, id: spec.id, level: lvl };
+    group.position.set(tile.position.x, ZONES[tile.userData.biome].floorY + 0.18, tile.position.z);
+    const entry = {
+      b: tile.userData.biome, c: tile.userData.c, r: tile.userData.r, id: spec.id, level: lvl };
     group.userData.spec = spec;
     group.userData.entry = entry;
     group.userData.levelScale = levelScaleFor(lvl);
     scene.add(group); corals.push(group);
     placedCorals.push(entry);
+    seen.add(spec.id);
     return group;
   }
 
@@ -489,9 +839,16 @@ export function initReefScene3D(canvas) {
     group.userData.grow = Math.min(group.userData.grow, 0.82);   // small re-grow ease
     recomputeRates(); refreshHud(); save();   // upgrade affects rates only, not harmony/level inputs
   }
-  function fishState(spec, cx, cz, i) {
+  // A fish circles an anchor inside its own biome's water column.
+  function fishState(spec, cx, cz, i, zone) {
+    const half = (zone.grid * TILE) / 2 + 3;
+    const R = Math.min(3 + (i % 5) * 1.2, half - 1);
     return {
-      id: spec.id, cx, cz, R: 4 + (i % 5) * 1.6, y: 2.2 + (i % 4) * 1.4,
+      id: spec.id, b: zone.id,
+      cx: clamp(cx, zone.cx - (half - R), zone.cx + (half - R)),
+      cz: clamp(cz, zone.cz - (half - R), zone.cz + (half - R)),
+      R,
+      y: zone.floorY + 1.9 + (i % 4) * 1.1 + (spec.layer === 'B' ? 1.5 : 0),
       w: (0.12 + (i % 4) * 0.05) * (i % 2 ? 1 : -1),
       phase: i * 1.37, bob: 0.4 + (i % 3) * 0.2, bobw: 0.6 + (i % 3) * 0.3,
     };
@@ -500,10 +857,11 @@ export function initReefScene3D(canvas) {
     st.g = makeFish(spec);
     Object.assign(st.g.userData, { placed, stateRef: st });   // `placed` fish are player-owned & removable
     scene.add(st.g); fishes.push(st);
+    if (placed) seen.add(spec.id);
     return st.g;
   }
   const fishSaveData = st => ({
-    id: st.id, cx: st.cx, cz: st.cz, R: st.R, y: st.y, w: st.w,
+    id: st.id, b: st.b, cx: st.cx, cz: st.cz, R: st.R, y: st.y, w: st.w,
     phase: st.phase, bob: st.bob, bobw: st.bobw });
 
   // ── Removal (Classic: 50% BE refund; 0 for pearl/utility items; no restrictions) ──
@@ -514,14 +872,14 @@ export function initReefScene3D(canvas) {
     be = Math.min(be + refund, beMax);
     const ci = corals.indexOf(group); if (ci >= 0) corals.splice(ci, 1);
     const pi = placedCorals.indexOf(e); if (pi >= 0) placedCorals.splice(pi, 1);
-    const tile = tileAt(e.c, e.r); if (tile) tile.userData.occupied = false;
+    const tile = tileAt(e.b ?? 'coral', e.c, e.r); if (tile) tile.userData.occupied = false;
     scene.remove(group); disposeGroup(group);
     recomputeRates(); refreshProgress(); refreshHud(); save();
     if (refund > 0) flash(rateEl, `+${refund} BE`, '#7fd8b0');
   }
   function removeFishGroup(group) {
     const st = group.userData.stateRef;
-    if (!st || !group.userData.placed) return;   // ambient school isn't removable
+    if (!st || !group.userData.placed) return;
     const spec = FISH_SPECIES[st.id];
     const refund = spec?.pearlCost ? 0 : Math.floor((FISH_COST[spec?.tier] ?? 0) / 2);
     be = Math.min(be + refund, beMax);
@@ -548,7 +906,7 @@ export function initReefScene3D(canvas) {
     try {
       localStorage.setItem(slotKey(slot), JSON.stringify({
         be, polyps, pearls, harmony, level,
-        corals: placedCorals, fish: placedFish }));
+        corals: placedCorals, fish: placedFish, seen: [...seen] }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -589,7 +947,7 @@ export function initReefScene3D(canvas) {
     });
   }
 
-  // ── Palette UI (full Classic catalog, level-gated) ────────────────────────────
+  // ── Palette UI (full Classic catalog, grouped by biome, level-gated) ──────────
   const paletteEl = document.getElementById('palette');
   const coralSpecs = allCorals();
   const fishSpecs = allFish();
@@ -614,14 +972,17 @@ export function initReefScene3D(canvas) {
   }
   function button(spec, type) {
     const { n, unit } = priceOf(spec, type);
-    const need = spec.unlockLevel ?? 1;
+    const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+    // Species reachable in more than one biome show all their biome icons.
+    const zones = Object.keys(ZONES).filter(id => matchesBiome(spec, id));
+    const badge = zones.length > 1 ? ` ${zones.map(id => BIOMES[id].icon).join('')}` : '';
     const btn = document.createElement('button');
     btn.className = 'coral-btn';
     btn.innerHTML = `<span class="dot" style="background:${hex(spec.color)}"></span>`
-      + `${spec.name}<small>${n} ${unit}</small>`
+      + `${spec.name}${badge}<small>${n} ${unit}</small>`
       + (need > 1 ? `<span class="lv">Lv${need}</span>` : '');
     btn.onclick = () => {
-      if ((spec.unlockLevel ?? 1) > level) { flash(rateEl, `unlocks at Lv ${need}`); return; }
+      if (need > level) { flash(rateEl, `unlocks at Lv ${need}`); return; }
       selected = { type, spec };
       removeBtn.classList.remove('on');
       clearSel(); btn.classList.add('sel');
@@ -631,6 +992,14 @@ export function initReefScene3D(canvas) {
     paletteEl.appendChild(btn);
   }
   function refreshLocks() { for (const r of rows) r.btn.classList.toggle('locked', r.need > level); }
+  // Locked biomes render their grid ghosted until the level unlocks them.
+  function refreshZoneLocks() {
+    for (const t of tiles) {
+      const base = zoneUnlocked(t.userData.biome) ? tileMats[t.userData.biome] : lockedMat;
+      t.userData.baseMat = base;
+      if (t.material !== hoverMat) t.material = base;
+    }
+  }
 
   // Remove-mode toggle (Classic ✕ REMOVE): tap a coral or fish to remove it.
   const removeBtn = document.createElement('button');
@@ -648,10 +1017,23 @@ export function initReefScene3D(canvas) {
   };
   paletteEl.appendChild(removeBtn);
 
-  label('Coral · click a tile');
-  coralSpecs.filter(s => !s.utility && !s.pearlCost).forEach(s => button(s, 'coral'));
-  label('Fish · click the water');
-  fishSpecs.filter(s => !s.pearlCost).forEach(s => button(s, 'fish'));
+  // Species grouped by home biome, mirroring Classic's per-biome shop.
+  const stdCorals = coralSpecs.filter(s => !s.utility && !s.pearlCost);
+  const stdFish = fishSpecs.filter(s => !s.pearlCost);
+  for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
+    const bio = BIOMES[zid];
+    const lv = ZONES[zid].unlock > 1 ? ` · Lv${ZONES[zid].unlock}` : '';
+    const cs = stdCorals.filter(s => primaryBiome(s) === zid);
+    const fs = stdFish.filter(s => primaryBiome(s) === zid);
+    if (cs.length) {
+      label(`${bio.icon} ${bio.shortName}${lv} — coral · click a tile`);
+      cs.forEach(s => button(s, 'coral'));
+    }
+    if (fs.length) {
+      label(`${bio.icon} ${bio.shortName}${lv} — fish · click the water`);
+      fs.forEach(s => button(s, 'fish'));
+    }
+  }
   const pearlC = coralSpecs.filter(s => s.pearlCost);
   const pearlF = fishSpecs.filter(s => s.pearlCost);
   if (pearlC.length || pearlF.length) {
@@ -662,8 +1044,8 @@ export function initReefScene3D(canvas) {
   const utilC = coralSpecs.filter(s => s.utility);
   if (utilC.length) { label('Utility coral · 🪸 polyps'); utilC.forEach(s => button(s, 'coral')); }
 
-  onProgress = refreshLocks;   // keep lock states in sync with level-ups
-  refreshLocks();
+  onProgress = () => { refreshLocks(); refreshZoneLocks(); };   // sync locks with level-ups
+  onProgress();
 
   // ── Pearl shop (basic hook — packs grant pearls, mirroring Classic) ───────────
   const shopOverlay = document.createElement('div');
@@ -691,7 +1073,228 @@ export function initReefScene3D(canvas) {
   document.getElementById('shop-btn')?.addEventListener('click',
     () => { shopOverlay.style.display = 'flex'; });
 
+  // ── Menus (Journal / Harmony Advisor / Progress — Classic's menus in DOM) ─────
+  const openModals = [];
+  function buildMenuModal(title, sub) {
+    const ov = document.createElement('div');
+    ov.className = 'modal3d';
+    const p = document.createElement('div');
+    p.className = 'panel';
+    p.innerHTML = `<div class="m-title">${title}</div>`
+      + (sub ? `<div class="m-sub">${sub}</div>` : '');
+    const head = document.createElement('div');   // slot for tabs / summary
+    const body = document.createElement('div');
+    body.className = 'm-body';
+    const close = document.createElement('button');
+    close.className = 'shop-close'; close.textContent = 'Close';
+    close.onclick = () => { ov.style.display = 'none'; };
+    p.append(head, body, close);
+    ov.appendChild(p);
+    ov.onclick = e => { if (e.target === ov) ov.style.display = 'none'; };
+    document.body.appendChild(ov);
+    openModals.push(ov);
+    return { ov, head, body, show() { ov.style.display = 'flex'; } };
+  }
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      openModals.forEach(m => { m.style.display = 'none'; });
+      shopOverlay.style.display = 'none';
+    }
+  });
+  const bar = (v, max, cls = '') =>
+    `<div class="m-bar"><span class="${v >= max ? 'full' : cls}"`
+    + ` style="width:${clamp((v / max) * 100, 0, 100)}%"></span></div>`;
+
+  // 📖 Journal — every species, discovered by placing it once (mirrors Classic's journal).
+  const journal = buildMenuModal('📖 Species Journal');
+  let journalTab = 'all';
+  const journalTabs = document.createElement('div');
+  journalTabs.className = 'm-tabs';
+  [['all', 'All'], ['coral', 'Coral'], ['fish', 'Fish']].forEach(([id, name]) => {
+    const b = document.createElement('button');
+    b.className = 'm-tab' + (id === journalTab ? ' active' : '');
+    b.textContent = name;
+    b.onclick = () => {
+      journalTab = id;
+      journalTabs.querySelectorAll('.m-tab').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      fillJournal();
+    };
+    journalTabs.appendChild(b);
+  });
+  journal.head.appendChild(journalTabs);
+  function journalRow(spec, type) {
+    const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+    const found = seen.has(spec.id);
+    const locked = need > level;
+    const count = type === 'coral'
+      ? placedCorals.filter(e => e.id === spec.id).length
+      : placedFish.filter(f => f.id === spec.id).length;
+    const status = found ? (count ? `×${count} in reef` : '✓ discovered')
+      : locked ? `🔒 Lv${need}` : 'not yet placed';
+    const zones = Object.keys(ZONES).filter(id => matchesBiome(spec, id));
+    return `<div class="m-row${locked && !found ? ' locked' : ''}">`
+      + `<span class="dot" style="background:${hex(spec.color)}"></span>`
+      + `<span>${found || !locked ? spec.name : '???'}`
+      + ` ${zones.map(id => BIOMES[id].icon).join('')}</span>`
+      + `<small>${status}</small></div>`;
+  }
+  function fillJournal() {
+    const cs = coralSpecs, fs = fishSpecs;
+    const all = [...cs, ...fs];
+    const found = all.filter(s => seen.has(s.id)).length;
+    journal.ov.querySelector('.m-sub')?.remove();
+    journal.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
+      `<div class="m-sub">Discovered ${found} of ${all.length} species — place one to record it.</div>`);
+    let html = '';
+    if (journalTab !== 'fish') {
+      html += '<div class="m-sec">Coral & structures</div>'
+        + cs.map(s => journalRow(s, 'coral')).join('');
+    }
+    if (journalTab !== 'coral') {
+      html += '<div class="m-sec">Fish</div>' + fs.map(s => journalRow(s, 'fish')).join('');
+    }
+    journal.body.innerHTML = html;
+  }
+
+  // ⚖ Harmony Advisor — the live score broken into Classic's terms, plus tips.
+  const advisor = buildMenuModal('⚖ Harmony Advisor');
+  function fillAdvisor() {
+    const coralTypes = new Set(placedCorals.map(c => c.id)).size;
+    const fishCount = placedFish.length;
+    const fishTypes = new Set(placedFish.map(f => f.id)).size;
+    let A = 0, B = 0;
+    for (const f of placedFish) {
+      const ly = FISH_SPECIES[f.id]?.layer;
+      if (ly === 'A') A++; else if (ly === 'B') B++;
+    }
+    const pVariety = Math.min(coralTypes * 8, 40);
+    const pFish = Math.min(fishCount * 5, 20);
+    const pFishTypes = Math.min(fishTypes * 5, 10);
+    const pLayers = (A > 0 && B > 0) ? 15 : (A > 0 || B > 0) ? 7 : 0;
+    const pBalance = fishCount > 0 && placedCorals.length > 0
+      ? Math.round((Math.min(fishCount, placedCorals.length)
+        / Math.max(fishCount, placedCorals.length)) * 15) : 0;
+    advisor.ov.querySelector('.m-sub')?.remove();
+    advisor.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
+      `<div class="m-sub">Current harmony: ${Math.round(harmony)} / 100</div>`);
+    const line = (name, v, max) => `<div class="m-row" style="border:none;padding-bottom:0">`
+      + `<span>${name}</span><small>${v} / ${max}</small></div>${bar(v, max)}`;
+    const tips = [];
+    if (coralTypes < 5) tips.push('Plant more coral <i>species</i> — each new species is worth +8 harmony, up to 40.');
+    if (fishCount < 4) tips.push('Hatch more fish — each is +5 harmony, up to 20.');
+    if (fishTypes < 2 && fishCount > 0) tips.push('Vary your fish — each species is +5, up to 10.');
+    if (A === 0 || B === 0) tips.push('Keep fish in <i>both</i> water layers (small reef fish + large swimmers) for the full +15.');
+    if (fishCount && pBalance < 12) tips.push('Balance the reef — harmony peaks when fish and coral counts are close.');
+    if (level >= ZONES.seagrass.unlock && !placedCorals.some(e => e.b === 'seagrass')) {
+      tips.push('The 🌿 Seagrass Basin is unlocked and empty — its species only grow there.');
+    }
+    if (level >= ZONES.deepTwilight.unlock && !placedCorals.some(e => e.b === 'deepTwilight')) {
+      tips.push('The 🌌 Deep Twilight shelf is unlocked and empty — bioluminescent species await.');
+    }
+    if (!tips.length) tips.push('The reef is thriving. Keep growing it to hold the ratchet at 100.');
+    advisor.body.innerHTML =
+      line('Coral variety', pVariety, 40)
+      + line('Fish population', pFish, 20)
+      + line('Fish variety', pFishTypes, 10)
+      + line('Water layers', pLayers, 15)
+      + line('Fish ⇄ coral balance', pBalance, 15)
+      + '<div class="m-sec">How to improve</div>'
+      + tips.map(t => `<div class="m-row" style="border:none">• <span>${t}</span></div>`).join('');
+  }
+
+  // ⭐ Progress — next-level milestones and biome unlocks (Classic's level panel).
+  const progress = buildMenuModal('⭐ Reef Progress');
+  function fillProgress() {
+    progress.ov.querySelector('.m-sub')?.remove();
+    progress.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
+      `<div class="m-sub">Level ${level}${level >= MAX_LEVEL ? ' — the reef is fully grown' : ` — next: Lv${level + 1}`}</div>`);
+    let html = '';
+    if (level < MAX_LEVEL) {
+      const [c, f, h] = LEVEL_REQS[level + 1];
+      const line = (name, v, max) => `<div class="m-row" style="border:none;padding-bottom:0">`
+        + `<span>${name}</span><small>${Math.min(Math.floor(v), max)} / ${max}</small></div>${bar(v, max)}`;
+      html += `<div class="m-sec">To reach level ${level + 1}</div>`
+        + line('Corals placed', placedCorals.length, c);
+      if (f > 0) html += line('Fish hatched', placedFish.length, f);
+      if (h > 0) html += line('Harmony', harmony, h);
+    }
+    html += '<div class="m-sec">Biomes</div>';
+    for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
+      const b = BIOMES[zid], zn = ZONES[zid];
+      const open = zoneUnlocked(zid);
+      const placedHere = placedCorals.filter(e => (e.b ?? 'coral') === zid).length;
+      html += `<div class="m-row${open ? '' : ' locked'}">`
+        + `<span>${b.icon} ${b.name}</span>`
+        + `<small>${open ? `${placedHere} corals` : `🔒 unlocks at Lv${zn.unlock}`}</small></div>`;
+    }
+    progress.body.innerHTML = html;
+  }
+
+  // 🪸 Coral upgrade modal (Classic's CoralUpgradeModal) — opens on coral tap.
+  const upgrade = buildMenuModal('Coral');
+  let upgradeTarget = null;
+  function fillUpgrade() {
+    const g = upgradeTarget;
+    if (!g || !g.userData.entry) { upgrade.ov.style.display = 'none'; return; }
+    const e = g.userData.entry, spec = g.userData.spec;
+    const bio = BIOMES[e.b ?? 'coral'];
+    upgrade.ov.querySelector('.m-title').textContent = spec.name;
+    upgrade.ov.querySelector('.m-sub')?.remove();
+    upgrade.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
+      `<div class="m-sub">${bio.icon} ${bio.name}`
+      + `${spec.scientific ? ` · <i>${spec.scientific}</i>` : ''}</div>`);
+    const max = e.level >= CORAL_MAX_LEVEL;
+    const basePerTick = spec.utility ? 0 : (BE_PER_TICK[spec.tier] ?? 1);
+    const rate = lvl => basePerTick * (1 + (lvl - 1) * POLYP_BE_BONUS) / TICK_SEC;
+    const cost = upgradeCost(e.level);
+    const refund = (spec.pearlCost || spec.utility) ? 0
+      : Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
+    let html = `<div class="m-row" style="border:none;padding-bottom:0"><span>Level</span>`
+      + `<small>${e.level} / ${CORAL_MAX_LEVEL}</small></div>${bar(e.level, CORAL_MAX_LEVEL)}`;
+    html += spec.utility
+      ? '<div class="m-row"><span>Utility coral</span><small>no BE income</small></div>'
+      : `<div class="m-row"><span>Income</span><small>+${rate(e.level).toFixed(1)}/s`
+        + `${max ? '' : ` → +${rate(e.level + 1).toFixed(1)}/s`}</small></div>`;
+    html += `<div class="m-row"><span>Polyp drip</span>`
+      + `<small>+${(POLYP_PER_CORAL_TICK * e.level / TICK_SEC).toFixed(2)}/s</small></div>`;
+    upgrade.body.innerHTML = html;
+    const up = document.createElement('button');
+    up.className = 'shop-pack';
+    up.innerHTML = max ? '<span>Max level reached</span><span>—</span>'
+      : `<span>⬆ Upgrade to Lv${e.level + 1}</span><span>${cost} 🌱</span>`;
+    up.disabled = max || polyps < cost;
+    up.style.opacity = up.disabled ? 0.45 : 1;
+    up.onclick = () => { if (!up.disabled) { tryUpgrade(g); fillUpgrade(); } };
+    const sell = document.createElement('button');
+    sell.className = 'shop-pack';
+    sell.innerHTML = `<span>✕ Sell</span><span>${refund > 0 ? `+${refund} 🫧` : 'no refund'}</span>`;
+    sell.onclick = () => {
+      upgrade.ov.style.display = 'none';
+      removeCoralGroup(g);
+      upgradeTarget = null;
+    };
+    upgrade.body.append(up, sell);
+  }
+  function openUpgrade(g) { upgradeTarget = g; fillUpgrade(); upgrade.show(); }
+
+  const menuEl = document.getElementById('menu3d');
+  if (menuEl) {
+    [['📖 Journal', journal, fillJournal],
+     ['⚖ Advisor', advisor, fillAdvisor],
+     ['⭐ Progress', progress, fillProgress]].forEach(([text, modal, fill]) => {
+      const b = document.createElement('button');
+      b.className = 'menu-btn';
+      b.textContent = text;
+      b.onclick = () => { fill(); modal.show(); };
+      menuEl.appendChild(b);
+    });
+  }
+
   // ── Restore saved reef ───────────────────────────────────────────────────────
+  // Pre-biome saves lack `b`: corals default to the coral grid; fish anchors are
+  // re-confined to the coral zone. No ambient fish — like Classic, every fish in
+  // the reef is one the player hatched.
   const saved = load();
   if (saved) {
     be = saved.be ?? START_BE;
@@ -699,22 +1302,19 @@ export function initReefScene3D(canvas) {
     pearls = saved.pearls ?? START_PEARLS;
     harmony = saved.harmony ?? START_HARMONY;
     level = saved.level ?? START_LEVEL;
-    (saved.corals ?? []).forEach(({ c, r, id, level: lv }) => {
-      const spec = CORAL_SPECIES[id], tile = tileAt(c, r);
+    (saved.corals ?? []).forEach(({ b, c, r, id, level: lv }) => {
+      const spec = CORAL_SPECIES[id], tile = tileAt(b ?? 'coral', c, r);
       if (spec && tile && !tile.userData.occupied) addCoral(spec, tile, lv ?? 1);
     });
-    (saved.fish ?? []).forEach(d => {
+    (saved.fish ?? []).forEach((d, i) => {
       const spec = FISH_SPECIES[d.id];
-      if (spec) {
-        const st = { ...d }, g = attachFish(spec, st, true);
-        const rec = fishSaveData(st); placedFish.push(rec); g.userData.saveRef = rec;
-      }
+      if (!spec) return;
+      const zone = ZONES[d.b] ?? ZONES.coral;
+      const st = d.b ? { ...d } : fishState(spec, d.cx ?? 0, d.cz ?? 0, i, zone);
+      const g = attachFish(spec, st, true);
+      const rec = fishSaveData(st); placedFish.push(rec); g.userData.saveRef = rec;
     });
-  }
-  // Ambient school for baseline life (not saved, not counted toward progression)
-  for (let i = 0; i < 8; i++) {
-    const spec = fishSpecs[i % fishSpecs.length];
-    attachFish(spec, fishState(spec, (i % 3 - 1) * 1.5, (i % 2 ? 1 : -1) * 1.2, i + 20));
+    (saved.seen ?? []).forEach(id => seen.add(id));
   }
   recomputeRates(); refreshProgress(); refreshHud();
 
@@ -730,9 +1330,11 @@ export function initReefScene3D(canvas) {
   renderer.domElement.addEventListener('pointermove', ev => {
     setPtr(ev);
     const t = ray.intersectObjects(tiles, false)[0]?.object ?? null;
-    if (hovered && hovered !== t) hovered.material = sandMat;
-    if (selected.type === 'coral' && t && !t.userData.occupied) { t.material = hoverMat; hovered = t; }
-    else { if (hovered) hovered.material = sandMat; hovered = null; }
+    if (hovered && hovered !== t) { hovered.material = hovered.userData.baseMat; hovered = null; }
+    const ok = selected.type === 'coral' && t && !t.userData.occupied
+      && zoneUnlocked(t.userData.biome) && matchesBiome(selected.spec, t.userData.biome);
+    if (ok) { t.material = hoverMat; hovered = t; }
+    else if (hovered) { hovered.material = hovered.userData.baseMat; hovered = null; }
   });
   // Deduct a placement cost by currency (pearls / polyps / BE). False if unaffordable.
   function charge(spec, costTable) {
@@ -746,6 +1348,18 @@ export function initReefScene3D(canvas) {
       const cost = costTable[spec.tier] ?? 0;
       if (be < cost) { flash(rateEl, 'not enough 🫧'); return false; }
       be -= cost;
+    }
+    return true;
+  }
+  // A zone accepts a species if it's unlocked and the species lives there.
+  function zoneCheck(spec, zid) {
+    if (!zoneUnlocked(zid)) {
+      flash(rateEl, `${BIOMES[zid].icon} unlocks at Lv ${ZONES[zid].unlock}`);
+      return false;
+    }
+    if (!matchesBiome(spec, zid)) {
+      flash(rateEl, `${spec.name} lives in ${biomeIcons(spec)}`);
+      return false;
     }
     return true;
   }
@@ -763,23 +1377,26 @@ export function initReefScene3D(canvas) {
       return;
     }
 
-    // Click a placed coral to upgrade it (spends polyps) — takes priority over placement.
+    // Click a placed coral to open its upgrade menu — takes priority over placement.
     const coralHit = ray.intersectObjects(corals, true)[0]?.object;
     if (coralHit) {
       const g = ancestorWith(coralHit, 'entry');
-      if (g) { tryUpgrade(g); return; }
+      if (g) { openUpgrade(g); return; }
     }
     if (selected.type === 'coral') {
       const t = ray.intersectObjects(tiles, false)[0]?.object;
       if (!t || t.userData.occupied) return;
+      if (!zoneCheck(selected.spec, t.userData.biome)) return;
       if (!charge(selected.spec, CORAL_COST)) return;
       addCoral(selected.spec, t);
       recomputeRates(); refreshProgress(); refreshHud(); save();
     } else {
       const hit = ray.intersectObject(floor, false)[0];
       if (!hit) return;
+      const zone = zoneAt(hit.point.x);
+      if (!zoneCheck(selected.spec, zone.id)) return;
       if (!charge(selected.spec, FISH_COST)) return;
-      const st = fishState(selected.spec, hit.point.x, hit.point.z, fishes.length);
+      const st = fishState(selected.spec, hit.point.x, hit.point.z, fishes.length, zone);
       const g = attachFish(selected.spec, st, true);
       const rec = fishSaveData(st); placedFish.push(rec); g.userData.saveRef = rec;
       refreshProgress(); refreshHud(); save();
@@ -789,8 +1406,24 @@ export function initReefScene3D(canvas) {
   window.addEventListener('beforeunload', save);
   const saveTimer = setInterval(save, 5000);
 
-  // ── Ambient vent ─────────────────────────────────────────────────────────────
-  const { plumeUpdate } = buildVent(scene, new THREE.Vector3(HALF + 5, -0.2, -HALF - 3));
+  // ── Hydrothermal vent — native to the twilight basin ─────────────────────────
+  const ventX = 33, ventZ = -13;
+  const { plumeUpdate } = buildVent(scene,
+    new THREE.Vector3(ventX, terrainHeight(ventX, ventZ), ventZ));
+
+  // ── Marine snow ──────────────────────────────────────────────────────────────
+  const SNOW = 380;
+  const snowGeo = new THREE.BufferGeometry();
+  const sp = new Float32Array(SNOW * 3);
+  for (let i = 0; i < SNOW; i++) {
+    sp[i * 3] = (Math.cos(i * 12.9) * 0.5 + 0.5) * 92 - 46;
+    sp[i * 3 + 1] = (Math.sin(i * 7.3) * 0.5 + 0.5) * 29 - 5;
+    sp[i * 3 + 2] = (Math.cos(i * 4.1) * 0.5 + 0.5) * 92 - 46;
+  }
+  snowGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({
+    color: 0xbfe6ff, size: 0.12, transparent: true, opacity: 0.5, depthWrite: false }));
+  scene.add(snow);
 
   // ── Render loop ──────────────────────────────────────────────────────────────
   const clock = new THREE.Clock();
@@ -826,6 +1459,7 @@ export function initReefScene3D(canvas) {
       if (f.g.userData.tail) f.g.userData.tail.rotation.y = Math.sin(t * 7 + f.phase) * 0.5;
     }
     for (const w of weeds) w.rotation.z = Math.sin(t * 0.9 + w.userData.seed) * 0.12;
+    for (const o of orbs) o.material.emissiveIntensity = 0.75 + Math.sin(t * 1.6 + o.userData.seed) * 0.35;
 
     caustics.offset.x = t * 0.012 + Math.sin(t * 0.35) * 0.006;
     caustics.offset.y = t * 0.008 + Math.cos(t * 0.28) * 0.006;
@@ -833,7 +1467,7 @@ export function initReefScene3D(canvas) {
     const sposArr = snow.geometry.attributes.position;
     for (let i = 0; i < SNOW; i++) {
       let y = sposArr.getY(i) - dt * 0.35;
-      if (y < 0) y += 24;
+      if (y < -5) y += 29;
       sposArr.setY(i, y);
     }
     sposArr.needsUpdate = true;
@@ -842,20 +1476,6 @@ export function initReefScene3D(canvas) {
     controls.update();
     renderer.render(scene, camera);
   }
-
-  // ── Marine snow ──────────────────────────────────────────────────────────────
-  const SNOW = 320;
-  const snowGeo = new THREE.BufferGeometry();
-  const sp = new Float32Array(SNOW * 3);
-  for (let i = 0; i < SNOW; i++) {
-    sp[i * 3] = (Math.cos(i * 12.9) * 0.5 + 0.5) * 80 - 40;
-    sp[i * 3 + 1] = (Math.sin(i * 7.3) * 0.5 + 0.5) * 24;
-    sp[i * 3 + 2] = (Math.cos(i * 4.1) * 0.5 + 0.5) * 80 - 40;
-  }
-  snowGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-  const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({
-    color: 0xbfe6ff, size: 0.12, transparent: true, opacity: 0.5, depthWrite: false }));
-  scene.add(snow);
 
   frame();
 
@@ -888,7 +1508,8 @@ function disposeGroup(g) {
 function buildVent(scene, pos) {
   const vent = new THREE.Group();
   vent.position.copy(pos); vent.scale.setScalar(0.72); scene.add(vent);
-  const rock = new THREE.MeshStandardMaterial({ color: 0x59544a, roughness: 0.95, flatShading: true });
+  const rock = new THREE.MeshStandardMaterial({
+    color: 0x6b6152, roughness: 0.95, flatShading: true, map: rockTex });
   const base = new THREE.Mesh(new THREE.ConeGeometry(2.6, 4.2, 10), rock);
   base.position.y = 2.1; base.castShadow = true; vent.add(base);
   const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 1.4, 4, 10), rock);
