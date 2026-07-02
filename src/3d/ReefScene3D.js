@@ -59,6 +59,46 @@ function gradientTexture(stops) {
 
 function hex(n) { return `#${n.toString(16).padStart(6, '0')}`; }
 
+// Small deterministic PRNG so each coral gets its own silhouette without
+// re-randomizing on every frame.
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Tileable caustic-style light web, used as the seafloor's animated emissive map.
+function causticTexture(size = 256) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, size, size);
+  const rnd = mulberry32(7);
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.filter = 'blur(2px)';
+  for (let i = 0; i < 70; i++) {
+    const x = rnd() * size, y = rnd() * size, r = 8 + rnd() * 18;
+    const a0 = rnd() * Math.PI * 2, a1 = a0 + 2 + rnd() * 3.5;
+    ctx.lineWidth = 1 + rnd() * 2;
+    // Draw wrapped copies so the texture tiles without seams.
+    for (const dx of [-size, 0, size]) {
+      for (const dy of [-size, 0, size]) {
+        ctx.beginPath();
+        ctx.arc(x + dx, y + dy, r, a0, a1);
+        ctx.stroke();
+      }
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
 // Full Classic catalog (all biomes; event-pass exclusives excluded from the shop,
 // mirroring Classic). Sorted by unlock level then tier for a sensible palette order.
 const byUnlock = (a, b) => (a.unlockLevel ?? 1) - (b.unlockLevel ?? 1)
@@ -73,7 +113,8 @@ function allFish() {
 }
 
 // ── Coral geometry — a distinct silhouette per species family ──────────────────
-const coralRock = new THREE.MeshStandardMaterial({ color: 0x1c3c4c, roughness: 1, flatShading: true });
+const coralRock = new THREE.MeshStandardMaterial({ color: 0x736e5e, roughness: 1, flatShading: true });
+coralRock.userData.shared = true;
 
 function shapeOf(spec) {
   const id = spec.id;
@@ -85,93 +126,171 @@ function shapeOf(spec) {
   return spec.tall ? 'branch' : 'brain';
 }
 
+// Each builder gets ({ mat, tipMat, darkMat }, rnd) — rnd is a per-coral PRNG so
+// every placement has its own silhouette instead of six identical clones.
 const BODY = {
-  branch(g, mat) {
-    const N = 6;
+  branch(g, { mat, tipMat }, rnd) {
+    const N = 7 + Math.floor(rnd() * 3);
     for (let i = 0; i < N; i++) {
-      const a = (i / N) * Math.PI * 2 + (i % 2) * 0.5;
-      const h = 1.0 + (i % 3) * 0.55;
-      const br = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, h, 4, 8), mat);
-      br.position.set(Math.cos(a) * 0.22, 0.28 + h / 2, Math.sin(a) * 0.22);
-      br.rotation.z = Math.cos(a) * 0.3; br.rotation.x = -Math.sin(a) * 0.3;
-      g.add(br);
-      const h2 = 0.5 + (i % 2) * 0.3;
-      const fk = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, h2, 4, 6), mat);
-      fk.position.set(Math.cos(a) * 0.34, 0.28 + h, Math.sin(a) * 0.34);
-      fk.rotation.z = Math.cos(a) * 0.7;
-      g.add(fk);
-      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), mat);
-      tip.position.set(Math.cos(a) * 0.42, 0.34 + h + h2 * 0.4, Math.sin(a) * 0.42);
-      g.add(tip);
+      const a = (i / N) * Math.PI * 2 + rnd() * 0.6;
+      const lean = 0.18 + rnd() * 0.35;
+      const h1 = 0.7 + rnd() * 0.9;
+      const r0 = 0.05 + rnd() * 0.025;
+      // Lower segment: tapered, leaning outward from the base.
+      const arm = new THREE.Group();
+      arm.position.set(Math.cos(a) * 0.18, 0.2, Math.sin(a) * 0.18);
+      arm.rotation.z = Math.cos(a) * lean;
+      arm.rotation.x = -Math.sin(a) * lean;
+      const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(r0 * 0.65, r0, h1, 6), mat);
+      seg1.position.y = h1 / 2; arm.add(seg1);
+      // Upper segment: thinner, kinked a bit further out, pale grow-tip.
+      const fork = new THREE.Group();
+      fork.position.y = h1;
+      fork.rotation.z = (rnd() - 0.3) * 0.8;
+      fork.rotation.x = (rnd() - 0.5) * 0.6;
+      const h2 = 0.35 + rnd() * 0.5;
+      const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(r0 * 0.3, r0 * 0.62, h2, 6), mat);
+      seg2.position.y = h2 / 2; fork.add(seg2);
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(r0 * 0.55, 6, 6), tipMat);
+      tip.position.y = h2; fork.add(tip);
+      arm.add(fork);
+      g.add(arm);
+      // Occasional short side nub low on the arm.
+      if (rnd() < 0.5) {
+        const nh = 0.2 + rnd() * 0.25;
+        const nub = new THREE.Mesh(new THREE.CylinderGeometry(r0 * 0.25, r0 * 0.5, nh, 5), mat);
+        nub.position.set(0, h1 * (0.35 + rnd() * 0.3), 0);
+        nub.rotation.z = 0.9 + rnd() * 0.5;
+        arm.add(nub);
+      }
     }
   },
-  brain(g, mat) {
-    const dome = new THREE.Mesh(
-      new THREE.SphereGeometry(0.62, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), mat);
-    dome.position.y = 0.16; dome.scale.y = 0.9; g.add(dome);
-    for (let i = 0; i < 3; i++) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5 - i * 0.15, 0.05, 8, 26), mat);
-      ring.rotation.x = Math.PI / 2; ring.position.y = 0.44 + i * 0.12; g.add(ring);
+  brain(g, { mat, darkMat }, rnd) {
+    // Lumpy hemisphere: displace vertices with layered sine noise.
+    const geo = new THREE.SphereGeometry(0.62, 26, 18, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    const pos = geo.attributes.position;
+    const o1 = rnd() * 10, o2 = rnd() * 10;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const n = Math.sin(v.x * 9 + o1) * Math.cos(v.z * 8 + o2) * 0.5
+        + Math.sin(v.x * 17 + v.z * 15 + o1) * 0.5;
+      v.multiplyScalar(1 + n * 0.09);
+      pos.setXYZ(i, v.x, v.y, v.z);
+    }
+    geo.computeVertexNormals();
+    const dome = new THREE.Mesh(geo, mat);
+    dome.position.y = 0.18; dome.scale.y = 0.72; g.add(dome);
+    // Meandering darker grooves hugging the dome.
+    for (let i = 0; i < 6; i++) {
+      const groove = new THREE.Mesh(
+        new THREE.TorusGeometry(0.34 + rnd() * 0.2, 0.035, 6, 22, 2 + rnd() * 3), darkMat);
+      groove.position.y = 0.2 + rnd() * 0.16;
+      groove.rotation.set(Math.PI / 2 + (rnd() - 0.5) * 0.7, rnd() * Math.PI * 2, rnd() * 0.6);
+      groove.scale.y = 0.8;
+      g.add(groove);
     }
   },
-  plate(g, mat) {
-    for (let i = 0; i < 4; i++) {
-      const r = 0.32 + i * 0.15;
-      const disc = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.86, 0.08, 18), mat);
-      disc.position.set(Math.sin(i * 2.1) * 0.1, 0.3 + i * 0.27, Math.cos(i * 2.1) * 0.1);
-      disc.rotation.x = Math.sin(i) * 0.22; disc.rotation.z = Math.cos(i) * 0.22;
+  plate(g, { mat, tipMat }, rnd) {
+    // A stem holding two or three broad, thin, tilted tables.
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.16, 0.7, 7), mat);
+    stem.position.y = 0.4; g.add(stem);
+    const n = 2 + Math.floor(rnd() * 2);
+    for (let i = 0; i < n; i++) {
+      const r = 0.6 - i * 0.16 + rnd() * 0.08;
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.8, 0.05, 20), mat);
+      disc.position.set((rnd() - 0.5) * 0.24, 0.55 + i * 0.38, (rnd() - 0.5) * 0.24);
+      disc.rotation.x = (rnd() - 0.5) * 0.5; disc.rotation.z = (rnd() - 0.5) * 0.5;
       g.add(disc);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.025, 6, 26), tipMat);
+      rim.rotation.x = Math.PI / 2;
+      disc.add(rim);
+      rim.position.y = 0.02;
     }
   },
-  polyp(g, mat) {
+  polyp(g, { mat, tipMat }, rnd) {
     const mound = new THREE.Mesh(
       new THREE.SphereGeometry(0.55, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), mat);
     mound.position.y = 0.1; mound.scale.y = 0.55; g.add(mound);
-    for (let i = 0; i < 11; i++) {
-      const a = i * 0.66, rr = 0.1 + ((i * 37) % 30) / 100;
-      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.3, 6), mat);
-      tube.position.set(Math.cos(a) * rr, 0.34, Math.sin(a) * rr); g.add(tube);
-      const t = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), mat);
-      t.position.set(Math.cos(a) * rr, 0.49, Math.sin(a) * rr); g.add(t);
+    for (let i = 0; i < 12; i++) {
+      const a = rnd() * Math.PI * 2, rr = 0.06 + rnd() * 0.34;
+      const h = 0.22 + rnd() * 0.16;
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.065, h, 6), mat);
+      tube.position.set(Math.cos(a) * rr, 0.28 + h / 2, Math.sin(a) * rr); g.add(tube);
+      const t = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), tipMat);
+      t.position.set(Math.cos(a) * rr, 0.3 + h, Math.sin(a) * rr); g.add(t);
     }
   },
-  bubble(g, mat) {
-    const m = mat.clone(); m.transparent = true; m.opacity = 0.85;
-    for (let i = 0; i < 9; i++) {
-      const a = i * 0.9, rr = 0.08 + ((i * 53) % 25) / 100;
-      const b = new THREE.Mesh(new THREE.SphereGeometry(0.15 + ((i * 17) % 10) / 100, 12, 12), m);
-      b.position.set(Math.cos(a) * rr, 0.24 + ((i * 29) % 22) / 100, Math.sin(a) * rr);
+  bubble(g, { mat }, rnd) {
+    const m = mat.clone(); m.transparent = true; m.opacity = 0.82; m.roughness = 0.25;
+    for (let i = 0; i < 11; i++) {
+      const a = rnd() * Math.PI * 2, rr = 0.05 + rnd() * 0.3;
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.13 + rnd() * 0.11, 12, 12), m);
+      b.position.set(Math.cos(a) * rr, 0.2 + rnd() * 0.26, Math.sin(a) * rr);
       g.add(b);
     }
   },
 };
 
+let coralCounter = 1;
 function makeCoral(spec) {
   const g = new THREE.Group();
-  const glow = BIOLUM.includes(spec.id) ? 0.5 : 0.16;
+  const rnd = mulberry32(spec.id.length * 977 + coralCounter++ * 7919);
+  // Slightly desaturated, rough, and barely emissive — real corals aren't neon;
+  // bioluminescent species genuinely glow.
+  const glow = BIOLUM.includes(spec.id) ? 0.55 : 0.04;
+  const color = new THREE.Color(spec.color).lerp(new THREE.Color(0x8a8a80), 0.18);
   const mat = new THREE.MeshStandardMaterial({
-    color: spec.color, roughness: 0.45, emissive: spec.color, emissiveIntensity: glow });
+    color, roughness: 0.75, emissive: color, emissiveIntensity: glow });
+  const tipMat = new THREE.MeshStandardMaterial({
+    color: color.clone().lerp(new THREE.Color(0xfff6e8), 0.45), roughness: 0.6,
+    emissive: color, emissiveIntensity: glow + 0.06 });
+  const darkMat = new THREE.MeshStandardMaterial({
+    color: color.clone().multiplyScalar(0.45), roughness: 0.85 });
   const base = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0), coralRock);
-  base.scale.set(1, 0.35, 1); base.position.y = 0.08; g.add(base);
-  (BODY[shapeOf(spec)] || BODY.brain)(g, mat);
+  base.scale.set(1, 0.35, 1); base.position.y = 0.08;
+  base.rotation.y = rnd() * Math.PI; g.add(base);
+  (BODY[shapeOf(spec)] || BODY.brain)(g, { mat, tipMat, darkMat }, rnd);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.rotation.y = rnd() * Math.PI * 2;
   g.scale.setScalar(0.01);
-  g.userData = { grow: 0, seed: (spec.id.length * 1.7) % 6.28 };
+  g.userData = { grow: 0, seed: rnd() * 6.28 };
   return g;
 }
 
 function makeFish(spec) {
   const g = new THREE.Group();
-  const bodyMat = new THREE.MeshStandardMaterial({
-    color: spec.color, roughness: 0.5, emissive: spec.color, emissiveIntensity: 0.05 });
+  const color = new THREE.Color(spec.color);
+  const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.45 });
   const finMat = new THREE.MeshStandardMaterial({
-    color: spec.accentColor ?? spec.color, roughness: 0.6, side: THREE.DoubleSide });
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 12), bodyMat);
-  body.scale.set(0.6, 0.5, 1.25); g.add(body);                 // nose points +z
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.6, 4), finMat);
-  tail.rotation.x = -Math.PI / 2; tail.position.z = -0.8; tail.scale.set(0.22, 1, 1); g.add(tail);
-  const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.4, 4), finMat);
-  dorsal.position.set(0, 0.28, 0); dorsal.scale.set(0.4, 1, 1.4); g.add(dorsal);
+    color: spec.accentColor ?? spec.color, roughness: 0.5,
+    side: THREE.DoubleSide, transparent: true, opacity: 0.92 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x0a1420, roughness: 0.2 });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12), bodyMat);
+  body.scale.set(0.42, 0.55, 1.15); g.add(body);               // nose points +z
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10),
+    new THREE.MeshStandardMaterial({
+      color: color.clone().lerp(new THREE.Color(0xffffff), 0.5), roughness: 0.4 }));
+  belly.scale.set(0.36, 0.4, 0.95); belly.position.y = -0.1; g.add(belly);
+  for (const s of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), eyeMat);
+    eye.position.set(s * 0.17, 0.1, 0.42); g.add(eye);
+    const pec = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.32, 4), finMat);
+    pec.position.set(s * 0.22, -0.05, 0.12);
+    pec.rotation.set(-Math.PI / 2, 0, s * 0.9); pec.scale.set(0.35, 1, 1); g.add(pec);
+  }
+  // Caudal fin as its own pivot so the render loop can wag it.
+  const tailPivot = new THREE.Group();
+  tailPivot.position.z = -0.5; g.add(tailPivot);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.55, 3), finMat);
+  tail.rotation.x = -Math.PI / 2; tail.position.z = -0.28; tail.scale.set(0.14, 1, 1);
+  tailPivot.add(tail);
+  const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.36, 4), finMat);
+  dorsal.position.set(0, 0.3, -0.05); dorsal.scale.set(0.24, 1, 1.5);
+  dorsal.rotation.x = -0.25; g.add(dorsal);
   g.scale.setScalar(((spec.size ?? 14) / 16) * 0.55);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData.tail = tailPivot;
   return g;
 }
 
@@ -181,10 +300,15 @@ export function initReefScene3D(canvas) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  // Everything organic casts a soft shadow onto the sand.
+  const enableShadows = (root) => root.traverse(o => { if (o.isMesh) o.castShadow = true; });
 
   const scene = new THREE.Scene();
-  scene.background = gradientTexture([[0.0, '#1d6c8f'], [0.45, '#0e456a'], [1.0, '#041826']]);
-  scene.fog = new THREE.FogExp2(0x0c3c5a, 0.02);
+  scene.background = gradientTexture([[0.0, '#2b86a8'], [0.45, '#155579'], [1.0, '#062232']]);
+  scene.fog = new THREE.FogExp2(0x11486a, 0.014);
 
   const camera = new THREE.PerspectiveCamera(
     50, window.innerWidth / window.innerHeight, 0.1, 400);
@@ -197,10 +321,17 @@ export function initReefScene3D(canvas) {
   controls.minDistance = 7; controls.maxDistance = 70;
 
   // ── Lighting ────────────────────────────────────────────────────────────────
-  scene.add(new THREE.HemisphereLight(0xbfeaff, 0x0a2233, 1.05));
-  const sun = new THREE.DirectionalLight(0xdff2ff, 1.15);
-  sun.position.set(6, 22, 8); scene.add(sun);
-  const fill = new THREE.DirectionalLight(0x2f7fae, 0.4);
+  scene.add(new THREE.HemisphereLight(0xcdeefc, 0x2e4440, 1.05));
+  const sun = new THREE.DirectionalLight(0xeaf6ff, 1.7);
+  sun.position.set(6, 22, 8);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -28; sun.shadow.camera.right = 28;
+  sun.shadow.camera.top = 28; sun.shadow.camera.bottom = -28;
+  sun.shadow.camera.far = 60;
+  sun.shadow.bias = -0.0005;
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x3f93c4, 0.5);
   fill.position.set(-10, 6, -6); scene.add(fill);
 
   // ── Seafloor ─────────────────────────────────────────────────────────────────
@@ -211,18 +342,26 @@ export function initReefScene3D(canvas) {
     fp.setZ(i, Math.sin(x * 0.08) * Math.cos(y * 0.07) * 1.1 + Math.sin(x * 0.21 + y * 0.13) * 0.35);
   }
   floorGeo.computeVertexNormals();
-  const floor = new THREE.Mesh(floorGeo,
-    new THREE.MeshStandardMaterial({ color: 0x17506a, roughness: 1 }));
-  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.2; scene.add(floor);
+  // Animated caustic light web plays over the sand via the emissive channel.
+  const caustics = causticTexture();
+  caustics.repeat.set(26, 26);
+  // Sand seen through a few metres of water: desaturated blue-green, not cream.
+  const floorMat = new THREE.MeshStandardMaterial({
+    color: 0x64887f, roughness: 1,
+    emissive: 0xaadfe8, emissiveIntensity: 0.13, emissiveMap: caustics });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.2;
+  floor.receiveShadow = true; scene.add(floor);
 
-  const rockMat = new THREE.MeshStandardMaterial({ color: 0x1a3d4f, roughness: 1, flatShading: true });
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x6e6a5c, roughness: 1, flatShading: true });
   const weeds = [];
   for (let i = 0; i < 26; i++) {
     const a = i * 2.399, r = HALF + 3 + (i % 6) * 2.4;
     if (i % 3) {
       const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + (i % 4) * 0.4, 0), rockMat);
       rock.position.set(Math.cos(a) * r, -0.1, Math.sin(a) * r);
-      rock.rotation.set(a, a * 1.7, a * 0.5); rock.scale.y = 0.65; scene.add(rock);
+      rock.rotation.set(a, a * 1.7, a * 0.5); rock.scale.y = 0.65;
+      rock.castShadow = true; scene.add(rock);
     } else {
       const weed = new THREE.Group();
       const blades = 3 + (i % 3);
@@ -233,21 +372,26 @@ export function initReefScene3D(canvas) {
         blade.position.set((b - blades / 2) * 0.18, h / 2, 0); weed.add(blade);
       }
       weed.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-      weed.userData.seed = a; scene.add(weed); weeds.push(weed);
+      weed.userData.seed = a; enableShadows(weed); scene.add(weed); weeds.push(weed);
     }
   }
 
   // ── Grid tiles ───────────────────────────────────────────────────────────────
+  // Tiles read as raked sand patches, not game-board squares — a shade lighter
+  // than the seafloor with a soft edge, glowing only on hover.
   const tileGeo = new THREE.BoxGeometry(TILE * 0.9, 0.12, TILE * 0.9);
-  const sandMat = new THREE.MeshStandardMaterial({ color: 0x1f5f7c, roughness: 1 });
+  const sandMat = new THREE.MeshStandardMaterial({
+    color: 0x74988c, roughness: 1, transparent: true, opacity: 0.6 });
   const hoverMat = new THREE.MeshStandardMaterial({
-    color: 0x39c9d8, roughness: 0.8, emissive: 0x2aa6c4, emissiveIntensity: 0.55 });
+    color: 0x9fe8f0, roughness: 0.8, emissive: 0x2aa6c4, emissiveIntensity: 0.5,
+    transparent: true, opacity: 0.85 });
   const tiles = [];
   for (let r = 0; r < GRID; r++) {
     for (let c = 0; c < GRID; c++) {
       const t = new THREE.Mesh(tileGeo, sandMat);
       t.position.set(c * TILE - HALF + TILE / 2, 0.06, r * TILE - HALF + TILE / 2);
       t.userData = { c, r, occupied: false };
+      t.receiveShadow = true;
       scene.add(t); tiles.push(t);
     }
   }
@@ -354,7 +498,7 @@ export function initReefScene3D(canvas) {
   }
   function attachFish(spec, st, placed = false) {
     st.g = makeFish(spec);
-    st.g.userData = { placed, stateRef: st };   // `placed` fish are player-owned & removable
+    Object.assign(st.g.userData, { placed, stateRef: st });   // `placed` fish are player-owned & removable
     scene.add(st.g); fishes.push(st);
     return st.g;
   }
@@ -678,9 +822,13 @@ export function initReefScene3D(canvas) {
       const z = Math.sin(ang) * f.R + f.cz;
       f.g.position.set(x, f.y + Math.sin(t * f.bobw + f.phase) * f.bob, z);
       const heading = Math.atan2(-Math.sin(ang) * f.w, Math.cos(ang) * f.w);
-      f.g.rotation.y = heading + Math.sin(t * 6 + f.phase) * 0.16;
+      f.g.rotation.y = heading + Math.sin(t * 6 + f.phase) * 0.1;
+      if (f.g.userData.tail) f.g.userData.tail.rotation.y = Math.sin(t * 7 + f.phase) * 0.5;
     }
     for (const w of weeds) w.rotation.z = Math.sin(t * 0.9 + w.userData.seed) * 0.12;
+
+    caustics.offset.x = t * 0.012 + Math.sin(t * 0.35) * 0.006;
+    caustics.offset.y = t * 0.008 + Math.cos(t * 0.28) * 0.006;
 
     const sposArr = snow.geometry.attributes.position;
     for (let i = 0; i < SNOW; i++) {
@@ -730,18 +878,29 @@ function flash(el, msg, color = '#ff8a80') {
 function disposeGroup(g) {
   g.traverse(o => {
     if (o.geometry) o.geometry.dispose();
-    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());
+    if (o.material) {
+      (Array.isArray(o.material) ? o.material : [o.material])
+        .forEach(m => { if (!m.userData.shared) m.dispose(); });
+    }
   });
 }
 
 function buildVent(scene, pos) {
   const vent = new THREE.Group();
-  vent.position.copy(pos); scene.add(vent);
-  const rock = new THREE.MeshStandardMaterial({ color: 0x2b2f3a, roughness: 0.95, flatShading: true });
-  const base = new THREE.Mesh(new THREE.ConeGeometry(2.6, 4.2, 10, 1, true), rock);
-  base.position.y = 2.1; vent.add(base);
-  const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 1.4, 4, 10, 1, true), rock);
-  stack.position.y = 5.4; vent.add(stack);
+  vent.position.copy(pos); vent.scale.setScalar(0.72); scene.add(vent);
+  const rock = new THREE.MeshStandardMaterial({ color: 0x59544a, roughness: 0.95, flatShading: true });
+  const base = new THREE.Mesh(new THREE.ConeGeometry(2.6, 4.2, 10), rock);
+  base.position.y = 2.1; base.castShadow = true; vent.add(base);
+  const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 1.4, 4, 10), rock);
+  stack.position.y = 5.4; stack.castShadow = true; vent.add(stack);
+  // Scattered boulders around the foot so the cone doesn't rise from bare sand.
+  const brnd = mulberry32(41);
+  for (let i = 0; i < 6; i++) {
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + brnd() * 0.7, 0), rock);
+    const a = brnd() * Math.PI * 2;
+    b.position.set(Math.cos(a) * (2.4 + brnd() * 1.4), 0.15, Math.sin(a) * (2.4 + brnd() * 1.4));
+    b.rotation.set(a, a * 2.3, a); b.scale.y = 0.6; b.castShadow = true; vent.add(b);
+  }
   const MOUTH_Y = 7.4;
   const mouthMat = new THREE.MeshStandardMaterial({ color: 0x120a06, emissive: 0xff6a3d, emissiveIntensity: 0 });
   const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.65, 16), mouthMat);
