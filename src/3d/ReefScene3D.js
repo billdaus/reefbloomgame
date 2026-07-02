@@ -177,20 +177,25 @@ function hashId(id) {
 }
 const css = (c) => `#${c.getHexString()}`;
 
+// Individuals get their own skin: `variant` reseeds the pattern layout and
+// subtly shifts the tone, so two corals of one species never match exactly.
+const TEX_VARIANTS = 6;
 const coralTexCache = new Map();
-function coralTexture(spec) {
-  let t = coralTexCache.get(spec.id);
+function coralTexture(spec, variant = 0) {
+  const key = `${spec.id}:${variant}`;
+  let t = coralTexCache.get(key);
   if (t) return t;
   const size = 128;
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
+  const rnd = mulberry32(hashId(spec.id) + variant * 2654435761);
   const col = new THREE.Color(spec.color).lerp(new THREE.Color(0x8a8a80), 0.18);
+  col.offsetHSL((rnd() - 0.5) * 0.03, (rnd() - 0.5) * 0.06, (rnd() - 0.5) * 0.09);
   const dark = css(col.clone().multiplyScalar(0.58));
   const light = css(col.clone().lerp(new THREE.Color(0xffffff), 0.4));
   ctx.fillStyle = css(col);
   ctx.fillRect(0, 0, size, size);
-  const rnd = mulberry32(hashId(spec.id));
   const shape = shapeOf(spec);
   if (shape === 'brain') {
     // Meandering ridge-and-valley lines.
@@ -242,7 +247,7 @@ function coralTexture(spec) {
   t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  coralTexCache.set(spec.id, t);
+  coralTexCache.set(key, t);
   return t;
 }
 
@@ -255,35 +260,38 @@ const FISH_SPOTTED = new Set([
   'spottedEagleRay', 'pufferfish', 'mandarinfish', 'rainbowGoby', 'twilightWhaleShark',
   'flashlightFish', 'giantSquid']);
 const fishTexCache = new Map();
-function fishTexture(spec) {
-  let t = fishTexCache.get(spec.id);
+function fishTexture(spec, variant = 0) {
+  const key = `${spec.id}:${variant}`;
+  let t = fishTexCache.get(key);
   if (t) return t;
   const w = 128, h = 64;
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');
+  const rnd = mulberry32(hashId(spec.id) + variant * 2654435761);
   const base = new THREE.Color(spec.color);
+  base.offsetHSL((rnd() - 0.5) * 0.04, (rnd() - 0.5) * 0.08, (rnd() - 0.5) * 0.08);
   const acc = new THREE.Color(spec.accentColor ?? 0xffffff);
   ctx.fillStyle = css(base);
   ctx.fillRect(0, 0, w, h);
   // Counter-shading: darker dorsal (top of texture = top of fish).
   const grad = ctx.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0, css(base.clone().multiplyScalar(0.6)));
-  grad.addColorStop(0.45, 'rgba(0,0,0,0)');
+  grad.addColorStop(0.4 + rnd() * 0.15, 'rgba(0,0,0,0)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
-  const rnd = mulberry32(hashId(spec.id));
   ctx.fillStyle = css(acc);
   if (FISH_BANDED.has(spec.id)) {
     const bands = 3 + (hashId(spec.id) % 2);
     for (let i = 0; i < bands; i++) {
-      const x = ((i + 0.5) / bands) * w;
+      const x = ((i + 0.3 + rnd() * 0.4) / bands) * w;
       const bw = 7 + rnd() * 6;
       ctx.fillRect(x - bw / 2, 0, bw, h);
     }
   } else if (FISH_SPOTTED.has(spec.id)) {
     ctx.globalAlpha = 0.85;
-    for (let i = 0; i < 26; i++) {
+    const n = 20 + Math.floor(rnd() * 14);
+    for (let i = 0; i < n; i++) {
       ctx.beginPath();
       ctx.arc(rnd() * w, rnd() * h, 1.6 + rnd() * 2.6, 0, 7);
       ctx.fill();
@@ -291,14 +299,14 @@ function fishTexture(spec) {
     ctx.globalAlpha = 1;
   } else {
     // Lateral stripe along the flank.
-    ctx.globalAlpha = 0.7;
-    ctx.fillRect(0, h * 0.52, w, 4);
+    ctx.globalAlpha = 0.55 + rnd() * 0.3;
+    ctx.fillRect(0, h * (0.46 + rnd() * 0.12), w, 3 + rnd() * 3);
     ctx.globalAlpha = 1;
   }
   t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  fishTexCache.set(spec.id, t);
+  fishTexCache.set(key, t);
   return t;
 }
 
@@ -498,9 +506,9 @@ function makeCoral(spec) {
   // bioluminescent species genuinely glow.
   const glow = BIOLUM.includes(spec.id) ? 0.55 : 0.04;
   const color = new THREE.Color(spec.color).lerp(new THREE.Color(0x8a8a80), 0.18);
-  // The species skin carries the color; white base keeps the pattern true.
+  // The individual's skin carries the color; white base keeps the pattern true.
   const mat = new THREE.MeshStandardMaterial({
-    color: 0xffffff, map: coralTexture(spec), roughness: 0.75,
+    color: 0xffffff, map: coralTexture(spec, coralCounter % TEX_VARIANTS), roughness: 0.75,
     emissive: color, emissiveIntensity: glow,
     bumpMap: bumpTex, bumpScale: 0.015 });
   const tipMat = new THREE.MeshStandardMaterial({
@@ -519,10 +527,11 @@ function makeCoral(spec) {
   return g;
 }
 
+let fishCounter = 1;
 function makeFish(spec) {
   const g = new THREE.Group();
   const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff, map: fishTexture(spec), roughness: 0.45,
+    color: 0xffffff, map: fishTexture(spec, fishCounter++ % TEX_VARIANTS), roughness: 0.45,
     bumpMap: bumpTex, bumpScale: 0.006 });
   const finMat = new THREE.MeshStandardMaterial({
     color: spec.accentColor ?? spec.color, roughness: 0.5,
@@ -577,6 +586,13 @@ export function initReefScene3D(canvas) {
   controls.enableDamping = true; controls.dampingFactor = 0.06;
   controls.maxPolarAngle = Math.PI * 0.49;
   controls.minDistance = 7; controls.maxDistance = 90;
+  // Movable focal point: right-drag (or two-finger drag) pans along the
+  // seafloor, arrow keys nudge it. The target is clamped to the play field.
+  controls.enablePan = true;
+  controls.screenSpacePanning = false;
+  controls.keyPanSpeed = 26;
+  controls.keys = { LEFT: 'ArrowLeft', UP: 'ArrowUp', RIGHT: 'ArrowRight', BOTTOM: 'ArrowDown' };
+  controls.listenToKeyEvents(window);
 
   // ── Lighting ────────────────────────────────────────────────────────────────
   scene.add(new THREE.HemisphereLight(0xcdeefc, 0x46483a, 1.05));
@@ -890,9 +906,10 @@ export function initReefScene3D(canvas) {
     if (refund > 0) flash(rateEl, `+${refund} BE`, '#7fd8b0');
   }
 
-  // ── Save slots (two independent reefs) ───────────────────────────────────────
+  // ── Save slots (three independent reefs) ─────────────────────────────────────
+  const SLOTS = ['1', '2', '3'];
   let slot = localStorage.getItem(SLOT_KEY) || '1';
-  if (slot !== '1' && slot !== '2') slot = '1';
+  if (!SLOTS.includes(slot)) slot = '1';
   try {
     // Migrate the pre-slots single save into slot 1 the first time.
     const legacy = localStorage.getItem(SAVE_KEY_BASE);
@@ -930,21 +947,15 @@ export function initReefScene3D(canvas) {
     if (pearlEl) pearlEl.textContent = Math.floor(pearls);
   }
 
-  // ── Save-slot switcher (two independent reefs) ────────────────────────────────
+  // ── Save-slot switcher — one button opening the slot-select menu ─────────────
+  // (fillSlots / slotsMenu are defined with the other menus below.)
   const slotsEl = document.getElementById('slots');
   if (slotsEl) {
-    ['1', '2'].forEach(s => {
-      const b = document.createElement('button');
-      b.className = 'slot-btn' + (s === slot ? ' active' : '');
-      b.textContent = `Slot ${s}`;
-      b.onclick = () => {
-        if (s === slot) return;
-        save();                              // persist current slot
-        localStorage.setItem(SLOT_KEY, s);
-        location.reload();                   // clean teardown → reload into the new slot
-      };
-      slotsEl.appendChild(b);
-    });
+    const b = document.createElement('button');
+    b.className = 'slot-btn active';
+    b.textContent = `💾 Slot ${slot}`;
+    b.onclick = () => { fillSlots(); slotsMenu.show(); };
+    slotsEl.appendChild(b);
   }
 
   // ── Palette UI (full Classic catalog, grouped by biome, level-gated) ──────────
@@ -1231,6 +1242,47 @@ export function initReefScene3D(canvas) {
     progress.body.innerHTML = html;
   }
 
+  // 💾 Slot select — three independent reefs with a summary of each.
+  const slotsMenu = buildMenuModal('💾 Reef Slots',
+    'Three independent reefs — switching saves this one first.');
+  function fillSlots() {
+    slotsMenu.body.innerHTML = '';
+    for (const s of SLOTS) {
+      let info = null;
+      try { info = JSON.parse(localStorage.getItem(slotKey(s))); } catch (e) { /* corrupt — treat as empty */ }
+      const active = s === slot;
+      const row = document.createElement('button');
+      row.className = 'shop-pack';
+      if (active) row.style.borderColor = '#7fd8ff';
+      const summary = active
+        ? `Lv${level} · ${Math.floor(be)} 🫧 · ${placedCorals.length} 🪸 · ${placedFish.length} 🐠`
+        : info
+          ? `Lv${info.level ?? 1} · ${Math.floor(info.be ?? 0)} 🫧 · ${(info.corals ?? []).length} 🪸 · ${(info.fish ?? []).length} 🐠`
+          : 'empty — start fresh';
+      row.innerHTML = `<span>${active ? '▶ ' : ''}Slot ${s}</span><span>${summary}</span>`;
+      row.onclick = () => {
+        if (s === slot) { slotsMenu.ov.style.display = 'none'; return; }
+        save();                              // persist current slot
+        localStorage.setItem(SLOT_KEY, s);
+        location.reload();                   // clean teardown → reload into the new slot
+      };
+      slotsMenu.body.appendChild(row);
+      if (info && !active) {
+        const clr = document.createElement('button');
+        clr.className = 'shop-close';
+        clr.style.cssText = 'margin:0 0 6px;text-align:right;color:#ffb4ac;';
+        clr.textContent = `✕ Erase slot ${s}`;
+        clr.onclick = () => {
+          if (confirm(`Erase the reef in slot ${s}? This can't be undone.`)) {
+            localStorage.removeItem(slotKey(s));
+            fillSlots();
+          }
+        };
+        slotsMenu.body.appendChild(clr);
+      }
+    }
+  }
+
   // 🪸 Coral upgrade modal (Classic's CoralUpgradeModal) — opens on coral tap.
   const upgrade = buildMenuModal('Coral');
   let upgradeTarget = null;
@@ -1473,6 +1525,9 @@ export function initReefScene3D(canvas) {
     sposArr.needsUpdate = true;
 
     plumeUpdate(t, ventIntensity((t / VENT_PERIOD) % 1));
+    controls.target.x = clamp(controls.target.x, -46, 46);
+    controls.target.z = clamp(controls.target.z, -30, 30);
+    controls.target.y = clamp(controls.target.y, -4, 10);
     controls.update();
     renderer.render(scene, camera);
   }
