@@ -52,6 +52,38 @@ function matchesBiome(spec, biomeId) {
 const biomeIcons = (spec) =>
   Object.keys(ZONES).filter(id => matchesBiome(spec, id)).map(id => BIOMES[id].icon).join('');
 
+// Free-roaming fish: big swimmers wander their biome instead of circling, and
+// multi-biome species get a roam band spanning every biome they belong to —
+// tangs and cleaners genuinely commute between the reef and the seagrass flats.
+const ZONE_BAND = { seagrass: [-42, -13.5], coral: [-13.5, 13.5], deepTwilight: [13.5, 42] };
+function roamProfile(spec) {
+  const zs = Object.keys(ZONES).filter(id => matchesBiome(spec, id));
+  const big = (spec.size ?? 14) >= 22;
+  if (zs.length < 2 && !big) return null;
+  return {
+    x0: Math.min(...zs.map(z => ZONE_BAND[z][0])) + 2,
+    x1: Math.max(...zs.map(z => ZONE_BAND[z][1])) - 2,
+  };
+}
+
+// Bottom-dwellers that aren't fish at all — an arthropod, echinoderms, a
+// gastropod, a shrimp. They crawl the seafloor instead of swimming the column.
+const BENTHIC_SPECIES = new Set([
+  'horseshoeCrab', 'sandDollar', 'conch', 'seaUrchin', 'cleanerShrimp',
+]);
+// How high each benthic body's origin sits above the sand (× its base scale).
+const BENTHIC_LIFT = {
+  horseshoeCrab: 0.16, sandDollar: 0.06, conch: 0.22, seaUrchin: 0.28, cleanerShrimp: 0.18,
+};
+
+// Small shoaling species swim as one school — a shared drifting waypoint plus
+// boids-style separation/cohesion/alignment per fish. One school per
+// species + biome, so five chromis genuinely travel together.
+const SCHOOL_SPECIES = new Set([
+  'blueChromis', 'chromis', 'damselfish', 'cardinalfish',
+  'pajamaCardinalfish', 'banggaiCardinalfish', 'zebrafish',
+]);
+
 // Classic's day/night: 4-minute day, timeOfDay 0→1 (midnight 0, sunrise 0.25,
 // noon 0.5, sunset 0.75); night factor eases toward clamp(-elevation·1.6, 0, 1).
 const DAY_MS = 240000;
@@ -1051,6 +1083,44 @@ const FISH_BODY = {
     }
     return { tail, tailAxis: 'x' };
   },
+  ray(g, { bodyMat, spec, rnd }) {
+    // Flattened disc body with broad flapping wings; skin pattern (spots)
+    // carries onto the wings. Manta gets cephalic lobes and a bigger span.
+    const manta = spec.id === 'mantaRay';
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 18, 12), bodyMat);
+    body.scale.set(0.42, 0.15, 0.8); g.add(body);
+    fishEyes(g, 0.1, 0.08, 0.28, 0.6);
+    const pivots = [];
+    for (const s of [-1, 1]) {
+      const pivot = new THREE.Group();
+      pivot.position.set(s * 0.1, 0.02, 0);
+      if (s < 0) pivot.scale.x = -1;
+      const wing = finMesh([
+        [0, 0.3], [0.45, 0.26, 0.75, 0], [0.4, -0.2, 0.1, -0.45], [0, -0.3], [0, 0.3]],
+        bodyMat, 0);
+      wing.rotation.x = Math.PI / 2;                          // lay flat, +y → forward
+      if (manta) wing.scale.setScalar(1.25);
+      pivot.add(wing);
+      g.add(pivot); pivots.push(pivot);
+    }
+    const whip = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.02, 0.75, 5), bodyMat);
+    whip.rotation.x = Math.PI / 2 + 0.12;
+    whip.position.set(0, 0.03, -0.65); g.add(whip);
+    if (manta) {
+      for (const s of [-1, 1]) {
+        const lobe = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 0.2, 6), bodyMat);
+        lobe.rotation.x = Math.PI / 2 - 0.5;
+        lobe.position.set(s * 0.12, -0.04, 0.36); g.add(lobe);
+      }
+    }
+    const animate = (t, phase) => {
+      const flap = Math.sin(t * 2.1 + phase) * 0.42;
+      pivots[0].rotation.z = flap;
+      pivots[1].rotation.z = flap;
+      g.rotation.z = Math.sin(t * 2.1 + phase - 0.6) * 0.06;   // gentle roll follow-through
+    };
+    return { animate };
+  },
   puffer(g, { bodyMat, finMat, rnd, spec }) {
     // Round body that periodically inflates, spines extending as it puffs.
     const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 13), bodyMat);
@@ -1087,6 +1157,142 @@ const FISH_BODY = {
     };
     return { animate };
   },
+  horseshoe(g, { bodyMat, spec }) {
+    // Horseshoe crab: domed horseshoe carapace, hinged abdomen with spined
+    // edges, long telson spike. It crawls the flats — no fins, no tail wag.
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(0.42, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), bodyMat);
+    dome.scale.set(0.95, 0.4, 1.1); g.add(dome);
+    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.05, 16), bodyMat);
+    skirt.scale.set(0.95, 1, 1.1); skirt.position.y = 0.02; g.add(skirt);
+    const abdomen = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), bodyMat);
+    abdomen.scale.set(0.82, 0.42, 0.9); abdomen.position.set(0, -0.01, -0.5); g.add(abdomen);
+    for (const s of [-1, 1]) {
+      for (let k = 0; k < 3; k++) {
+        const spine = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 4), bodyMat);
+        spine.position.set(s * (0.2 - k * 0.045), 0.06, -0.6 - k * 0.06);
+        spine.rotation.z = s * -1.2; g.add(spine);
+      }
+    }
+    const telson = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.7, 5), bodyMat);
+    telson.rotation.x = -Math.PI / 2 - 0.08;
+    telson.position.set(0, 0.04, -1.05); g.add(telson);
+    fishEyes(g, 0.2, 0.12, 0.16, 0.55);   // compound eyes up on the dome
+    return {};
+  },
+  urchin(g, { bodyMat, spec }) {
+    // Sea urchin: dark test bristling with long thin spines (Diadema-style).
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), bodyMat);
+    ball.scale.y = 0.85; g.add(ball);
+    const spineM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.color).lerp(new THREE.Color(spec.accentColor ?? 0x7b1fa2), 0.4),
+      roughness: 0.4 });
+    const dir = new THREE.Vector3();
+    const srnd = mulberry32(hashId(spec.id) + 13);
+    const up = new THREE.Vector3(0, 1, 0);
+    for (let i = 0; i < 48; i++) {
+      dir.set(srnd() - 0.5, srnd() - 0.35, srnd() - 0.5).normalize();
+      if (dir.y < -0.55) continue;                            // underside sits on the sand
+      const len = 0.45 + srnd() * 0.4;
+      const spine = new THREE.Mesh(new THREE.ConeGeometry(0.012, len, 4), spineM);
+      spine.position.copy(dir).multiplyScalar(0.24 + len / 2);
+      spine.quaternion.setFromUnitVectors(up, dir);
+      g.add(spine);
+    }
+    const animate = (t, phase) => { g.rotation.y = phase + Math.sin(t * 0.3 + phase) * 0.15; };
+    return { animate };
+  },
+  sandDollar(g, { bodyMat, spec }) {
+    // Sand dollar: a flat test half-buried look, five-petal rosette on top.
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.08, 22), bodyMat);
+    g.add(disc);
+    const petalM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.color).multiplyScalar(0.62), roughness: 0.9 });
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2;
+      const petal = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), petalM);
+      petal.scale.set(0.55, 0.12, 1.4);
+      petal.position.set(Math.sin(a) * 0.18, 0.045, Math.cos(a) * 0.18);
+      petal.rotation.y = a;
+      g.add(petal);
+    }
+    return {};
+  },
+  snail(g, { bodyMat, spec, rnd }) {
+    // Queen conch: whorled shell with a flared pink lip, foot and eye stalks
+    // peeking out the front. Inches along the sand.
+    const lipM = new THREE.MeshStandardMaterial({
+      color: spec.accentColor ?? 0xff8a65, roughness: 0.45 });
+    const footM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.color).multiplyScalar(0.7), roughness: 0.7 });
+    const whorl = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 10), bodyMat);
+    whorl.scale.set(0.85, 0.78, 1.05); whorl.position.set(0, 0.16, -0.1);
+    whorl.rotation.x = 0.25; g.add(whorl);
+    for (let i = 0; i < 3; i++) {                             // spire coils up and back
+      const r = 0.17 - i * 0.05;
+      const coil = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), bodyMat);
+      coil.position.set(0, 0.3 + i * 0.1, -0.32 - i * 0.08);
+      g.add(coil);
+      const knob = new THREE.Mesh(new THREE.ConeGeometry(0.03 - i * 0.007, 0.08, 4), bodyMat);
+      knob.position.set(0.02, 0.38 + i * 0.1, -0.32 - i * 0.08);
+      g.add(knob);
+    }
+    const lip = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 8), lipM);
+    lip.scale.set(1.15, 0.16, 0.95); lip.position.set(0.24, 0.05, 0.02);
+    lip.rotation.z = 0.35; g.add(lip);
+    const foot = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.3, 4, 8), footM);
+    foot.rotation.x = Math.PI / 2; foot.position.set(0, 0.02, 0.22); g.add(foot);
+    for (const s of [-1, 1]) {                                // eye stalks
+      const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.02, 0.18, 5), footM);
+      stalk.rotation.x = Math.PI / 2 - 0.7;
+      stalk.position.set(s * 0.07, 0.12, 0.4); g.add(stalk);
+    }
+    fishEyes(g, 0.09, 0.19, 0.45, 0.5);
+    return {};
+  },
+  shrimp(g, { bodyMat, spec, rnd }) {
+    // Cleaner shrimp: arched segmented abdomen, fan tail, long white antennae
+    // it waves to advertise its cleaning service.
+    const whiteM = new THREE.MeshStandardMaterial({
+      color: 0xf5f5f5, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.08 });
+    const segs = 6;
+    for (let i = 0; i < segs; i++) {
+      const k = i / (segs - 1);
+      const seg = new THREE.Mesh(new THREE.SphereGeometry(0.1 * (1 - k * 0.45), 9, 7), bodyMat);
+      seg.scale.z = 1.5;
+      // arc: head high at +z, abdomen curling down and back
+      seg.position.set(0, 0.12 - k * k * 0.2, 0.3 - k * 0.16);
+      g.add(seg);
+    }
+    const fan = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), whiteM);
+    fan.scale.set(1.6, 0.2, 1.1); fan.position.set(0, -0.1, -0.55); g.add(fan);
+    const legs = [];
+    for (let i = 0; i < 3; i++) {
+      for (const s of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 4), whiteM);
+        leg.position.set(s * 0.07, -0.02, 0.22 - i * 0.1);
+        leg.rotation.z = s * 0.5; g.add(leg); legs.push(leg);
+      }
+    }
+    const antennae = [];
+    for (const s of [-1, 1]) {
+      const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.7, 4), whiteM);
+      ant.position.set(s * 0.05, 0.28, 0.55);
+      ant.rotation.x = -0.9; ant.rotation.z = s * 0.3;
+      g.add(ant); antennae.push(ant);
+    }
+    fishEyes(g, 0.06, 0.16, 0.42, 0.6);
+    const animate = (t, phase) => {
+      antennae.forEach((a, i) => {
+        a.rotation.x = -0.9 + Math.sin(t * 2.2 + phase + i * 2) * 0.25;
+      });
+      legs.forEach((l, i) => {
+        l.rotation.x = Math.sin(t * 6 + phase + i * 1.1) * 0.3;
+      });
+    };
+    return { animate };
+  },
 };
 
 function fishBodyOf(id) {
@@ -1100,6 +1306,12 @@ function fishBodyOf(id) {
   if (id === 'cuttlefish') return 'cuttlefish';
   if (['manatee', 'dugong'].includes(id)) return 'sirenian';
   if (id === 'pufferfish') return 'puffer';
+  if (['spottedEagleRay', 'mantaRay', 'abyssalRay'].includes(id)) return 'ray';
+  if (id === 'horseshoeCrab') return 'horseshoe';
+  if (id === 'seaUrchin') return 'urchin';
+  if (id === 'sandDollar') return 'sandDollar';
+  if (id === 'conch') return 'snail';
+  if (id === 'cleanerShrimp') return 'shrimp';
   return 'generic';
 }
 
@@ -1206,6 +1418,10 @@ export function initReefScene3D(canvas) {
   // seafloor, arrow keys nudge it. The target is clamped to the play field.
   controls.enablePan = true;
   controls.screenSpacePanning = false;
+  // Left-drag moves across the reef, right-drag orbits (swapped from default).
+  controls.mouseButtons = {
+    LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE,
+  };
   controls.keyPanSpeed = 26;
   controls.keys = { LEFT: 'ArrowLeft', UP: 'ArrowUp', RIGHT: 'ArrowRight', BOTTOM: 'ArrowDown' };
   controls.listenToKeyEvents(window);
@@ -1327,6 +1543,48 @@ export function initReefScene3D(canvas) {
       scene.add(orb); orbs.push(orb);
     }
   }
+  // ── Ambient jellyfish — drifting, pulsing; twilight ones glow after dark ────
+  const jellies = [];
+  {
+    const jrnd = mulberry32(313);
+    const spots = [
+      { x: -6, z: -9, c: 0xf8c8dc, tw: false }, { x: 9, z: 7, c: 0xcfe8ff, tw: false },
+      { x: -22, z: 7, c: 0xd8f0d0, tw: false }, { x: -31, z: -6, c: 0xf8c8dc, tw: false },
+      { x: 2, z: 11, c: 0xcfe8ff, tw: false },
+      { x: 22, z: -9, c: 0x8ff0ff, tw: true }, { x: 31, z: 5, c: 0xc9a8ff, tw: true },
+      { x: 26, z: 11, c: 0x8ff0ff, tw: true },
+    ];
+    for (const s of spots) {
+      const jg = new THREE.Group();
+      const jmat = new THREE.MeshStandardMaterial({
+        color: s.c, transparent: true, opacity: 0.5, roughness: 0.3,
+        emissive: s.c, emissiveIntensity: 0.25, side: THREE.DoubleSide, depthWrite: false });
+      const bell = new THREE.Mesh(
+        new THREE.SphereGeometry(0.32, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), jmat);
+      jg.add(bell);
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8),
+        new THREE.MeshStandardMaterial({
+          color: s.c, emissive: s.c, emissiveIntensity: 0.5,
+          transparent: true, opacity: 0.7, depthWrite: false }));
+      core.position.y = 0.02; jg.add(core);
+      const tentacles = [];
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2;
+        const tnt = new THREE.Mesh(
+          new THREE.CapsuleGeometry(0.012, 0.45 + jrnd() * 0.35, 3, 5), jmat);
+        tnt.position.set(Math.cos(a) * 0.18, -0.28, Math.sin(a) * 0.18);
+        tnt.userData.a = a;
+        jg.add(tnt); tentacles.push(tnt);
+      }
+      jg.scale.setScalar(0.7 + jrnd() * 0.7);
+      const baseY = (s.tw ? ZONES.deepTwilight.floorY : 0) + 3.2 + jrnd() * 2.5;
+      jg.position.set(s.x, baseY, s.z);
+      scene.add(jg);
+      jellies.push({ g: jg, bell, mat: jmat, tentacles, tw: s.tw,
+        baseY, x: s.x, z: s.z, ph: jrnd() * 6.28, drift: 1 + jrnd() * 1.5 });
+    }
+  }
+
   // Boulders out on the dunes so the distance isn't empty.
   {
     const rnd = mulberry32(71);
@@ -1489,9 +1747,70 @@ export function initReefScene3D(canvas) {
       phase: i * 1.37, bob: 0.4 + (i % 3) * 0.2, bobw: 0.6 + (i % 3) * 0.3,
     };
   }
+  function newRoamTarget(f) {
+    f.tx = f.bx0 + Math.random() * (f.bx1 - f.bx0);
+    f.tz = -22 + Math.random() * 44;
+    const floorY = terrainHeight(f.tx, f.tz);
+    f.ty = clamp(floorY + 1.6 + Math.random() * 3, floorY + 1.2, 11);
+  }
+  // Benthic crawlers wander short hops across the sand around their anchor.
+  function newCrawlTarget(f) {
+    const zn = ZONES[f.b] ?? ZONES.coral;
+    const half = (zn.grid * TILE) / 2 + 4;
+    f.tx = clamp(f.cx + (Math.random() - 0.5) * 12, zn.cx - half, zn.cx + half);
+    f.tz = clamp(f.cz + (Math.random() - 0.5) * 12, zn.cz - half, zn.cz + half);
+  }
+  // One school per species + biome; every member steers around a shared
+  // drifting waypoint (picked here) plus boids forces (applied per frame).
+  const schools = new Map();
+  function schoolOf(st) {
+    const key = st.id + '|' + st.b;
+    let s = schools.get(key);
+    if (!s) {
+      s = { b: st.b, members: [], tx: st.cx, ty: st.y, tz: st.cz, until: 0 };
+      schools.set(key, s);
+    }
+    return s;
+  }
+  function newSchoolTarget(s, t) {
+    const [x0, x1] = ZONE_BAND[s.b] ?? ZONE_BAND.coral;
+    s.tx = x0 + 3 + Math.random() * (x1 - x0 - 6);
+    s.tz = -18 + Math.random() * 36;
+    const floorY = terrainHeight(s.tx, s.tz);
+    s.ty = clamp(floorY + 1.8 + Math.random() * 4, floorY + 1.5, 9);
+    s.until = t + 7 + Math.random() * 8;
+  }
   function attachFish(spec, st, placed = false) {
     st.g = makeFish(spec);
     Object.assign(st.g.userData, { placed, stateRef: st });   // `placed` fish are player-owned & removable
+    const prof = roamProfile(spec);
+    if (BENTHIC_SPECIES.has(spec.id)) {
+      // Crawlers live on the terrain; runtime-only state, not saved.
+      st.benthic = true;
+      st.px = st.cx; st.pz = st.cz;
+      st.lift = (BENTHIC_LIFT[spec.id] ?? 0.2) * st.g.userData.baseScale;
+      st.py = terrainHeight(st.px, st.pz) + st.lift;
+      st.spd = 0.1 + (spec.speed ?? 0.3) * 0.35;
+      st.hdg = st.phase;
+      newCrawlTarget(st);
+    } else if (SCHOOL_SPECIES.has(spec.id)) {
+      st.px = st.cx + (Math.random() - 0.5) * 2;
+      st.py = st.y + (Math.random() - 0.5);
+      st.pz = st.cz + (Math.random() - 0.5) * 2;
+      st.vx = 0; st.vy = 0; st.vz = 0;
+      st.spd = 0.8 + (spec.speed ?? 1.5) * 0.9;
+      st.hdg = st.phase;
+      st.school = schoolOf(st);
+      st.school.members.push(st);
+    } else if (prof) {
+      // Roamers steer between waypoints; runtime-only state, not saved.
+      st.roam = true;
+      st.bx0 = prof.x0; st.bx1 = prof.x1;
+      st.px = st.cx; st.py = st.y; st.pz = st.cz;
+      st.spd = 0.6 + (spec.speed ?? 1) * 0.9;
+      st.hdg = st.phase;
+      newRoamTarget(st);
+    }
     scene.add(st.g); fishes.push(st);
     if (placed) seen.add(spec.id);
     return st.g;
@@ -1520,6 +1839,10 @@ export function initReefScene3D(canvas) {
     const refund = spec?.pearlCost ? 0 : Math.floor((FISH_COST[spec?.tier] ?? 0) / 2);
     be = Math.min(be + refund, beMax);
     const fi = fishes.indexOf(st); if (fi >= 0) fishes.splice(fi, 1);
+    if (st.school) {
+      const mi = st.school.members.indexOf(st);
+      if (mi >= 0) st.school.members.splice(mi, 1);
+    }
     const pi = placedFish.indexOf(group.userData.saveRef); if (pi >= 0) placedFish.splice(pi, 1);
     scene.remove(group); disposeGroup(group);
     refreshProgress(); refreshHud(); save();
@@ -2306,13 +2629,111 @@ export function initReefScene3D(canvas) {
         for (const m of g.userData.glowMats) m.emissiveIntensity = 0.5 + nf * 0.85;
       }
     }
+    // Schools: refresh each shoal's shared waypoint and flock averages once,
+    // then members steer with boids forces in the fish loop below.
+    for (const s of schools.values()) {
+      const n = s.members.length;
+      if (!n) continue;
+      let cx = 0, cy = 0, cz = 0, vx = 0, vy = 0, vz = 0;
+      for (const m of s.members) {
+        cx += m.px; cy += m.py; cz += m.pz; vx += m.vx; vy += m.vy; vz += m.vz;
+      }
+      s.cx = cx / n; s.cy = cy / n; s.cz = cz / n;
+      s.avx = vx / n; s.avy = vy / n; s.avz = vz / n;
+      const dx = s.tx - s.cx, dy = s.ty - s.cy, dz = s.tz - s.cz;
+      if (t > s.until || dx * dx + dy * dy + dz * dz < 4) newSchoolTarget(s, t);
+    }
     for (const f of fishes) {
-      const ang = f.phase + t * f.w;
-      const x = Math.cos(ang) * f.R + f.cx;
-      const z = Math.sin(ang) * f.R + f.cz;
-      f.g.position.set(x, f.y + Math.sin(t * f.bobw + f.phase) * f.bob, z);
-      const heading = Math.atan2(-Math.sin(ang) * f.w, Math.cos(ang) * f.w);
-      f.g.rotation.y = heading + Math.sin(t * 6 + f.phase) * 0.1;
+      if (f.benthic) {
+        // Crawlers: creep along the terrain toward a nearby sand waypoint,
+        // pausing between hops. No bob, no pitch, no mid-water anything.
+        const dx = f.tx - f.px, dz = f.tz - f.pz;
+        const d = Math.sqrt(dx * dx + dz * dz);
+        if (d < 0.35) {
+          if (f.rest === undefined) f.rest = t + 3 + (f.phase % 6);
+          else if (t > f.rest) { newCrawlTarget(f); f.rest = undefined; }
+        } else {
+          const step = Math.min(f.spd * dt, d);
+          f.px += (dx / d) * step; f.pz += (dz / d) * step;
+          const want = Math.atan2(dx, dz);
+          let dh = want - f.hdg;
+          while (dh > Math.PI) dh -= Math.PI * 2;
+          while (dh < -Math.PI) dh += Math.PI * 2;
+          f.hdg += dh * Math.min(1, dt * 0.9);
+        }
+        f.py = terrainHeight(f.px, f.pz) + f.lift;
+        f.g.position.set(f.px, f.py, f.pz);
+        f.g.rotation.y = f.hdg;
+        f.g.rotation.x = 0;
+      } else if (f.school) {
+        // Boids: seek the shoal's shared waypoint (offset per fish so the
+        // school keeps volume), align with and stay near flock-mates, and
+        // hold personal space.
+        const s = f.school;
+        const ox = Math.sin(f.phase * 3.7 + t * 0.4) * 1.3;
+        const oy = Math.sin(f.phase * 2.3 + t * 0.3) * 0.7;
+        const oz = Math.cos(f.phase * 4.1 + t * 0.35) * 1.3;
+        let ax = s.tx + ox - f.px, ay = s.ty + oy - f.py, az = s.tz + oz - f.pz;
+        const ad = Math.sqrt(ax * ax + ay * ay + az * az) || 1;
+        ax /= ad; ay /= ad; az /= ad;
+        ax += (s.cx - f.px) * 0.05 + s.avx * 0.16;
+        ay += (s.cy - f.py) * 0.05 + s.avy * 0.16;
+        az += (s.cz - f.pz) * 0.05 + s.avz * 0.16;
+        for (const m of s.members) {
+          if (m === f) continue;
+          const sx = f.px - m.px, sy = f.py - m.py, sz = f.pz - m.pz;
+          const d2 = sx * sx + sy * sy + sz * sz;
+          if (d2 < 1.1 && d2 > 1e-6) {
+            const dd = Math.sqrt(d2), k = ((1.05 - dd) * 2.4) / dd;
+            ax += sx * k; ay += sy * k; az += sz * k;
+          }
+        }
+        const al = Math.sqrt(ax * ax + ay * ay + az * az) || 1;
+        const k = Math.min(1, dt * 2.4);
+        f.vx += ((ax / al) * f.spd - f.vx) * k;
+        f.vy += ((ay / al) * f.spd - f.vy) * k;
+        f.vz += ((az / al) * f.spd - f.vz) * k;
+        f.px += f.vx * dt; f.py += f.vy * dt; f.pz += f.vz * dt;
+        const [bx0, bx1] = ZONE_BAND[f.b] ?? ZONE_BAND.coral;
+        f.px = clamp(f.px, bx0 + 1, bx1 - 1);
+        f.pz = clamp(f.pz, -21, 21);
+        f.py = clamp(f.py, terrainHeight(f.px, f.pz) + 0.9, 10.5);
+        const spdNow = Math.sqrt(f.vx * f.vx + f.vz * f.vz);
+        if (spdNow > 0.05) {
+          const want = Math.atan2(f.vx, f.vz);
+          let dh = want - f.hdg;
+          while (dh > Math.PI) dh -= Math.PI * 2;
+          while (dh < -Math.PI) dh += Math.PI * 2;
+          f.hdg += dh * Math.min(1, dt * 3.2);
+        }
+        f.g.position.set(f.px, f.py, f.pz);
+        f.g.rotation.y = f.hdg;
+        f.g.rotation.x = -Math.atan2(f.vy, Math.max(spdNow, 0.25)) * 0.5;
+      } else if (f.roam) {
+        // Waypoint steering: swim toward the target, banking the heading round.
+        const dx = f.tx - f.px, dy = f.ty - f.py, dz = f.tz - f.pz;
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (d < 1.2) newRoamTarget(f);
+        else {
+          const step = Math.min(f.spd * dt, d);
+          f.px += (dx / d) * step; f.py += (dy / d) * step; f.pz += (dz / d) * step;
+        }
+        const want = Math.atan2(dx, dz);
+        let dh = want - f.hdg;
+        while (dh > Math.PI) dh -= Math.PI * 2;
+        while (dh < -Math.PI) dh += Math.PI * 2;
+        f.hdg += dh * Math.min(1, dt * 1.8);
+        f.g.position.set(f.px, f.py + Math.sin(t * f.bobw + f.phase) * 0.15, f.pz);
+        f.g.rotation.y = f.hdg;
+        f.g.rotation.x = -Math.asin(clamp(dy / Math.max(d, 0.001), -1, 1)) * 0.45;
+      } else {
+        const ang = f.phase + t * f.w;
+        const x = Math.cos(ang) * f.R + f.cx;
+        const z = Math.sin(ang) * f.R + f.cz;
+        f.g.position.set(x, f.y + Math.sin(t * f.bobw + f.phase) * f.bob, z);
+        const heading = Math.atan2(-Math.sin(ang) * f.w, Math.cos(ang) * f.w);
+        f.g.rotation.y = heading + Math.sin(t * 6 + f.phase) * 0.1;
+      }
       const ud = f.g.userData;
       if (ud.animate) ud.animate(t, f.phase);
       else if (ud.tail) {
@@ -2328,6 +2749,20 @@ export function initReefScene3D(canvas) {
     for (const w of weeds) w.rotation.z = Math.sin(t * 0.9 + w.userData.seed) * 0.12;
     for (const o of orbs) {
       o.material.emissiveIntensity = 0.75 + nf * 0.5 + Math.sin(t * 1.6 + o.userData.seed) * 0.35;
+    }
+    for (const j of jellies) {
+      const pulse = Math.sin(t * 1.9 + j.ph);
+      j.bell.scale.set(1 - pulse * 0.08, 1 + pulse * 0.16, 1 - pulse * 0.08);
+      j.g.position.set(
+        j.x + Math.sin(t * 0.11 + j.ph) * j.drift,
+        j.baseY + Math.sin(t * 0.32 + j.ph) * 1.1 + pulse * 0.05,
+        j.z + Math.cos(t * 0.09 + j.ph * 2) * j.drift);
+      j.g.rotation.y = t * 0.1 + j.ph;
+      for (const tnt of j.tentacles) {
+        tnt.rotation.x = Math.sin(t * 1.3 + j.ph + tnt.userData.a) * 0.18;
+        tnt.rotation.z = Math.cos(t * 1.1 + j.ph + tnt.userData.a) * 0.18;
+      }
+      j.mat.emissiveIntensity = 0.22 + nf * (j.tw ? 1 : 0.45);
     }
 
     const bpos = bubbles.geometry.attributes.position;
