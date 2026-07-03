@@ -30,9 +30,9 @@ const slotKey = (s) => `${SAVE_KEY_BASE}_s${s}`;
 // basin sits on a deep shelf east of the reef, the seagrass flats a touch
 // shallower to the west. Zone membership for free water (fish) is by x band.
 const ZONES = {
-  seagrass:     { id: 'seagrass',     cx: -26, cz: 0, grid: 6, floorY: 0.5,  unlock: SEAGRASS_UNLOCK_LEVEL },
-  coral:        { id: 'coral',        cx: 0,   cz: 0, grid: 7, floorY: -0.1, unlock: 1 },
-  deepTwilight: { id: 'deepTwilight', cx: 26,  cz: 0, grid: 6, floorY: -4.5, unlock: DEEP_TWILIGHT_UNLOCK_LEVEL },
+  seagrass:     { id: 'seagrass',     cx: -26, cz: 0, grid: 10, floorY: 0.5,  unlock: SEAGRASS_UNLOCK_LEVEL },
+  coral:        { id: 'coral',        cx: 0,   cz: 0, grid: 10, floorY: -0.1, unlock: 1 },
+  deepTwilight: { id: 'deepTwilight', cx: 26,  cz: 0, grid: 10, floorY: -4.5, unlock: DEEP_TWILIGHT_UNLOCK_LEVEL },
 };
 function zoneAt(x) {
   if (x < -13.5) return ZONES.seagrass;
@@ -74,6 +74,17 @@ const BENTHIC_SPECIES = new Set([
 // How high each benthic body's origin sits above the sand (× its base scale).
 const BENTHIC_LIFT = {
   horseshoeCrab: 0.16, sandDollar: 0.06, conch: 0.22, seaUrchin: 0.28, cleanerShrimp: 0.18,
+};
+
+// Species-specific roaming styles: cruising altitude above the floor, pitch
+// damping for flat gliders that shouldn't nose-dive, and speed/bob tweaks for
+// drifters. Rays feed low over the sand; mantas cruise the open column;
+// the nautilus jets along in slow buoyant bobs.
+const ROAM_STYLE = {
+  mantaRay:        { alt: [3.5, 8],   pitch: 0.35 },
+  spottedEagleRay: { alt: [0.7, 2.2], pitch: 0.35 },
+  abyssalRay:      { alt: [0.7, 2.2], pitch: 0.35 },
+  nautilus:        { alt: [1.4, 4.5], pitch: 0.25, bob: 0.5, drift: 0.55 },
 };
 
 // Small shoaling species swim as one school — a shared drifting waypoint plus
@@ -1113,11 +1124,66 @@ const FISH_BODY = {
         lobe.position.set(s * 0.12, -0.04, 0.36); g.add(lobe);
       }
     }
+    // Wingbeat matches the animal: mantas take slow, deep strokes; eagle and
+    // abyssal rays flick quicker, shallower beats as they hug the bottom.
+    const rate = manta ? 1.2 : spec.id === 'abyssalRay' ? 1.7 : 2.3;
+    const amp = manta ? 0.52 : 0.4;
     const animate = (t, phase) => {
-      const flap = Math.sin(t * 2.1 + phase) * 0.42;
+      const flap = Math.sin(t * rate + phase) * amp;
       pivots[0].rotation.z = flap;
       pivots[1].rotation.z = flap;
-      g.rotation.z = Math.sin(t * 2.1 + phase - 0.6) * 0.06;   // gentle roll follow-through
+      g.rotation.z = Math.sin(t * rate + phase - 0.6) * 0.06;  // gentle roll follow-through
+    };
+    return { animate };
+  },
+  nautilus(g, { bodyMat, spec, rnd }) {
+    // Chambered nautilus: cream coiled shell with red-brown flame stripes,
+    // a hood over a crowd of short tentacles, pinhole eyes.
+    const stripeM = new THREE.MeshStandardMaterial({
+      color: spec.accentColor ?? 0xb04a2a, roughness: 0.55 });
+    const fleshM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.color).multiplyScalar(0.82), roughness: 0.6 });
+    const whorl = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 14), bodyMat);
+    whorl.scale.set(0.52, 1, 1); whorl.position.set(0, 0.06, -0.14); g.add(whorl);
+    // Flame stripes arc over the shell back from the coil outward.
+    for (let i = 0; i < 7; i++) {
+      const a = -0.9 + i * 0.42;                              // fan across the top/back
+      const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.41, 0.018, 5, 10, 0.5), stripeM);
+      stripe.position.set(0, 0.06, -0.14);
+      stripe.rotation.y = Math.PI / 2;                        // ring lies in the y/z plane
+      stripe.rotation.x = a;
+      stripe.scale.x = 0.54;                                  // follow the flattened shell
+      g.add(stripe);
+    }
+    // The coil: shrinking beads spiralling into the shell's face.
+    const coilC = { y: 0.1, z: -0.1 };
+    for (let i = 0; i < 6; i++) {
+      const th = -0.6 + i * 0.75;
+      const r = 0.2 - i * 0.028;
+      const bead = new THREE.Mesh(new THREE.SphereGeometry(0.11 - i * 0.013, 10, 8), bodyMat);
+      bead.scale.x = 0.5;
+      bead.position.set(0, coilC.y + Math.sin(th) * r, coilC.z + Math.cos(th) * r);
+      g.add(bead);
+    }
+    // Hood, tentacle crowd, and eyes at the shell opening (front).
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), fleshM);
+    hood.scale.set(0.9, 0.6, 1); hood.position.set(0, 0.02, 0.32); g.add(hood);
+    const tentacles = [];
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 8 - 0.5) * 1.6;
+      const tnt = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.24, 5), fleshM);
+      tnt.position.set(Math.sin(a) * 0.11, -0.1, 0.42 + Math.cos(a) * 0.04);
+      tnt.rotation.x = Math.PI / 2 + 0.5 + (rnd() - 0.5) * 0.3;
+      tnt.rotation.z = -a * 0.5;
+      g.add(tnt); tentacles.push(tnt);
+    }
+    fishEyes(g, 0.13, 0.06, 0.3, 0.9);
+    const animate = (t, phase) => {
+      // Buoyant rocking as it jets, tentacles trailing and feeling about.
+      g.rotation.z = Math.sin(t * 1.1 + phase) * 0.08;
+      tentacles.forEach((tnt, i) => {
+        tnt.rotation.x = Math.PI / 2 + 0.5 + Math.sin(t * 1.8 + phase + i * 0.9) * 0.18;
+      });
     };
     return { animate };
   },
@@ -1307,6 +1373,7 @@ function fishBodyOf(id) {
   if (['manatee', 'dugong'].includes(id)) return 'sirenian';
   if (id === 'pufferfish') return 'puffer';
   if (['spottedEagleRay', 'mantaRay', 'abyssalRay'].includes(id)) return 'ray';
+  if (id === 'nautilus') return 'nautilus';
   if (id === 'horseshoeCrab') return 'horseshoe';
   if (id === 'seaUrchin') return 'urchin';
   if (id === 'sandDollar') return 'sandDollar';
@@ -1418,10 +1485,12 @@ export function initReefScene3D(canvas) {
   // seafloor, arrow keys nudge it. The target is clamped to the play field.
   controls.enablePan = true;
   controls.screenSpacePanning = false;
-  // Left-drag moves across the reef, right-drag orbits (swapped from default).
+  // Left-drag moves across the reef, right-drag orbits (swapped from default);
+  // same idea on touch — one finger moves, two fingers pinch-zoom and orbit.
   controls.mouseButtons = {
     LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE,
   };
+  controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
   controls.keyPanSpeed = 26;
   controls.keys = { LEFT: 'ArrowLeft', UP: 'ArrowUp', RIGHT: 'ArrowRight', BOTTOM: 'ArrowDown' };
   controls.listenToKeyEvents(window);
@@ -1726,7 +1795,7 @@ export function initReefScene3D(canvas) {
     if (!e) return;
     if (e.level >= CORAL_MAX_LEVEL) { flash(rateEl, 'max level'); return; }
     const cost = upgradeCost(e.level);
-    if (polyps < cost) { flash(rateEl, `need ${cost} 🌱`); return; }
+    if (polyps < cost) { flash(rateEl, `need ${cost} 🪸`); return; }
     polyps -= cost;
     e.level++;
     group.userData.levelScale = levelScaleFor(e.level);
@@ -1751,7 +1820,8 @@ export function initReefScene3D(canvas) {
     f.tx = f.bx0 + Math.random() * (f.bx1 - f.bx0);
     f.tz = -22 + Math.random() * 44;
     const floorY = terrainHeight(f.tx, f.tz);
-    f.ty = clamp(floorY + 1.6 + Math.random() * 3, floorY + 1.2, 11);
+    const [lo, hi] = f.alt ?? [1.6, 4.6];
+    f.ty = clamp(floorY + lo + Math.random() * (hi - lo), floorY + Math.min(lo, 1.2), 11);
   }
   // Benthic crawlers wander short hops across the sand around their anchor.
   function newCrawlTarget(f) {
@@ -1804,11 +1874,15 @@ export function initReefScene3D(canvas) {
       st.school.members.push(st);
     } else if (prof) {
       // Roamers steer between waypoints; runtime-only state, not saved.
+      const style = ROAM_STYLE[spec.id];
       st.roam = true;
       st.bx0 = prof.x0; st.bx1 = prof.x1;
       st.px = st.cx; st.py = st.y; st.pz = st.cz;
-      st.spd = 0.6 + (spec.speed ?? 1) * 0.9;
+      st.spd = (0.6 + (spec.speed ?? 1) * 0.9) * (style?.drift ?? 1);
       st.hdg = st.phase;
+      if (style?.alt) st.alt = style.alt;
+      st.pitch = style?.pitch ?? 1;
+      st.bobAmp = style?.bob ?? 0.15;
       newRoamTarget(st);
     }
     scene.add(st.g); fishes.push(st);
@@ -2257,7 +2331,7 @@ export function initReefScene3D(canvas) {
     const up = document.createElement('button');
     up.className = 'shop-pack';
     up.innerHTML = max ? '<span>Max level reached</span><span>—</span>'
-      : `<span>⬆ Upgrade to Lv${e.level + 1}</span><span>${cost} 🌱</span>`;
+      : `<span>⬆ Upgrade to Lv${e.level + 1}</span><span>${cost} 🪸</span>`;
     up.disabled = max || polyps < cost;
     up.style.opacity = up.disabled ? 0.45 : 1;
     up.onclick = () => { if (!up.disabled) { tryUpgrade(g); fillUpgrade(); } };
@@ -2476,7 +2550,29 @@ export function initReefScene3D(canvas) {
   // Resolve a raycast hit to the owning coral / fish group (or null).
   const ancestorWith = (obj, key) => { let g = obj; while (g && !g.userData[key]) g = g.parent; return g; };
 
+  // Picking runs on pointerup, and only for a genuine tap/click — a pointer
+  // that stayed put and wasn't part of a multi-touch gesture. Otherwise every
+  // camera drag or pinch that starts on a tile would plant a coral.
+  let tapStart = null, tapMulti = false, activePtrs = 0;
   renderer.domElement.addEventListener('pointerdown', ev => {
+    activePtrs++;
+    if (activePtrs > 1) { tapMulti = true; return; }
+    tapMulti = false;
+    tapStart = { x: ev.clientX, y: ev.clientY };
+  });
+  renderer.domElement.addEventListener('pointercancel', () => {
+    activePtrs = Math.max(0, activePtrs - 1);
+    tapMulti = true;
+  });
+  renderer.domElement.addEventListener('pointerup', ev => {
+    activePtrs = Math.max(0, activePtrs - 1);
+    if (tapMulti || !tapStart || activePtrs > 0) return;
+    const moved = Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y);
+    tapStart = null;
+    if (moved > 7) return;
+    pick(ev);
+  });
+  function pick(ev) {
     setPtr(ev);
 
     // Poking Bubbles takes priority — it has sensors, and feelings.
@@ -2516,7 +2612,7 @@ export function initReefScene3D(canvas) {
       if (placedFish.length === 1) droneTrigger('firstFish');
       refreshProgress(); refreshHud(); save();
     }
-  });
+  }
 
   window.addEventListener('beforeunload', save);
   const saveTimer = setInterval(save, 5000);
@@ -2723,9 +2819,9 @@ export function initReefScene3D(canvas) {
         while (dh > Math.PI) dh -= Math.PI * 2;
         while (dh < -Math.PI) dh += Math.PI * 2;
         f.hdg += dh * Math.min(1, dt * 1.8);
-        f.g.position.set(f.px, f.py + Math.sin(t * f.bobw + f.phase) * 0.15, f.pz);
+        f.g.position.set(f.px, f.py + Math.sin(t * f.bobw + f.phase) * (f.bobAmp ?? 0.15), f.pz);
         f.g.rotation.y = f.hdg;
-        f.g.rotation.x = -Math.asin(clamp(dy / Math.max(d, 0.001), -1, 1)) * 0.45;
+        f.g.rotation.x = -Math.asin(clamp(dy / Math.max(d, 0.001), -1, 1)) * 0.45 * (f.pitch ?? 1);
       } else {
         const ang = f.phase + t * f.w;
         const x = Math.cos(ang) * f.R + f.cx;

@@ -30,7 +30,7 @@
     }
     #hud .stat { font-size: 15px; display: inline-flex; align-items: baseline; gap: 4px; }
     #hud .be { font-size: 20px; font-weight: 700; }
-    #hud .be::before { content: "💧 "; }
+    #hud .be::before { content: "🫧 "; }
     #hud .rate { font-size: 12px; color: #7fd8b0; margin-left: 4px; }
     #hud .shop { cursor: pointer; }
     #hud .shop:hover { color: #bfe6ff; }
@@ -161,14 +161,14 @@
     <span class="stat be"><span id="be-count">0</span><small class="rate" id="be-rate">+0.0/s</small></span>
     <span class="stat" title="Harmony">⚖ <span id="hm-count">50</span></span>
     <span class="stat" title="Level">⭐ <span id="lvl-count">1</span></span>
-    <span class="stat" title="Polyps · click a coral to upgrade it">🌱 <span id="polyp-count">0</span></span>
+    <span class="stat" title="Polyps · click a coral to upgrade it">🪸 <span id="polyp-count">0</span></span>
     <span class="stat shop" id="shop-btn" title="Pearls · tap for the shop">💎 <span id="pearl-count">0</span></span>
   </div>
   <canvas id="app3d"></canvas>
   <button id="palette-toggle">🪸 Species ▾</button>
   <div id="palette"></div>
-  <div id="hint">🌿 Seagrass west · 🪸 Coral Reef centre · 🌌 Twilight east — plant in the matching biome · click a coral to upgrade · ✕ Remove to sell · drag or arrow keys to move · right-drag to orbit.</div>
-  <div id="version-badge-3d">3Dev 2.9</div>
+  <div id="hint">🌿 Seagrass west · 🪸 Coral Reef centre · 🌌 Twilight east — plant in the matching biome · click a coral to upgrade · ✕ Remove to sell · drag or arrow keys to move · right-drag or two fingers to orbit.</div>
+  <div id="version-badge-3d">3Dev 3.0</div>
   <script type="module">
     import { initReefScene3D } from './src/3d/ReefScene3D.js';
     initReefScene3D(document.getElementById('app3d'));
