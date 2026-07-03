@@ -390,15 +390,15 @@ function terrainHeight(x, z) {
     + Math.sin(x * 0.21 + z * 0.13) * 0.35;
   h -= smoothstep(16, 26, x) * 4.4;
   h += smoothstep(16, 24, -x) * 0.7;
-  const d = Math.max(Math.abs(x) - 52, Math.abs(z) - 34);
+  const d = Math.max(Math.abs(x) - 52, Math.abs(z) - 38);
   if (d > 0) {
     h += Math.min(d * 0.3, 10) * (0.72 + 0.28 * Math.sin(x * 0.07 + Math.cos(z * 0.09) * 2));
   }
   for (const zn of Object.values(ZONES)) {
     // Rectangular plateau: grid width across, but stretched north–south to
-    // pre-flatten the aprons where purchasable 5×5 expansions attach.
+    // pre-flatten the aprons where both rings of 5×5 expansions attach.
     const xHalf = (zn.grid * TILE) / 2 + 1.4;
-    const zHalf = xHalf + 10;
+    const zHalf = xHalf + 20;
     const dist = Math.max(Math.abs(x - zn.cx) - xHalf, Math.abs(z - zn.cz) - zHalf);
     const k = 1 - smoothstep(0, 4, dist);
     if (k > 0) h = h * (1 - k) + zn.floorY * k;
@@ -1162,15 +1162,22 @@ const FISH_BODY = {
       stripe.scale.x = 0.54;                                  // follow the flattened shell
       body.add(stripe);
     }
-    // The coil: shrinking beads spiralling into the shell's face.
-    const coilC = { y: 0.1, z: -0.1 };
-    for (let i = 0; i < 6; i++) {
-      const th = -0.6 + i * 0.75;
-      const r = 0.2 - i * 0.028;
-      const bead = new THREE.Mesh(new THREE.SphereGeometry(0.11 - i * 0.013, 10, 8), bodyMat);
-      bead.scale.x = 0.5;
-      bead.position.set(0, coilC.y + Math.sin(th) * r, coilC.z + Math.cos(th) * r);
-      body.add(bead);
+    // The coil: a logarithmic spiral ridge traced on BOTH faces of the shell,
+    // winding ~1.5 whorls from the rim into the centre — the nautilus's
+    // signature. Bead size and offset shrink with the spiral radius.
+    const coilC = { y: 0.08, z: -0.12 };
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 26; i++) {
+        const th = i * 0.36;                                  // ~1.5 turns total
+        const r = 0.3 * Math.exp(-0.185 * th);
+        const bead = new THREE.Mesh(
+          new THREE.SphereGeometry(0.022 + r * 0.09, 7, 6), stripeM);
+        bead.position.set(
+          side * (0.09 + r * 0.32),
+          coilC.y + Math.sin(th - 0.7) * r,
+          coilC.z + Math.cos(th - 0.7) * r);
+        body.add(bead);
+      }
     }
     // Hood, tentacle crowd, and eyes at the shell opening (which trails aft).
     const hood = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), fleshM);
@@ -1510,7 +1517,7 @@ export function initReefScene3D(canvas) {
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.left = -52; sun.shadow.camera.right = 52;
-  sun.shadow.camera.top = 38; sun.shadow.camera.bottom = -38;
+  sun.shadow.camera.top = 42; sun.shadow.camera.bottom = -42;
   sun.shadow.camera.far = 80;
   sun.shadow.bias = -0.0005;
   scene.add(sun);
@@ -1569,10 +1576,18 @@ export function initReefScene3D(canvas) {
     return weed;
   }
 
-  // Coral-zone scatter: rocks and a few weed tufts around the reef grid.
+  // Decor stays off the buildable footprint — the grid plus its expansion
+  // aprons — so placed corals never clip a rock or a tuft.
+  const inBuildArea = (x, z, pad = 1) => Object.values(ZONES).some(zn =>
+    Math.abs(x - zn.cx) < (zn.grid * TILE) / 2 + pad &&
+    Math.abs(z - zn.cz) < (zn.grid * TILE) / 2 + 20 + pad);
+
+  // Coral-zone scatter: rocks and a few weed tufts around the reef grid,
+  // slid outward along their ray until they clear the tiles.
   for (let i = 0; i < 22; i++) {
-    const a = i * 2.399, r = 8.5 + (i % 5) * 0.9;
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const a = i * 2.399;
+    let r = 12 + (i % 5) * 1.1, x, z;
+    do { x = Math.cos(a) * r; z = Math.sin(a) * r; r += 1.5; } while (inBuildArea(x, z));
     if (i % 3) {
       const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + (i % 4) * 0.4, 0), rockMat);
       rock.position.set(x, terrainHeight(x, z) + 0.1, z);
@@ -1587,8 +1602,13 @@ export function initReefScene3D(canvas) {
     const rnd = mulberry32(97);
     const zn = ZONES.seagrass;
     for (let i = 0; i < 42; i++) {
-      const a = rnd() * Math.PI * 2, r = 7.6 + rnd() * 8.5;
-      const x = clamp(zn.cx + Math.cos(a) * r, -50, -17.5), z = clamp(Math.sin(a) * r, -28, 28);
+      const a = rnd() * Math.PI * 2;
+      let r = 11.5 + rnd() * 5, x, z;
+      do {
+        x = clamp(zn.cx + Math.cos(a) * r, -50, -17.5);
+        z = clamp(Math.sin(a) * r, -28, 28);
+        r += 1.6;
+      } while (inBuildArea(x, z) && r < 44);
       weedTuft(x, z, 4 + Math.floor(rnd() * 3), [0x2f7d54, 0x3f8f4f, 0x557f3f][i % 3]);
     }
   }
@@ -1600,8 +1620,13 @@ export function initReefScene3D(canvas) {
     const spireMat = new THREE.MeshStandardMaterial({
       color: 0x3a4356, roughness: 1, flatShading: true, map: rockTex });
     for (let i = 0; i < 7; i++) {
-      const a = rnd() * Math.PI * 2, r = 8 + rnd() * 8;
-      const x = clamp(zn.cx + Math.cos(a) * r, 17.5, 50), z = clamp(Math.sin(a) * r, -28, 28);
+      const a = rnd() * Math.PI * 2;
+      let r = 13 + rnd() * 5, x, z;
+      do {
+        x = clamp(zn.cx + Math.cos(a) * r, 17.5, 50);
+        z = clamp(Math.sin(a) * r, -28, 28);
+        r += 1.6;
+      } while (inBuildArea(x, z, 3) && r < 44);   // spires are tall — extra clearance
       const spire = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), spireMat);
       spire.position.set(x, terrainHeight(x, z) + 1.2, z);
       spire.scale.set(0.7 + rnd() * 0.7, 2.2 + rnd() * 2.6, 0.7 + rnd() * 0.7);
@@ -1609,8 +1634,13 @@ export function initReefScene3D(canvas) {
       spire.castShadow = true; scene.add(spire);
     }
     for (let i = 0; i < 9; i++) {
-      const a = rnd() * Math.PI * 2, r = 5 + rnd() * 10;
-      const x = clamp(zn.cx + Math.cos(a) * r, 18, 49), z = clamp(Math.sin(a) * r, -26, 26);
+      const a = rnd() * Math.PI * 2;
+      let r = 11.5 + rnd() * 6, x, z;
+      do {
+        x = clamp(zn.cx + Math.cos(a) * r, 18, 49);
+        z = clamp(Math.sin(a) * r, -26, 26);
+        r += 1.6;
+      } while (inBuildArea(x, z) && r < 44);
       const orb = new THREE.Mesh(new THREE.SphereGeometry(0.16 + rnd() * 0.14, 10, 10),
         new THREE.MeshStandardMaterial({
           color: 0x11202e, emissive: 0x40e0ff, emissiveIntensity: 0.9, roughness: 0.4 }));
@@ -1674,6 +1704,100 @@ export function initReefScene3D(canvas) {
     }
   }
 
+  // ── Easter eggs — oddities hidden out on the dunes, beyond the reefs ─────────
+  // Each is clickable: Bubbles has opinions, and the chest pays out once.
+  const eggs = [];
+  const eggsClaimed = new Set();          // saved — chest loot is once per reef
+  function addEgg(id, g, x, z) {
+    g.position.set(x, terrainHeight(x, z), z);
+    g.userData.egg = id;
+    g.traverse(o => { o.userData.egg = id; });
+    scene.add(g); eggs.push(g);
+    return g;
+  }
+  {
+    const wood = new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 0.9 });
+    const wood2 = new THREE.MeshStandardMaterial({ color: 0x54371f, roughness: 0.95 });
+    const gold = new THREE.MeshStandardMaterial({
+      color: 0xffd75e, emissive: 0xdfa620, emissiveIntensity: 0.6, roughness: 0.3 });
+    // Treasure chest half-buried on the western flats.
+    const chest = new THREE.Group();
+    const cbase = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.55, 0.7), wood);
+    cbase.position.y = 0.18; chest.add(cbase);
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.22, 0.74), wood2);
+    lid.position.set(0, 0.5, -0.18); lid.rotation.x = -0.7; chest.add(lid);
+    const loot = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), gold);
+    loot.scale.y = 0.5; loot.position.set(0, 0.45, 0.05); chest.add(loot);
+    chest.rotation.y = 0.7; chest.rotation.z = 0.08;
+    addEgg('chest', chest, -48, 24);
+
+    // Shipwreck ribs sinking into the twilight silt.
+    const wreck = new THREE.Group();
+    const keel = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 7.5), wood2);
+    keel.position.y = 0.1; keel.rotation.z = 0.3; wreck.add(keel);
+    for (let i = 0; i < 4; i++) {
+      const rib = new THREE.Mesh(
+        new THREE.TorusGeometry(1.5 - i * 0.13, 0.09, 6, 12, Math.PI), wood);
+      rib.position.set(0, 0.15, -2.4 + i * 1.5);
+      wreck.add(rib);
+    }
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 4.2, 6), wood);
+    mast.position.set(0.8, 1.2, 1.2); mast.rotation.z = 1.15; wreck.add(mast);
+    wreck.rotation.y = -0.4;
+    addEgg('wreck', wreck, 48, -26);
+
+    // Gavin. A rock with eyes. He was here first.
+    const gavin = new THREE.Group();
+    const ghead = new THREE.Mesh(new THREE.IcosahedronGeometry(0.8, 0), rockMat);
+    ghead.scale.set(0.8, 1.5, 0.8); ghead.position.y = 1; ghead.castShadow = true;
+    gavin.add(ghead);
+    const scleraM = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.4 });
+    for (const s of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), scleraM);
+      eye.position.set(s * 0.25, 1.35, 0.55); gavin.add(eye);
+      const pup = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), pupilMat);
+      pup.position.set(s * 0.25, 1.35, 0.64); gavin.add(pup);
+    }
+    addEgg('gavin', gavin, -14, -34);
+
+    // A rubber duck patrolling the surface, far to the south.
+    const duckM = new THREE.MeshStandardMaterial({ color: 0xffd21f, roughness: 0.35 });
+    const beakM = new THREE.MeshStandardMaterial({ color: 0xff7a00, roughness: 0.4 });
+    const duck = new THREE.Group();
+    const dbody = new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 12), duckM);
+    dbody.scale.set(0.85, 0.7, 1.05); duck.add(dbody);
+    const dhead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), duckM);
+    dhead.position.set(0, 0.55, 0.35); duck.add(dhead);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.28, 8), beakM);
+    beak.rotation.x = Math.PI / 2; beak.position.set(0, 0.5, 0.68); duck.add(beak);
+    fishEyes(duck, 0.16, 0.62, 0.55, 1.3);
+    addEgg('duck', duck, 6, 36);
+    duck.position.y = 10.5;                 // floats near the surface
+    duck.userData.floatBase = 10.5;
+    eggs.duckRef = duck;
+  }
+  const EGG_LINES = {
+    chest: ['The chest is empty now. The barnacles saw nothing.'],
+    wreck: ['Old wreck. Pre-dates my logs, which means officially it is not my fault.',
+      'I ran the numbers: 100% of ships down here made poor choices.'],
+    gavin: ['That is Gavin. He was here before the reef. Show some respect.',
+      'Gavin does not talk. Gavin observes.'],
+    duck: ['Unidentified floating object. Threat assessment: adorable.',
+      'It has been circling for years. I have stopped asking questions.'],
+  };
+  function eggFound(id) {
+    if (id === 'chest' && !eggsClaimed.has('chest')) {
+      eggsClaimed.add('chest');
+      pearls += 10;
+      refreshHud(); save();
+      flash(rateEl, '+10 💎', '#bfe6ff');
+      droneQueue.push('Sunken treasure located. Finder keeps the pearls. I keep the coordinates.');
+      return;
+    }
+    const pool = EGG_LINES[id] ?? [];
+    if (pool.length) droneQueue.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+
   // ── Grid tiles (one grid per biome) ──────────────────────────────────────────
   // Tiles read as raked sand patches, not game-board squares — a shade lighter
   // than the local seafloor with a soft edge, glowing only on hover.
@@ -1712,12 +1836,15 @@ export function initReefScene3D(canvas) {
     t.userData.biome === b && t.userData.c === c && t.userData.r === r);
 
   // ── Grid expansions — 5×5 plots bought with polyps ────────────────────────────
-  // Each biome can grow four 5×5 patches off its north and south edges (the
-  // east–west flanks belong to the neighbouring biomes). Cost climbs with each
-  // patch bought in that biome. Purchased patches persist in the save.
+  // Each biome grows 5×5 patches off its north and south edges (the east–west
+  // flanks belong to the neighbouring biomes). The inner ring attaches to the
+  // main grid; each outer patch unlocks only once the patch it touches is
+  // owned. Cost climbs with each patch bought in that biome; purchases persist.
   const EXP_PATCHES = {
-    nw: { c0: 0, r0: -5 }, ne: { c0: 5, r0: -5 },
-    sw: { c0: 0, r0: 10 }, se: { c0: 5, r0: 10 },
+    nw:  { c0: 0, r0: -5 },  ne:  { c0: 5, r0: -5 },
+    sw:  { c0: 0, r0: 10 },  se:  { c0: 5, r0: 10 },
+    nw2: { c0: 0, r0: -10, needs: 'nw' }, ne2: { c0: 5, r0: -10, needs: 'ne' },
+    sw2: { c0: 0, r0: 15, needs: 'sw' },  se2: { c0: 5, r0: 15, needs: 'se' },
   };
   const EXP_SIZE = 5;
   const expansions = { seagrass: [], coral: [], deepTwilight: [] };   // saved
@@ -1773,7 +1900,9 @@ export function initReefScene3D(canvas) {
     for (const m of expMarkers) {
       const { zid, key } = m.userData;
       const bought = expansions[zid].includes(key);
-      m.visible = !bought && zoneUnlocked(zid);
+      const needs = EXP_PATCHES[key].needs;
+      m.visible = !bought && zoneUnlocked(zid)
+        && (!needs || expansions[zid].includes(needs));
       if (!bought) {
         m.material.map.dispose();
         m.material.map = expLabelTex(expCost(zid));
@@ -1818,7 +1947,36 @@ export function initReefScene3D(canvas) {
     scene.add(group); corals.push(group);
     placedCorals.push(entry);
     seen.add(spec.id);
+    if (spec.shelter) { group.userData.homed = new Set(); shelters.push(group); }
     return group;
+  }
+
+  // ── Shelter homes (Classic's Anemone Haven / Reef Grotto) ────────────────────
+  // Anemone Haven homes small layer-A fish overnight; the Reef Grotto homes
+  // nocturnal crevice-dwellers through the day. Capacity is the spec's homeCap.
+  const shelters = [];
+  const isNocturnalSpec = (spec) =>
+    primaryBiome(spec) === 'deepTwilight' || !!spec.nocturnal;
+  function claimHome(f) {
+    const spec = FISH_SPECIES[f.id];
+    let best = null, bd = Infinity;
+    for (const s of shelters) {
+      const sp = s.userData.spec;
+      const match = sp.homeFor === 'nocturnal' ? f.noct
+        : (sp.homeFor === 'A' || sp.homeFor === 'B') ? spec.layer === sp.homeFor
+        : true;
+      if (!match || s.userData.homed.size >= (sp.homeCap ?? 6)) continue;
+      const dx = s.position.x - f.g.position.x, dz = s.position.z - f.g.position.z;
+      const d = dx * dx + dz * dz;
+      if (d < bd) { bd = d; best = s; }
+    }
+    if (best) { best.userData.homed.add(f); f.home = best; }
+    return best;
+  }
+  function releaseHome(f) {
+    if (!f.home) return;
+    f.home.userData.homed?.delete(f);
+    f.home = null;
   }
 
   // BE/polyp rates, recomputed whenever a coral is placed, upgraded, or removed.
@@ -1941,6 +2099,7 @@ export function initReefScene3D(canvas) {
   function attachFish(spec, st, placed = false) {
     st.g = makeFish(spec);
     Object.assign(st.g.userData, { placed, stateRef: st });   // `placed` fish are player-owned & removable
+    st.noct = isNocturnalSpec(spec);
     const prof = roamProfile(spec);
     if (BENTHIC_SPECIES.has(spec.id)) {
       // Crawlers live on the terrain; runtime-only state, not saved.
@@ -1987,6 +2146,10 @@ export function initReefScene3D(canvas) {
     if (!e || !spec) return;
     const refund = (spec.pearlCost || spec.utility) ? 0 : Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
     be = Math.min(be + refund, beMax);
+    if (spec.shelter) {
+      for (const f of group.userData.homed ?? []) f.home = null;
+      const si = shelters.indexOf(group); if (si >= 0) shelters.splice(si, 1);
+    }
     const ci = corals.indexOf(group); if (ci >= 0) corals.splice(ci, 1);
     const pi = placedCorals.indexOf(e); if (pi >= 0) placedCorals.splice(pi, 1);
     const tile = tileAt(e.b ?? 'coral', e.c, e.r); if (tile) tile.userData.occupied = false;
@@ -2001,6 +2164,7 @@ export function initReefScene3D(canvas) {
     const refund = spec?.pearlCost ? 0 : Math.floor((FISH_COST[spec?.tier] ?? 0) / 2);
     be = Math.min(be + refund, beMax);
     const fi = fishes.indexOf(st); if (fi >= 0) fishes.splice(fi, 1);
+    releaseHome(st);
     if (st.school) {
       const mi = st.school.members.indexOf(st);
       if (mi >= 0) st.school.members.splice(mi, 1);
@@ -2028,7 +2192,8 @@ export function initReefScene3D(canvas) {
     try {
       localStorage.setItem(slotKey(slot), JSON.stringify({
         be, polyps, pearls, harmony, level, timeOfDay,
-        corals: placedCorals, fish: placedFish, seen: [...seen], exp: expansions }));
+        corals: placedCorals, fish: placedFish, seen: [...seen], exp: expansions,
+        eggs: [...eggsClaimed] }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -2476,16 +2641,19 @@ export function initReefScene3D(canvas) {
       const rec = fishSaveData(st); placedFish.push(rec); g.userData.saveRef = rec;
     });
     (saved.seen ?? []).forEach(id => seen.add(id));
+    (saved.eggs ?? []).forEach(id => eggsClaimed.add(id));
   }
   recomputeRates(); refreshProgress(); refreshHud();
   refreshExpMarkers(); refreshZoneLocks();
 
   // ── Bubbles the drone — dock, speech overlay, and state machine ──────────────
   const drone = makeDrone();
-  const dockY = terrainHeight(14, 12);
-  const DOCK_POS = new THREE.Vector3(14, dockY + 1.1, 12);
+  // Dock sits in the open channel south-east of the reef grid, clear of the
+  // tiles, the expansion aprons, and the decor ring around them.
+  const dockY = terrainHeight(15, 24);
+  const DOCK_POS = new THREE.Vector3(15, dockY + 1.1, 24);
   const dockRock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9, 0), rockMat);
-  dockRock.position.set(14, dockY + 0.2, 12);
+  dockRock.position.set(15, dockY + 0.2, 24);
   dockRock.scale.y = 0.55; dockRock.castShadow = true; scene.add(dockRock);
   drone.position.copy(DOCK_POS);
   scene.add(drone);
@@ -2674,6 +2842,10 @@ export function initReefScene3D(canvas) {
     const eHit = ray.intersectObjects(expMarkers.filter(m => m.visible), false)[0]?.object;
     if (eHit) { tryBuyExpansion(eHit); return; }
 
+    // Easter eggs — poke the oddities out on the dunes.
+    const gHit = ray.intersectObjects(eggs, true)[0]?.object;
+    if (gHit?.userData.egg) { eggFound(gHit.userData.egg); return; }
+
     if (selected.type === 'remove') {
       const cHit = ray.intersectObjects(corals, true)[0]?.object;
       if (cHit) { const g = ancestorWith(cHit, 'entry'); if (g) removeCoralGroup(g); return; }
@@ -2836,7 +3008,26 @@ export function initReefScene3D(canvas) {
       if (t > s.until || dx * dx + dy * dy + dz * dz < 4) newSchoolTarget(s, t);
     }
     for (const f of fishes) {
-      if (f.benthic) {
+      // Classic's day/night homing: day-hiders tuck into a Reef Grotto by day;
+      // ordinary fish bed down (Anemone Haven if one has room) overnight;
+      // nocturnal fish stay out after dark. No home → they just slow down.
+      const wantsHide = !f.benthic
+        && (f.g.userData.hider ? nf < 0.45 : (nf > 0.55 && !f.noct));
+      if (wantsHide && !f.home) claimHome(f);
+      else if (!wantsHide && f.home) releaseHome(f);
+      const slow = wantsHide && !f.home ? 0.35 : 1;
+      if (f.home) {
+        // Settle beside the shelter with a gentle hover.
+        const hp = f.home.position;
+        const tx = hp.x + Math.sin(f.phase * 2.6) * 0.55;
+        const tz = hp.z + Math.cos(f.phase * 3.1) * 0.55;
+        const ty = hp.y + 0.5 + Math.sin(t * 0.8 + f.phase) * 0.06;
+        const k = Math.min(1, dt * 1.4);
+        const cur = f.g.position;
+        cur.set(cur.x + (tx - cur.x) * k, cur.y + (ty - cur.y) * k, cur.z + (tz - cur.z) * k);
+        f.g.rotation.x *= 0.92;
+        if (f.px !== undefined) { f.px = cur.x; f.py = cur.y; f.pz = cur.z; }
+      } else if (f.benthic) {
         // Crawlers: creep along the terrain toward a nearby sand waypoint,
         // pausing between hops. No bob, no pitch, no mid-water anything.
         const dx = f.tx - f.px, dz = f.tz - f.pz;
@@ -2882,9 +3073,10 @@ export function initReefScene3D(canvas) {
         }
         const al = Math.sqrt(ax * ax + ay * ay + az * az) || 1;
         const k = Math.min(1, dt * 2.4);
-        f.vx += ((ax / al) * f.spd - f.vx) * k;
-        f.vy += ((ay / al) * f.spd - f.vy) * k;
-        f.vz += ((az / al) * f.spd - f.vz) * k;
+        const sp = f.spd * slow;
+        f.vx += ((ax / al) * sp - f.vx) * k;
+        f.vy += ((ay / al) * sp - f.vy) * k;
+        f.vz += ((az / al) * sp - f.vz) * k;
         f.px += f.vx * dt; f.py += f.vy * dt; f.pz += f.vz * dt;
         const [bx0, bx1] = ZONE_BAND[f.b] ?? ZONE_BAND.coral;
         f.px = clamp(f.px, bx0 + 1, bx1 - 1);
@@ -2907,7 +3099,7 @@ export function initReefScene3D(canvas) {
         const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (d < 1.2) newRoamTarget(f);
         else {
-          const step = Math.min(f.spd * dt, d);
+          const step = Math.min(f.spd * dt * slow, d);
           f.px += (dx / d) * step; f.py += (dy / d) * step; f.pz += (dz / d) * step;
         }
         const want = Math.atan2(dx, dz);
@@ -2919,12 +3111,15 @@ export function initReefScene3D(canvas) {
         f.g.rotation.y = f.hdg;
         f.g.rotation.x = -Math.asin(clamp(dy / Math.max(d, 0.001), -1, 1)) * 0.45 * (f.pitch ?? 1);
       } else {
-        const ang = f.phase + t * f.w;
+        // Accumulated angle (not t-derived) so sleepy fish can slow down.
+        if (f.ang === undefined) f.ang = f.phase + t * f.w;
+        f.ang += f.w * dt * slow;
+        const ang = f.ang;
         const x = Math.cos(ang) * f.R + f.cx;
         const z = Math.sin(ang) * f.R + f.cz;
-        f.g.position.set(x, f.y + Math.sin(t * f.bobw + f.phase) * f.bob, z);
+        f.g.position.set(x, f.y + Math.sin(t * f.bobw + f.phase) * f.bob * slow, z);
         const heading = Math.atan2(-Math.sin(ang) * f.w, Math.cos(ang) * f.w);
-        f.g.rotation.y = heading + Math.sin(t * 6 + f.phase) * 0.1;
+        f.g.rotation.y = heading + Math.sin(t * 6 + f.phase) * 0.1 * slow;
       }
       const ud = f.g.userData;
       if (ud.animate) ud.animate(t, f.phase);
@@ -2932,9 +3127,15 @@ export function initReefScene3D(canvas) {
         if (ud.tailAxis === 'x') ud.tail.rotation.x = Math.sin(t * 4.5 + f.phase) * 0.28;
         else ud.tail.rotation.y = Math.sin(t * 7 + f.phase) * 0.5;
       }
-      // Nocturnal crevice-dwellers tuck away by day and emerge after dark.
-      if (f.g.userData.hider) {
-        f.g.scale.setScalar(f.g.userData.baseScale * (0.06 + 0.94 * nf));
+      // Nocturnal crevice-dwellers tuck away by day — visibly nestled at a
+      // grotto if one has room, otherwise vanished into an unseen crevice.
+      // Homed sleepers settle slightly smaller; everyone else stays full size.
+      if (ud.hider) {
+        const k = f.home ? 0.45 + 0.55 * nf : 0.06 + 0.94 * nf;
+        f.g.scale.setScalar(ud.baseScale * k);
+      } else {
+        const target = ud.baseScale * (f.home ? 0.8 : 1);
+        f.g.scale.setScalar(f.g.scale.x + (target - f.g.scale.x) * Math.min(1, dt * 2));
       }
       if (f.g.userData.glowMat) f.g.userData.glowMat.emissiveIntensity = nf * 0.9;
     }
@@ -2978,10 +3179,18 @@ export function initReefScene3D(canvas) {
     }
     sposArr.needsUpdate = true;
 
+    // The duck bobs on its private patch of surface, slowly rotating.
+    const duck = eggs.duckRef;
+    if (duck) {
+      duck.position.y = duck.userData.floatBase + Math.sin(t * 0.9) * 0.25;
+      duck.rotation.y = t * 0.15;
+      duck.rotation.z = Math.sin(t * 1.3) * 0.08;
+    }
+
     droneUpdate(dt, t, nf);
     plumeUpdate(t, ventIntensity((t / VENT_PERIOD) % 1));
     controls.target.x = clamp(controls.target.x, -52, 52);
-    controls.target.z = clamp(controls.target.z, -34, 34);
+    controls.target.z = clamp(controls.target.z, -38, 38);
     controls.target.y = clamp(controls.target.y, -4, 10);
     controls.update();
     renderer.render(scene, camera);
