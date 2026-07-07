@@ -2824,42 +2824,86 @@ export function initReefScene3D(canvas) {
     activePtrs = Math.max(0, activePtrs - 1);
     tapMulti = true;
   });
+  // Kill the browser's synthesized "ghost click" after a canvas touch — it
+  // fires ~instantly at the same spot and would press whatever UI a tap just
+  // opened underneath the finger (e.g. the upgrade button of a fresh modal).
+  renderer.domElement.addEventListener('touchend', ev => ev.preventDefault(), { passive: false });
   renderer.domElement.addEventListener('pointerup', ev => {
     activePtrs = Math.max(0, activePtrs - 1);
     if (tapMulti || !tapStart || activePtrs > 0) return;
+    const touch = ev.pointerType === 'touch';
     const moved = Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y);
+    // Fingers wobble far more than mice — give touch a much looser tap slop,
+    // and pick from where the finger LANDED (lift-off drifts).
+    const start = tapStart;
     tapStart = null;
-    if (moved > 7) return;
-    pick(ev);
+    if (moved > (touch ? 22 : 7)) return;
+    pick(touch
+      ? { clientX: start.x, clientY: start.y, pointerType: 'touch' }
+      : ev);
   });
   function pick(ev) {
-    setPtr(ev);
+    // Fat-finger assist: touch taps also try a ring of nearby sample points,
+    // so a near-miss still lands on the intended fish/coral/button. Mouse
+    // clicks stay pixel-precise (a single sample).
+    const pts = [[ev.clientX, ev.clientY]];
+    if (ev.pointerType === 'touch') {
+      for (const r of [14, 28]) {
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2 + (r === 28 ? 0.39 : 0);
+          pts.push([ev.clientX + Math.cos(a) * r, ev.clientY + Math.sin(a) * r]);
+        }
+      }
+    }
+    const setFrom = (pt) => {
+      ptr.x = (pt[0] / window.innerWidth) * 2 - 1;
+      ptr.y = -(pt[1] / window.innerHeight) * 2 + 1;
+      ray.setFromCamera(ptr, camera);
+    };
+    const castAll = (objs, recursive = false) => {
+      for (const pt of pts) {
+        setFrom(pt);
+        const hit = ray.intersectObjects(objs, recursive)[0]?.object;
+        if (hit) return hit;
+      }
+      return null;
+    };
+    const castOne = (obj) => {
+      for (const pt of pts) {
+        setFrom(pt);
+        if (ray.intersectObject(obj, true).length) return true;
+      }
+      return false;
+    };
 
     // Poking Bubbles takes priority — it has sensors, and feelings.
-    if (ray.intersectObject(drone, true).length) { droneTrigger('tapped'); return; }
+    if (castOne(drone)) { droneTrigger('tapped'); return; }
 
     // Expansion plots: tap a "＋" marker to buy that 5×5 patch with polyps.
-    const eHit = ray.intersectObjects(expMarkers.filter(m => m.visible), false)[0]?.object;
+    const eHit = castAll(expMarkers.filter(m => m.visible));
     if (eHit) { tryBuyExpansion(eHit); return; }
 
     // Easter eggs — poke the oddities out on the dunes.
-    const gHit = ray.intersectObjects(eggs, true)[0]?.object;
+    const gHit = castAll(eggs, true);
     if (gHit?.userData.egg) { eggFound(gHit.userData.egg); return; }
 
     if (selected.type === 'remove') {
-      const cHit = ray.intersectObjects(corals, true)[0]?.object;
+      const cHit = castAll(corals, true);
       if (cHit) { const g = ancestorWith(cHit, 'entry'); if (g) removeCoralGroup(g); return; }
-      const fHit = ray.intersectObjects(fishes.map(f => f.g), true)[0]?.object;
+      const fHit = castAll(fishes.map(f => f.g), true);
       if (fHit) { const g = ancestorWith(fHit, 'stateRef'); if (g) removeFishGroup(g); return; }
       return;
     }
 
-    // Click a placed coral to open its upgrade menu — takes priority over placement.
-    const coralHit = ray.intersectObjects(corals, true)[0]?.object;
+    // Tap a placed coral to open its upgrade menu — takes priority over placement.
+    const coralHit = castAll(corals, true);
     if (coralHit) {
       const g = ancestorWith(coralHit, 'entry');
       if (g) { openUpgrade(g); return; }
     }
+    // Placement targets (tiles, open water) are large — aim with the primary
+    // point only, so assist samples can't shift which tile you tapped.
+    setFrom(pts[0]);
     if (selected.type === 'coral') {
       const t = ray.intersectObjects(tiles, false)[0]?.object;
       if (!t || t.userData.occupied) return;

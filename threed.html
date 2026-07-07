@@ -151,6 +151,14 @@
       padding: 8px 12px; font-size: 12px; line-height: 1.45; color: #ddeeff;
       pointer-events: none;
     }
+
+    /* Touchscreens: fatter buttons and roomier rows so taps land first try. */
+    @media (pointer: coarse) {
+      .coral-btn { padding: 11px 12px; font-size: 14px; }
+      #palette { gap: 7px; }
+      #palette-toggle { padding: 11px 14px; font-size: 14px; }
+      .menu-btn { padding: 10px 14px; }
+    }
   </style>
 </head>
 <body>
@@ -168,7 +176,7 @@
   <button id="palette-toggle">🪸 Species ▾</button>
   <div id="palette"></div>
   <div id="hint">🌿 Seagrass west · 🪸 Coral Reef centre · 🌌 Twilight east — plant in the matching biome · click a coral to upgrade · tap a ＋ plot to expand a reef with 🪸 · ✕ Remove to sell · drag or arrow keys to move · right-drag or two fingers to orbit.</div>
-  <div id="version-badge-3d">3Dev 3.3</div>
+  <div id="version-badge-3d">3Dev 3.4</div>
   <script type="module">
     import { initReefScene3D } from './src/3d/ReefScene3D.js';
     initReefScene3D(document.getElementById('app3d'));
