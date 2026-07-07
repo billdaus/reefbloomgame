@@ -14,12 +14,14 @@ import {
   CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, BE_PER_TICK,
   START_BE, START_POLYPS, START_PEARLS, START_HARMONY, START_LEVEL,
   BE_MAX, POLYP_MAX, POLYP_BE_BONUS, POLYP_PER_CORAL_TICK, CORAL_MAX_LEVEL, TICK_MS,
-  BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL,
+  BIOMES as BIOMES_CLASSIC, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL,
+  LAGOON_UNLOCK_LEVEL, TIDEPOOL_UNLOCK_LEVEL,
   BIOLUM_SPECIES, DAY_HIDER_SPECIES,
 } from '../constants.js';
 import { LINES as BUBBLES_LINES } from '../entities/bubblesLines.js';
 
 const TILE = 2;
+const SURFACE_Y = 11.4;   // the ocean surface — everything swims beneath it
 const VENT_PERIOD = 5.2;
 const TICK_SEC = TICK_MS / 1000;        // BE/polyp tick cadence in seconds
 const SAVE_KEY_BASE = 'reefbloom_3d_save_v1';
@@ -30,11 +32,33 @@ const slotKey = (s) => `${SAVE_KEY_BASE}_s${s}`;
 // basin sits on a deep shelf east of the reef, the seagrass flats a touch
 // shallower to the west. Zone membership for free water (fish) is by x band.
 const ZONES = {
+  tidepool:     { id: 'tidepool',     cx: -96, cz: 0, grid: 10, floorY: 1.7,  unlock: TIDEPOOL_UNLOCK_LEVEL },
+  lagoon:       { id: 'lagoon',       cx: -64, cz: 0, grid: 10, floorY: 1.1,  unlock: LAGOON_UNLOCK_LEVEL },
   seagrass:     { id: 'seagrass',     cx: -32, cz: 0, grid: 10, floorY: 0.5,  unlock: SEAGRASS_UNLOCK_LEVEL },
   coral:        { id: 'coral',        cx: 0,   cz: 0, grid: 10, floorY: -0.1, unlock: 1 },
   deepTwilight: { id: 'deepTwilight', cx: 32,  cz: 0, grid: 10, floorY: -4.5, unlock: DEEP_TWILIGHT_UNLOCK_LEVEL },
 };
+// 3D-only biome metadata merged over Classic's — the Lagoon Shallows exists
+// only in 3D (Classic's travel modal iterates BIOMES, so it stays out of there).
+const BIOMES = {
+  ...BIOMES_CLASSIC,
+  lagoon: {
+    id: 'lagoon', icon: '🏝️', name: 'Lagoon Shallows', shortName: 'Lagoon',
+    unlockLevel: LAGOON_UNLOCK_LEVEL, bgColor: 0x2aa4c8,
+    depth: 'Sunlit (0–3 m)',
+    description: 'Sun-drenched sandy shallows beyond the seagrass flats — schooling silversides, cruising rays, and hardy fire coral.',
+  },
+  tidepool: {
+    id: 'tidepool', icon: '🪨', name: 'Tidepool Rocks', shortName: 'Tidepool',
+    unlockLevel: TIDEPOOL_UNLOCK_LEVEL, bgColor: 0x88a8ac,
+    depth: 'Intertidal (0–1 m)',
+    description: 'Wave-washed rock pools at the shore\'s edge — sea stars, scuttling crabs, anemones, and the occasional otter.',
+  },
+};
+
 function zoneAt(x) {
+  if (x < -80) return ZONES.tidepool;
+  if (x < -48) return ZONES.lagoon;
   if (x < -16) return ZONES.seagrass;
   if (x > 16) return ZONES.deepTwilight;
   return ZONES.coral;
@@ -55,7 +79,10 @@ const biomeIcons = (spec) =>
 // Free-roaming fish: big swimmers wander their biome instead of circling, and
 // multi-biome species get a roam band spanning every biome they belong to —
 // tangs and cleaners genuinely commute between the reef and the seagrass flats.
-const ZONE_BAND = { seagrass: [-52, -16], coral: [-16, 16], deepTwilight: [16, 52] };
+const ZONE_BAND = {
+  tidepool: [-116, -80], lagoon: [-80, -48], seagrass: [-48, -16],
+  coral: [-16, 16], deepTwilight: [16, 52],
+};
 function roamProfile(spec) {
   const zs = Object.keys(ZONES).filter(id => matchesBiome(spec, id));
   const big = (spec.size ?? 14) >= 22;
@@ -70,10 +97,14 @@ function roamProfile(spec) {
 // gastropod, a shrimp. They crawl the seafloor instead of swimming the column.
 const BENTHIC_SPECIES = new Set([
   'horseshoeCrab', 'sandDollar', 'conch', 'seaUrchin', 'cleanerShrimp',
+  'hermitCrab', 'flamingoTongue',
+  'sculpin', 'ochreStar', 'chiton', 'tidepoolCrab',
 ]);
 // How high each benthic body's origin sits above the sand (× its base scale).
 const BENTHIC_LIFT = {
   horseshoeCrab: 0.16, sandDollar: 0.06, conch: 0.22, seaUrchin: 0.28, cleanerShrimp: 0.18,
+  hermitCrab: 0.22, flamingoTongue: 0.14,
+  sculpin: 0.16, ochreStar: 0.08, chiton: 0.12, tidepoolCrab: 0.16,
 };
 
 // Species-specific roaming styles: cruising altitude above the floor, pitch
@@ -84,7 +115,9 @@ const ROAM_STYLE = {
   mantaRay:        { alt: [3.5, 8],   pitch: 0.35 },
   spottedEagleRay: { alt: [0.7, 2.2], pitch: 0.35 },
   abyssalRay:      { alt: [0.7, 2.2], pitch: 0.35 },
+  stingray:        { alt: [0.7, 2.2], pitch: 0.35 },
   nautilus:        { alt: [1.4, 4.5], pitch: 0.25, bob: 0.5, drift: 0.55 },
+  seaOtter:        { alt: [5.5, 8.5], pitch: 0.3, bob: 0.3 },   // rafts near the surface
 };
 
 // Small shoaling species swim as one school — a shared drifting waypoint plus
@@ -93,6 +126,7 @@ const ROAM_STYLE = {
 const SCHOOL_SPECIES = new Set([
   'blueChromis', 'chromis', 'damselfish', 'cardinalfish',
   'pajamaCardinalfish', 'banggaiCardinalfish', 'zebrafish',
+  'mullet', 'sergeantMajor',
 ]);
 
 // Classic's day/night: 4-minute day, timeOfDay 0→1 (midnight 0, sunrise 0.25,
@@ -390,7 +424,10 @@ function terrainHeight(x, z) {
     + Math.sin(x * 0.21 + z * 0.13) * 0.35;
   h -= smoothstep(16, 26, x) * 4.4;
   h += smoothstep(16, 24, -x) * 0.7;
-  const d = Math.max(Math.abs(x) - 52, Math.abs(z) - 38);
+  h += smoothstep(48, 56, -x) * 0.55;                   // lagoon shallows
+  h += smoothstep(80, 88, -x) * 0.5;                    // tidepool shore, shallowest
+  // World rim: the dunes rise further out west, where the shore climbs away.
+  const d = Math.max(x - 52, -116 - x, Math.abs(z) - 38);
   if (d > 0) {
     h += Math.min(d * 0.3, 10) * (0.72 + 0.28 * Math.sin(x * 0.07 + Math.cos(z * 0.09) * 2));
   }
@@ -437,12 +474,16 @@ function shapeOf(spec) {
     'sunfire', 'rainbowCoral'].includes(id)) return 'branch';
   if (['toadstool', 'table', 'midnightTable'].includes(id)) return 'plate';
   if (id === 'lettuce') return 'lettuce';
-  if (['star', 'starter'].includes(id)) return 'polyp';
+  if (['star', 'starter', 'sunCoral'].includes(id)) return 'polyp';
+  if (id === 'tidepoolAnemone') return 'anemone';
+  if (id === 'gooseneckBarnacles') return 'barnacles';
+  if (id === 'seaLettuce') return 'grass';
+  if (id === 'corallineAlgae') return 'brain';
   if (id === 'bubble') return 'bubble';
   if (['brain', 'ghost', 'twilightBrain'].includes(id)) return 'brain';
   if (['seaweed', 'seagrass', 'redSeagrass'].includes(id)) return 'grass';
-  if (id === 'kelp') return 'kelp';
-  if (id === 'abyssalFan') return 'fan';
+  if (['kelp', 'mangroveSapling'].includes(id)) return 'kelp';
+  if (['abyssalFan', 'lagoonFan'].includes(id)) return 'fan';
   if (id === 'barnacles') return 'barnacles';
   if (id === 'anemoneHome') return 'anemone';
   if (['wispCoral', 'phantomPolyp'].includes(id)) return 'wisp';
@@ -464,6 +505,7 @@ const CORAL_STYLE = {
   elkhorn: { n: 6, r: 0.055, h: 1.0, lean: 0.35, fork: true, flat: 3.2 },
   sunfire: { n: 7, r: 0.06, h: 1.1, lean: 0.2, fork: true },
   rainbowCoral: { n: 9, r: 0.045, h: 0.8, lean: 0.3, fork: true },
+  fireCoral: { n: 8, r: 0.05, h: 0.95, lean: 0.22, fork: true },
 };
 
 // Each builder gets ({ mat, tipMat, darkMat }, rnd) — rnd is a per-coral PRNG so
@@ -1373,25 +1415,86 @@ const FISH_BODY = {
     };
     return { animate };
   },
+  seastar(g, { bodyMat, spec, rnd }) {
+    // Five flattened arms around a low dome, hugging the rock.
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), bodyMat);
+    dome.scale.set(1, 0.55, 1); g.add(dome);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + (rnd() - 0.5) * 0.12;
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.09, 0.17), bodyMat);
+      arm.position.set(Math.cos(a) * 0.28, 0, Math.sin(a) * 0.28);
+      arm.rotation.y = -a;
+      g.add(arm);
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 7, 6), bodyMat);
+      tip.scale.y = 0.6;
+      tip.position.set(Math.cos(a) * 0.5, 0, Math.sin(a) * 0.5);
+      g.add(tip);
+    }
+    return {};
+  },
+  crab(g, { bodyMat, spec, rnd }) {
+    // Shore crab: wide low carapace, stalked eyes, pincers, scuttling legs.
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), bodyMat);
+    shell.scale.set(1.25, 0.5, 0.9); shell.position.y = 0.12; g.add(shell);
+    fishEyes(g, 0.12, 0.3, 0.3, 0.7);
+    const legs = [];
+    for (const s of [-1, 1]) {
+      const claw = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 7), bodyMat);
+      claw.scale.set(1, 0.7, 1.3);
+      claw.position.set(s * 0.4, 0.08, 0.3); g.add(claw);
+      for (let k = 0; k < 3; k++) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.34, 5), bodyMat);
+        leg.position.set(s * 0.36, 0.02, 0.08 - k * 0.15);
+        leg.rotation.z = s * 1.15;
+        g.add(leg); legs.push(leg);
+      }
+    }
+    const animate = (t, phase) => {
+      legs.forEach((l, i) => {
+        l.rotation.x = Math.sin(t * 8 + phase + i * 1.2) * 0.25;
+      });
+    };
+    return { animate };
+  },
+  chiton(g, { bodyMat, spec }) {
+    // Gumboot chiton: leathery oval dome, transverse plate ridges on top.
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(0.32, 12, 9, 0, Math.PI * 2, 0, Math.PI / 2), bodyMat);
+    dome.scale.set(0.72, 0.5, 1.15); g.add(dome);
+    const girdle = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.08, 14), bodyMat);
+    girdle.scale.set(0.75, 1, 1.18); girdle.position.y = 0.03; g.add(girdle);
+    const plateM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.accentColor ?? spec.color), roughness: 0.8 });
+    for (let k = 0; k < 5; k++) {
+      const zz = -0.24 + k * 0.12;
+      const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.07), plateM);
+      ridge.position.set(0, 0.05 + Math.cos((zz / 0.37) * 1.2) * 0.12, zz);
+      g.add(ridge);
+    }
+    return {};
+  },
 };
 
 function fishBodyOf(id) {
   if (['seahorse', 'neonSeahorse', 'twilightSeahorse', 'moonSeahorse'].includes(id)) return 'seahorse';
   if (id === 'seaTurtle') return 'turtle';
-  if (['shark', 'frilledShark', 'twilightWhaleShark'].includes(id)) return 'shark';
+  if (['shark', 'frilledShark', 'twilightWhaleShark', 'lemonShark'].includes(id)) return 'shark';
   if (['morayEel', 'giantMoray', 'blueRibbonEel', 'glowEel', 'gulperEel',
     'oarfish', 'ribbonfish'].includes(id)) return 'eel';
-  if (['octopus', 'giantSquid'].includes(id)) return 'octopus';
+  if (['octopus', 'giantSquid', 'rubyOctopus'].includes(id)) return 'octopus';
   if (id === 'dolphin') return 'dolphin';
   if (id === 'cuttlefish') return 'cuttlefish';
-  if (['manatee', 'dugong'].includes(id)) return 'sirenian';
+  if (['manatee', 'dugong', 'seaOtter'].includes(id)) return 'sirenian';
   if (id === 'pufferfish') return 'puffer';
-  if (['spottedEagleRay', 'mantaRay', 'abyssalRay'].includes(id)) return 'ray';
+  if (['spottedEagleRay', 'mantaRay', 'abyssalRay', 'stingray'].includes(id)) return 'ray';
   if (id === 'nautilus') return 'nautilus';
   if (id === 'horseshoeCrab') return 'horseshoe';
   if (id === 'seaUrchin') return 'urchin';
   if (id === 'sandDollar') return 'sandDollar';
-  if (id === 'conch') return 'snail';
+  if (['conch', 'hermitCrab', 'flamingoTongue'].includes(id)) return 'snail';
+  if (id === 'ochreStar') return 'seastar';
+  if (id === 'tidepoolCrab') return 'crab';
+  if (id === 'chiton') return 'chiton';
   if (id === 'cleanerShrimp') return 'shrimp';
   return 'generic';
 }
@@ -1516,7 +1619,7 @@ export function initReefScene3D(canvas) {
   sun.position.set(6, 22, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -52; sun.shadow.camera.right = 52;
+  sun.shadow.camera.left = -116; sun.shadow.camera.right = 52;
   sun.shadow.camera.top = 42; sun.shadow.camera.bottom = -42;
   sun.shadow.camera.far = 80;
   sun.shadow.bias = -0.0005;
@@ -1526,6 +1629,12 @@ export function initReefScene3D(canvas) {
   // Cold, dim glow over the twilight basin so the deep shelf reads as its own world.
   const twiLight = new THREE.PointLight(0x4a7bd0, 30, 46, 1.6);
   twiLight.position.set(ZONES.deepTwilight.cx, 7, 0); scene.add(twiLight);
+  // Warm sun-glow over the lagoon so the far-west shallows read bright.
+  const lagLight = new THREE.PointLight(0xfff0c4, 22, 52, 1.7);
+  lagLight.position.set(ZONES.lagoon.cx, 9, 0); scene.add(lagLight);
+  // Crisp cool daylight over the tidepools — barely a metre of water there.
+  const tideLight = new THREE.PointLight(0xe8f6ff, 18, 46, 1.7);
+  tideLight.position.set(ZONES.tidepool.cx, 8, 0); scene.add(tideLight);
 
   // ── Seafloor — one heightfield across all three biomes ──────────────────────
   const floorGeo = new THREE.PlaneGeometry(240, 240, 120, 120);
@@ -1533,6 +1642,8 @@ export function initReefScene3D(canvas) {
   const fc = new Float32Array(fp.count * 3);
   const cCor = new THREE.Color(0xc2a96e);   // golden reef sand
   const cSea = new THREE.Color(0x86a05f);   // warm grassy flats
+  const cLag = new THREE.Color(0xe8dca6);   // sun-bleached lagoon sand
+  const cTide = new THREE.Color(0x9a948a);  // wet intertidal rock
   const cTwi = new THREE.Color(0x22344f);   // dark twilight silt
   const tint = new THREE.Color();
   for (let i = 0; i < fp.count; i++) {
@@ -1540,6 +1651,8 @@ export function initReefScene3D(canvas) {
     fp.setZ(i, terrainHeight(x, z));
     tint.copy(cCor)
       .lerp(cSea, smoothstep(15, 23, -x))
+      .lerp(cLag, smoothstep(46, 54, -x))
+      .lerp(cTide, smoothstep(78, 86, -x))
       .lerp(cTwi, smoothstep(14, 22, x));
     const v = 0.93 + 0.07 * Math.sin(x * 12.9 + z * 7.7) * Math.sin(x * 3.1 - z * 5.3);
     fc[i * 3] = tint.r * v; fc[i * 3 + 1] = tint.g * v; fc[i * 3 + 2] = tint.b * v;
@@ -1555,6 +1668,24 @@ export function initReefScene3D(canvas) {
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true; scene.add(floor);
+
+  // ── Ocean surface — waves rolling around a fixed water level ─────────────────
+  // Front faces point DOWN, so the sheet only renders when the camera is under
+  // it: dip low and a shimmering ceiling appears; the high overview stays clear.
+  // Swells oscillate around SURFACE_Y — the mean water level itself never moves.
+  const surfGeo = new THREE.PlaneGeometry(300, 180, 72, 44);
+  const surfTex = causticTexture();
+  surfTex.repeat.set(18, 12);
+  const surfMat = new THREE.MeshStandardMaterial({
+    color: 0x9fd9ee, transparent: true, opacity: 0.4, side: THREE.FrontSide,
+    roughness: 0.35, metalness: 0.15,
+    emissive: 0xbfe8f5, emissiveIntensity: 0.35, emissiveMap: surfTex,
+    depthWrite: false });
+  const surface = new THREE.Mesh(surfGeo, surfMat);
+  surface.rotation.x = Math.PI / 2;                    // normal faces the reef
+  surface.position.set(-32, SURFACE_Y, 0);
+  scene.add(surface);
+  const surfPos = surfGeo.attributes.position;
 
   const rockMat = new THREE.MeshStandardMaterial({
     color: 0x9aa0a0, roughness: 1, flatShading: true, map: rockTex });
@@ -1605,11 +1736,59 @@ export function initReefScene3D(canvas) {
       const a = rnd() * Math.PI * 2;
       let r = 11.5 + rnd() * 5, x, z;
       do {
-        x = clamp(zn.cx + Math.cos(a) * r, -50, -17.5);
+        x = clamp(zn.cx + Math.cos(a) * r, -46, -18);
         z = clamp(Math.sin(a) * r, -28, 28);
         r += 1.6;
       } while (inBuildArea(x, z) && r < 44);
       weedTuft(x, z, 4 + Math.floor(rnd() * 3), [0x2f7d54, 0x3f8f4f, 0x557f3f][i % 3]);
+    }
+  }
+  // Tidepool scatter: clusters of dark wave-worn boulders around the pools.
+  {
+    const rnd = mulberry32(173);
+    const zn = ZONES.tidepool;
+    const wetRock = new THREE.MeshStandardMaterial({
+      color: 0x6f6a60, roughness: 0.85, flatShading: true, map: rockTex });
+    for (let i = 0; i < 30; i++) {
+      const a = rnd() * Math.PI * 2;
+      let r = 11.5 + rnd() * 5, x, z;
+      do {
+        x = clamp(zn.cx + Math.cos(a) * r, -112, -82);
+        z = clamp(Math.sin(a) * r, -30, 30);
+        r += 1.6;
+      } while (inBuildArea(x, z) && r < 44);
+      if (i % 4 === 3) {
+        weedTuft(x, z, 3, [0x7cb342, 0x558b2f, 0x9e9d24][i % 3]);
+      } else {
+        const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + rnd() * 0.9, 0), wetRock);
+        rock.position.set(x, terrainHeight(x, z) + 0.15, z);
+        rock.rotation.set(a, a * 1.7, a * 0.5); rock.scale.y = 0.5 + rnd() * 0.3;
+        rock.castShadow = true; scene.add(rock);
+      }
+    }
+  }
+  // Lagoon scatter: pale rocks and sparse bright-green shoots on bleached sand.
+  {
+    const rnd = mulberry32(139);
+    const zn = ZONES.lagoon;
+    const paleRock = new THREE.MeshStandardMaterial({
+      color: 0xcabf9f, roughness: 1, flatShading: true, map: rockTex });
+    for (let i = 0; i < 26; i++) {
+      const a = rnd() * Math.PI * 2;
+      let r = 11.5 + rnd() * 5, x, z;
+      do {
+        x = clamp(zn.cx + Math.cos(a) * r, -80, -50);
+        z = clamp(Math.sin(a) * r, -28, 28);
+        r += 1.6;
+      } while (inBuildArea(x, z) && r < 44);
+      if (i % 3) {
+        weedTuft(x, z, 3 + Math.floor(rnd() * 3), [0x66bb6a, 0x9ccc65, 0x4caf50][i % 3]);
+      } else {
+        const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4 + rnd() * 0.5, 0), paleRock);
+        rock.position.set(x, terrainHeight(x, z) + 0.1, z);
+        rock.rotation.set(a, a * 1.7, a * 0.5); rock.scale.y = 0.55;
+        rock.castShadow = true; scene.add(rock);
+      }
     }
   }
   // Twilight-zone scatter: dark rock spires and faint glowing orbs on the shelf.
@@ -1656,7 +1835,8 @@ export function initReefScene3D(canvas) {
     const spots = [
       { x: -6, z: -9, c: 0xf8c8dc, tw: false }, { x: 9, z: 7, c: 0xcfe8ff, tw: false },
       { x: -26, z: 7, c: 0xd8f0d0, tw: false }, { x: -38, z: -6, c: 0xf8c8dc, tw: false },
-      { x: 2, z: 11, c: 0xcfe8ff, tw: false },
+      { x: 2, z: 11, c: 0xcfe8ff, tw: false }, { x: -60, z: 8, c: 0xd0f0e0, tw: false },
+      { x: -70, z: -7, c: 0xfae0c8, tw: false }, { x: -92, z: 6, c: 0xe0f4ff, tw: false },
       { x: 27, z: -9, c: 0x8ff0ff, tw: true }, { x: 38, z: 5, c: 0xc9a8ff, tw: true },
       { x: 32, z: 11, c: 0x8ff0ff, tw: true },
     ];
@@ -1773,7 +1953,7 @@ export function initReefScene3D(canvas) {
     fishEyes(duck, 0.16, 0.62, 0.55, 1.3);
     addEgg('duck', duck, 6, 36);
     duck.position.y = 10.5;                 // floats near the surface
-    duck.userData.floatBase = 10.5;
+    duck.userData.floatBase = SURFACE_Y + 0.05;   // rides the swells
     eggs.duckRef = duck;
   }
   const EGG_LINES = {
@@ -1809,6 +1989,10 @@ export function initReefScene3D(canvas) {
       color: 0x9db26f, roughness: 1, map: tileTex, transparent: true, opacity: 0.6 }),
     deepTwilight: new THREE.MeshStandardMaterial({
       color: 0x3d5570, roughness: 1, map: tileTex, transparent: true, opacity: 0.65 }),
+    lagoon: new THREE.MeshStandardMaterial({
+      color: 0xf0e2ae, roughness: 1, map: tileTex, transparent: true, opacity: 0.6 }),
+    tidepool: new THREE.MeshStandardMaterial({
+      color: 0xb5af9e, roughness: 1, map: tileTex, transparent: true, opacity: 0.62 }),
   };
   const lockedMat = new THREE.MeshStandardMaterial({
     color: 0x2a3540, roughness: 1, transparent: true, opacity: 0.22 });
@@ -1847,7 +2031,7 @@ export function initReefScene3D(canvas) {
     sw2: { c0: 0, r0: 15, needs: 'sw' },  se2: { c0: 5, r0: 15, needs: 'se' },
   };
   const EXP_SIZE = 5;
-  const expansions = { seagrass: [], coral: [], deepTwilight: [] };   // saved
+  const expansions = Object.fromEntries(Object.keys(ZONES).map(z => [z, []]));   // saved
   const expCost = (zid) => 40 * (expansions[zid].length + 1);
   function buildExpansion(zid, key) {
     const zn = ZONES[zid], p = EXP_PATCHES[key];
@@ -2301,7 +2485,7 @@ export function initReefScene3D(canvas) {
   // Species grouped by home biome, mirroring Classic's per-biome shop.
   const stdCorals = coralSpecs.filter(s => !s.utility && !s.pearlCost);
   const stdFish = fishSpecs.filter(s => !s.pearlCost);
-  for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
+  for (const zid of ['coral', 'seagrass', 'lagoon', 'tidepool', 'deepTwilight']) {
     const bio = BIOMES[zid];
     const lv = ZONES[zid].unlock > 1 ? ` · Lv${ZONES[zid].unlock}` : '';
     const cs = stdCorals.filter(s => primaryBiome(s) === zid);
@@ -2473,6 +2657,12 @@ export function initReefScene3D(canvas) {
     if (level >= ZONES.deepTwilight.unlock && !placedCorals.some(e => e.b === 'deepTwilight')) {
       tips.push('The 🌌 Deep Twilight shelf is unlocked and empty — bioluminescent species await.');
     }
+    if (level >= ZONES.lagoon.unlock && !placedCorals.some(e => e.b === 'lagoon')) {
+      tips.push('The 🏝️ Lagoon Shallows are unlocked and empty — sun corals and rays wait out west.');
+    }
+    if (level >= ZONES.tidepool.unlock && !placedCorals.some(e => e.b === 'tidepool')) {
+      tips.push('The 🪨 Tidepool Rocks are unlocked and empty — anemones and sea stars line the shore.');
+    }
     if (!tips.length) tips.push('The reef is thriving. Keep growing it to hold the ratchet at 100.');
     advisor.body.innerHTML =
       line('Coral variety', pVariety, 40)
@@ -2501,7 +2691,7 @@ export function initReefScene3D(canvas) {
       if (h > 0) html += line('Harmony', harmony, h);
     }
     html += '<div class="m-sec">Biomes</div>';
-    for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
+    for (const zid of ['coral', 'seagrass', 'lagoon', 'tidepool', 'deepTwilight']) {
       const b = BIOMES[zid], zn = ZONES[zid];
       const open = zoneUnlocked(zid);
       const placedHere = placedCorals.filter(e => (e.b ?? 'coral') === zid).length;
@@ -2939,7 +3129,7 @@ export function initReefScene3D(canvas) {
   const snowGeo = new THREE.BufferGeometry();
   const sp = new Float32Array(SNOW * 3);
   for (let i = 0; i < SNOW; i++) {
-    sp[i * 3] = (Math.cos(i * 12.9) * 0.5 + 0.5) * 104 - 52;
+    sp[i * 3] = (Math.cos(i * 12.9) * 0.5 + 0.5) * 168 - 116;
     sp[i * 3 + 1] = (Math.sin(i * 7.3) * 0.5 + 0.5) * 29 - 5;
     sp[i * 3 + 2] = (Math.cos(i * 4.1) * 0.5 + 0.5) * 104 - 52;
   }
@@ -2963,7 +3153,7 @@ export function initReefScene3D(canvas) {
       z = src.position.z + (brng() - 0.5) * 1.2;
       y = src.position.y + 0.3 + brng() * 0.8;
     } else {
-      x = (brng() - 0.5) * 80;
+      x = -32 + (brng() - 0.5) * 164;
       z = (brng() - 0.5) * 44;
       y = terrainHeight(x, z) + 0.3;
     }
@@ -2971,7 +3161,7 @@ export function initReefScene3D(canvas) {
     bubbleData[i] = {
       baseX: x, speed: 0.5 + brng() * 0.9,
       wobA: brng() * 6.28, wobW: 1 + brng() * 2,
-      top: y + 7 + brng() * 6,
+      top: Math.min(y + 7 + brng() * 6, SURFACE_Y - 0.15),   // bubbles pop at the surface
     };
   }
   for (let i = 0; i < BUBBLE_N; i++) bubbleSpawn(i);
@@ -3215,6 +3405,20 @@ export function initReefScene3D(canvas) {
     caustics.offset.x = t * 0.012 + Math.sin(t * 0.35) * 0.006;
     caustics.offset.y = t * 0.008 + Math.cos(t * 0.28) * 0.006;
 
+    // Ocean surface: waves ripple about the fixed water level; shimmer drifts;
+    // the whole sheet moon-dims after dark.
+    for (let i = 0; i < surfPos.count; i++) {
+      const sx = surfPos.getX(i), sy = surfPos.getY(i);
+      surfPos.setZ(i,
+        Math.sin(sx * 0.14 + t * 0.9) * 0.24 + Math.cos(sy * 0.17 - t * 0.7) * 0.18);
+    }
+    surfPos.needsUpdate = true;
+    surfGeo.computeVertexNormals();
+    surfTex.offset.x = t * 0.009;
+    surfTex.offset.y = -t * 0.006;
+    surfMat.emissiveIntensity = 0.35 - nf * 0.24;
+    surfMat.opacity = 0.4 - nf * 0.08;
+
     const sposArr = snow.geometry.attributes.position;
     for (let i = 0; i < SNOW; i++) {
       let y = sposArr.getY(i) - dt * 0.35;
@@ -3233,7 +3437,7 @@ export function initReefScene3D(canvas) {
 
     droneUpdate(dt, t, nf);
     plumeUpdate(t, ventIntensity((t / VENT_PERIOD) % 1));
-    controls.target.x = clamp(controls.target.x, -52, 52);
+    controls.target.x = clamp(controls.target.x, -116, 52);
     controls.target.z = clamp(controls.target.z, -38, 38);
     controls.target.y = clamp(controls.target.y, -4, 10);
     controls.update();
