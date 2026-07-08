@@ -157,6 +157,7 @@ export class Fish {
       case 'rainbowGoby':       this._drawOvalFish(g, sz, c, ac, false);  break;
       case 'glowfinAngelfish':  this._drawGlowfinAngel(g, sz, c, ac);     break;
       case 'neonSeahorse':      this._drawSeahorse(g, sz, c, ac);         break;
+      case 'goldenSeahorse':    this._drawSeahorse(g, sz, c, ac);         break;
       case 'sunburstWrasse':    this._drawOvalFish(g, sz, c, ac, false);  break;
       case 'phantomLionfish':   this._drawLionfish(g, sz, c, ac);           break;
       // v0.3 Coral Reef Expansion

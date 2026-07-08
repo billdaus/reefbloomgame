@@ -390,6 +390,11 @@ export const CORAL_SPECIES = {
     tier: TIER.LEGENDARY, tall: true, color: 0x9c64ff, unlockLevel: 1,
     eventId: 'twilight_festival_2026',
   },
+  sunsetFan: {
+    id: 'sunsetFan', name: 'Sunset Fan', scientific: 'Gorgonia crepuscula',
+    tier: TIER.LEGENDARY, tall: true, color: 0xff8a50, accentColor: 0xffd180, unlockLevel: 1,
+    eventId: 'shoreline_summer_2026', biome: ['coral', 'seagrass', 'deepTwilight'],
+  },
 };
 
 // ─── Fish species ─────────────────────────────────────────────────────────────
@@ -874,6 +879,12 @@ export const FISH_SPECIES = {
     tier: TIER.LEGENDARY, layer: 'B', color: 0x4a2b8c, accentColor: 0x9c64ff,
     size: 22, speed: 0.8, unlockLevel: 1,
     eventId: 'twilight_festival_2026',
+  },
+  goldenSeahorse: {
+    id: 'goldenSeahorse', name: 'Golden Seahorse', scientific: 'Hippocampus aestas',
+    tier: TIER.LEGENDARY, layer: 'A', color: 0xffc933, accentColor: 0xfff3c0,
+    size: 15, speed: 0.4, unlockLevel: 1,
+    eventId: 'shoreline_summer_2026', biome: ['coral', 'seagrass', 'deepTwilight'],
   },
 
   // ── Gavin ────────────────────────────────────────────────────────────────

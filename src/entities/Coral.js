@@ -61,6 +61,7 @@ export class Coral {
       case 'phantomPolyp': this._drawPhantomPolyp(g, s, c); break;
       case 'midnightTable':   this._drawMidnightTable(g, s, c);   break;
       case 'abyssalFan':      this._drawAbyssalFan(g, s, c);      break;
+      case 'sunsetFan':       this._drawAbyssalFan(g, s, c);      break;
       case 'lanternCoral':    this._drawLanternCoral(g, s, c);    break;
       case 'wispCoral':       this._drawWispCoral(g, s, c);       break;
       case 'essenceVault':    this._drawStorageCoral(g, s, c);    break;

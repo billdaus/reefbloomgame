@@ -173,6 +173,40 @@ export const EVENT_SCHEDULE = [
     },
   },
   {
+    id:          'shoreline_summer_2026',
+    name:        'Shoreline Summer',
+    icon:        '🏖️',
+    theme:       0xffd54f,
+    startDate:   '2026-07-06',
+    endDate:     '2026-07-16',
+    description: 'The tide pulls back and the shore comes alive — build the reef beneath the summer sun.',
+    reward: { be: 300, pearls: 80 },
+    questSets: [
+      { label: 'Low Tide', tokenReward: 2, challenges: [
+        { type: 'place_coral', label: 'Place 4 coral',     target: 4 },
+        { type: 'have_fish',   label: 'Have 4 fish alive', target: 4 },
+      ]},
+      { label: 'High Sun', tokenReward: 3, challenges: [
+        { type: 'hatch_fish',    label: 'Hatch 6 fish',      target: 6   },
+        { type: 'reach_harmony', label: 'Reach 55 Harmony',  target: 55  },
+        { type: 'earn_be',       label: 'Earn 500 🫧',        target: 500 },
+      ]},
+      { label: 'Golden Hour', tokenReward: 4, challenges: [
+        { type: 'place_coral', label: 'Place 12 coral',      target: 12   },
+        { type: 'have_fish',   label: 'Have 10 fish alive',  target: 10   },
+        { type: 'earn_be',     label: 'Earn 1,200 🫧',        target: 1200 },
+      ]},
+    ],
+    pass: {
+      tiers: [
+        { threshold: 1, reward: { be: 100 },                     label: '100 🫧'            },
+        { threshold: 3, reward: { pearls: 25 },                  label: '25 💎'             },
+        { threshold: 5, reward: { exclusive: 'sunsetFan' },      label: '🌅 Sunset Fan'     },
+        { threshold: 8, reward: { exclusive: 'goldenSeahorse' }, label: '🌟 Golden Seahorse' },
+      ],
+    },
+  },
+  {
     id:          'twilight_festival_2026',
     name:        'Twilight Festival',
     icon:        '🌌',

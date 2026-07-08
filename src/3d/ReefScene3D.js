@@ -10,6 +10,7 @@
 // localStorage slot, but not Classic's save. Run `npm run dev` → /threed.html.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EVENT_SCHEDULE, eventDaysRemaining } from '../systems/EventSystem.js';
 import {
   CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, BE_PER_TICK,
   START_BE, START_POLYPS, START_PEARLS, START_HARMONY, START_LEVEL,
@@ -97,7 +98,7 @@ const ROAM_STYLE = {
   abyssalRay:      { alt: [0.7, 2.2], pitch: 0.35 },
   stingray:        { alt: [0.7, 2.2], pitch: 0.35 },
   nautilus:        { alt: [1.4, 4.5], pitch: 0.25, bob: 0.5, drift: 0.55 },
-  seaOtter:        { alt: [9, 11.5], pitch: 0.3, bob: 0.3 },   // rafts near the surface
+  seaOtter:        { alt: [11.3, 12], pitch: 0.1, bob: 0.18, drift: 0.8 },   // rafts ON the surface
 };
 
 // Small shoaling species swim as one school — a shared drifting waypoint plus
@@ -461,7 +462,7 @@ function shapeOf(spec) {
   if (['brain', 'ghost', 'twilightBrain'].includes(id)) return 'brain';
   if (['seaweed', 'seagrass', 'redSeagrass'].includes(id)) return 'grass';
   if (['kelp', 'mangroveSapling'].includes(id)) return 'kelp';
-  if (['abyssalFan', 'lagoonFan'].includes(id)) return 'fan';
+  if (['abyssalFan', 'lagoonFan', 'sunsetFan'].includes(id)) return 'fan';
   if (id === 'barnacles') return 'barnacles';
   if (id === 'anemoneHome') return 'anemone';
   if (['wispCoral', 'phantomPolyp'].includes(id)) return 'wisp';
@@ -976,6 +977,51 @@ const FISH_BODY = {
     tail.add(fluke);
     return { tail, tailAxis: 'x' };
   },
+  otter(g, { bodyMat, spec, rnd }) {
+    // Sea otter rafting on its back: brown body belly-up at the surface,
+    // pale face looking skyward, paws folded on the chest, rudder tail aft.
+    const furM = bodyMat;
+    const faceM = new THREE.MeshStandardMaterial({
+      color: spec.accentColor ?? 0xa1887f, roughness: 0.7 });
+    const darkM = new THREE.MeshStandardMaterial({ color: 0x3e2b20, roughness: 0.6 });
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.75, 6, 12), furM);
+    body.rotation.x = Math.PI / 2;
+    body.scale.set(1.15, 0.85, 1); g.add(body);
+    // Pale chest/belly patch facing UP
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 9), faceM);
+    chest.scale.set(0.95, 0.4, 1.35); chest.position.set(0, 0.16, 0.05); g.add(chest);
+    // Head tilted up out of the water
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10), furM);
+    head.position.set(0, 0.14, 0.55); g.add(head);
+    const face = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 9), faceM);
+    face.position.set(0, 0.26, 0.58); face.scale.set(0.95, 0.8, 0.9); g.add(face);
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), furM);
+      ear.position.set(s * 0.16, 0.24, 0.48); g.add(ear);
+      // Paws folded on the chest
+      const paw = new THREE.Mesh(new THREE.SphereGeometry(0.075, 7, 6), furM);
+      paw.position.set(s * 0.1, 0.26, 0.22); g.add(paw);
+      // Webbed hind feet poking up
+      const foot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 7, 6), darkM);
+      foot.scale.set(0.7, 0.35, 1.3);
+      foot.position.set(s * 0.14, 0.2, -0.42); g.add(foot);
+    }
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), darkM);
+    nose.position.set(0, 0.32, 0.7); g.add(nose);
+    fishEyes(g, 0.08, 0.36, 0.62, 0.7);
+    // Rudder tail on a wag pivot
+    const tail = new THREE.Group();
+    tail.position.set(0, 0.02, -0.58); g.add(tail);
+    const fluke = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.34, 4, 7), furM);
+    fluke.rotation.x = Math.PI / 2 + 0.15;
+    fluke.scale.set(1.3, 1, 0.5);
+    fluke.position.z = -0.2; tail.add(fluke);
+    const animate = (t, phase) => {
+      tail.rotation.y = Math.sin(t * 2.2 + phase) * 0.3;      // lazy scull
+      g.rotation.z = Math.sin(t * 0.8 + phase) * 0.06;        // rocking with the swell
+    };
+    return { animate };
+  },
   sirenian(g, { bodyMat, spec, rnd }) {
     // Manatee / dugong: rotund, blunt snout, paddle tail.
     const finM = new THREE.MeshStandardMaterial({
@@ -1475,7 +1521,7 @@ const FISH_BODY = {
 };
 
 function fishBodyOf(id) {
-  if (['seahorse', 'neonSeahorse', 'twilightSeahorse', 'moonSeahorse'].includes(id)) return 'seahorse';
+  if (['seahorse', 'neonSeahorse', 'twilightSeahorse', 'moonSeahorse', 'goldenSeahorse'].includes(id)) return 'seahorse';
   if (id === 'seaTurtle') return 'turtle';
   if (['shark', 'frilledShark', 'twilightWhaleShark', 'lemonShark'].includes(id)) return 'shark';
   if (['morayEel', 'giantMoray', 'blueRibbonEel', 'glowEel', 'gulperEel',
@@ -1483,7 +1529,8 @@ function fishBodyOf(id) {
   if (['octopus', 'giantSquid', 'rubyOctopus'].includes(id)) return 'octopus';
   if (id === 'dolphin') return 'dolphin';
   if (id === 'cuttlefish') return 'cuttlefish';
-  if (['manatee', 'dugong', 'seaOtter'].includes(id)) return 'sirenian';
+  if (['manatee', 'dugong'].includes(id)) return 'sirenian';
+  if (id === 'seaOtter') return 'otter';
   if (id === 'pufferfish') return 'puffer';
   if (['spottedEagleRay', 'mantaRay', 'abyssalRay', 'stingray'].includes(id)) return 'ray';
   if (id === 'nautilus') return 'nautilus';
@@ -2233,6 +2280,8 @@ export function initReefScene3D(canvas) {
   const placedCorals = [];    // { b, c, r, id, level }   (saved)
   const placedFish = [];      // { id, b, cx, cz, R, y, w, phase, bob, bobw } (saved)
   const seen = new Set();     // journal — every species ever placed (saved)
+  const exclOwned = new Set();   // event-pass exclusive species owned (saved)
+  let ev3 = null;                // live event progress (saved)
   let be = START_BE, polyps = START_POLYPS, pearls = START_PEARLS;
   let harmony = START_HARMONY, level = START_LEVEL;
   let timeOfDay = 0.3, nightFactor = 0;   // day/night cycle (saved)
@@ -2400,7 +2449,7 @@ export function initReefScene3D(canvas) {
   }
 
   // Recompute reef-composition stats after any placement/removal.
-  function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); onProgress(); }
+  function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); ev3Snapshot(); onProgress(); }
 
   function tryUpgrade(group) {
     const e = group.userData.entry;
@@ -2437,7 +2486,8 @@ export function initReefScene3D(canvas) {
     f.tz = -26 + Math.random() * 52;
     const floorY = terrainHeight(f.tx, f.tz);
     const [lo, hi] = f.alt ?? [1.6, 4.6];
-    f.ty = clamp(floorY + lo + Math.random() * (hi - lo), floorY + Math.min(lo, 1.2), 11);
+    const ceiling = f.alt ? SURFACE_Y - 0.9 : 11;   // surface-rafters may ride high
+    f.ty = clamp(floorY + lo + Math.random() * (hi - lo), floorY + Math.min(lo, 1.2), ceiling);
   }
   // Benthic crawlers wander short hops across the sand around their anchor.
   function newCrawlTarget(f) {
@@ -2563,7 +2613,8 @@ export function initReefScene3D(canvas) {
       localStorage.setItem(slotKey(slot), JSON.stringify({
         be, polyps, pearls, harmony, level, timeOfDay,
         corals: placedCorals, fish: placedFish, seen: [...seen], exp: expansions,
-        eggs: [...eggsClaimed], stations: placedStations }));
+        eggs: [...eggsClaimed], stations: placedStations,
+        ev3, excl: [...exclOwned] }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -2698,6 +2749,35 @@ export function initReefScene3D(canvas) {
     button(STATION_SPEC, 'station');   // Classic's 2×2 cleaning station
     utilC.forEach(s => button(s, 'coral'));
   }
+  // Event-pass exclusives: rows exist up front but stay hidden until owned.
+  const exclRows = [];
+  let exclLabel = null;
+  {
+    const exclSpecs = [
+      ...Object.values(CORAL_SPECIES).filter(s => s.eventId && s.color != null)
+        .map(s => [s, 'coral']),
+      ...Object.values(FISH_SPECIES).filter(s => s.eventId && s.color != null && s.layer)
+        .map(s => [s, 'fish']),
+    ];
+    if (exclSpecs.length) {
+      label('Event exclusives · 🎉');
+      exclLabel = paletteEl.lastChild;
+      for (const [s, type] of exclSpecs) {
+        button(s, type);
+        exclRows.push({ id: s.id, btn: rows[rows.length - 1].btn });
+      }
+    }
+  }
+  function refreshExclRows() {
+    let any = false;
+    for (const r of exclRows) {
+      const own = exclOwned.has(r.id);
+      r.btn.style.display = own ? '' : 'none';
+      any = any || own;
+    }
+    if (exclLabel) exclLabel.style.display = any ? '' : 'none';
+  }
+  refreshExclRows();
 
   onProgress = () => { refreshLocks(); refreshZoneLocks(); refreshExpMarkers(); };   // sync locks with level-ups
   onProgress();
@@ -3012,6 +3092,121 @@ export function initReefScene3D(canvas) {
   }
   function openStationUpgrade(g) { fillStation(g); upgrade.show(); }
 
+  // ── Seasonal events — Classic's quest sets, tokens, and pass tiers, in 3D ────
+  // Progress is per-slot and saved; exclusive unlocks persist forever.
+  const EV_TODAY = () => new Date().toISOString().slice(0, 10);
+  function ev3Init() {
+    const live = EVENT_SCHEDULE.find(e => EV_TODAY() >= e.startDate && EV_TODAY() <= e.endDate);
+    if (live && (!ev3 || ev3.id !== live.id)) {
+      ev3 = { id: live.id, setIdx: 0, tokens: 0, prog: {},
+        setsClaimed: [], tiersClaimed: [], rewardClaimed: false };
+    }
+  }
+  const ev3Def = () => EVENT_SCHEDULE.find(e => e.id === ev3?.id) ?? null;
+  const ev3Live = () => {
+    const d = ev3Def();
+    return !!d && EV_TODAY() >= d.startDate && EV_TODAY() <= d.endDate;
+  };
+  function ev3Record(type, amount = 1) {
+    if (!ev3 || !ev3Live() || ev3.setsClaimed.includes(ev3.setIdx)) return;
+    const set = ev3Def()?.questSets[ev3.setIdx];
+    if (!set) return;
+    set.challenges.forEach((c, i) => {
+      if (c.type !== type) return;
+      ev3.prog[i] = Math.min(c.target, (ev3.prog[i] ?? 0) + amount);
+    });
+  }
+  function ev3Snapshot() {
+    if (!ev3 || !ev3Live()) return;
+    const set = ev3Def()?.questSets[ev3.setIdx];
+    if (!set) return;
+    set.challenges.forEach((c, i) => {
+      let val = null;
+      if (c.type === 'reach_harmony') val = Math.round(harmony);
+      if (c.type === 'have_fish') val = placedFish.length;
+      if (c.type === 'have_coral') val = placedCorals.length;
+      if (val != null) ev3.prog[i] = Math.max(ev3.prog[i] ?? 0, Math.min(c.target, val));
+    });
+  }
+  const ev3SetComplete = () => {
+    const set = ev3Def()?.questSets[ev3?.setIdx];
+    return !!set && set.challenges.every((c, i) => (ev3.prog[i] ?? 0) >= c.target);
+  };
+  function ev3GrantTiers() {
+    const def = ev3Def();
+    if (!def?.pass) return;
+    def.pass.tiers.forEach((tier, i) => {
+      if (ev3.tiersClaimed.includes(i) || ev3.tokens < tier.threshold) return;
+      ev3.tiersClaimed.push(i);
+      if (tier.reward.be) be = Math.min(be + tier.reward.be, beMax);
+      if (tier.reward.pearls) pearls += tier.reward.pearls;
+      if (tier.reward.exclusive) {
+        exclOwned.add(tier.reward.exclusive);
+        refreshExclRows();
+        droneQueue.push(`Pass tier unlocked: ${tier.label}. The reef gains a legend.`);
+      }
+    });
+  }
+  function ev3ClaimSet() {
+    if (!ev3 || !ev3SetComplete() || ev3.setsClaimed.includes(ev3.setIdx)) return;
+    const def = ev3Def();
+    ev3.tokens += def.questSets[ev3.setIdx].tokenReward ?? 0;
+    ev3.setsClaimed.push(ev3.setIdx);
+    ev3GrantTiers();
+    if (ev3.setIdx + 1 < def.questSets.length) {
+      ev3.setIdx++;
+      ev3.prog = {};
+      ev3Snapshot();
+    }
+    refreshHud(); save();
+  }
+  // Event shop: pearls buy this event's exclusives outright, plus two themed
+  // bundles. Each item can be bought once per event.
+  function ev3ShopItems(def) {
+    const items = [
+      { label: `${def.icon} 250 🫧 bundle`, pearls: 15, reward: { be: 250 } },
+      { label: `${def.icon} 120 🪸 bundle`, pearls: 20, reward: { polyps: 120 } },
+    ];
+    (def.pass?.tiers ?? []).forEach((t) => {
+      if (t.reward?.exclusive) {
+        items.push({
+          label: t.label, pearls: 45 + items.length * 5,
+          reward: { exclusive: t.reward.exclusive },
+        });
+      }
+    });
+    return items;
+  }
+  function ev3Buy(i) {
+    const def = ev3Def();
+    if (!ev3 || !def || !ev3Live()) return;
+    ev3.shopBought ??= [];
+    if (ev3.shopBought.includes(i)) return;
+    const item = ev3ShopItems(def)[i];
+    if (!item || pearls < item.pearls) { flash(rateEl, `need ${item?.pearls ?? '?'} 💎`); return; }
+    if (item.reward.exclusive && exclOwned.has(item.reward.exclusive)) return;
+    pearls -= item.pearls;
+    ev3.shopBought.push(i);
+    if (item.reward.be) be = Math.min(be + item.reward.be, beMax);
+    if (item.reward.polyps) polyps = Math.min(polyps + item.reward.polyps, POLYP_MAX);
+    if (item.reward.exclusive) {
+      exclOwned.add(item.reward.exclusive);
+      refreshExclRows();
+      droneQueue.push(`Purchased from the event shop: ${item.label}. Money well spent. Probably.`);
+    }
+    refreshHud(); save();
+  }
+
+  function ev3ClaimReward() {
+    const def = ev3Def();
+    if (!ev3 || !def || ev3.rewardClaimed || ev3.setsClaimed.length < def.questSets.length) return;
+    ev3.rewardClaimed = true;
+    if (def.reward?.be) be = Math.min(be + def.reward.be, beMax);
+    if (def.reward?.pearls) pearls += def.reward.pearls;
+    flash(rateEl, `+${def.reward?.be ?? 0} 🫧 +${def.reward?.pearls ?? 0} 💎`, '#ffd54f');
+    refreshHud(); save();
+  }
+
   // ── Cleaning assignment — Classic's rhythm, real-time pacing ─────────────────
   // Every beat: cleaners take up post at their nearest station, and each
   // station with a free slot (capacity = level) invites the closest fish that
@@ -3063,9 +3258,81 @@ export function initReefScene3D(canvas) {
     }
   }, CLEANING_ASSIGN_INTERVAL);
 
+  // 🎉 Events — the seasonal quest sets and pass, mirroring Classic's modal.
+  const eventModal = buildMenuModal('🎉 Event');
+  function fillEvent() {
+    ev3Init(); ev3Snapshot();
+    const def = ev3Def();
+    if (!def || !ev3Live()) {
+      const next = EVENT_SCHEDULE.find(e => e.startDate > EV_TODAY());
+      eventModal.body.innerHTML = '<div class="m-sub">No event is running right now.</div>'
+        + (next ? `<div class="m-row"><span>${next.icon} ${next.name}</span>`
+          + `<small>starts ${next.startDate}</small></div>` : '');
+      return;
+    }
+    const days = eventDaysRemaining(def.endDate);
+    const set = def.questSets[ev3.setIdx];
+    const allSetsDone = ev3.setsClaimed.length >= def.questSets.length;
+    let html = `<div class="m-sub">${def.icon} <b>${def.name}</b> · ${days} day${days === 1 ? '' : 's'} left</div>`
+      + `<div class="m-sub">${def.description}</div>`
+      + `<div class="m-row"><span>Tokens</span><small>🎟 ${ev3.tokens}</small></div>`;
+    if (!allSetsDone && set) {
+      html += `<div class="m-sec">Quest set ${ev3.setIdx + 1}/${def.questSets.length} — ${set.label}</div>`;
+      set.challenges.forEach((c, i) => {
+        const p = Math.floor(ev3.prog[i] ?? 0);
+        html += `<div class="m-row"><span>${p >= c.target ? '✅' : '▫️'} ${c.label}</span>`
+          + `<small>${Math.min(p, c.target)} / ${c.target}</small></div>`;
+      });
+    }
+    html += `<div class="m-sec">Event pass</div>`;
+    def.pass.tiers.forEach((tier, i) => {
+      const got = ev3.tiersClaimed.includes(i);
+      html += `<div class="m-row${got ? '' : ' locked'}"><span>${got ? '✅' : '🔒'} ${tier.label}</span>`
+        + `<small>${tier.threshold} 🎟</small></div>`;
+    });
+    eventModal.body.innerHTML = html;
+    // Event shop — limited stock, pearls only, gone when the tide goes out.
+    ev3.shopBought ??= [];
+    eventModal.body.insertAdjacentHTML('beforeend',
+      '<div class="m-sec">Event shop · 💎 · one of each</div>');
+    ev3ShopItems(def).forEach((item, i) => {
+      const owned = item.reward.exclusive && exclOwned.has(item.reward.exclusive);
+      const bought = ev3.shopBought.includes(i) || owned;
+      const btn = document.createElement('button');
+      btn.className = 'shop-pack';
+      btn.innerHTML = bought
+        ? `<span>✅ ${item.label}</span><span>sold</span>`
+        : `<span>${item.label}</span><span>${item.pearls} 💎</span>`;
+      btn.disabled = bought || pearls < item.pearls;
+      btn.style.opacity = btn.disabled ? 0.45 : 1;
+      btn.onclick = () => { ev3Buy(i); fillEvent(); };
+      eventModal.body.append(btn);
+    });
+    if (!allSetsDone && set) {
+      const claim = document.createElement('button');
+      claim.className = 'shop-pack';
+      claim.innerHTML = `<span>Claim "${set.label}"</span><span>+${set.tokenReward} 🎟</span>`;
+      claim.disabled = !ev3SetComplete();
+      claim.style.opacity = claim.disabled ? 0.45 : 1;
+      claim.onclick = () => { ev3ClaimSet(); fillEvent(); };
+      eventModal.body.append(claim);
+    } else if (!ev3.rewardClaimed) {
+      const grand = document.createElement('button');
+      grand.className = 'shop-pack';
+      grand.innerHTML = `<span>🏆 Claim event reward</span>`
+        + `<span>+${def.reward?.be ?? 0} 🫧 +${def.reward?.pearls ?? 0} 💎</span>`;
+      grand.onclick = () => { ev3ClaimReward(); fillEvent(); };
+      eventModal.body.append(grand);
+    } else {
+      eventModal.body.insertAdjacentHTML('beforeend',
+        '<div class="m-sub">Event complete — see you at the next one. 🌊</div>');
+    }
+  }
+
   const menuEl = document.getElementById('menu3d');
   if (menuEl) {
     [['📖 Journal', journal, fillJournal],
+     ['🎉 Event', eventModal, fillEvent],
      ['⚖ Advisor', advisor, fillAdvisor],
      ['⭐ Progress', progress, fillProgress]].forEach(([text, modal, fill]) => {
       const b = document.createElement('button');
@@ -3108,7 +3375,10 @@ export function initReefScene3D(canvas) {
     });
     (saved.seen ?? []).forEach(id => seen.add(id));
     (saved.eggs ?? []).forEach(id => eggsClaimed.add(id));
+    ev3 = saved.ev3 ?? null;
+    (saved.excl ?? []).forEach(id => exclOwned.add(id));
   }
+  ev3Init(); ev3Snapshot(); refreshExclRows();
   recomputeRates(); refreshProgress(); refreshHud();
   refreshExpMarkers(); refreshZoneLocks();
 
@@ -3384,6 +3654,7 @@ export function initReefScene3D(canvas) {
       if (!charge(selected.spec, CORAL_COST)) return;
       addCoral(selected.spec, t);
       if (placedCorals.length === 1) droneTrigger('firstCoral');
+      ev3Record('place_coral');
       recomputeRates(); refreshProgress(); refreshHud(); save();
     } else if (selected.type === 'station') {
       const t = ray.intersectObjects(tiles, false)[0]?.object;
@@ -3407,6 +3678,7 @@ export function initReefScene3D(canvas) {
       const g = attachFish(selected.spec, st, true);
       const rec = fishSaveData(st); placedFish.push(rec); g.userData.saveRef = rec;
       if (placedFish.length === 1) droneTrigger('firstFish');
+      ev3Record('hatch_fish');
       refreshProgress(); refreshHud(); save();
     }
   }
@@ -3502,6 +3774,7 @@ export function initReefScene3D(canvas) {
 
     be = Math.min(be + incomePerSec * dt, beMax);
     polyps = Math.min(polyps + polypPerSec * dt, POLYP_MAX);
+    ev3Record('earn_be', incomePerSec * dt);
     refreshHud();
 
     // Day/night — Classic's cycle: darken and cool the water, light the biolums.
