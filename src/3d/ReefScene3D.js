@@ -404,7 +404,7 @@ function terrainHeight(x, z) {
     + Math.sin(x * 0.21 + z * 0.13) * 0.35;
   h -= smoothstep(16, 26, x) * 4.4;
   h += smoothstep(16, 24, -x) * 0.7;
-  h += smoothstep(48, 72, -x) * 22;                     // the beach climbs out of the sea
+  h += smoothstep(50, 68, -x) * 15.5;                   // a low, flat beach rises from the sea
   const d = Math.max(x - 52, Math.abs(z) - 38);
   if (d > 0) {
     h += Math.min(d * 0.3, 10) * (0.72 + 0.28 * Math.sin(x * 0.07 + Math.cos(z * 0.09) * 2));
@@ -489,14 +489,14 @@ const CORAL_STYLE = {
 // Each builder gets ({ mat, tipMat, darkMat }, rnd) — rnd is a per-coral PRNG so
 // every placement has its own silhouette instead of six identical clones.
 const BODY = {
-  branch(g, { mat, tipMat }, rnd, spec) {
+  branch(g, { mat, tipMat, lvl = 1 }, rnd, spec) {
     const st = CORAL_STYLE[spec?.id] ?? { n: 9, r: 0.05, h: 0.9, lean: 0.28, fork: true };
-    const N = st.n + Math.floor(rnd() * 3);
+    const N = st.n + Math.floor(rnd() * 3) + (lvl - 1) * 2;   // upgrades grow NEW arms
     for (let i = 0; i < N; i++) {
       const a = (i / N) * Math.PI * 2 + rnd() * 0.6;
       const lean = st.lean * (0.7 + rnd() * 0.6);
       const h1 = st.h * (0.75 + rnd() * 0.5);
-      const r0 = st.r * (0.85 + rnd() * 0.3);
+      const r0 = st.r * (0.85 + rnd() * 0.3) * (1 + (lvl - 1) * 0.05);
       // Lower segment: tapered, leaning outward from the base.
       const arm = new THREE.Group();
       arm.position.set(Math.cos(a) * 0.18, 0.2, Math.sin(a) * 0.18);
@@ -535,9 +535,9 @@ const BODY = {
     }
   },
   // Lettuce coral: a rosette of ruffled, wavy-edged vertical blades.
-  lettuce(g, { mat }, rnd) {
+  lettuce(g, { mat, lvl = 1 }, rnd) {
     const m = mat.clone(); m.side = THREE.DoubleSide;
-    const N = 6 + Math.floor(rnd() * 3);
+    const N = 6 + Math.floor(rnd() * 3) + (lvl - 1) * 2;
     for (let i = 0; i < N; i++) {
       const a = (i / N) * Math.PI * 2 + rnd() * 0.5;
       const pts = [[0, 0]];
@@ -556,10 +556,10 @@ const BODY = {
     }
   },
   // Sea fan: a single flat plane of radiating ribs with arced cross-struts.
-  fan(g, { mat, tipMat }, rnd) {
+  fan(g, { mat, tipMat, lvl = 1 }, rnd) {
     const plane = new THREE.Group();
     plane.rotation.y = rnd() * Math.PI;
-    const N = 9;
+    const N = 9 + (lvl - 1) * 2;
     for (let i = 0; i < N; i++) {
       const ang = -0.85 + (i / (N - 1)) * 1.7;
       const len = 0.85 + Math.cos(ang) * 0.3 + rnd() * 0.15;
@@ -571,7 +571,7 @@ const BODY = {
       tip.position.set(Math.sin(ang) * len, 0.18 + Math.cos(ang) * len, 0);
       plane.add(tip);
     }
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < 3 + Math.floor((lvl - 1) / 2); k++) {
       const rr = 0.35 + k * 0.24;
       const strut = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.011, 5, 20, 1.7), mat);
       strut.position.y = 0.18;
@@ -581,9 +581,9 @@ const BODY = {
     g.add(plane);
   },
   // Barnacle cluster: truncated cones with dark mouths.
-  barnacles(g, { mat }, rnd) {
+  barnacles(g, { mat, lvl = 1 }, rnd) {
     const mouth = new THREE.MeshStandardMaterial({ color: 0x1c262e, roughness: 1 });
-    const N = 9 + Math.floor(rnd() * 5);
+    const N = 9 + Math.floor(rnd() * 5) + (lvl - 1) * 3;
     for (let i = 0; i < N; i++) {
       const a = rnd() * Math.PI * 2, rr = rnd() * 0.42;
       const h = 0.1 + rnd() * 0.18, rb = 0.07 + rnd() * 0.05;
@@ -596,10 +596,11 @@ const BODY = {
     }
   },
   // Anemone: squat column crowned with a ring of long waving tentacles.
-  anemone(g, { mat, tipMat }, rnd) {
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.3, 0.28, 12), mat);
+  anemone(g, { mat, tipMat, lvl = 1 }, rnd) {
+    const cw = 1 + (lvl - 1) * 0.07;
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.24 * cw, 0.3 * cw, 0.28, 12), mat);
     col.position.y = 0.2; g.add(col);
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 22 + (lvl - 1) * 5; i++) {
       const a = rnd() * Math.PI * 2, rr = 0.06 + rnd() * 0.17;
       const len = 0.3 + rnd() * 0.25;
       const tnt = new THREE.Mesh(new THREE.CapsuleGeometry(0.024, len, 3, 6), i % 2 ? mat : tipMat);
@@ -610,9 +611,9 @@ const BODY = {
     }
   },
   // Wisp / phantom polyps: tall translucent stalks with glowing tips.
-  wisp(g, { mat, tipMat }, rnd) {
+  wisp(g, { mat, tipMat, lvl = 1 }, rnd) {
     const m = mat.clone(); m.transparent = true; m.opacity = 0.72;
-    const N = 6 + Math.floor(rnd() * 4);
+    const N = 6 + Math.floor(rnd() * 4) + (lvl - 1) * 2;
     for (let i = 0; i < N; i++) {
       const a = rnd() * Math.PI * 2, rr = rnd() * 0.3;
       const stalk = new THREE.Group();
@@ -633,8 +634,8 @@ const BODY = {
     }
   },
   // Lantern coral: stalks hung with glowing bulbs.
-  lantern(g, { mat, tipMat }, rnd) {
-    const N = 4 + Math.floor(rnd() * 3);
+  lantern(g, { mat, tipMat, lvl = 1 }, rnd) {
+    const N = 4 + Math.floor(rnd() * 3) + (lvl - 1);
     for (let i = 0; i < N; i++) {
       const a = (i / N) * Math.PI * 2 + rnd();
       const h = 0.7 + rnd() * 0.55;
@@ -650,9 +651,9 @@ const BODY = {
     }
   },
   // Giant kelp: tall stalks with leaf blades and float bulbs.
-  kelp(g, { mat, tipMat }, rnd) {
+  kelp(g, { mat, tipMat, lvl = 1 }, rnd) {
     const m = mat.clone(); m.side = THREE.DoubleSide;
-    const N = 3 + Math.floor(rnd() * 3);
+    const N = 3 + Math.floor(rnd() * 3) + (lvl - 1);
     for (let i = 0; i < N; i++) {
       const a = rnd() * Math.PI * 2, rr = rnd() * 0.25;
       const h = 2.2 + rnd() * 1.1;
@@ -675,8 +676,8 @@ const BODY = {
     }
   },
   // Storage corals read as giant clams — an open shell around a glowing pearl.
-  clam(g, { mat, tipMat }, rnd, spec) {
-    const s = spec?.id === 'grandReservoir' ? 1.3 : 1;
+  clam(g, { mat, tipMat, lvl = 1 }, rnd, spec) {
+    const s = (spec?.id === 'grandReservoir' ? 1.3 : 1) * (1 + (lvl - 1) * 0.06);
     const bottom = new THREE.Mesh(new THREE.SphereGeometry(0.42 * s, 16, 10), mat);
     bottom.scale.set(1, 0.4, 1.1); bottom.position.y = 0.16; g.add(bottom);
     const top = new THREE.Mesh(new THREE.SphereGeometry(0.42 * s, 16, 10), mat);
@@ -699,10 +700,11 @@ const BODY = {
     const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.22, 12), mouthMat);
     mouth.position.set(0, 0.3, 0.28); g.add(mouth);
   },
-  brain(g, { mat }, rnd) {
+  brain(g, { mat, lvl = 1 }, rnd) {
     // Lumpy hemisphere: layered sine-noise displacement; the meandering
     // ridge-and-valley detail comes from the skin's pattern-aligned bump map.
-    const geo = new THREE.SphereGeometry(0.62, 34, 24, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    const geo = new THREE.SphereGeometry(0.62 * (1 + (lvl - 1) * 0.09),
+      34, 24, 0, Math.PI * 2, 0, Math.PI * 0.55);
     const pos = geo.attributes.position;
     const o1 = rnd() * 10, o2 = rnd() * 10;
     const v = new THREE.Vector3();
@@ -717,15 +719,16 @@ const BODY = {
     const dome = new THREE.Mesh(geo, mat);
     dome.position.y = 0.18; dome.scale.y = 0.72; g.add(dome);
   },
-  plate(g, { mat, tipMat }, rnd, spec) {
+  plate(g, { mat, tipMat, lvl = 1 }, rnd, spec) {
     // Table corals: one broad table on a sturdy stem. Toadstool leathers: a
     // single thick mushroom cap. Everything attaches — no floating discs.
+    const grow = 1 + (lvl - 1) * 0.08;
     const wide = spec?.id === 'table' || spec?.id === 'midnightTable';
     const stemH = wide ? 0.5 : 0.4;
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, stemH, 9), mat);
     stem.position.y = stemH / 2 + 0.06; g.add(stem);
     if (wide) {
-      const r = 0.85 + rnd() * 0.2;
+      const r = (0.85 + rnd() * 0.2) * grow;
       const disc = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.82, 0.06, 24), mat);
       disc.position.y = stemH + 0.07;
       disc.rotation.x = (rnd() - 0.5) * 0.1; disc.rotation.z = (rnd() - 0.5) * 0.1;
@@ -733,7 +736,7 @@ const BODY = {
       const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.025, 6, 30), tipMat);
       rim.rotation.x = Math.PI / 2; rim.position.y = 0.02; disc.add(rim);
     } else {
-      const r = 0.55 + rnd() * 0.12;
+      const r = (0.55 + rnd() * 0.12) * grow;
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.55, 0.2, 20), mat);
       cap.position.y = stemH + 0.12;
       cap.rotation.x = (rnd() - 0.5) * 0.14; cap.rotation.z = (rnd() - 0.5) * 0.14;
@@ -743,11 +746,12 @@ const BODY = {
       crown.position.y = -0.24 * r; cap.add(crown);
     }
   },
-  polyp(g, { mat, tipMat }, rnd) {
+  polyp(g, { mat, tipMat, lvl = 1 }, rnd) {
     const mound = new THREE.Mesh(
-      new THREE.SphereGeometry(0.55, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), mat);
+      new THREE.SphereGeometry(0.55 * (1 + (lvl - 1) * 0.06),
+        14, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), mat);
     mound.position.y = 0.1; mound.scale.y = 0.55; g.add(mound);
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 12 + (lvl - 1) * 4; i++) {
       const a = rnd() * Math.PI * 2, rr = 0.06 + rnd() * 0.34;
       const h = 0.22 + rnd() * 0.16;
       const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.065, h, 6), mat);
@@ -756,9 +760,9 @@ const BODY = {
       t.position.set(Math.cos(a) * rr, 0.3 + h, Math.sin(a) * rr); g.add(t);
     }
   },
-  bubble(g, { mat }, rnd) {
+  bubble(g, { mat, lvl = 1 }, rnd) {
     const m = mat.clone(); m.transparent = true; m.opacity = 0.82; m.roughness = 0.25;
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 11 + (lvl - 1) * 4; i++) {
       const a = rnd() * Math.PI * 2, rr = 0.05 + rnd() * 0.3;
       const b = new THREE.Mesh(new THREE.SphereGeometry(0.13 + rnd() * 0.11, 12, 12), m);
       b.position.set(Math.cos(a) * rr, 0.2 + rnd() * 0.26, Math.sin(a) * rr);
@@ -766,8 +770,8 @@ const BODY = {
     }
   },
   // Seagrass vegetation: a clump of tall, slightly bowed blades.
-  grass(g, { mat, tipMat }, rnd) {
-    const N = 9 + Math.floor(rnd() * 5);
+  grass(g, { mat, tipMat, lvl = 1 }, rnd) {
+    const N = 9 + Math.floor(rnd() * 5) + (lvl - 1) * 4;
     for (let i = 0; i < N; i++) {
       const a = rnd() * Math.PI * 2, rr = rnd() * 0.42;
       const h = 0.9 + rnd() * 1.3;
@@ -781,9 +785,11 @@ const BODY = {
 };
 
 let coralCounter = 1;
-function makeCoral(spec) {
-  const g = new THREE.Group();
-  const rnd = mulberry32(spec.id.length * 977 + coralCounter++ * 7919);
+// Build (or REBUILD) a coral's meshes into `g`. Deterministic per seed, so an
+// upgrade regrows the same individual with more branches/bulk — the extra
+// level shows as new growth, not an inflated copy of the old mesh.
+function buildCoralInto(g, spec, seedBase, lvl = 1) {
+  const rnd = mulberry32(seedBase);
   // Slightly desaturated, rough, and barely emissive — real corals aren't neon;
   // bioluminescent species genuinely glow (and brighter after dark).
   const biolum = BIOLUM_SPECIES.has(spec.id);
@@ -792,7 +798,7 @@ function makeCoral(spec) {
   // The individual's skin carries the color; white base keeps the pattern true.
   // The same skin drives the bump map, so ridges, rings, and pores that are
   // painted dark also sit physically lower — pattern-aligned relief.
-  const tex = coralTexture(spec, coralCounter % TEX_VARIANTS);
+  const tex = coralTexture(spec, seedBase % TEX_VARIANTS);
   const mat = new THREE.MeshStandardMaterial({
     color: 0xffffff, map: tex, roughness: 0.8,
     emissive: color, emissiveIntensity: glow,
@@ -808,12 +814,27 @@ function makeCoral(spec) {
   const inner = new THREE.Group();
   inner.scale.set(0.82 + rnd() * 0.36, 0.78 + rnd() * 0.5, 0.82 + rnd() * 0.36);
   g.add(inner);
-  (BODY[shapeOf(spec)] || BODY.brain)(inner, { mat, tipMat }, rnd, spec);
+  (BODY[shapeOf(spec)] || BODY.brain)(inner, { mat, tipMat, lvl }, rnd, spec);
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   g.rotation.y = rnd() * Math.PI * 2;
+  g.userData.seed = rnd() * 6.28;
+  g.userData.glowMats = biolum ? [mat, tipMat] : null;
+}
+function makeCoral(spec, lvl = 1) {
+  const g = new THREE.Group();
+  const seedBase = spec.id.length * 977 + coralCounter++ * 7919;
+  g.userData = { grow: 0, buildSeed: seedBase };
+  buildCoralInto(g, spec, seedBase, lvl);
   g.scale.setScalar(0.01);
-  g.userData = { grow: 0, seed: rnd() * 6.28, glowMats: biolum ? [mat, tipMat] : null };
   return g;
+}
+// Strip a coral group bare (disposing its meshes) so it can regrow denser.
+function clearCoralGroup(g) {
+  for (let i = g.children.length - 1; i >= 0; i--) {
+    const c = g.children[i];
+    g.remove(c);
+    disposeGroup(c);
+  }
 }
 
 // Build a flat fin mesh from an outline. Points are [x, y] for lineTo or
@@ -1556,6 +1577,54 @@ function makeStation() {
   return g;
 }
 
+// ── Palm — a leaning trunk with a frond crown, for the beach ──────────────────
+function makePalm(seed) {
+  const rnd = mulberry32(seed);
+  const g = new THREE.Group();
+  const trunkM = new THREE.MeshStandardMaterial({
+    color: 0x8a6742, roughness: 0.9, flatShading: true });
+  const frondM = new THREE.MeshStandardMaterial({
+    color: 0x3e9a4d, roughness: 0.7, side: THREE.DoubleSide });
+  const nutM = new THREE.MeshStandardMaterial({ color: 0x6d4c2f, roughness: 0.8 });
+  const leanDir = rnd() * Math.PI * 2;
+  let y = 0, off = 0;
+  for (let i = 0; i < 5; i++) {
+    const h = 0.9;
+    const seg = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.115 - i * 0.012, 0.135 - i * 0.012, h, 7), trunkM);
+    off += i * 0.05;
+    seg.position.set(Math.cos(leanDir) * off, y + h / 2, Math.sin(leanDir) * off);
+    seg.rotation.z = Math.cos(leanDir) * (0.1 + i * 0.02);
+    seg.rotation.x = -Math.sin(leanDir) * (0.1 + i * 0.02);
+    g.add(seg);
+    y += h * 0.95;
+  }
+  const topX = Math.cos(leanDir) * (off + 0.15), topZ = Math.sin(leanDir) * (off + 0.15);
+  const crown = new THREE.Group();
+  crown.position.set(topX, y + 0.05, topZ);
+  const fronds = 7 + Math.floor(rnd() * 2);
+  for (let i = 0; i < fronds; i++) {
+    const frond = new THREE.Group();
+    frond.rotation.y = (i / fronds) * Math.PI * 2 + rnd() * 0.4;
+    for (let s = 0; s < 4; s++) {
+      const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.02, 0.2 - s * 0.035), frondM);
+      leaf.position.set(0.32 + s * 0.48, 0.1 - s * s * 0.07, 0);
+      leaf.rotation.z = -0.1 - s * 0.17;
+      frond.add(leaf);
+    }
+    crown.add(frond);
+  }
+  g.add(crown);
+  for (let i = 0; i < 3; i++) {
+    const nut = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 7), nutM);
+    nut.position.set(topX + Math.cos(i * 2.1) * 0.13, y - 0.06, topZ + Math.sin(i * 2.1) * 0.13);
+    g.add(nut);
+  }
+  g.userData.crown = crown;
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
 // ── Gull — a simple wheeling seabird for the skies over the beach ─────────────
 function makeGull() {
   const g = new THREE.Group();
@@ -1806,8 +1875,17 @@ export function initReefScene3D(canvas) {
   // Scenery you only appreciate once the camera comes out of the water.
   const gulls = [];
   const beachCrabs = [];
+  const palms = [];
   {
     const rnd = mulberry32(211);
+    // Palms on the flat berm, leaning whichever way they grew.
+    for (const [px, pz] of [[-72, -12], [-76, 3], [-71, 15], [-78, -22]]) {
+      const palm = makePalm(px * 31 + pz * 7);
+      palm.position.set(px, terrainHeight(px, pz), pz);
+      palm.scale.setScalar(1.15 + rnd() * 0.4);
+      scene.add(palm);
+      palms.push({ crown: palm.userData.crown, phase: rnd() * 6.28 });
+    }
     const dryRock = new THREE.MeshStandardMaterial({
       color: 0xd8c9a4, roughness: 1, flatShading: true, map: rockTex });
     for (let i = 0; i < 9; i++) {
@@ -2158,16 +2236,17 @@ export function initReefScene3D(canvas) {
   let be = START_BE, polyps = START_POLYPS, pearls = START_PEARLS;
   let harmony = START_HARMONY, level = START_LEVEL;
   let timeOfDay = 0.3, nightFactor = 0;   // day/night cycle (saved)
+  let fogEase = 0;                        // 1 = camera above the surface (clear air)
   let incomePerSec = 0, polypPerSec = 0, beMax = BE_MAX;
   let onProgress = () => {};   // set once the palette exists — refreshes lock states
 
   const zoneUnlocked = (zid) => level >= ZONES[zid].unlock;
 
-  function levelScaleFor(lvl) { return 1 + (lvl - 1) * 0.14; }
+  function levelScaleFor(lvl) { return 1 + (lvl - 1) * 0.04; }   // bulk comes from regrown geometry
 
   function addCoral(spec, tile, lvl = 1) {
     tile.userData.occupied = true;
-    const group = makeCoral(spec);
+    const group = makeCoral(spec, lvl);
     group.position.set(tile.position.x, ZONES[tile.userData.biome].floorY + 0.18, tile.position.z);
     const entry = {
       b: tile.userData.biome, c: tile.userData.c, r: tile.userData.r, id: spec.id, level: lvl };
@@ -2331,6 +2410,10 @@ export function initReefScene3D(canvas) {
     if (polyps < cost) { flash(rateEl, `need ${cost} 🪸`); return; }
     polyps -= cost;
     e.level++;
+    // Regrow the same individual with more branches/stalks — the level shows
+    // as new growth, not an inflated copy of the old mesh.
+    clearCoralGroup(group);
+    buildCoralInto(group, group.userData.spec, group.userData.buildSeed, e.level);
     group.userData.levelScale = levelScaleFor(e.level);
     group.userData.grow = Math.min(group.userData.grow, 0.82);   // small re-grow ease
     recomputeRates(); refreshHud(); save();   // upgrade affects rates only, not harmony/level inputs
@@ -3433,6 +3516,11 @@ export function initReefScene3D(canvas) {
     fill.intensity = 0.5 - nf * 0.25;
     scene.backgroundIntensity = 1 - nf * 0.72;
     scene.fog.color.copy(FOG_DAY).lerp(FOG_NIGHT, nf);
+    // The blue water haze belongs to the water: once the camera climbs out,
+    // the air clears and the beach reads in true colors at any distance.
+    const wantClear = clamp((camera.position.y - SURFACE_Y) / 3, 0, 1);
+    fogEase += (wantClear - fogEase) * Math.min(1, dt * 3);
+    scene.fog.density = 0.011 * (1 - fogEase * 0.93);
     floorMat.emissiveIntensity = 0.13 * (1 - nf * 0.75);   // moonlit caustics are faint
 
     for (const g of corals) {
@@ -3674,6 +3762,10 @@ export function initReefScene3D(canvas) {
       const flap = Math.sin(t * 5.5 + gl.phase) * 0.45;
       gl.g.userData.wings[0].rotation.z = flap;
       gl.g.userData.wings[1].rotation.z = -flap;
+    }
+    for (const pm of palms) {
+      pm.crown.rotation.z = Math.sin(t * 0.7 + pm.phase) * 0.05;
+      pm.crown.rotation.x = Math.cos(t * 0.55 + pm.phase) * 0.04;
     }
     for (const bc of beachCrabs) {
       const ang = bc.phase + t * bc.w;

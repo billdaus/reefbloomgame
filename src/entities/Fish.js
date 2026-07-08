@@ -128,6 +128,21 @@ export class Fish {
       case 'mantaRay':        this._drawMantaRay(g, sz, c, ac);        break;
       case 'manatee':         this._drawManatee(g, sz, c, ac);         break;
       case 'seaTurtle':       this._drawSeaTurtle(g, sz, c, ac);       break;
+      // Seagrass Basin — shore & flats arrivals
+      case 'mullet':          this._drawMullet(g, sz, c, ac);          break;
+      case 'sergeantMajor':   this._drawSergeantMajor(g, sz, c, ac);   break;
+      case 'bonefish':        this._drawBonefish(g, sz, c, ac);        break;
+      case 'hermitCrab':      this._drawHermitCrab(g, sz, c, ac);      break;
+      case 'flamingoTongue':  this._drawFlamingoTongue(g, sz, c, ac);  break;
+      case 'stingray':        this._drawSpottedEagleRay(g, sz, c, ac); break;
+      case 'lemonShark':      this._drawReefShark(g, sz, c, ac);       break;
+      case 'sculpin':         this._drawSculpin(g, sz, c, ac);         break;
+      case 'ochreStar':       this._drawOchreStar(g, sz, c, ac);       break;
+      case 'tidepoolCrab':    this._drawShoreCrab(g, sz, c, ac);       break;
+      case 'chiton':          this._drawChiton(g, sz, c, ac);          break;
+      case 'opaleye':         this._drawOpaleye(g, sz, c, ac);         break;
+      case 'rubyOctopus':     this._drawOctopus(g, sz, c, ac);         break;
+      case 'seaOtter':        this._drawSeaOtter(g, sz, c, ac);        break;
       // Super Rare
       case 'moorishIdol':       this._drawIdol(g, sz, c, ac);              break;
       case 'dolphin':           this._drawDolphin(g, sz, c, ac);           break;
@@ -832,6 +847,279 @@ export class Fish {
   }
 
   /** Horseshoe Crab — domed prosoma, segmented opisthosoma, long telson spike, paired legs. */
+
+  /** Striped mullet: silver torpedo, thin lateral stripes, forked tail. */
+  _drawMullet(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.15, hh = sz * 0.42;
+    g.moveTo(-hw * 0.75, 0)
+     .lineTo(-hw * 1.3, -hh * 1.05)
+     .lineTo(-hw * 1.05, 0)
+     .lineTo(-hw * 1.3,  hh * 1.05)
+     .closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    for (let i = -1; i <= 1; i++) {
+      g.rect(-hw * 0.7, i * hh * 0.4 - 1, hw * 1.5, 2)
+       .fill({ color: accentColor, alpha: 0.7 });
+    }
+    g.moveTo(-hw * 0.1, -hh).lineTo(hw * 0.08, -hh - sz * 0.3).lineTo(hw * 0.3, -hh)
+     .closePath().fill(bodyColor);
+    g.circle(hw * 0.55, -hh * 0.12, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.57, -hh * 0.11, sz * 0.07).fill(0x111111);
+  }
+
+  /** Sergeant major: deep yellow-backed oval with five dark bars. */
+  _drawSergeantMajor(g, sz, bodyColor, accentColor) {
+    const hw = sz, hh = sz * 0.72;
+    g.moveTo(-hw * 0.6, 0)
+     .lineTo(-hw * 1.2, -hh * 0.8)
+     .lineTo(-hw * 1.2,  hh * 0.8)
+     .closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Five vertical bars, fading toward the belly
+    for (let i = 0; i < 5; i++) {
+      const x = -hw * 0.55 + i * hw * 0.3;
+      g.rect(x, -hh * 0.9, hw * 0.11, hh * 1.5)
+       .fill({ color: accentColor, alpha: 0.8 });
+    }
+    this._ellipse(g, 0, hh * 0.55, hw * 0.92, hh * 0.42);
+    g.fill({ color: 0xffffff, alpha: 0.25 });
+    g.moveTo(-hw * 0.15, -hh).lineTo(hw * 0.1, -hh - sz * 0.34).lineTo(hw * 0.5, -hh)
+     .closePath().fill(bodyColor);
+    g.circle(hw * 0.5, -hh * 0.12, sz * 0.12).fill(0xffffff);
+    g.circle(hw * 0.52, -hh * 0.11, sz * 0.07).fill(0x111111);
+  }
+
+  /** Bonefish: long chrome-silver body, pointed snout, deep fork. */
+  _drawBonefish(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.3, hh = sz * 0.36;
+    g.moveTo(-hw * 0.8, 0)
+     .lineTo(-hw * 1.45, -hh * 1.3)
+     .lineTo(-hw * 1.1, 0)
+     .lineTo(-hw * 1.45,  hh * 1.3)
+     .closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Snout cone
+    g.moveTo(hw * 0.85, -hh * 0.5).lineTo(hw * 1.2, 0).lineTo(hw * 0.85, hh * 0.5)
+     .closePath().fill(bodyColor);
+    this._ellipse(g, -hw * 0.05, -hh * 0.35, hw * 0.85, hh * 0.3);
+    g.fill({ color: accentColor, alpha: 0.55 });
+    g.moveTo(-hw * 0.2, -hh).lineTo(0, -hh - sz * 0.32).lineTo(hw * 0.25, -hh)
+     .closePath().fill(bodyColor);
+    g.circle(hw * 0.72, -hh * 0.15, sz * 0.11).fill(0xffffff);
+    g.circle(hw * 0.74, -hh * 0.14, sz * 0.065).fill(0x111111);
+  }
+
+  /** Tidepool sculpin: broad head, tapered rear, mottled, fanned pectoral. */
+  _drawSculpin(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.1, hh = sz * 0.5;
+    // Tapering body: wide at head (+x), thin at tail
+    g.moveTo(hw * 0.9, -hh * 0.85)
+     .lineTo(-hw * 0.7, -hh * 0.3)
+     .lineTo(-hw * 1.05, 0)
+     .lineTo(-hw * 0.7,  hh * 0.3)
+     .lineTo(hw * 0.9,  hh * 0.85)
+     .closePath().fill(bodyColor);
+    // Tail fan
+    g.moveTo(-hw * 0.95, 0)
+     .lineTo(-hw * 1.35, -hh * 0.6)
+     .lineTo(-hw * 1.35,  hh * 0.6)
+     .closePath().fill(bodyColor);
+    // Big fanned pectoral
+    g.moveTo(hw * 0.15, hh * 0.2)
+     .lineTo(-hw * 0.15, hh * 1.15)
+     .lineTo(hw * 0.5, hh * 0.75)
+     .closePath().fill(accentColor);
+    // Mottled blotches
+    [[0.45, -0.3], [0.0, -0.45], [-0.45, -0.15], [0.25, 0.3], [-0.2, 0.15]].forEach(([fx, fy]) => {
+      g.circle(hw * fx, hh * fy, sz * 0.11).fill({ color: accentColor, alpha: 0.6 });
+    });
+    g.circle(hw * 0.6, -hh * 0.35, sz * 0.13).fill(0xffffff);
+    g.circle(hw * 0.63, -hh * 0.33, sz * 0.08).fill(0x111111);
+  }
+
+  /** Ochre sea star: five stout arms and a pale madreporite dot. */
+  _drawOchreStar(g, sz, bodyColor, accentColor) {
+    const R = sz * 1.05, r = sz * 0.34;
+    g.moveTo(R, 0);
+    for (let i = 0; i < 5; i++) {
+      const a0 = (i / 5) * Math.PI * 2;
+      const a1 = a0 + Math.PI / 5;
+      const a2 = a0 + (Math.PI * 2) / 5;
+      // Blunt arm tip then inner valley — rounded star silhouette
+      g.lineTo(Math.cos(a0 + 0.18) * R * 0.96, Math.sin(a0 + 0.18) * R * 0.96)
+       .lineTo(Math.cos(a1) * r, Math.sin(a1) * r)
+       .lineTo(Math.cos(a2 - 0.18) * R * 0.96, Math.sin(a2 - 0.18) * R * 0.96)
+       .lineTo(Math.cos(a2) * R, Math.sin(a2) * R);
+    }
+    g.closePath().fill(bodyColor);
+    g.circle(0, 0, r * 0.9).fill({ color: accentColor, alpha: 0.35 });
+    // Ossicle speckles down each arm
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      for (let k = 1; k <= 2; k++) {
+        g.circle(Math.cos(a) * R * 0.32 * k, Math.sin(a) * R * 0.32 * k, sz * 0.07)
+         .fill({ color: accentColor, alpha: 0.55 });
+      }
+    }
+  }
+
+  /** Shore crab: wide carapace, two folded claws, splayed legs. */
+  _drawShoreCrab(g, sz, bodyColor, accentColor) {
+    const hw = sz * 0.95, hh = sz * 0.6;
+    // Legs — three per side, bent outward
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const y0 = -hh * 0.25 + i * hh * 0.4;
+        g.moveTo(s * hw * 0.5, y0)
+         .lineTo(s * hw * 1.25, y0 - hh * 0.28)
+         .lineTo(s * hw * 1.55, y0 + hh * 0.12);
+        g.stroke({ width: Math.max(2, sz * 0.09), color: bodyColor });
+      }
+    }
+    // Claws folded at the front (+y is "down-screen"; face crabs forward +x)
+    for (const s of [-1, 1]) {
+      g.moveTo(s * hw * 0.42, -hh * 0.55)
+       .lineTo(s * hw * 0.9, -hh * 1.05)
+       .lineTo(s * hw * 0.55, -hh * 1.15);
+      g.stroke({ width: Math.max(2, sz * 0.12), color: bodyColor });
+      g.circle(s * hw * 0.62, -hh * 1.12, sz * 0.16).fill(bodyColor);
+    }
+    // Carapace
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    this._ellipse(g, 0, -hh * 0.15, hw * 0.7, hh * 0.5);
+    g.fill({ color: accentColor, alpha: 0.4 });
+    // Eyes at the front edge
+    g.circle(-hw * 0.25, -hh * 0.8, sz * 0.09).fill(0xffffff);
+    g.circle( hw * 0.25, -hh * 0.8, sz * 0.09).fill(0xffffff);
+    g.circle(-hw * 0.25, -hh * 0.82, sz * 0.05).fill(0x111111);
+    g.circle( hw * 0.25, -hh * 0.82, sz * 0.05).fill(0x111111);
+  }
+
+  /** Gumboot chiton: leathery oval girdle over eight arched plates. */
+  _drawChiton(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.15, hh = sz * 0.62;
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Eight transverse plates peeking through the girdle
+    for (let i = 0; i < 8; i++) {
+      const x = -hw * 0.72 + (i / 7) * hw * 1.44;
+      const ph = hh * (0.35 + 0.2 * Math.sin((i / 7) * Math.PI));
+      this._ellipse(g, x, 0, hw * 0.085, ph);
+      g.fill({ color: accentColor, alpha: 0.65 });
+    }
+    this._ellipse(g, -hw * 0.15, -hh * 0.35, hw * 0.62, hh * 0.22);
+    g.fill({ color: 0xffffff, alpha: 0.12 });
+  }
+
+  /** Opaleye: olive oval, opal-blue eye, twin pale saddle spots. */
+  _drawOpaleye(g, sz, bodyColor, accentColor) {
+    const hw = sz, hh = sz * 0.6;
+    g.moveTo(-hw * 0.65, 0)
+     .lineTo(-hw * 1.25, -hh * 0.85)
+     .lineTo(-hw * 1.25,  hh * 0.85)
+     .closePath().fill(bodyColor);
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    this._ellipse(g, 0, hh * 0.4, hw * 0.9, hh * 0.4);
+    g.fill({ color: accentColor, alpha: 0.35 });
+    g.moveTo(-hw * 0.2, -hh).lineTo(hw * 0.05, -hh - sz * 0.3).lineTo(hw * 0.45, -hh)
+     .closePath().fill(bodyColor);
+    // The twin pale spots under the dorsal
+    g.circle(-hw * 0.1, -hh * 0.55, sz * 0.09).fill(0xf5f2df);
+    g.circle( hw * 0.22, -hh * 0.6,  sz * 0.09).fill(0xf5f2df);
+    // Opal-blue eye
+    g.circle(hw * 0.52, -hh * 0.1, sz * 0.13).fill(0x8fd8e8);
+    g.circle(hw * 0.54, -hh * 0.09, sz * 0.075).fill(0x111111);
+  }
+
+  /** Hermit crab: borrowed spiral shell with legs and stalked eyes out front. */
+  _drawHermitCrab(g, sz, bodyColor, accentColor) {
+    const R = sz * 0.85;
+    // Legs scuttling out the aperture (+x)
+    for (let i = 0; i < 3; i++) {
+      const y0 = -R * 0.1 + i * R * 0.3;
+      g.moveTo(R * 0.35, y0)
+       .lineTo(R * 1.15, y0 + R * 0.28)
+       .lineTo(R * 1.4,  y0 + R * 0.05);
+      g.stroke({ width: Math.max(2, sz * 0.1), color: bodyColor });
+    }
+    // Big claw tucked under
+    g.circle(R * 0.85, R * 0.42, sz * 0.2).fill(bodyColor);
+    g.circle(R * 1.05, R * 0.5,  sz * 0.12).fill(bodyColor);
+    // The shell: whorls coiling into the centre
+    g.circle(-R * 0.25, 0, R).fill(accentColor);
+    g.circle(-R * 0.25, 0, R * 0.98).stroke({ width: 2, color: this._darkenColor(accentColor) });
+    g.circle(-R * 0.45, -R * 0.12, R * 0.62).fill({ color: accentColor, alpha: 1 });
+    g.circle(-R * 0.45, -R * 0.12, R * 0.6).stroke({ width: 2, color: this._darkenColor(accentColor) });
+    g.circle(-R * 0.58, -R * 0.2, R * 0.3).fill(accentColor);
+    g.circle(-R * 0.58, -R * 0.2, R * 0.28).stroke({ width: 2, color: this._darkenColor(accentColor) });
+    // Face + eye stalks
+    g.circle(R * 0.5, -R * 0.15, sz * 0.22).fill(bodyColor);
+    for (const s of [-1, 1]) {
+      g.moveTo(R * 0.55, -R * 0.25).lineTo(R * (0.68 + s * 0.06), -R * 0.62);
+      g.stroke({ width: 2, color: bodyColor });
+      g.circle(R * (0.68 + s * 0.06), -R * 0.66, sz * 0.07).fill(0x111111);
+    }
+  }
+
+  /** Flamingo tongue: glossy cowrie with ringed orange mantle spots. */
+  _drawFlamingoTongue(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.05, hh = sz * 0.6;
+    // Foot peeking beneath
+    this._ellipse(g, 0, hh * 0.45, hw * 0.85, hh * 0.35);
+    g.fill(accentColor);
+    // Smooth domed shell
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(0xf6ead2);
+    // Ringed orange spots
+    [[-0.5, -0.1], [-0.12, -0.28], [0.28, -0.08], [0.02, 0.18], [0.55, 0.12]].forEach(([fx, fy]) => {
+      g.circle(hw * fx, hh * fy, sz * 0.16).stroke({ width: 2, color: accentColor });
+      g.circle(hw * fx, hh * fy, sz * 0.11).fill(bodyColor);
+    });
+    this._ellipse(g, -hw * 0.2, -hh * 0.45, hw * 0.5, hh * 0.16);
+    g.fill({ color: 0xffffff, alpha: 0.35 });
+  }
+
+  /** Sea otter: rafting on its back — round body, pale face, paws on chest. */
+  _drawSeaOtter(g, sz, bodyColor, accentColor) {
+    const hw = sz * 1.2, hh = sz * 0.52;
+    // Flat tail trailing behind
+    g.moveTo(-hw * 0.8, -hh * 0.1)
+     .lineTo(-hw * 1.5, -hh * 0.05)
+     .lineTo(-hw * 1.5,  hh * 0.3)
+     .lineTo(-hw * 0.8,  hh * 0.35)
+     .closePath().fill(bodyColor);
+    // Body — belly-up raft
+    this._ellipse(g, 0, 0, hw, hh);
+    g.fill(bodyColor);
+    // Pale chest/belly patch
+    this._ellipse(g, hw * 0.05, -hh * 0.25, hw * 0.6, hh * 0.42);
+    g.fill({ color: accentColor, alpha: 0.75 });
+    // Head with pale face
+    g.circle(hw * 0.85, -hh * 0.35, sz * 0.34).fill(bodyColor);
+    g.circle(hw * 0.92, -hh * 0.42, sz * 0.24).fill(accentColor);
+    // Ears, nose, eye
+    g.circle(hw * 0.68, -hh * 0.85, sz * 0.07).fill(bodyColor);
+    g.circle(hw * 1.05, -hh * 0.8, sz * 0.07).fill(bodyColor);
+    g.circle(hw * 1.05, -hh * 0.3, sz * 0.06).fill(0x2a1a10);
+    g.circle(hw * 0.88, -hh * 0.55, sz * 0.06).fill(0x111111);
+    // Paws folded on the chest
+    g.circle(hw * 0.3, -hh * 0.55, sz * 0.11).fill(bodyColor);
+    g.circle(hw * 0.5, -hh * 0.6, sz * 0.11).fill(bodyColor);
+  }
+
+  /** Small darken helper for shell outlines (local to the new species art). */
+  _darkenColor(color, k = 0.35) {
+    const r = Math.floor(((color >> 16) & 0xff) * (1 - k));
+    const gg = Math.floor(((color >> 8) & 0xff) * (1 - k));
+    const b = Math.floor((color & 0xff) * (1 - k));
+    return (r << 16) | (gg << 8) | b;
+  }
+
   _drawHorseshoeCrab(g, sz, bodyColor, accentColor) {
     const hw = sz * 1.1;
     const hh = sz * 0.82;

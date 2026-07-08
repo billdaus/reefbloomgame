@@ -68,6 +68,15 @@ export class Coral {
       // Shelters — specialized fish homes
       case 'anemoneHome':     this._drawAnemoneHome(g, s, c);     break;
       case 'reefCave':        this._drawReefCave(g, s, c);        break;
+      // Seagrass Basin arrivals — mostly kin of existing forms
+      case 'sunCoral':          this._drawStar(g, s, c);            break;
+      case 'lagoonFan':         this._drawAbyssalFan(g, s, c);      break;
+      case 'fireCoral':         this._drawStaghorn(g, s, c);        break;
+      case 'mangroveSapling':   this._drawMangrove(g, s, c);        break;
+      case 'tidepoolAnemone':   this._drawAnemoneHome(g, s, c);     break;
+      case 'gooseneckBarnacles': this._drawBarnacles(g, s, c);      break;
+      case 'seaLettuce':        this._drawLettuce(g, s, c);         break;
+      case 'corallineAlgae':    this._drawBrain(g, s, c);           break;
       // Event pass exclusives
       case 'pearlOrganPipe':  this._drawPearlOrganPipe(g, s, c);  break;
       case 'blossomCoral':    this._drawBlossomCoral(g, s, c);    break;
@@ -445,6 +454,30 @@ export class Coral {
   }
 
   // ── Star coral — dome with raised dots ────────────────────────────────────
+  // ── Mangrove sapling — arched prop roots, slim trunk, leafy crown ─────────
+  _drawMangrove(g, s, c) {
+    const mid = s / 2;
+    const trunk = this.spec.accentColor ?? 0x8d6e63;
+    // Prop roots arching into the sand
+    for (let i = -2; i <= 2; i++) {
+      g.moveTo(mid + i * 3, s * 0.62)
+       .lineTo(mid + i * s * 0.14, s * 0.95);
+      g.stroke({ width: 3, color: trunk });
+    }
+    // Trunk
+    g.rect(mid - 2.5, s * 0.28, 5, s * 0.36).fill(trunk);
+    // Leaf crown — overlapping green tufts
+    const leaves = [
+      [0, -0.02, 0.2], [-0.16, 0.06, 0.16], [0.16, 0.06, 0.16],
+      [-0.08, -0.1, 0.14], [0.08, -0.1, 0.14],
+    ];
+    leaves.forEach(([fx, fy, fr]) => {
+      g.circle(mid + fx * s, s * 0.28 + fy * s, fr * s).fill(c);
+    });
+    // Lighter highlights
+    g.circle(mid - s * 0.06, s * 0.16, s * 0.09).fill(this._lighten(c, 0.25));
+  }
+
   _drawStar(g, s, c) {
     const mid = s / 2;
     g.circle(mid, s * 0.58, s * 0.36).fill(c);
