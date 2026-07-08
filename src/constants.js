@@ -88,10 +88,6 @@ export function stationUpgradeCost(level) {
 // ─── Biomes ──────────────────────────────────────────────────────────────────
 export const SEAGRASS_UNLOCK_LEVEL     = 3;
 export const DEEP_TWILIGHT_UNLOCK_LEVEL = 6;
-// 3D-mode-only biomes (Classic's travel UI reads BIOMES, so these are
-// defined locally in ReefScene3D; species tagged with them never show in Classic).
-export const LAGOON_UNLOCK_LEVEL   = 8;
-export const TIDEPOOL_UNLOCK_LEVEL = 9;
 
 // ─── Clam / Ad system ────────────────────────────────────────────────────────
 export const CLAM_TICK_MS      = 60_000;  // check for spawn every 1 min
@@ -326,43 +322,42 @@ export const CORAL_SPECIES = {
   sunCoral: {
     id: 'sunCoral', name: 'Sun Coral', scientific: 'Tubastraea coccinea',
     tier: TIER.UNCOMMON, tall: false, color: 0xff9800, accentColor: 0xffc107,
-    unlockLevel: 8, biome: 'lagoon',
+    unlockLevel: 8, biome: 'seagrass',
   },
   lagoonFan: {
     id: 'lagoonFan', name: 'Lagoon Sea Fan', scientific: 'Gorgonia flabellum',
     tier: TIER.RARE, tall: true, color: 0x9575cd, accentColor: 0xd1a6ff,
-    unlockLevel: 8, biome: 'lagoon',
+    unlockLevel: 8, biome: 'seagrass',
   },
   fireCoral: {
     id: 'fireCoral', name: 'Fire Coral', scientific: 'Millepora alcicornis',
     tier: TIER.RARE, tall: true, color: 0xd4a017, accentColor: 0xfff3b0,
-    unlockLevel: 9, biome: 'lagoon',
+    unlockLevel: 9, biome: 'seagrass',
   },
   mangroveSapling: {
     id: 'mangroveSapling', name: 'Mangrove Sapling', scientific: 'Rhizophora mangle',
     tier: TIER.SUPER_RARE, tall: true, color: 0x2e7d32, accentColor: 0x8d6e63,
-    unlockLevel: 10, biome: 'lagoon',
+    unlockLevel: 10, biome: 'seagrass',
   },
-  // ── Tidepool Rocks (3D mode) — the intertidal shore ─────────────────────────
   tidepoolAnemone: {
     id: 'tidepoolAnemone', name: 'Giant Green Anemone', scientific: 'Anthopleura xanthogrammica',
     tier: TIER.UNCOMMON, tall: false, color: 0x66bb6a, accentColor: 0xb2dfdb,
-    unlockLevel: 9, biome: 'tidepool',
+    unlockLevel: 9, biome: 'seagrass',
   },
   gooseneckBarnacles: {
     id: 'gooseneckBarnacles', name: 'Gooseneck Barnacles', scientific: 'Pollicipes polymerus',
     tier: TIER.RARE, tall: false, color: 0x9e9e9e, accentColor: 0xefebe0,
-    unlockLevel: 9, biome: 'tidepool',
+    unlockLevel: 9, biome: 'seagrass',
   },
   seaLettuce: {
     id: 'seaLettuce', name: 'Sea Lettuce', scientific: 'Ulva lactuca',
     tier: TIER.UNCOMMON, tall: false, color: 0x7cb342, accentColor: 0xc5e1a5,
-    unlockLevel: 10, biome: 'tidepool',
+    unlockLevel: 10, biome: 'seagrass',
   },
   corallineAlgae: {
     id: 'corallineAlgae', name: 'Coralline Algae', scientific: 'Corallina officinalis',
     tier: TIER.SUPER_RARE, tall: false, color: 0xf48fb1, accentColor: 0xf8bbd0,
-    unlockLevel: 11, biome: 'tidepool',
+    unlockLevel: 11, biome: 'seagrass',
   },
   // ── Event pass exclusives ─────────────────────────────────────────────────
   pearlOrganPipe: {
@@ -787,73 +782,72 @@ export const FISH_SPECIES = {
   mullet: {
     id: 'mullet', name: 'Striped Mullet', scientific: 'Mugil cephalus',
     tier: TIER.COMMON, layer: 'A', color: 0xb0bec5, accentColor: 0x78909c,
-    size: 14, speed: 1.6, unlockLevel: 8, biome: 'lagoon',
+    size: 14, speed: 1.6, unlockLevel: 8, biome: 'seagrass',
   },
   sergeantMajor: {
     id: 'sergeantMajor', name: 'Sergeant Major', scientific: 'Abudefduf saxatilis',
     tier: TIER.COMMON, layer: 'A', color: 0xfff176, accentColor: 0x263238,
-    size: 12, speed: 1.7, unlockLevel: 8, biome: 'lagoon',
+    size: 12, speed: 1.7, unlockLevel: 8, biome: 'seagrass',
   },
   hermitCrab: {
     id: 'hermitCrab', name: 'Hermit Crab', scientific: 'Pagurus bernhardus',
     tier: TIER.UNCOMMON, layer: 'A', color: 0xd07840, accentColor: 0xf3e0c8,
-    size: 12, speed: 0.3, unlockLevel: 8, biome: 'lagoon',
+    size: 12, speed: 0.3, unlockLevel: 8, biome: 'seagrass',
   },
   bonefish: {
     id: 'bonefish', name: 'Bonefish', scientific: 'Albula vulpes',
     tier: TIER.UNCOMMON, layer: 'A', color: 0xcfd8dc, accentColor: 0x90a4ae,
-    size: 16, speed: 2.0, unlockLevel: 9, biome: 'lagoon',
+    size: 16, speed: 2.0, unlockLevel: 9, biome: 'seagrass',
   },
   flamingoTongue: {
     id: 'flamingoTongue', name: 'Flamingo Tongue', scientific: 'Cyphoma gibbosum',
     tier: TIER.RARE, layer: 'A', color: 0xffb74d, accentColor: 0x5d4037,
-    size: 10, speed: 0.2, unlockLevel: 9, biome: 'lagoon',
+    size: 10, speed: 0.2, unlockLevel: 9, biome: 'seagrass',
   },
   stingray: {
     id: 'stingray', name: 'Southern Stingray', scientific: 'Hypanus americanus',
     tier: TIER.EPIC, layer: 'B', color: 0x8d8468, accentColor: 0xd7ccc8,
-    size: 26, speed: 1.0, unlockLevel: 10, biome: 'lagoon',
+    size: 26, speed: 1.0, unlockLevel: 10, biome: 'seagrass',
   },
   lemonShark: {
     id: 'lemonShark', name: 'Lemon Shark', scientific: 'Negaprion brevirostris',
     tier: TIER.LEGENDARY, layer: 'B', color: 0xc0b283, accentColor: 0xe8dcc0,
-    size: 38, speed: 1.2, unlockLevel: 12, biome: 'lagoon',
+    size: 38, speed: 1.2, unlockLevel: 12, biome: 'seagrass',
   },
-  // ── Tidepool Rocks (3D mode) ─────────────────────────────────────────────────
   sculpin: {
     id: 'sculpin', name: 'Tidepool Sculpin', scientific: 'Oligocottus maculosus',
     tier: TIER.COMMON, layer: 'A', color: 0x8d6e63, accentColor: 0x5d4037,
-    size: 11, speed: 1.0, unlockLevel: 9, biome: 'tidepool',
+    size: 11, speed: 1.0, unlockLevel: 9, biome: 'seagrass',
   },
   ochreStar: {
     id: 'ochreStar', name: 'Ochre Sea Star', scientific: 'Pisaster ochraceus',
     tier: TIER.UNCOMMON, layer: 'A', color: 0x7e57c2, accentColor: 0xff7043,
-    size: 14, speed: 0.15, unlockLevel: 9, biome: 'tidepool',
+    size: 14, speed: 0.15, unlockLevel: 9, biome: 'seagrass',
   },
   tidepoolCrab: {
     id: 'tidepoolCrab', name: 'Shore Crab', scientific: 'Pachygrapsus crassipes',
     tier: TIER.RARE, layer: 'A', color: 0x5d4037, accentColor: 0x8d6e63,
-    size: 12, speed: 0.5, unlockLevel: 10, biome: 'tidepool',
+    size: 12, speed: 0.5, unlockLevel: 10, biome: 'seagrass',
   },
   chiton: {
     id: 'chiton', name: 'Gumboot Chiton', scientific: 'Cryptochiton stelleri',
     tier: TIER.RARE, layer: 'A', color: 0x8d4e41, accentColor: 0xbf8a70,
-    size: 15, speed: 0.12, unlockLevel: 10, biome: 'tidepool',
+    size: 15, speed: 0.12, unlockLevel: 10, biome: 'seagrass',
   },
   opaleye: {
     id: 'opaleye', name: 'Opaleye', scientific: 'Girella nigricans',
     tier: TIER.SUPER_RARE, layer: 'A', color: 0x558b2f, accentColor: 0x9ccc65,
-    size: 16, speed: 1.2, unlockLevel: 11, biome: 'tidepool',
+    size: 16, speed: 1.2, unlockLevel: 11, biome: 'seagrass',
   },
   rubyOctopus: {
     id: 'rubyOctopus', name: 'Ruby Octopus', scientific: 'Octopus rubescens',
     tier: TIER.EPIC, layer: 'B', color: 0xc62828, accentColor: 0xef9a9a,
-    size: 16, speed: 0.7, unlockLevel: 12, biome: 'tidepool', nocturnal: true,
+    size: 16, speed: 0.7, unlockLevel: 12, biome: 'seagrass', nocturnal: true,
   },
   seaOtter: {
     id: 'seaOtter', name: 'Sea Otter', scientific: 'Enhydra lutris',
     tier: TIER.LEGENDARY, layer: 'B', color: 0x6d4c41, accentColor: 0xa1887f,
-    size: 30, speed: 1.1, unlockLevel: 13, biome: 'tidepool',
+    size: 30, speed: 1.1, unlockLevel: 13, biome: 'seagrass',
   },
 
   // ── Event pass exclusives ─────────────────────────────────────────────────

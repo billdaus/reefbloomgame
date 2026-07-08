@@ -14,14 +14,18 @@ import {
   CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, BE_PER_TICK,
   START_BE, START_POLYPS, START_PEARLS, START_HARMONY, START_LEVEL,
   BE_MAX, POLYP_MAX, POLYP_BE_BONUS, POLYP_PER_CORAL_TICK, CORAL_MAX_LEVEL, TICK_MS,
-  BIOMES as BIOMES_CLASSIC, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL,
-  LAGOON_UNLOCK_LEVEL, TIDEPOOL_UNLOCK_LEVEL,
+  BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL,
+  DECOR_SPECIES, STATION_MAX_LEVEL, stationUpgradeCost,
+  CLEAN_COOLDOWN_MS, CLEANING_ASSIGN_INTERVAL,
+  CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX, CLEANING_MISSING_PENALTY,
   BIOLUM_SPECIES, DAY_HIDER_SPECIES,
 } from '../constants.js';
 import { LINES as BUBBLES_LINES } from '../entities/bubblesLines.js';
 
 const TILE = 2;
-const SURFACE_Y = 11.4;   // the ocean surface — everything swims beneath it
+const SURFACE_Y = 13;     // the ocean surface — everything swims beneath it
+const CLEAN_DURATION_MS = 8000;   // how long a client sits at a station (3D pacing)
+const STATION_SPEC = DECOR_SPECIES.cleaningStation;
 const VENT_PERIOD = 5.2;
 const TICK_SEC = TICK_MS / 1000;        // BE/polyp tick cadence in seconds
 const SAVE_KEY_BASE = 'reefbloom_3d_save_v1';
@@ -32,33 +36,11 @@ const slotKey = (s) => `${SAVE_KEY_BASE}_s${s}`;
 // basin sits on a deep shelf east of the reef, the seagrass flats a touch
 // shallower to the west. Zone membership for free water (fish) is by x band.
 const ZONES = {
-  tidepool:     { id: 'tidepool',     cx: -96, cz: 0, grid: 10, floorY: 1.7,  unlock: TIDEPOOL_UNLOCK_LEVEL },
-  lagoon:       { id: 'lagoon',       cx: -64, cz: 0, grid: 10, floorY: 1.1,  unlock: LAGOON_UNLOCK_LEVEL },
   seagrass:     { id: 'seagrass',     cx: -32, cz: 0, grid: 10, floorY: 0.5,  unlock: SEAGRASS_UNLOCK_LEVEL },
   coral:        { id: 'coral',        cx: 0,   cz: 0, grid: 10, floorY: -0.1, unlock: 1 },
   deepTwilight: { id: 'deepTwilight', cx: 32,  cz: 0, grid: 10, floorY: -4.5, unlock: DEEP_TWILIGHT_UNLOCK_LEVEL },
 };
-// 3D-only biome metadata merged over Classic's — the Lagoon Shallows exists
-// only in 3D (Classic's travel modal iterates BIOMES, so it stays out of there).
-const BIOMES = {
-  ...BIOMES_CLASSIC,
-  lagoon: {
-    id: 'lagoon', icon: '🏝️', name: 'Lagoon Shallows', shortName: 'Lagoon',
-    unlockLevel: LAGOON_UNLOCK_LEVEL, bgColor: 0x2aa4c8,
-    depth: 'Sunlit (0–3 m)',
-    description: 'Sun-drenched sandy shallows beyond the seagrass flats — schooling silversides, cruising rays, and hardy fire coral.',
-  },
-  tidepool: {
-    id: 'tidepool', icon: '🪨', name: 'Tidepool Rocks', shortName: 'Tidepool',
-    unlockLevel: TIDEPOOL_UNLOCK_LEVEL, bgColor: 0x88a8ac,
-    depth: 'Intertidal (0–1 m)',
-    description: 'Wave-washed rock pools at the shore\'s edge — sea stars, scuttling crabs, anemones, and the occasional otter.',
-  },
-};
-
 function zoneAt(x) {
-  if (x < -80) return ZONES.tidepool;
-  if (x < -48) return ZONES.lagoon;
   if (x < -16) return ZONES.seagrass;
   if (x > 16) return ZONES.deepTwilight;
   return ZONES.coral;
@@ -79,10 +61,8 @@ const biomeIcons = (spec) =>
 // Free-roaming fish: big swimmers wander their biome instead of circling, and
 // multi-biome species get a roam band spanning every biome they belong to —
 // tangs and cleaners genuinely commute between the reef and the seagrass flats.
-const ZONE_BAND = {
-  tidepool: [-116, -80], lagoon: [-80, -48], seagrass: [-48, -16],
-  coral: [-16, 16], deepTwilight: [16, 52],
-};
+// The seagrass band stops short of the beach slope so fish never strand.
+const ZONE_BAND = { seagrass: [-50, -16], coral: [-16, 16], deepTwilight: [16, 52] };
 function roamProfile(spec) {
   const zs = Object.keys(ZONES).filter(id => matchesBiome(spec, id));
   const big = (spec.size ?? 14) >= 22;
@@ -117,7 +97,7 @@ const ROAM_STYLE = {
   abyssalRay:      { alt: [0.7, 2.2], pitch: 0.35 },
   stingray:        { alt: [0.7, 2.2], pitch: 0.35 },
   nautilus:        { alt: [1.4, 4.5], pitch: 0.25, bob: 0.5, drift: 0.55 },
-  seaOtter:        { alt: [5.5, 8.5], pitch: 0.3, bob: 0.3 },   // rafts near the surface
+  seaOtter:        { alt: [9, 11.5], pitch: 0.3, bob: 0.3 },   // rafts near the surface
 };
 
 // Small shoaling species swim as one school — a shared drifting waypoint plus
@@ -424,10 +404,8 @@ function terrainHeight(x, z) {
     + Math.sin(x * 0.21 + z * 0.13) * 0.35;
   h -= smoothstep(16, 26, x) * 4.4;
   h += smoothstep(16, 24, -x) * 0.7;
-  h += smoothstep(48, 56, -x) * 0.55;                   // lagoon shallows
-  h += smoothstep(80, 88, -x) * 0.5;                    // tidepool shore, shallowest
-  // World rim: the dunes rise further out west, where the shore climbs away.
-  const d = Math.max(x - 52, -116 - x, Math.abs(z) - 38);
+  h += smoothstep(48, 72, -x) * 22;                     // the beach climbs out of the sea
+  const d = Math.max(x - 52, Math.abs(z) - 38);
   if (d > 0) {
     h += Math.min(d * 0.3, 10) * (0.72 + 0.28 * Math.sin(x * 0.07 + Math.cos(z * 0.09) * 2));
   }
@@ -1529,6 +1507,83 @@ function makeFish(spec) {
   return g;
 }
 
+// ── Cleaning station — a rocky spa with signal tendrils, 2×2 tiles ────────────
+// Capacity (fish cleaned at once) equals its level; the rim orbs show it.
+function makeStation() {
+  const g = new THREE.Group();
+  const rock = new THREE.MeshStandardMaterial({
+    color: 0x8a8478, roughness: 0.95, flatShading: true, map: rockTex });
+  const tendrilM = new THREE.MeshStandardMaterial({
+    color: STATION_SPEC.color, roughness: 0.5,
+    emissive: STATION_SPEC.color, emissiveIntensity: 0.18 });
+  const tipM = new THREE.MeshStandardMaterial({
+    color: STATION_SPEC.accentColor, roughness: 0.45,
+    emissive: STATION_SPEC.accentColor, emissiveIntensity: 0.3 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 0.4, 12), rock);
+  base.position.y = 0.2; base.castShadow = true; g.add(base);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.5;
+    const spur = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.9, 6), rock);
+    spur.position.set(Math.cos(a) * 1.25, 0.75, Math.sin(a) * 1.25);
+    spur.rotation.z = Math.cos(a) * 0.25; spur.castShadow = true;
+    g.add(spur);
+  }
+  // Signal tendrils — the "open for business" sway cleaners advertise with.
+  const tendrils = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const tnd = new THREE.Group();
+    tnd.position.set(Math.cos(a) * 0.45, 0.4, Math.sin(a) * 0.45);
+    const stalk = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.9, 4, 6), tendrilM);
+    stalk.position.y = 0.5; tnd.add(stalk);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 7), tipM);
+    tip.position.y = 1.05; tnd.add(tip);
+    tnd.userData.a = a;
+    g.add(tnd); tendrils.push(tnd);
+  }
+  // Level orbs around the rim — one lit per level.
+  const orbs = [];
+  for (let i = 0; i < STATION_MAX_LEVEL; i++) {
+    const a = (i / STATION_MAX_LEVEL) * Math.PI * 2 - Math.PI / 2;
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0x40e0d0, emissive: 0x40e0d0, emissiveIntensity: 0.8, roughness: 0.3 }));
+    orb.position.set(Math.cos(a) * 1.62, 0.42, Math.sin(a) * 1.62);
+    g.add(orb); orbs.push(orb);
+  }
+  g.userData.tendrils = tendrils;
+  g.userData.orbs = orbs;
+  return g;
+}
+
+// ── Gull — a simple wheeling seabird for the skies over the beach ─────────────
+function makeGull() {
+  const g = new THREE.Group();
+  const white = new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.6 });
+  const grey = new THREE.MeshStandardMaterial({
+    color: 0x9aa4ac, roughness: 0.6, side: THREE.DoubleSide });
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.4, 4, 8), white);
+  body.rotation.x = Math.PI / 2; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), white);
+  head.position.set(0, 0.08, 0.32); g.add(head);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.16, 6),
+    new THREE.MeshStandardMaterial({ color: 0xf2a53a, roughness: 0.5 }));
+  beak.rotation.x = Math.PI / 2; beak.position.set(0, 0.07, 0.46); g.add(beak);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.24, 5), grey);
+  tail.rotation.x = -Math.PI / 2; tail.position.set(0, 0.02, -0.34); g.add(tail);
+  const wings = [];
+  for (const s of [-1, 1]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(s * 0.1, 0.06, 0.05);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.03, 0.34), grey);
+    wing.position.x = s * 0.5;
+    pivot.add(wing);
+    g.add(pivot); wings.push(pivot);
+  }
+  g.userData.wings = wings;
+  return g;
+}
+
 // ── Bubbles the drone — Classic's snarky reef observer, in 3D ─────────────────
 // Same silhouette language as the Pixi sprite: teal shell, pale face plate,
 // side fins, yellow sensor lens, cyan antenna bulb and thruster.
@@ -1619,7 +1674,7 @@ export function initReefScene3D(canvas) {
   sun.position.set(6, 22, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -116; sun.shadow.camera.right = 52;
+  sun.shadow.camera.left = -80; sun.shadow.camera.right = 52;
   sun.shadow.camera.top = 42; sun.shadow.camera.bottom = -42;
   sun.shadow.camera.far = 80;
   sun.shadow.bias = -0.0005;
@@ -1629,12 +1684,6 @@ export function initReefScene3D(canvas) {
   // Cold, dim glow over the twilight basin so the deep shelf reads as its own world.
   const twiLight = new THREE.PointLight(0x4a7bd0, 30, 46, 1.6);
   twiLight.position.set(ZONES.deepTwilight.cx, 7, 0); scene.add(twiLight);
-  // Warm sun-glow over the lagoon so the far-west shallows read bright.
-  const lagLight = new THREE.PointLight(0xfff0c4, 22, 52, 1.7);
-  lagLight.position.set(ZONES.lagoon.cx, 9, 0); scene.add(lagLight);
-  // Crisp cool daylight over the tidepools — barely a metre of water there.
-  const tideLight = new THREE.PointLight(0xe8f6ff, 18, 46, 1.7);
-  tideLight.position.set(ZONES.tidepool.cx, 8, 0); scene.add(tideLight);
 
   // ── Seafloor — one heightfield across all three biomes ──────────────────────
   const floorGeo = new THREE.PlaneGeometry(240, 240, 120, 120);
@@ -1642,8 +1691,7 @@ export function initReefScene3D(canvas) {
   const fc = new Float32Array(fp.count * 3);
   const cCor = new THREE.Color(0xc2a96e);   // golden reef sand
   const cSea = new THREE.Color(0x86a05f);   // warm grassy flats
-  const cLag = new THREE.Color(0xe8dca6);   // sun-bleached lagoon sand
-  const cTide = new THREE.Color(0x9a948a);  // wet intertidal rock
+  const cBea = new THREE.Color(0xeadfb0);   // dry beach sand above the waterline
   const cTwi = new THREE.Color(0x22344f);   // dark twilight silt
   const tint = new THREE.Color();
   for (let i = 0; i < fp.count; i++) {
@@ -1651,8 +1699,7 @@ export function initReefScene3D(canvas) {
     fp.setZ(i, terrainHeight(x, z));
     tint.copy(cCor)
       .lerp(cSea, smoothstep(15, 23, -x))
-      .lerp(cLag, smoothstep(46, 54, -x))
-      .lerp(cTide, smoothstep(78, 86, -x))
+      .lerp(cBea, smoothstep(52, 64, -x))
       .lerp(cTwi, smoothstep(14, 22, x));
     const v = 0.93 + 0.07 * Math.sin(x * 12.9 + z * 7.7) * Math.sin(x * 3.1 - z * 5.3);
     fc[i * 3] = tint.r * v; fc[i * 3 + 1] = tint.g * v; fc[i * 3 + 2] = tint.b * v;
@@ -1685,6 +1732,17 @@ export function initReefScene3D(canvas) {
   surface.rotation.x = Math.PI / 2;                    // normal faces the reef
   surface.position.set(-32, SURFACE_Y, 0);
   scene.add(surface);
+  // Top face — now that the camera can climb out of the water, the sea reads
+  // as a lightly reflective sheet from above (the beach pokes through it).
+  const surfTopMat = new THREE.MeshStandardMaterial({
+    color: 0x7fc4de, transparent: true, opacity: 0.24, side: THREE.BackSide,
+    roughness: 0.3, metalness: 0.25,
+    emissive: 0x9fd9ee, emissiveIntensity: 0.22, emissiveMap: surfTex,
+    depthWrite: false });
+  const surfaceTop = new THREE.Mesh(surfGeo, surfTopMat);
+  surfaceTop.rotation.x = Math.PI / 2;
+  surfaceTop.position.set(-32, SURFACE_Y, 0);
+  scene.add(surfaceTop);
   const surfPos = surfGeo.attributes.position;
 
   const rockMat = new THREE.MeshStandardMaterial({
@@ -1743,52 +1801,45 @@ export function initReefScene3D(canvas) {
       weedTuft(x, z, 4 + Math.floor(rnd() * 3), [0x2f7d54, 0x3f8f4f, 0x557f3f][i % 3]);
     }
   }
-  // Tidepool scatter: clusters of dark wave-worn boulders around the pools.
+  // The beach: dry sand climbing out of the sea west of the flats — bleached
+  // rocks, hermit crabs on their little circuits, and gulls wheeling overhead.
+  // Scenery you only appreciate once the camera comes out of the water.
+  const gulls = [];
+  const beachCrabs = [];
   {
-    const rnd = mulberry32(173);
-    const zn = ZONES.tidepool;
-    const wetRock = new THREE.MeshStandardMaterial({
-      color: 0x6f6a60, roughness: 0.85, flatShading: true, map: rockTex });
-    for (let i = 0; i < 30; i++) {
-      const a = rnd() * Math.PI * 2;
-      let r = 11.5 + rnd() * 5, x, z;
-      do {
-        x = clamp(zn.cx + Math.cos(a) * r, -112, -82);
-        z = clamp(Math.sin(a) * r, -30, 30);
-        r += 1.6;
-      } while (inBuildArea(x, z) && r < 44);
-      if (i % 4 === 3) {
-        weedTuft(x, z, 3, [0x7cb342, 0x558b2f, 0x9e9d24][i % 3]);
-      } else {
-        const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + rnd() * 0.9, 0), wetRock);
-        rock.position.set(x, terrainHeight(x, z) + 0.15, z);
-        rock.rotation.set(a, a * 1.7, a * 0.5); rock.scale.y = 0.5 + rnd() * 0.3;
-        rock.castShadow = true; scene.add(rock);
-      }
+    const rnd = mulberry32(211);
+    const dryRock = new THREE.MeshStandardMaterial({
+      color: 0xd8c9a4, roughness: 1, flatShading: true, map: rockTex });
+    for (let i = 0; i < 9; i++) {
+      const x = -64 - rnd() * 14, z = (rnd() - 0.5) * 52;
+      const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4 + rnd() * 0.8, 0), dryRock);
+      rock.position.set(x, terrainHeight(x, z) + 0.1, z);
+      rock.rotation.set(rnd() * 3, rnd() * 6, rnd()); rock.scale.y = 0.55;
+      rock.castShadow = true; scene.add(rock);
     }
-  }
-  // Lagoon scatter: pale rocks and sparse bright-green shoots on bleached sand.
-  {
-    const rnd = mulberry32(139);
-    const zn = ZONES.lagoon;
-    const paleRock = new THREE.MeshStandardMaterial({
-      color: 0xcabf9f, roughness: 1, flatShading: true, map: rockTex });
-    for (let i = 0; i < 26; i++) {
-      const a = rnd() * Math.PI * 2;
-      let r = 11.5 + rnd() * 5, x, z;
-      do {
-        x = clamp(zn.cx + Math.cos(a) * r, -80, -50);
-        z = clamp(Math.sin(a) * r, -28, 28);
-        r += 1.6;
-      } while (inBuildArea(x, z) && r < 44);
-      if (i % 3) {
-        weedTuft(x, z, 3 + Math.floor(rnd() * 3), [0x66bb6a, 0x9ccc65, 0x4caf50][i % 3]);
-      } else {
-        const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4 + rnd() * 0.5, 0), paleRock);
-        rock.position.set(x, terrainHeight(x, z) + 0.1, z);
-        rock.rotation.set(a, a * 1.7, a * 0.5); rock.scale.y = 0.55;
-        rock.castShadow = true; scene.add(rock);
-      }
+    // Ambient hermit crabs — beach décor, separate from the placeable species.
+    const crabM = new THREE.MeshStandardMaterial({ color: 0xc47a4a, roughness: 0.7 });
+    for (let i = 0; i < 3; i++) {
+      const g = new THREE.Group();
+      const { animate } = FISH_BODY.crab(g, { bodyMat: crabM, spec: {}, rnd: mulberry32(500 + i) });
+      g.scale.setScalar(0.45);
+      scene.add(g);
+      beachCrabs.push({
+        g, animate,
+        cx: -66 - i * 3, cz: -12 + i * 11, R: 1.4 + i * 0.5,
+        w: (i % 2 ? -1 : 1) * 0.35, phase: i * 2.1,
+      });
+    }
+    // Gulls above the shoreline.
+    for (let i = 0; i < 4; i++) {
+      const g = makeGull();
+      g.scale.setScalar(0.9 + (i % 2) * 0.25);
+      scene.add(g);
+      gulls.push({
+        g, cx: -62 - (i % 2) * 8, cz: (i - 1.5) * 10,
+        R: 6 + i * 2.5, w: (i % 2 ? -1 : 1) * (0.22 + i * 0.04),
+        y: SURFACE_Y + 3.5 + i * 1.2, phase: i * 1.7,
+      });
     }
   }
   // Twilight-zone scatter: dark rock spires and faint glowing orbs on the shelf.
@@ -1835,8 +1886,7 @@ export function initReefScene3D(canvas) {
     const spots = [
       { x: -6, z: -9, c: 0xf8c8dc, tw: false }, { x: 9, z: 7, c: 0xcfe8ff, tw: false },
       { x: -26, z: 7, c: 0xd8f0d0, tw: false }, { x: -38, z: -6, c: 0xf8c8dc, tw: false },
-      { x: 2, z: 11, c: 0xcfe8ff, tw: false }, { x: -60, z: 8, c: 0xd0f0e0, tw: false },
-      { x: -70, z: -7, c: 0xfae0c8, tw: false }, { x: -92, z: 6, c: 0xe0f4ff, tw: false },
+      { x: 2, z: 11, c: 0xcfe8ff, tw: false },
       { x: 27, z: -9, c: 0x8ff0ff, tw: true }, { x: 38, z: 5, c: 0xc9a8ff, tw: true },
       { x: 32, z: 11, c: 0x8ff0ff, tw: true },
     ];
@@ -1989,10 +2039,6 @@ export function initReefScene3D(canvas) {
       color: 0x9db26f, roughness: 1, map: tileTex, transparent: true, opacity: 0.6 }),
     deepTwilight: new THREE.MeshStandardMaterial({
       color: 0x3d5570, roughness: 1, map: tileTex, transparent: true, opacity: 0.65 }),
-    lagoon: new THREE.MeshStandardMaterial({
-      color: 0xf0e2ae, roughness: 1, map: tileTex, transparent: true, opacity: 0.6 }),
-    tidepool: new THREE.MeshStandardMaterial({
-      color: 0xb5af9e, roughness: 1, map: tileTex, transparent: true, opacity: 0.62 }),
   };
   const lockedMat = new THREE.MeshStandardMaterial({
     color: 0x2a3540, roughness: 1, transparent: true, opacity: 0.22 });
@@ -2163,6 +2209,56 @@ export function initReefScene3D(canvas) {
     f.home = null;
   }
 
+  // ── Cleaning stations (Classic's symbiosis mechanic) ─────────────────────────
+  // A 2×2 rocky spa. While a cleaner fish is on duty, nearby fish queue up,
+  // park at the tendrils for a scrub, and harmony rises with every client.
+  const stationGroups = [];
+  const placedStations = [];   // { b, c, r, level } (saved; c,r = NW tile)
+  const stationQuad = (b, c, r) =>
+    [[c, r], [c + 1, r], [c, r + 1], [c + 1, r + 1]].map(([cc, rr]) => tileAt(b, cc, rr));
+  function addStation(b, c, r, lvl = 1) {
+    const quad = stationQuad(b, c, r);
+    if (quad.some(q => !q || q.userData.occupied)) return null;
+    for (const q of quad) q.userData.occupied = true;
+    const g = makeStation();
+    g.position.set(
+      (quad[0].position.x + quad[3].position.x) / 2,
+      ZONES[b].floorY + 0.18,
+      (quad[0].position.z + quad[3].position.z) / 2);
+    const entry = { b, c, r, level: lvl };
+    g.userData.station = true;
+    g.userData.entry = entry;
+    g.userData.clients = [];
+    refreshStationOrbs(g);
+    scene.add(g); stationGroups.push(g); placedStations.push(entry);
+    return g;
+  }
+  function refreshStationOrbs(g) {
+    g.userData.orbs.forEach((o, i) => { o.visible = i < g.userData.entry.level; });
+  }
+  function removeStationGroup(g) {
+    const e = g.userData.entry;
+    for (const f of g.userData.clients) { f.clean = null; }
+    for (const f of fishes) if (f.duty === g) f.duty = null;
+    for (const q of stationQuad(e.b, e.c, e.r)) if (q) q.userData.occupied = false;
+    const gi = stationGroups.indexOf(g); if (gi >= 0) stationGroups.splice(gi, 1);
+    const pi = placedStations.indexOf(e); if (pi >= 0) placedStations.splice(pi, 1);
+    scene.remove(g); disposeGroup(g);
+    polyps = Math.min(polyps + 15, POLYP_MAX);
+    refreshProgress(); refreshHud(); save();
+    flash(rateEl, '+15 🪸', '#7fd8b0');
+  }
+  function tryUpgradeStation(g) {
+    const e = g.userData.entry;
+    if (e.level >= STATION_MAX_LEVEL) { flash(rateEl, 'max level'); return; }
+    const cost = stationUpgradeCost(e.level);
+    if (polyps < cost) { flash(rateEl, `need ${cost} 🪸`); return; }
+    polyps -= cost;
+    e.level++;
+    refreshStationOrbs(g);
+    refreshHud(); save();
+  }
+
   // BE/polyp rates, recomputed whenever a coral is placed, upgraded, or removed.
   // Classic: BE/tick = base × (1 + (level-1)·POLYP_BE_BONUS); polyps/tick = 0.2 × level.
   // Utility corals (storage/shelter) yield no BE but still drip polyps, and storage
@@ -2200,6 +2296,13 @@ export function initReefScene3D(canvas) {
     score += (A > 0 && B > 0) ? 15 : (A > 0 || B > 0) ? 7 : 0;
     if (fishCount > 0) {
       score += Math.round((Math.min(fishCount, coralCount) / Math.max(fishCount, coralCount)) * 15);
+    }
+    // Cleaning symbiosis (Classic): active scrubs lift harmony; a fishy reef
+    // with no station at all loses up to the missing-station penalty.
+    const activeClean = fishes.reduce((n, f) => n + (f.clean ? 1 : 0), 0);
+    score += Math.min(activeClean * CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX);
+    if (fishCount >= 3 && placedStations.length === 0) {
+      score -= Math.min(CLEANING_MISSING_PENALTY, Math.round(fishCount * 1.2));
     }
     score = Math.max(0, score);
     return Math.min(Math.max(score, harmony * 0.9), 100);   // ratchet, cap 100
@@ -2377,7 +2480,7 @@ export function initReefScene3D(canvas) {
       localStorage.setItem(slotKey(slot), JSON.stringify({
         be, polyps, pearls, harmony, level, timeOfDay,
         corals: placedCorals, fish: placedFish, seen: [...seen], exp: expansions,
-        eggs: [...eggsClaimed] }));
+        eggs: [...eggsClaimed], stations: placedStations }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -2485,7 +2588,7 @@ export function initReefScene3D(canvas) {
   // Species grouped by home biome, mirroring Classic's per-biome shop.
   const stdCorals = coralSpecs.filter(s => !s.utility && !s.pearlCost);
   const stdFish = fishSpecs.filter(s => !s.pearlCost);
-  for (const zid of ['coral', 'seagrass', 'lagoon', 'tidepool', 'deepTwilight']) {
+  for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
     const bio = BIOMES[zid];
     const lv = ZONES[zid].unlock > 1 ? ` · Lv${ZONES[zid].unlock}` : '';
     const cs = stdCorals.filter(s => primaryBiome(s) === zid);
@@ -2507,7 +2610,11 @@ export function initReefScene3D(canvas) {
     pearlF.forEach(s => button(s, 'fish'));
   }
   const utilC = coralSpecs.filter(s => s.utility);
-  if (utilC.length) { label('Utility coral · 🪸 polyps'); utilC.forEach(s => button(s, 'coral')); }
+  if (utilC.length) {
+    label('Utility · 🪸 polyps');
+    button(STATION_SPEC, 'station');   // Classic's 2×2 cleaning station
+    utilC.forEach(s => button(s, 'coral'));
+  }
 
   onProgress = () => { refreshLocks(); refreshZoneLocks(); refreshExpMarkers(); };   // sync locks with level-ups
   onProgress();
@@ -2657,11 +2764,11 @@ export function initReefScene3D(canvas) {
     if (level >= ZONES.deepTwilight.unlock && !placedCorals.some(e => e.b === 'deepTwilight')) {
       tips.push('The 🌌 Deep Twilight shelf is unlocked and empty — bioluminescent species await.');
     }
-    if (level >= ZONES.lagoon.unlock && !placedCorals.some(e => e.b === 'lagoon')) {
-      tips.push('The 🏝️ Lagoon Shallows are unlocked and empty — sun corals and rays wait out west.');
+    if (placedFish.length >= 3 && !placedStations.length && level >= STATION_SPEC.unlockLevel) {
+      tips.push('Your fish have nowhere to get cleaned — place a Cleaning Station (utility section) and staff it with a cleaner fish.');
     }
-    if (level >= ZONES.tidepool.unlock && !placedCorals.some(e => e.b === 'tidepool')) {
-      tips.push('The 🪨 Tidepool Rocks are unlocked and empty — anemones and sea stars line the shore.');
+    if (placedStations.length && !placedFish.some(f => FISH_SPECIES[f.id]?.cleaner)) {
+      tips.push('Your Cleaning Station has no staff — hatch a cleaner (Cleaner Wrasse, Cleaner Shrimp, or Glow Cleaner Goby).');
     }
     if (!tips.length) tips.push('The reef is thriving. Keep growing it to hold the ratchet at 100.');
     advisor.body.innerHTML =
@@ -2691,7 +2798,7 @@ export function initReefScene3D(canvas) {
       if (h > 0) html += line('Harmony', harmony, h);
     }
     html += '<div class="m-sec">Biomes</div>';
-    for (const zid of ['coral', 'seagrass', 'lagoon', 'tidepool', 'deepTwilight']) {
+    for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
       const b = BIOMES[zid], zn = ZONES[zid];
       const open = zoneUnlocked(zid);
       const placedHere = placedCorals.filter(e => (e.b ?? 'coral') === zid).length;
@@ -2790,6 +2897,89 @@ export function initReefScene3D(canvas) {
   }
   function openUpgrade(g) { upgradeTarget = g; fillUpgrade(); upgrade.show(); }
 
+  // Station menu — same modal shell, station-flavoured contents.
+  function fillStation(g) {
+    const e = g.userData.entry;
+    const bio = BIOMES[e.b ?? 'coral'];
+    upgrade.ov.querySelector('.m-title').textContent = STATION_SPEC.name;
+    upgrade.ov.querySelector('.m-sub')?.remove();
+    upgrade.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
+      `<div class="m-sub">${bio.icon} ${bio.name} · staffed by cleaner fish</div>`);
+    const max = e.level >= STATION_MAX_LEVEL;
+    const cost = stationUpgradeCost(e.level);
+    upgrade.body.innerHTML =
+      `<div class="m-row" style="border:none;padding-bottom:0"><span>Level</span>`
+      + `<small>${e.level} / ${STATION_MAX_LEVEL}</small></div>${bar(e.level, STATION_MAX_LEVEL)}`
+      + `<div class="m-row"><span>Capacity</span><small>${e.level} fish at once`
+      + `${max ? '' : ` → ${e.level + 1}`}</small></div>`
+      + `<div class="m-row"><span>Being cleaned now</span>`
+      + `<small>${g.userData.clients.length}</small></div>`;
+    const up = document.createElement('button');
+    up.className = 'shop-pack';
+    up.innerHTML = max ? '<span>Max level reached</span><span>—</span>'
+      : `<span>⬆ Upgrade to Lv${e.level + 1}</span><span>${cost} 🪸</span>`;
+    up.disabled = max || polyps < cost;
+    up.style.opacity = up.disabled ? 0.45 : 1;
+    up.onclick = () => { if (!up.disabled) { tryUpgradeStation(g); fillStation(g); } };
+    const sell = document.createElement('button');
+    sell.className = 'shop-pack';
+    sell.innerHTML = '<span>✕ Sell</span><span>+15 🪸</span>';
+    sell.onclick = () => { upgrade.ov.style.display = 'none'; removeStationGroup(g); };
+    upgrade.body.append(up, sell);
+  }
+  function openStationUpgrade(g) { fillStation(g); upgrade.show(); }
+
+  // ── Cleaning assignment — Classic's rhythm, real-time pacing ─────────────────
+  // Every beat: cleaners take up post at their nearest station, and each
+  // station with a free slot (capacity = level) invites the closest fish that
+  // isn't a cleaner, isn't benthic, isn't asleep, and is off cooldown.
+  let lastCleanCount = 0;
+  const cleanTimer = setInterval(() => {
+    const nowMs = performance.now();
+    const onDuty = fishes.some(f => FISH_SPECIES[f.id]?.cleaner && !f.home);
+    if (stationGroups.length) {
+      for (const f of fishes) {
+        if (!FISH_SPECIES[f.id]?.cleaner || f.benthic || f.duty) continue;
+        let best = null, bd = Infinity;
+        for (const s of stationGroups) {
+          const d = s.position.distanceToSquared(f.g.position);
+          if (d < bd) { bd = d; best = s; }
+        }
+        if (best) {
+          // Clock on: the cleaner loops tight circles around the tendrils.
+          f.duty = best;
+          f.roam = false;
+          f.cx = best.position.x; f.cz = best.position.z;
+          f.R = 2.1; f.y = best.position.y + 1.5;
+          f.w = (f.w >= 0 ? 1 : -1) * 0.55;
+          f.ang = undefined;
+        }
+      }
+    }
+    for (const s of stationGroups) {
+      s.userData.clients = s.userData.clients.filter(c => fishes.includes(c) && c.clean);
+      if (!onDuty || s.userData.clients.length >= s.userData.entry.level) continue;
+      let best = null, bd = Infinity;
+      for (const f of fishes) {
+        const sp = FISH_SPECIES[f.id];
+        if (!sp || sp.cleaner || f.benthic || f.home || f.clean) continue;
+        if (f.cleanCd && nowMs < f.cleanCd) continue;
+        const d = s.position.distanceToSquared(f.g.position);
+        if (d < bd) { bd = d; best = f; }
+      }
+      if (best) {
+        best.clean = { s, until: nowMs + CLEAN_DURATION_MS, slot: s.userData.clients.length };
+        s.userData.clients.push(best);
+      }
+    }
+    // Fold the cleaning bonus into harmony only when activity actually changes.
+    const active = fishes.reduce((n, f) => n + (f.clean ? 1 : 0), 0);
+    if (active !== lastCleanCount) {
+      lastCleanCount = active;
+      refreshProgress(); refreshHud();
+    }
+  }, CLEANING_ASSIGN_INTERVAL);
+
   const menuEl = document.getElementById('menu3d');
   if (menuEl) {
     [['📖 Journal', journal, fillJournal],
@@ -2818,6 +3008,9 @@ export function initReefScene3D(canvas) {
     // Rebuild bought expansions before restoring corals that may sit on them.
     Object.entries(saved.exp ?? {}).forEach(([zid, keys]) =>
       (keys ?? []).forEach(k => buildExpansion(zid, k)));
+    (saved.stations ?? []).forEach(({ b, c, r, level: lv }) => {
+      if (ZONES[b]) addStation(b, c, r, lv ?? 1);
+    });
     (saved.corals ?? []).forEach(({ b, c, r, id, level: lv }) => {
       const spec = CORAL_SPECIES[id], tile = tileAt(b ?? 'coral', c, r);
       if (spec && tile && !tile.userData.occupied) addCoral(spec, tile, lv ?? 1);
@@ -3078,6 +3271,8 @@ export function initReefScene3D(canvas) {
     if (gHit?.userData.egg) { eggFound(gHit.userData.egg); return; }
 
     if (selected.type === 'remove') {
+      const sHit = castAll(stationGroups, true);
+      if (sHit) { const g = ancestorWith(sHit, 'station'); if (g) removeStationGroup(g); return; }
       const cHit = castAll(corals, true);
       if (cHit) { const g = ancestorWith(cHit, 'entry'); if (g) removeCoralGroup(g); return; }
       const fHit = castAll(fishes.map(f => f.g), true);
@@ -3085,7 +3280,12 @@ export function initReefScene3D(canvas) {
       return;
     }
 
-    // Tap a placed coral to open its upgrade menu — takes priority over placement.
+    // Tap a station or placed coral for its upgrade menu — before placement.
+    const stHit = castAll(stationGroups, true);
+    if (stHit) {
+      const g = ancestorWith(stHit, 'station');
+      if (g) { openStationUpgrade(g); return; }
+    }
     const coralHit = castAll(corals, true);
     if (coralHit) {
       const g = ancestorWith(coralHit, 'entry');
@@ -3102,6 +3302,18 @@ export function initReefScene3D(canvas) {
       addCoral(selected.spec, t);
       if (placedCorals.length === 1) droneTrigger('firstCoral');
       recomputeRates(); refreshProgress(); refreshHud(); save();
+    } else if (selected.type === 'station') {
+      const t = ray.intersectObjects(tiles, false)[0]?.object;
+      if (!t) return;
+      const { biome: b, c, r } = t.userData;
+      if (!zoneCheck(selected.spec, b)) return;
+      const quad = stationQuad(b, c, r);
+      if (quad.some(q => !q || q.userData.occupied)) {
+        flash(rateEl, 'needs a free 2×2 area'); return;
+      }
+      if (!charge(selected.spec, {})) return;
+      addStation(b, c, r, 1);
+      refreshProgress(); refreshHud(); save();
     } else {
       const hit = ray.intersectObject(floor, false)[0];
       if (!hit) return;
@@ -3129,7 +3341,7 @@ export function initReefScene3D(canvas) {
   const snowGeo = new THREE.BufferGeometry();
   const sp = new Float32Array(SNOW * 3);
   for (let i = 0; i < SNOW; i++) {
-    sp[i * 3] = (Math.cos(i * 12.9) * 0.5 + 0.5) * 168 - 116;
+    sp[i * 3] = (Math.cos(i * 12.9) * 0.5 + 0.5) * 104 - 52;
     sp[i * 3 + 1] = (Math.sin(i * 7.3) * 0.5 + 0.5) * 29 - 5;
     sp[i * 3 + 2] = (Math.cos(i * 4.1) * 0.5 + 0.5) * 104 - 52;
   }
@@ -3153,7 +3365,7 @@ export function initReefScene3D(canvas) {
       z = src.position.z + (brng() - 0.5) * 1.2;
       y = src.position.y + 0.3 + brng() * 0.8;
     } else {
-      x = -32 + (brng() - 0.5) * 164;
+      x = 1 + (brng() - 0.5) * 100;
       z = (brng() - 0.5) * 44;
       y = terrainHeight(x, z) + 0.3;
     }
@@ -3183,6 +3395,16 @@ export function initReefScene3D(canvas) {
     map: bubbleSprite, color: 0xcfeeff, size: 0.32, transparent: true,
     opacity: 0.8, depthWrite: false, sizeAttenuation: true }));
   scene.add(bubbles);
+
+  // Cleaning sparkles — golden glints orbiting each fish mid-scrub.
+  const SPARK_N = 48;
+  const sparkGeo = new THREE.BufferGeometry();
+  sparkGeo.setAttribute('position',
+    new THREE.BufferAttribute(new Float32Array(SPARK_N * 3).fill(-100), 3));
+  const sparks = new THREE.Points(sparkGeo, new THREE.PointsMaterial({
+    map: bubbleSprite, color: 0xfff2a8, size: 0.22, transparent: true,
+    opacity: 0.95, depthWrite: false, sizeAttenuation: true }));
+  scene.add(sparks);
 
   // ── Render loop ──────────────────────────────────────────────────────────────
   const clock = new THREE.Clock();
@@ -3241,16 +3463,36 @@ export function initReefScene3D(canvas) {
       const dx = s.tx - s.cx, dy = s.ty - s.cy, dz = s.tz - s.cz;
       if (t > s.until || dx * dx + dy * dy + dz * dz < 4) newSchoolTarget(s, t);
     }
+    const frameMs = performance.now();
     for (const f of fishes) {
+      // Cleaning visit ends when the timer (or the station) is gone.
+      if (f.clean && (frameMs > f.clean.until || !stationGroups.includes(f.clean.s))) {
+        const ci = f.clean.s.userData?.clients?.indexOf(f);
+        if (ci >= 0) f.clean.s.userData.clients.splice(ci, 1);
+        f.cleanCd = frameMs + CLEAN_COOLDOWN_MS;
+        f.clean = null;
+      }
       // Classic's day/night homing: day-hiders tuck into a Reef Grotto by day;
       // ordinary fish bed down (Anemone Haven if one has room) overnight;
       // nocturnal fish stay out after dark. No home → they just slow down.
-      const wantsHide = !f.benthic
+      const wantsHide = !f.benthic && !f.clean
         && (f.g.userData.hider ? nf < 0.45 : (nf > 0.55 && !f.noct));
       if (wantsHide && !f.home) claimHome(f);
       else if (!wantsHide && f.home) releaseHome(f);
       const slow = wantsHide && !f.home ? 0.35 : 1;
-      if (f.home) {
+      if (f.clean) {
+        // Settle at the station's tendrils and hold still for the scrub.
+        const s = f.clean.s;
+        const a = f.clean.slot * 2.1 + 0.7;
+        const tx = s.position.x + Math.cos(a) * 1.4;
+        const tz = s.position.z + Math.sin(a) * 1.4;
+        const ty = s.position.y + 1.0 + Math.sin(t * 1.4 + f.phase) * 0.08;
+        const k = Math.min(1, dt * 1.6);
+        const cur = f.g.position;
+        cur.set(cur.x + (tx - cur.x) * k, cur.y + (ty - cur.y) * k, cur.z + (tz - cur.z) * k);
+        f.g.rotation.x *= 0.9;
+        if (f.px !== undefined) { f.px = cur.x; f.py = cur.y; f.pz = cur.z; }
+      } else if (f.home) {
         // Settle beside the shelter with a gentle hover.
         const hp = f.home.position;
         const tx = hp.x + Math.sin(f.phase * 2.6) * 0.55;
@@ -3418,6 +3660,29 @@ export function initReefScene3D(canvas) {
     surfTex.offset.y = -t * 0.006;
     surfMat.emissiveIntensity = 0.35 - nf * 0.24;
     surfMat.opacity = 0.4 - nf * 0.08;
+    surfTopMat.emissiveIntensity = 0.22 - nf * 0.15;
+
+    // Beach life: gulls wheel above the shoreline, hermit crabs run circuits.
+    for (const gl of gulls) {
+      const ang = gl.phase + t * gl.w;
+      gl.g.position.set(
+        gl.cx + Math.cos(ang) * gl.R,
+        gl.y + Math.sin(t * 0.7 + gl.phase) * 0.6,
+        gl.cz + Math.sin(ang) * gl.R);
+      gl.g.rotation.y = Math.atan2(-Math.sin(ang) * gl.w, Math.cos(ang) * gl.w);
+      gl.g.rotation.z = gl.w > 0 ? -0.18 : 0.18;       // bank into the turn
+      const flap = Math.sin(t * 5.5 + gl.phase) * 0.45;
+      gl.g.userData.wings[0].rotation.z = flap;
+      gl.g.userData.wings[1].rotation.z = -flap;
+    }
+    for (const bc of beachCrabs) {
+      const ang = bc.phase + t * bc.w;
+      const x = bc.cx + Math.cos(ang) * bc.R;
+      const z = bc.cz + Math.sin(ang) * bc.R;
+      bc.g.position.set(x, terrainHeight(x, z) + 0.08, z);
+      bc.g.rotation.y = Math.atan2(-Math.sin(ang) * bc.w, Math.cos(ang) * bc.w) + Math.PI / 2;
+      bc.animate?.(t, bc.phase);
+    }
 
     const sposArr = snow.geometry.attributes.position;
     for (let i = 0; i < SNOW; i++) {
@@ -3435,11 +3700,34 @@ export function initReefScene3D(canvas) {
       duck.rotation.z = Math.sin(t * 1.3) * 0.08;
     }
 
+    // Stations: tendrils sway; sparkles orbit every client mid-scrub.
+    for (const s of stationGroups) {
+      for (const tnd of s.userData.tendrils) {
+        tnd.rotation.x = Math.sin(t * 1.6 + tnd.userData.a * 3) * 0.22;
+        tnd.rotation.z = Math.cos(t * 1.3 + tnd.userData.a * 2) * 0.22;
+      }
+    }
+    const spos = sparkGeo.attributes.position;
+    let si = 0;
+    for (const f of fishes) {
+      if (!f.clean || si > SPARK_N - 4) continue;
+      const p = f.g.position;
+      for (let k = 0; k < 4 && si < SPARK_N; k++, si++) {
+        const a = t * 2.2 + k * 1.57 + f.phase;
+        spos.setXYZ(si,
+          p.x + Math.cos(a) * 0.5,
+          p.y + 0.2 + Math.sin(t * 3 + k) * 0.25,
+          p.z + Math.sin(a) * 0.5);
+      }
+    }
+    for (; si < SPARK_N; si++) spos.setXYZ(si, 0, -100, 0);
+    spos.needsUpdate = true;
+
     droneUpdate(dt, t, nf);
     plumeUpdate(t, ventIntensity((t / VENT_PERIOD) % 1));
-    controls.target.x = clamp(controls.target.x, -116, 52);
+    controls.target.x = clamp(controls.target.x, -70, 52);
     controls.target.z = clamp(controls.target.z, -38, 38);
-    controls.target.y = clamp(controls.target.y, -4, 10);
+    controls.target.y = clamp(controls.target.y, -4, 16);   // high enough to eye the beach
     controls.update();
     renderer.render(scene, camera);
   }
@@ -3452,7 +3740,7 @@ export function initReefScene3D(canvas) {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  return { stop() { running = false; clearInterval(saveTimer); save(); } };
+  return { stop() { running = false; clearInterval(saveTimer); clearInterval(cleanTimer); save(); } };
 }
 
 function flash(el, msg, color = '#ff8a80') {
