@@ -1804,9 +1804,9 @@ export function initReefScene3D(canvas) {
   // Top face — now that the camera can climb out of the water, the sea reads
   // as a lightly reflective sheet from above (the beach pokes through it).
   const surfTopMat = new THREE.MeshStandardMaterial({
-    color: 0x7fc4de, transparent: true, opacity: 0.24, side: THREE.BackSide,
-    roughness: 0.3, metalness: 0.25,
-    emissive: 0x9fd9ee, emissiveIntensity: 0.22, emissiveMap: surfTex,
+    color: 0x8fd0e8, transparent: true, opacity: 0.34, side: THREE.BackSide,
+    roughness: 0.28, metalness: 0.3,
+    emissive: 0x9fd9ee, emissiveIntensity: 0.3, emissiveMap: surfTex,
     depthWrite: false });
   const surfaceTop = new THREE.Mesh(surfGeo, surfTopMat);
   surfaceTop.rotation.x = Math.PI / 2;
@@ -3748,7 +3748,7 @@ export function initReefScene3D(canvas) {
     surfTex.offset.y = -t * 0.006;
     surfMat.emissiveIntensity = 0.35 - nf * 0.24;
     surfMat.opacity = 0.4 - nf * 0.08;
-    surfTopMat.emissiveIntensity = 0.22 - nf * 0.15;
+    surfTopMat.emissiveIntensity = 0.3 - nf * 0.2;
 
     // Beach life: gulls wheel above the shoreline, hermit crabs run circuits.
     for (const gl of gulls) {
