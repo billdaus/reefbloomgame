@@ -2142,7 +2142,10 @@ export function initReefScene3D(canvas) {
       'It has been circling for years. I have stopped asking questions.'],
   };
   function eggFound(id) {
-    if (id === 'chest' && !eggsClaimed.has('chest')) {
+    const firstChest = id === 'chest' && !eggsClaimed.has('chest');
+    eggsClaimed.add(id);
+    checkAch();
+    if (firstChest) {
       eggsClaimed.add('chest');
       pearls += 10;
       refreshHud(); save();
@@ -2284,6 +2287,9 @@ export function initReefScene3D(canvas) {
   const exclOwned = new Set();   // event-pass exclusive species owned (saved)
   let ev3 = null;                // live event progress (saved)
   let dq = null;                 // today's daily quest (saved)
+  const achUnlocked = new Set(); // achievement ids earned (saved)
+  const droneQueue = [];         // Bubbles' pending speech lines
+  let sawNight = false;          // has this reef been seen after dark (saved)
   let be = START_BE, polyps = START_POLYPS, pearls = START_PEARLS;
   let harmony = START_HARMONY, level = START_LEVEL;
   let timeOfDay = 0.3, nightFactor = 0;   // day/night cycle (saved)
@@ -2451,7 +2457,7 @@ export function initReefScene3D(canvas) {
   }
 
   // Recompute reef-composition stats after any placement/removal.
-  function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); ev3Snapshot(); dqSnapshot(); onProgress(); }
+  function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); ev3Snapshot(); dqSnapshot(); checkAch(); onProgress(); }
 
   function tryUpgrade(group) {
     const e = group.userData.entry;
@@ -2616,7 +2622,8 @@ export function initReefScene3D(canvas) {
         be, polyps, pearls, harmony, level, timeOfDay,
         corals: placedCorals, fish: placedFish, seen: [...seen], exp: expansions,
         eggs: [...eggsClaimed], stations: placedStations,
-        ev3, excl: [...exclOwned], dq }));
+        ev3, excl: [...exclOwned], dq,
+        ach: [...achUnlocked], sawNight }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -3259,6 +3266,38 @@ export function initReefScene3D(canvas) {
     refreshHud(); save();
   }
 
+  // ── Achievements — Classic's milestone goals, tuned for the 3D reef ──────────
+  // Auto-unlock with a one-time payout; Bubbles announces each. Breeding and
+  // feeding don't exist here, so three 3D milestones stand in for them.
+  const ACH3 = [
+    { id: 'first_coral', name: 'First Bloom', desc: 'Place your first coral', reward: { be: 50 }, met: () => placedCorals.length >= 1 },
+    { id: 'reef_keeper', name: 'Reef Keeper', desc: 'Place 10 coral', reward: { polyps: 15 }, met: () => placedCorals.length >= 10 },
+    { id: 'coral_variety', name: 'Coral Connoisseur', desc: 'Place 8 coral species', reward: { pearls: 5 }, met: () => new Set(placedCorals.map(c => c.id)).size >= 8 },
+    { id: 'full_house', name: 'Full House', desc: 'Have 10 fish at once', reward: { be: 150 }, met: () => placedFish.length >= 10 },
+    { id: 'aquarist', name: 'Aquarist', desc: 'Discover 10 fish species', reward: { pearls: 8 }, met: () => [...seen].filter(id => FISH_SPECIES[id]).length >= 10 },
+    { id: 'harmonious', name: 'Harmonious', desc: 'Reach 80 Harmony', reward: { polyps: 20 }, met: () => harmony >= 80 },
+    { id: 'thriving', name: 'Thriving Reef', desc: 'Reach 95 Harmony', reward: { pearls: 15 }, met: () => harmony >= 95 },
+    { id: 'janitor', name: 'Spotless', desc: 'Build a cleaning station', reward: { be: 80 }, met: () => placedStations.length >= 1 },
+    { id: 'collector', name: 'Event Collector', desc: 'Unlock 2 event species', reward: { pearls: 12 }, met: () => exclOwned.size >= 2 },
+    { id: 'nightfall', name: 'Night Owl', desc: 'Witness the reef at night', reward: { be: 60 }, met: () => sawNight },
+    { id: 'expander', name: 'Homesteader', desc: 'Buy your first grid expansion', reward: { polyps: 20 }, met: () => Object.values(expansions).some(a => a.length > 0) },
+    { id: 'deep_roots', name: 'Deep Roots', desc: 'Grow a coral to level 5', reward: { pearls: 10 }, met: () => placedCorals.some(c => (c.level ?? 1) >= 5) },
+    { id: 'beachcomber', name: 'Beachcomber', desc: 'Find 3 curiosities beyond the reef', reward: { pearls: 10 }, met: () => eggsClaimed.size >= 3 },
+  ];
+  function checkAch() {
+    for (const a of ACH3) {
+      if (achUnlocked.has(a.id) || !a.met()) continue;
+      achUnlocked.add(a.id);
+      if (a.reward.be) be = Math.min(be + a.reward.be, beMax);
+      if (a.reward.polyps) polyps = Math.min(polyps + a.reward.polyps, POLYP_MAX);
+      if (a.reward.pearls) pearls += a.reward.pearls;
+      const rw = a.reward.be ? `${a.reward.be} 🫧` : a.reward.polyps ? `${a.reward.polyps} 🪸` : `${a.reward.pearls} 💎`;
+      flash(rateEl, `🏆 ${a.name} · +${rw}`, '#ffd54f');
+      droneQueue.push(`Achievement logged: "${a.name}". ${a.desc}. Reward dispensed. Carry on.`);
+      refreshHud(); save();
+    }
+  }
+
   function ev3ClaimReward() {
     const def = ev3Def();
     if (!ev3 || !def || ev3.rewardClaimed || ev3.setsClaimed.length < def.questSets.length) return;
@@ -3416,9 +3455,25 @@ export function initReefScene3D(canvas) {
     daily.body.append(claim);
   }
 
+  // 🏆 Achievements — milestone list with unlock states and payouts.
+  const achModal = buildMenuModal('🏆 Achievements');
+  function fillAch() {
+    checkAch();
+    let html = `<div class="m-sub">${achUnlocked.size} of ${ACH3.length} earned — rewards pay out the moment you qualify.</div>`;
+    for (const a of ACH3) {
+      const got = achUnlocked.has(a.id);
+      const rw = a.reward.be ? `${a.reward.be} 🫧` : a.reward.polyps ? `${a.reward.polyps} 🪸` : `${a.reward.pearls} 💎`;
+      html += `<div class="m-row${got ? '' : ' locked'}">`
+        + `<span>${got ? '🏆' : '🔒'} <b>${a.name}</b><br><span style="font-size:11px;color:#9fc4dc">${a.desc}</span></span>`
+        + `<small>+${rw}</small></div>`;
+    }
+    achModal.body.innerHTML = html;
+  }
+
   const menuEl = document.getElementById('menu3d');
   if (menuEl) {
     [['📖 Journal', journal, fillJournal],
+     ['🏆', achModal, fillAch],
      ['📅 Daily', daily, fillDaily],
      ['🎉 Event', eventModal, fillEvent],
      ['⚖ Advisor', advisor, fillAdvisor],
@@ -3466,6 +3521,8 @@ export function initReefScene3D(canvas) {
     ev3 = saved.ev3 ?? null;
     dq = saved.dq ?? null;
     (saved.excl ?? []).forEach(id => exclOwned.add(id));
+    (saved.ach ?? []).forEach(id => achUnlocked.add(id));
+    sawNight = !!saved.sawNight;
   }
   ev3Init(); ev3Snapshot(); dqInit(); dqSnapshot(); refreshExclRows();
   recomputeRates(); refreshProgress(); refreshHud();
@@ -3496,7 +3553,6 @@ export function initReefScene3D(canvas) {
   let droneState = 'docked';
   const droneTarget = DOCK_POS.clone();
   const dronePos = DOCK_POS.clone();
-  const droneQueue = [];
   let speechTimer = 0;
   let flavorTimer = 30 + Math.random() * 45;
   let droneReady = false;          // suppress triggers fired during restore
@@ -3873,6 +3929,7 @@ export function initReefScene3D(canvas) {
     const nTarget = clamp(-elevation * 1.6, 0, 1);
     nightFactor += (nTarget - nightFactor) * Math.min(1, dt / 0.6);
     const nf = nightFactor;
+    if (!sawNight && nf > 0.9) { sawNight = true; checkAch(); }
     sun.intensity = 1.7 - nf * 1.35;
     sun.color.copy(SUN_DAY).lerp(SUN_NIGHT, nf);
     hemi.intensity = 1.05 - nf * 0.65;
