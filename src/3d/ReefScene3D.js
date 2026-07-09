@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EVENT_SCHEDULE, eventDaysRemaining } from '../systems/EventSystem.js';
+import { CHALLENGE_POOL } from '../systems/QuestSystem.js';
 import {
   CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, BE_PER_TICK,
   START_BE, START_POLYPS, START_PEARLS, START_HARMONY, START_LEVEL,
@@ -2282,6 +2283,7 @@ export function initReefScene3D(canvas) {
   const seen = new Set();     // journal — every species ever placed (saved)
   const exclOwned = new Set();   // event-pass exclusive species owned (saved)
   let ev3 = null;                // live event progress (saved)
+  let dq = null;                 // today's daily quest (saved)
   let be = START_BE, polyps = START_POLYPS, pearls = START_PEARLS;
   let harmony = START_HARMONY, level = START_LEVEL;
   let timeOfDay = 0.3, nightFactor = 0;   // day/night cycle (saved)
@@ -2449,7 +2451,7 @@ export function initReefScene3D(canvas) {
   }
 
   // Recompute reef-composition stats after any placement/removal.
-  function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); ev3Snapshot(); onProgress(); }
+  function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); ev3Snapshot(); dqSnapshot(); onProgress(); }
 
   function tryUpgrade(group) {
     const e = group.userData.entry;
@@ -2614,7 +2616,7 @@ export function initReefScene3D(canvas) {
         be, polyps, pearls, harmony, level, timeOfDay,
         corals: placedCorals, fish: placedFish, seen: [...seen], exp: expansions,
         eggs: [...eggsClaimed], stations: placedStations,
-        ev3, excl: [...exclOwned] }));
+        ev3, excl: [...exclOwned], dq }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -3197,6 +3199,66 @@ export function initReefScene3D(canvas) {
     refreshHud(); save();
   }
 
+  // ── Daily quests — Classic's date-seeded trio, in 3D ─────────────────────────
+  // Same pool and tiering as Classic (idle-streak skipped: 3D has no idle
+  // bonus). Claiming pays the combined reward and adds one event token.
+  function dqGenerate() {
+    const today = EV_TODAY();
+    const tier = Math.min(2, Math.floor((level - 1) / 3));
+    let seed = 0;
+    for (let i = 0; i < today.length; i++) seed = (seed * 31 + today.charCodeAt(i)) >>> 0;
+    const pool = CHALLENGE_POOL.filter(d => d.type !== 'idle_streak');
+    const picked = [];
+    while (picked.length < 3 && pool.length > 0) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      picked.push(pool.splice(seed % pool.length, 1)[0]);
+    }
+    return {
+      date: today, claimed: false,
+      challenges: picked.map(def => ({
+        type: def.type,
+        label: def.labels[tier].replace('{n}', def.targets[tier]),
+        target: def.targets[tier],
+        progress: 0,
+      })),
+      reward: {
+        be: picked.reduce((s, d) => s + (d.be?.[tier] ?? 0), 0),
+        pearls: picked.reduce((s, d) => s + (d.pearls?.[tier] ?? 0), 0),
+      },
+    };
+  }
+  function dqInit() {
+    if (!dq || dq.date !== EV_TODAY()) dq = dqGenerate();
+  }
+  function dqRecord(type, amount = 1) {
+    if (!dq || dq.claimed || dq.date !== EV_TODAY()) return;
+    for (const c of dq.challenges) {
+      if (c.type === type) c.progress = Math.min(c.target, c.progress + amount);
+    }
+  }
+  function dqSnapshot() {
+    if (!dq || dq.claimed) return;
+    for (const c of dq.challenges) {
+      let val = null;
+      if (c.type === 'reach_harmony') val = Math.round(harmony);
+      if (c.type === 'have_fish') val = placedFish.length;
+      if (c.type === 'have_coral') val = placedCorals.length;
+      if (val != null) c.progress = Math.max(c.progress, Math.min(c.target, val));
+    }
+  }
+  const dqComplete = () =>
+    !!dq && dq.challenges.every(c => c.progress >= c.target);
+  function dqClaim() {
+    if (!dq || dq.claimed || !dqComplete()) return;
+    dq.claimed = true;
+    if (dq.reward.be) be = Math.min(be + dq.reward.be, beMax);
+    if (dq.reward.pearls) pearls += dq.reward.pearls;
+    // Classic parity: each daily claim feeds one bonus event token.
+    if (ev3 && ev3Live()) { ev3.tokens += 1; ev3GrantTiers(); }
+    flash(rateEl, `+${dq.reward.be} 🫧${dq.reward.pearls ? ` +${dq.reward.pearls} 💎` : ''}`, '#7fd8b0');
+    refreshHud(); save();
+  }
+
   function ev3ClaimReward() {
     const def = ev3Def();
     if (!ev3 || !def || ev3.rewardClaimed || ev3.setsClaimed.length < def.questSets.length) return;
@@ -3329,9 +3391,35 @@ export function initReefScene3D(canvas) {
     }
   }
 
+  // 📅 Daily quests — three date-seeded challenges, fresh every day.
+  const daily = buildMenuModal('📅 Daily Quests');
+  function fillDaily() {
+    dqInit(); dqSnapshot();
+    let html = `<div class="m-sub">${dq.date} — three tasks, one bundle. Resets at midnight.</div>`;
+    dq.challenges.forEach(c => {
+      const p = Math.floor(c.progress);
+      html += `<div class="m-row"><span>${p >= c.target ? '✅' : '▫️'} ${c.label}</span>`
+        + `<small>${Math.min(p, c.target)} / ${c.target}</small></div>`;
+    });
+    html += `<div class="m-row"><span>Reward</span><small>+${dq.reward.be} 🫧`
+      + `${dq.reward.pearls ? ` +${dq.reward.pearls} 💎` : ''}`
+      + `${ev3 && ev3Live() ? ' +1 🎟' : ''}</small></div>`;
+    daily.body.innerHTML = html;
+    const claim = document.createElement('button');
+    claim.className = 'shop-pack';
+    claim.innerHTML = dq.claimed
+      ? '<span>✅ Claimed — back tomorrow</span><span>—</span>'
+      : `<span>Claim daily reward</span><span>+${dq.reward.be} 🫧</span>`;
+    claim.disabled = dq.claimed || !dqComplete();
+    claim.style.opacity = claim.disabled ? 0.45 : 1;
+    claim.onclick = () => { dqClaim(); fillDaily(); };
+    daily.body.append(claim);
+  }
+
   const menuEl = document.getElementById('menu3d');
   if (menuEl) {
     [['📖 Journal', journal, fillJournal],
+     ['📅 Daily', daily, fillDaily],
      ['🎉 Event', eventModal, fillEvent],
      ['⚖ Advisor', advisor, fillAdvisor],
      ['⭐ Progress', progress, fillProgress]].forEach(([text, modal, fill]) => {
@@ -3376,9 +3464,10 @@ export function initReefScene3D(canvas) {
     (saved.seen ?? []).forEach(id => seen.add(id));
     (saved.eggs ?? []).forEach(id => eggsClaimed.add(id));
     ev3 = saved.ev3 ?? null;
+    dq = saved.dq ?? null;
     (saved.excl ?? []).forEach(id => exclOwned.add(id));
   }
-  ev3Init(); ev3Snapshot(); refreshExclRows();
+  ev3Init(); ev3Snapshot(); dqInit(); dqSnapshot(); refreshExclRows();
   recomputeRates(); refreshProgress(); refreshHud();
   refreshExpMarkers(); refreshZoneLocks();
 
@@ -3654,7 +3743,7 @@ export function initReefScene3D(canvas) {
       if (!charge(selected.spec, CORAL_COST)) return;
       addCoral(selected.spec, t);
       if (placedCorals.length === 1) droneTrigger('firstCoral');
-      ev3Record('place_coral');
+      ev3Record('place_coral'); dqRecord('place_coral');
       recomputeRates(); refreshProgress(); refreshHud(); save();
     } else if (selected.type === 'station') {
       const t = ray.intersectObjects(tiles, false)[0]?.object;
@@ -3678,7 +3767,7 @@ export function initReefScene3D(canvas) {
       const g = attachFish(selected.spec, st, true);
       const rec = fishSaveData(st); placedFish.push(rec); g.userData.saveRef = rec;
       if (placedFish.length === 1) droneTrigger('firstFish');
-      ev3Record('hatch_fish');
+      ev3Record('hatch_fish'); dqRecord('hatch_fish');
       refreshProgress(); refreshHud(); save();
     }
   }
@@ -3775,6 +3864,7 @@ export function initReefScene3D(canvas) {
     be = Math.min(be + incomePerSec * dt, beMax);
     polyps = Math.min(polyps + polypPerSec * dt, POLYP_MAX);
     ev3Record('earn_be', incomePerSec * dt);
+    dqRecord('earn_be', incomePerSec * dt);
     refreshHud();
 
     // Day/night — Classic's cycle: darken and cool the water, light the biolums.

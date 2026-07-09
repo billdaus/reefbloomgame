@@ -3,7 +3,7 @@ import { BE_MAX } from '../constants.js';
 
 // ── Challenge pool ────────────────────────────────────────────────────────────
 
-const CHALLENGE_POOL = [
+export const CHALLENGE_POOL = [
   {
     type: 'place_coral',
     labels:  ['Place {n} coral', 'Place {n} coral', 'Place {n} coral'],
