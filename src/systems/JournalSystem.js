@@ -383,3 +383,6 @@ export function getUnlockedCount(category = null) {
 export function getTotalCount(category = null) {
   return getEntries(category).length;
 }
+
+// Merged lore map for the 3D journal (coral and fish ids never collide).
+export const SPECIES_LORE = { ...CORAL_LORE, ...FISH_LORE };

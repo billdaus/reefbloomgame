@@ -12,12 +12,13 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EVENT_SCHEDULE, eventDaysRemaining } from '../systems/EventSystem.js';
 import { CHALLENGE_POOL } from '../systems/QuestSystem.js';
+import { SPECIES_LORE } from '../systems/JournalSystem.js';
 import {
   CORAL_SPECIES, FISH_SPECIES, CORAL_COST, FISH_COST, BE_PER_TICK,
   START_BE, START_POLYPS, START_PEARLS, START_HARMONY, START_LEVEL,
   BE_MAX, POLYP_MAX, POLYP_BE_BONUS, POLYP_PER_CORAL_TICK, CORAL_MAX_LEVEL, TICK_MS,
   BIOMES, SEAGRASS_UNLOCK_LEVEL, DEEP_TWILIGHT_UNLOCK_LEVEL,
-  DECOR_SPECIES, STATION_MAX_LEVEL, stationUpgradeCost,
+  DECOR_SPECIES, STATION_MAX_LEVEL, stationUpgradeCost, TIER_LABEL, COLORS,
   CLEAN_COOLDOWN_MS, CLEANING_ASSIGN_INTERVAL,
   CLEANING_HARMONY_PER, CLEANING_HARMONY_MAX, CLEANING_MISSING_PENALTY,
   BIOLUM_SPECIES, DAY_HIDER_SPECIES,
@@ -2640,7 +2641,9 @@ export function initReefScene3D(canvas) {
 
   function refreshHud() {
     if (beEl) beEl.textContent = Math.floor(be);
-    if (rateEl) rateEl.textContent = `+${incomePerSec.toFixed(1)}/s`;
+    if (rateEl && !(performance.now() < Number(rateEl.dataset.flashUntil ?? 0))) {
+      rateEl.textContent = `+${incomePerSec.toFixed(1)}/s`;
+    }
     if (hmEl) hmEl.textContent = Math.round(harmony);
     if (lvlEl) lvlEl.textContent = level;
     if (polypEl) polypEl.textContent = Math.floor(polyps);
@@ -2672,7 +2675,7 @@ export function initReefScene3D(canvas) {
   }
 
   const rows = [];   // { btn, need }  for lock refresh
-  function clearSel() { rows.forEach(r => r.btn.classList.remove('sel')); }
+  let clearSel = () => { rows.forEach(r => r.btn.classList.remove('sel')); };
 
   function label(text) {
     const l = document.createElement('div');
@@ -2727,6 +2730,25 @@ export function initReefScene3D(canvas) {
     clearSel();
   };
   paletteEl.appendChild(removeBtn);
+
+  // 🍤 Feed mode — click the water to scatter flakes; the reef mobs them.
+  const feedBtn = document.createElement('button');
+  feedBtn.className = 'coral-btn';
+  feedBtn.innerHTML = '🍤 Feed';
+  feedBtn.onclick = () => {
+    if (selected.type === 'feed') {
+      selected = { type: 'coral', spec: coralSpecs.find(s => !s.utility && !s.pearlCost) };
+      feedBtn.classList.remove('sel');
+    } else {
+      selected = { type: 'feed' };
+      removeBtn.classList.remove('on');
+      clearSel();
+      feedBtn.classList.add('sel');
+    }
+  };
+  paletteEl.appendChild(feedBtn);
+  const clearSelBase = clearSel;
+  clearSel = (...a) => { feedBtn.classList.remove('sel'); return clearSelBase(...a); };
 
   // Species grouped by home biome, mirroring Classic's per-biome shop.
   const stdCorals = coralSpecs.filter(s => !s.utility && !s.pearlCost);
@@ -2867,21 +2889,25 @@ export function initReefScene3D(canvas) {
     journalTabs.appendChild(b);
   });
   journal.head.appendChild(journalTabs);
-  function journalRow(spec, type) {
-    const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+  // A journal entry: tier dot + name, scientific name and field notes once the
+  // species has been recorded, biome icons and a tier badge on the right.
+  function journalRow(spec) {
     const found = seen.has(spec.id);
-    const locked = need > level;
-    const count = type === 'coral'
-      ? placedCorals.filter(e => e.id === spec.id).length
-      : placedFish.filter(f => f.id === spec.id).length;
-    const status = found ? (count ? `×${count} in reef` : '✓ discovered')
-      : locked ? `🔒 Lv${need}` : 'not yet placed';
-    const zones = Object.keys(ZONES).filter(id => matchesBiome(spec, id));
-    return `<div class="m-row${locked && !found ? ' locked' : ''}">`
-      + `<span class="dot" style="background:${hex(spec.color)}"></span>`
-      + `<span>${found || !locked ? spec.name : '???'}`
-      + ` ${zones.map(id => BIOMES[id].icon).join('')}</span>`
-      + `<small>${status}</small></div>`;
+    const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+    const tierCol = hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5);
+    const badge = `<span style="font-size:9px;letter-spacing:1px;color:${tierCol};`
+      + `border:1px solid ${tierCol};border-radius:4px;padding:1px 4px">`
+      + `${TIER_LABEL[spec.tier] ?? '?'}</span>`;
+    const sci = found && spec.scientific
+      ? ` <i style="color:#9fc4dc;font-weight:400">${spec.scientific}</i>` : '';
+    const note = found
+      ? (SPECIES_LORE[spec.id] ?? 'A specimen of the reef.')
+      : need > level ? `🔒 Unlocks at Lv${need}.` : 'Place one to record it.';
+    return `<div class="m-row${found ? '' : ' locked'}" style="align-items:flex-start">`
+      + `<span class="dot" style="background:${tierCol};margin-top:3px"></span>`
+      + `<span style="flex:1;min-width:0">${found ? spec.name : '???'}${sci}`
+      + `<span style="display:block;font-size:10.5px;line-height:1.35;color:#8fb4c9">${note}</span></span>`
+      + `<small style="margin-top:2px">${biomeIcons(spec)} ${badge}</small></div>`;
   }
   function fillJournal() {
     const cs = coralSpecs, fs = fishSpecs;
@@ -2889,14 +2915,33 @@ export function initReefScene3D(canvas) {
     const found = all.filter(s => seen.has(s.id)).length;
     journal.ov.querySelector('.m-sub')?.remove();
     journal.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
-      `<div class="m-sub">Discovered ${found} of ${all.length} species — place one to record it.</div>`);
+      `<div class="m-sub">${found} of ${all.length} species recorded${bar(found, all.length)}</div>`);
+    const group = (specs, label) => ['coral', 'seagrass', 'deepTwilight'].map(zid => {
+      const here = specs.filter(s => primaryBiome(s) === zid);
+      return here.length
+        ? `<div class="m-sec">${label} · ${BIOMES[zid].icon} ${BIOMES[zid].name}</div>`
+          + here.map(journalRow).join('')
+        : '';
+    }).join('');
     let html = '';
-    if (journalTab !== 'fish') {
-      html += '<div class="m-sec">Coral & structures</div>'
-        + cs.map(s => journalRow(s, 'coral')).join('');
-    }
-    if (journalTab !== 'coral') {
-      html += '<div class="m-sec">Fish</div>' + fs.map(s => journalRow(s, 'fish')).join('');
+    if (journalTab !== 'fish') html += group(cs, 'Coral');
+    if (journalTab !== 'coral') html += group(fs, 'Fish');
+    // Event exclusives — recorded ones get full entries; the rest stay a mystery.
+    const excl = [
+      ...Object.values(CORAL_SPECIES).filter(s => s.eventId && s.color != null),
+      ...Object.values(FISH_SPECIES).filter(s => s.eventId && s.color != null && s.layer),
+    ];
+    if (excl.length) {
+      const owned = excl.filter(s => seen.has(s.id));
+      const hidden = excl.length - owned.length;
+      html += '<div class="m-sec">Event exclusives · 🎉</div>' + owned.map(journalRow).join('');
+      if (hidden > 0) {
+        html += `<div class="m-row locked"><span class="dot" style="background:#546e7a"></span>`
+          + `<span style="flex:1;min-width:0">???`
+          + `<span style="display:block;font-size:10.5px;line-height:1.35;color:#8fb4c9">`
+          + `${hidden} event ${hidden === 1 ? 'species remains' : 'species remain'} hidden — `
+          + `earn ${hidden === 1 ? 'it' : 'them'} in seasonal events.</span></span></div>`;
+      }
     }
     journal.body.innerHTML = html;
   }
@@ -3308,6 +3353,22 @@ export function initReefScene3D(canvas) {
     refreshHud(); save();
   }
 
+  // ── Petting — every family has its own way of saying "again, please" ─────────
+  function petFish(f) {
+    const id = f.id;
+    const nowMs = performance.now();
+    if (f.petCd && nowMs < f.petCd) return;
+    f.petCd = nowMs + 1200;
+    let kind = 'wiggle';
+    if (id === 'pufferfish') kind = 'puff';
+    else if (['octopus', 'rubyOctopus', 'giantSquid', 'cuttlefish'].includes(id)) kind = 'ink';
+    else if (id === 'seaOtter') kind = 'roll';
+    f.react = { kind, start: nowMs, until: nowMs + 1500 };
+    heartBurst(f.g.position, 3);
+    if (kind === 'ink') inkCloud(f.g.position);
+    if (Math.random() < 0.12) droneTrigger('tapped');
+  }
+
   // ── Cleaning assignment — Classic's rhythm, real-time pacing ─────────────────
   // Every beat: cleaners take up post at their nearest station, and each
   // station with a free slot (capacity = level) invites the closest fish that
@@ -3347,7 +3408,7 @@ export function initReefScene3D(canvas) {
         if (d < bd) { bd = d; best = f; }
       }
       if (best) {
-        best.clean = { s, until: nowMs + CLEAN_DURATION_MS, slot: s.userData.clients.length };
+        best.clean = { s, until: null, slot: s.userData.clients.length };
         s.userData.clients.push(best);
       }
     }
@@ -3542,9 +3603,19 @@ export function initReefScene3D(canvas) {
 
   // Speak positions hover over the home reef, where the camera usually looks.
   const SPEAK_POS = [
+    // Coral Reef
     new THREE.Vector3(0, 4.5, 2), new THREE.Vector3(-4, 3.8, -4),
     new THREE.Vector3(6, 4.2, -3), new THREE.Vector3(3, 4.6, 5),
     new THREE.Vector3(-6, 4, 4),
+    // Seagrass flats
+    new THREE.Vector3(-28, 4.2, 3), new THREE.Vector3(-36, 3.6, -5),
+    new THREE.Vector3(-32, 5, 8),
+    // Twilight shelf
+    new THREE.Vector3(28, 2.5, -4), new THREE.Vector3(36, 3.2, 5),
+    new THREE.Vector3(42, 4, -10),                    // near the vent
+    // Up along the surface and over toward the beach
+    new THREE.Vector3(-12, SURFACE_Y - 1.2, 6), new THREE.Vector3(-52, SURFACE_Y - 1.5, -8),
+    new THREE.Vector3(-58, 8, 12),                    // shoreline shallows
   ];
   const speechEl = document.createElement('div');
   speechEl.id = 'bubbles-speech';
@@ -3570,17 +3641,54 @@ export function initReefScene3D(canvas) {
     speechEl.style.display = 'block';
     speechTimer = Math.min(Math.max(text.length * 0.052, 2.5), 6);   // read time
   }
+  // Napping — Bubbles picks a free tile, lands, and blocks it until it wakes.
+  let napTile = null, napTimer = 0;
+  function droneWake(grumpy = false) {
+    if (napTile) { napTile.userData.occupied = false; napTile.userData.napped = false; }
+    napTile = null;
+    drone.rotation.z = 0;
+    if (grumpy) droneQueue.push('I was DEFRAGMENTING. Fine. The tile is yours.');
+    droneState = 'returning';
+    droneTarget.copy(DOCK_POS);
+  }
   function droneUpdate(dt, t, nf) {
     if (droneState === 'docked' && droneQueue.length === 0) {
       flavorTimer -= dt;
       if (flavorTimer <= 0) {
         flavorTimer = 45 + Math.random() * 45;
-        droneTrigger('flavor');
+        // Sometimes, instead of a quip, Bubbles just... goes to sleep on a tile.
+        if (Math.random() < 0.35) {
+          const free = tiles.filter(tl => !tl.userData.occupied && zoneUnlocked(tl.userData.biome));
+          if (free.length) {
+            napTile = free[Math.floor(Math.random() * free.length)];
+            napTile.userData.occupied = true;
+            napTile.userData.napped = true;
+            droneState = 'toNap';
+            droneTarget.set(napTile.position.x, napTile.position.y + 0.55, napTile.position.z);
+          }
+        } else {
+          droneTrigger('flavor');
+        }
       }
+    }
+    if (droneState === 'napping') {
+      napTimer -= dt;
+      drone.rotation.z = 0.42 + Math.sin(t * 0.9) * 0.03;   // keeled over, snoring
+      if (droneQueue.length || napTimer <= 0) droneWake(false);
     }
     if (droneState === 'docked' && droneQueue.length > 0) {
       droneState = 'floating';
       droneTarget.copy(SPEAK_POS[Math.floor(Math.random() * SPEAK_POS.length)]);
+    } else if (droneState === 'toNap') {
+      const step = 5.5 * dt;
+      const d = droneTarget.distanceTo(dronePos);
+      if (d < Math.max(step, 0.25)) {
+        dronePos.copy(droneTarget);
+        droneState = 'napping';
+        napTimer = 35 + Math.random() * 35;
+      } else {
+        dronePos.lerp(droneTarget, step / d);
+      }
     } else if (droneState === 'floating' || droneState === 'returning') {
       const step = 5.5 * dt;
       const d = droneTarget.distanceTo(dronePos);
@@ -3758,7 +3866,11 @@ export function initReefScene3D(canvas) {
     };
 
     // Poking Bubbles takes priority — it has sensors, and feelings.
-    if (castOne(drone)) { droneTrigger('tapped'); return; }
+    if (castOne(drone)) {
+      if (droneState === 'napping') droneWake(true);
+      else droneTrigger('tapped');
+      return;
+    }
 
     // Expansion plots: tap a "＋" marker to buy that 5×5 patch with polyps.
     const eHit = castAll(expMarkers.filter(m => m.visible));
@@ -3778,6 +3890,16 @@ export function initReefScene3D(canvas) {
       return;
     }
 
+    // Petting: tap a fish and it reacts in character.
+    {
+      const fHit = castAll(fishes.map(f => f.g), true);
+      if (fHit) {
+        const g = ancestorWith(fHit, 'stateRef');
+        const st = g?.userData.stateRef;
+        if (st) { petFish(st); return; }
+      }
+    }
+
     // Tap a station or placed coral for its upgrade menu — before placement.
     const stHit = castAll(stationGroups, true);
     if (stHit) {
@@ -3794,6 +3916,7 @@ export function initReefScene3D(canvas) {
     setFrom(pts[0]);
     if (selected.type === 'coral') {
       const t = ray.intersectObjects(tiles, false)[0]?.object;
+      if (t?.userData.napped) { flash(rateEl, 'Bubbles is napping there 💤'); return; }
       if (!t || t.userData.occupied) return;
       if (!zoneCheck(selected.spec, t.userData.biome)) return;
       if (!charge(selected.spec, CORAL_COST)) return;
@@ -3813,6 +3936,14 @@ export function initReefScene3D(canvas) {
       if (!charge(selected.spec, {})) return;
       addStation(b, c, r, 1);
       refreshProgress(); refreshHud(); save();
+    } else if (selected.type === 'feed') {
+      const hit = ray.intersectObject(floor, false)[0];
+      if (!hit) return;
+      const nowMs = performance.now();
+      if (nowMs < feedCd) { flash(rateEl, 'the flakes are still settling'); return; }
+      feedCd = nowMs + 2500;
+      dropFood(hit.point.x, hit.point.z,
+        Math.min(hit.point.y + 5, SURFACE_Y - 1.2));
     } else {
       const hit = ray.intersectObject(floor, false)[0];
       if (!hit) return;
@@ -3896,6 +4027,56 @@ export function initReefScene3D(canvas) {
     opacity: 0.8, depthWrite: false, sizeAttenuation: true }));
   scene.add(bubbles);
 
+  // Food pellets — dropped in feed mode, they sink and get mobbed.
+  const PELLET_N = 24;
+  const pellets = [];             // { x, y, z }
+  const pelletGeo = new THREE.BufferGeometry();
+  pelletGeo.setAttribute('position',
+    new THREE.BufferAttribute(new Float32Array(PELLET_N * 3).fill(-100), 3));
+  const pelletPts = new THREE.Points(pelletGeo, new THREE.PointsMaterial({
+    map: bubbleSprite, color: 0xd8a05a, size: 0.16, transparent: true,
+    opacity: 0.95, depthWrite: false, sizeAttenuation: true }));
+  scene.add(pelletPts);
+  let feedCd = 0;
+  function dropFood(x, z, y) {
+    for (let i = 0; i < 8 && pellets.length < PELLET_N; i++) {
+      pellets.push({
+        x: x + (Math.random() - 0.5) * 1.6,
+        y: y + Math.random() * 0.6,
+        z: z + (Math.random() - 0.5) * 1.6,
+      });
+    }
+  }
+
+  // Hearts — a little affection burst when a fish gets petted or fed.
+  const HEART_N = 16;
+  const hearts = [];              // { x, y, z, until }
+  const heartGeo = new THREE.BufferGeometry();
+  heartGeo.setAttribute('position',
+    new THREE.BufferAttribute(new Float32Array(HEART_N * 3).fill(-100), 3));
+  const heartPts = new THREE.Points(heartGeo, new THREE.PointsMaterial({
+    map: bubbleSprite, color: 0xff8fb3, size: 0.3, transparent: true,
+    opacity: 0.9, depthWrite: false, sizeAttenuation: true }));
+  scene.add(heartPts);
+  function heartBurst(p, n = 3) {
+    const nowMs = performance.now();
+    for (let i = 0; i < n; i++) {
+      hearts.push({ x: p.x + (Math.random() - 0.5) * 0.5, y: p.y + 0.3 + i * 0.15,
+        z: p.z + (Math.random() - 0.5) * 0.5, until: nowMs + 1400 });
+      if (hearts.length > HEART_N) hearts.shift();
+    }
+  }
+
+  // Ink clouds — startled cephalopods leave one behind.
+  const inkClouds = [];           // { mesh, until }
+  function inkCloud(p) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.4, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0x101018, transparent: true, opacity: 0.55, roughness: 1, depthWrite: false }));
+    m.position.copy(p);
+    scene.add(m);
+    inkClouds.push({ mesh: m, until: performance.now() + 2600 });
+  }
+
   // Cleaning sparkles — golden glints orbiting each fish mid-scrub.
   const SPARK_N = 48;
   const sparkGeo = new THREE.BufferGeometry();
@@ -3970,11 +4151,20 @@ export function initReefScene3D(canvas) {
       s.avx = vx / n; s.avy = vy / n; s.avz = vz / n;
       const dx = s.tx - s.cx, dy = s.ty - s.cy, dz = s.tz - s.cz;
       if (t > s.until || dx * dx + dy * dy + dz * dz < 4) newSchoolTarget(s, t);
+      if (pellets.length) {
+        // Feeding frenzy: the whole school breaks for the nearest flakes.
+        let best = null, bd = 900;
+        for (const pl of pellets) {
+          const d = (s.cx - pl.x) ** 2 + (s.cy - pl.y) ** 2 + (s.cz - pl.z) ** 2;
+          if (d < bd) { bd = d; best = pl; }
+        }
+        if (best) { s.tx = best.x; s.ty = best.y; s.tz = best.z; s.until = t + 1; }
+      }
     }
     const frameMs = performance.now();
     for (const f of fishes) {
       // Cleaning visit ends when the timer (or the station) is gone.
-      if (f.clean && (frameMs > f.clean.until || !stationGroups.includes(f.clean.s))) {
+      if (f.clean && ((f.clean.until && frameMs > f.clean.until) || !stationGroups.includes(f.clean.s))) {
         const ci = f.clean.s.userData?.clients?.indexOf(f);
         if (ci >= 0) f.clean.s.userData.clients.splice(ci, 1);
         f.cleanCd = frameMs + CLEAN_COOLDOWN_MS;
@@ -3989,16 +4179,47 @@ export function initReefScene3D(canvas) {
       else if (!wantsHide && f.home) releaseHome(f);
       const slow = wantsHide && !f.home ? 0.35 : 1;
       if (f.clean) {
-        // Settle at the station's tendrils and hold still for the scrub.
+        // Travel like a fish, not a ghost: rise to cruising height, swim over
+        // the reef to the station, then drop onto a tendril slot and scrub.
         const s = f.clean.s;
         const a = f.clean.slot * 2.1 + 0.7;
-        const tx = s.position.x + Math.cos(a) * 1.4;
-        const tz = s.position.z + Math.sin(a) * 1.4;
-        const ty = s.position.y + 1.0 + Math.sin(t * 1.4 + f.phase) * 0.08;
-        const k = Math.min(1, dt * 1.6);
+        const slotX = s.position.x + Math.cos(a) * 1.4;
+        const slotZ = s.position.z + Math.sin(a) * 1.4;
         const cur = f.g.position;
-        cur.set(cur.x + (tx - cur.x) * k, cur.y + (ty - cur.y) * k, cur.z + (tz - cur.z) * k);
-        f.g.rotation.x *= 0.9;
+        const spd = f.spd ?? (0.6 + (FISH_SPECIES[f.id]?.speed ?? 1) * 0.9);
+        f.clean.phase ??= 'cruise';
+        if (f.clean.phase === 'cruise') {
+          // Waypoint above the slot, high enough to clear coral and rockwork.
+          const cruiseY = Math.max(cur.y, s.position.y + 3.2);
+          const dx = slotX - cur.x, dy = cruiseY - cur.y, dz = slotZ - cur.z;
+          const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          const step = Math.min(spd * 1.15 * dt, d);
+          if (d > 0.001) {
+            cur.set(cur.x + (dx / d) * step, cur.y + (dy / d) * step, cur.z + (dz / d) * step);
+            const want = Math.atan2(dx, dz);
+            let dh = want - f.g.rotation.y;
+            while (dh > Math.PI) dh -= Math.PI * 2;
+            while (dh < -Math.PI) dh += Math.PI * 2;
+            f.g.rotation.y += dh * Math.min(1, dt * 2.2);
+            f.g.rotation.x = -Math.asin(clamp(dy / Math.max(d, 0.001), -1, 1)) * 0.4;
+          }
+          if (dx * dx + dz * dz < 0.5) f.clean.phase = 'descend';
+        } else if (f.clean.phase === 'descend') {
+          const ty = s.position.y + 1.0;
+          const k = Math.min(1, dt * 1.8);
+          cur.set(cur.x + (slotX - cur.x) * k, cur.y + (ty - cur.y) * k, cur.z + (slotZ - cur.z) * k);
+          f.g.rotation.x *= 0.88;
+          if (Math.abs(cur.y - ty) < 0.25) {
+            f.clean.phase = 'scrub';
+            f.clean.until = frameMs + CLEAN_DURATION_MS;   // the clock starts at the chair
+          }
+        } else {
+          // Scrubbing: hold the slot with a gentle hover.
+          const ty = s.position.y + 1.0 + Math.sin(t * 1.4 + f.phase) * 0.08;
+          const k = Math.min(1, dt * 2);
+          cur.set(cur.x + (slotX - cur.x) * k, cur.y + (ty - cur.y) * k, cur.z + (slotZ - cur.z) * k);
+          f.g.rotation.x *= 0.9;
+        }
         if (f.px !== undefined) { f.px = cur.x; f.py = cur.y; f.pz = cur.z; }
       } else if (f.home) {
         // Settle beside the shelter with a gentle hover.
@@ -4111,6 +4332,18 @@ export function initReefScene3D(canvas) {
         if (ud.tailAxis === 'x') ud.tail.rotation.x = Math.sin(t * 4.5 + f.phase) * 0.28;
         else ud.tail.rotation.y = Math.sin(t * 7 + f.phase) * 0.5;
       }
+      // Petting reactions overlay whatever the fish was doing.
+      if (f.react) {
+        if (frameMs > f.react.until) {
+          if (f.react.kind === 'roll') f.g.rotation.z = 0;
+          f.react = null;
+        } else {
+          const p = (frameMs - f.react.start) / (f.react.until - f.react.start);
+          if (f.react.kind === 'wiggle') f.g.rotation.y += Math.sin(p * 22) * 0.4 * (1 - p);
+          if (f.react.kind === 'ink') f.g.rotation.y += Math.sin(p * 30) * 0.25 * (1 - p);
+          if (f.react.kind === 'roll') f.g.rotation.z = p * Math.PI * 2;   // barrel roll
+        }
+      }
       // Nocturnal crevice-dwellers tuck away by day — visibly nestled at a
       // grotto if one has room, otherwise vanished into an unseen crevice.
       // Homed sleepers settle slightly smaller; everyone else stays full size.
@@ -4118,8 +4351,11 @@ export function initReefScene3D(canvas) {
         const k = f.home ? 0.45 + 0.55 * nf : 0.06 + 0.94 * nf;
         f.g.scale.setScalar(ud.baseScale * k);
       } else {
-        const target = ud.baseScale * (f.home ? 0.8 : 1);
-        f.g.scale.setScalar(f.g.scale.x + (target - f.g.scale.x) * Math.min(1, dt * 2));
+        const puff = f.react?.kind === 'puff'
+          ? 1 + Math.sin(Math.min(1, (frameMs - f.react.start) / (f.react.until - f.react.start)) * Math.PI) * 0.4
+          : 1;
+        const target = ud.baseScale * (f.home ? 0.8 : 1) * puff;
+        f.g.scale.setScalar(f.g.scale.x + (target - f.g.scale.x) * Math.min(1, dt * (puff > 1 ? 8 : 2)));
       }
       if (f.g.userData.glowMat) f.g.userData.glowMat.emissiveIntensity = nf * 0.9;
     }
@@ -4204,6 +4440,64 @@ export function initReefScene3D(canvas) {
     }
     sposArr.needsUpdate = true;
 
+    // Food: flakes sink, roamers divert to them, anyone close enough eats.
+    for (let i = pellets.length - 1; i >= 0; i--) {
+      const pl = pellets[i];
+      pl.y -= 0.38 * dt;
+      if (pl.y < terrainHeight(pl.x, pl.z) + 0.2) { pellets.splice(i, 1); continue; }
+      for (const f of fishes) {
+        if (f.benthic || f.home || f.clean) continue;
+        const dp = f.g.position;
+        const dx = dp.x - pl.x, dy = dp.y - pl.y, dz = dp.z - pl.z;
+        if (dx * dx + dy * dy + dz * dz < 0.55) {
+          be = Math.min(be + 1, beMax);
+          heartBurst(pl, 1);
+          pellets.splice(i, 1);
+          break;
+        }
+      }
+    }
+    if (pellets.length) {
+      for (const f of fishes) {
+        if (!f.roam || f.home || f.clean) continue;
+        let best = null, bd = 144;
+        for (const pl of pellets) {
+          const dp = f.g.position;
+          const d = (dp.x - pl.x) ** 2 + (dp.y - pl.y) ** 2 + (dp.z - pl.z) ** 2;
+          if (d < bd) { bd = d; best = pl; }
+        }
+        if (best) { f.tx = best.x; f.ty = best.y; f.tz = best.z; }
+      }
+    }
+    const ppos = pelletGeo.attributes.position;
+    for (let i = 0; i < PELLET_N; i++) {
+      if (i < pellets.length) ppos.setXYZ(i, pellets[i].x, pellets[i].y, pellets[i].z);
+      else ppos.setXYZ(i, 0, -100, 0);
+    }
+    ppos.needsUpdate = true;
+
+    // Hearts drift up and fade out; ink billows and disperses.
+    const hpos = heartGeo.attributes.position;
+    for (let i = hearts.length - 1; i >= 0; i--) {
+      hearts[i].y += 0.7 * dt;
+      if (frameMs > hearts[i].until) hearts.splice(i, 1);
+    }
+    for (let i = 0; i < HEART_N; i++) {
+      if (i < hearts.length) hpos.setXYZ(i, hearts[i].x, hearts[i].y, hearts[i].z);
+      else hpos.setXYZ(i, 0, -100, 0);
+    }
+    hpos.needsUpdate = true;
+    for (let i = inkClouds.length - 1; i >= 0; i--) {
+      const ic = inkClouds[i];
+      const left = (ic.until - frameMs) / 2600;
+      ic.mesh.scale.setScalar(1 + (1 - left) * 2.2);
+      ic.mesh.material.opacity = 0.55 * Math.max(0, left);
+      if (frameMs > ic.until) {
+        scene.remove(ic.mesh); disposeGroup(ic.mesh);
+        inkClouds.splice(i, 1);
+      }
+    }
+
     // The duck bobs on its private patch of surface, slowly rotating.
     const duck = eggs.duckRef;
     if (duck) {
@@ -4222,7 +4516,7 @@ export function initReefScene3D(canvas) {
     const spos = sparkGeo.attributes.position;
     let si = 0;
     for (const f of fishes) {
-      if (!f.clean || si > SPARK_N - 4) continue;
+      if (!f.clean || f.clean.phase !== 'scrub' || si > SPARK_N - 4) continue;
       const p = f.g.position;
       for (let k = 0; k < 4 && si < SPARK_N; k++, si++) {
         const a = t * 2.2 + k * 1.57 + f.phase;
@@ -4257,9 +4551,16 @@ export function initReefScene3D(canvas) {
 
 function flash(el, msg, color = '#ff8a80') {
   if (!el) return;
-  const prev = el.textContent;
+  // Hold the element for the flash's lifetime so the per-frame HUD refresh
+  // doesn't stomp the message before anyone can read it.
+  el.dataset.flashUntil = String(performance.now() + 1600);
   el.textContent = msg; el.style.color = color;
-  setTimeout(() => { el.textContent = prev; el.style.color = ''; }, 900);
+  setTimeout(() => {
+    if (performance.now() >= Number(el.dataset.flashUntil ?? 0)) {
+      delete el.dataset.flashUntil;
+      el.style.color = '';
+    }
+  }, 1650);
 }
 
 function disposeGroup(g) {
