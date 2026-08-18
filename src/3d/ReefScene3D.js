@@ -2386,6 +2386,52 @@ export function initReefScene3D(canvas) {
   const packFishPool = (tier) => tierFish(tier).filter(fishAvailable);
   const packCoralPool = (tier) =>
     allCorals().filter(s => s.tier === tier && !s.eventId && !s.utility && coralAvailable(s));
+
+  // ── Wild-abundance odds ──────────────────────────────────────────────────────
+  // Within a tier, species roll roughly as often as the real ocean serves
+  // them: schooling forage fish and tidepool life are weighted up; endangered
+  // and one-of-a-kind creatures are weighted down. Unlisted species weigh 1.
+  const WILD_ABUNDANCE = {
+    // superabundant schoolers & tidepool life
+    lanternfish: 3, blueChromis: 2.5, chromis: 2.5, damselfish: 2.5, hermitCrab: 2.5,
+    barnacles: 2.5, sergeantMajor: 2.2, mullet: 2.2, tidepoolCrab: 2.2, seaweed: 2.2,
+    seaLettuce: 2.2, hatchetfish: 2, cardinalfish: 2, sandDollar: 2, corallineAlgae: 2,
+    cleanerShrimp: 1.8, neonGoby: 1.8, sculpin: 1.8, seagrass: 1.8, gooseneckBarnacles: 1.8,
+    // common reef citizens
+    clownfish: 1.6, zebraGoby: 1.6, ochreStar: 1.6, fireCoral: 1.6, redSeagrass: 1.6,
+    tidepoolAnemone: 1.6, kelp: 1.6, royalGramma: 1.5, ghostGoby: 1.5, glowCleanerGoby: 1.5,
+    tropicBlenny: 1.5, zebrafish: 1.5, phantomLionfish: 1.5,   // lionfish: famously overabundant
+    starter: 1.5, yellowTang: 1.4, blueTang: 1.4, firefish: 1.4, cleanerWrasse: 1.4,
+    pajamaCardinalfish: 1.4, chiton: 1.4, brain: 1.4, toadstool: 1.4,
+    parrotfish: 1.3, opaleye: 1.3, rabbitfish: 1.3, rainbowGoby: 1.3, shrimpGoby: 1.3,
+    deepBlenny: 1.3, flamingoTongue: 1.3, finger: 1.3, sunCoral: 1.3,
+    butterflyfish: 1.2, pipefish: 1.2, dragonfish: 1.2, viperfish: 1.2, flashlightFish: 1.2,
+    seaUrchin: 1.2, lettuce: 1.2, lagoonFan: 1.2, mangroveSapling: 1.2,
+    // sparser out there
+    octopus: 1.1, cuttlefish: 1.1, rubyOctopus: 1.1, pufferfish: 1.1, bonefish: 1.1,
+    flameAngelfish: 0.9, glowfinAngelfish: 0.9, stingray: 0.9, horseshoeCrab: 0.9,
+    midnightTable: 0.9, giantMoray: 0.8, harlequinTuskfish: 0.8, fangtooth: 0.8,
+    conch: 0.8, star: 0.8, phantomPolyp: 0.8, wispCoral: 0.8,
+    mandarinfish: 0.7, blueRibbonEel: 0.7, anglerfish: 0.7,
+    barreleye: 0.6, ribbonfish: 0.6, gulperEel: 0.6, nautilus: 0.6, dolphin: 0.6,
+    abyssalRay: 0.6, rainbowCoral: 0.6, sunfire: 0.6,
+    // threatened & endangered in the real ocean
+    seahorse: 0.5, neonSeahorse: 0.5, twilightSeahorse: 0.5, shark: 0.5, lemonShark: 0.5,
+    spottedEagleRay: 0.5, staghorn: 0.5, banggaiCardinalfish: 0.4, frilledShark: 0.4,
+    seaOtter: 0.4, elkhorn: 0.4, manatee: 0.35, seaTurtle: 0.35, oarfish: 0.35,
+    napoleonWrasse: 0.3, mantaRay: 0.3, dugong: 0.3, giantSquid: 0.3,
+    twilightWhaleShark: 0.3, pillar: 0.3,
+    // one of a kind
+    gavin: 0.1,
+  };
+  const wildWeight = (s) => WILD_ABUNDANCE[s.id] ?? 1;
+  function weightedPick(pool) {
+    let total = 0;
+    for (const s of pool) total += wildWeight(s);
+    let r = Math.random() * total;
+    for (const s of pool) { r -= wildWeight(s); if (r <= 0) return s; }
+    return pool[pool.length - 1];
+  }
   // Weekly featured fish — a fixed, disclosed 25% slice of the fish roll in
   // packs of its tier. Deterministic per calendar week; nothing to save.
   function featuredFish() {
@@ -2423,10 +2469,10 @@ export function initReefScene3D(canvas) {
     // Card 2 — a free-placement voucher for any coral of the pack's tier.
     const cPool = packCoralPool(tier);
     if (cPool.length) {
-      const spec = cPool[Math.floor(Math.random() * cPool.length)];
+      const spec = weightedPick(cPool);
       vouchers[spec.id] = (vouchers[spec.id] ?? 0) + 1;
       cards.push({ icon: '🎟', title: `${spec.name} — free placement`,
-        sub: `Any ${lbl} coral can roll — yours to place free` });
+        sub: `Any ${lbl} coral can roll (wild-abundance odds) — yours to place free` });
     } else {
       const amt = rollRange(R.be); be = Math.min(be + amt, beMax);
       cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`,
@@ -2438,7 +2484,7 @@ export function initReefScene3D(canvas) {
     const fPool = packFishPool(tier);
     let spec = feat && feat.tier === tier && fishAvailable(feat) && Math.random() < 0.25
       ? feat : null;
-    if (!spec && fPool.length) spec = fPool[Math.floor(Math.random() * fPool.length)];
+    if (!spec && fPool.length) spec = weightedPick(fPool);
     if (spec) {
       packSpawnFish(spec);
       cards.push({ icon: '🐟', title: `${spec.name} joins the reef!`,
@@ -2583,7 +2629,7 @@ export function initReefScene3D(canvas) {
       const egg = nestEggs.splice(i, 1)[0];
       const pool = eggPool(egg.t);
       if (!pool.length) continue;
-      const spec = pool[Math.floor(Math.random() * pool.length)];
+      const spec = weightedPick(pool);
       packSpawnFish(spec);
       if (placedFish.length === 1) droneTrigger('firstFish');
       ev3Record('hatch_fish'); dqRecord('hatch_fish');
@@ -4073,7 +4119,7 @@ export function initReefScene3D(canvas) {
         + `60%: ${R.be[0]}–${R.be[1]} 🫧 / 40%: ${R.pearls[0]}–${R.pearls[1]} 💎`
         + ` · a free ${TIER_LABEL[tier]} coral 🎟 · `
         + (stocked
-          ? `guaranteed fish (${fp.length} species, even odds)`
+          ? `guaranteed fish (${fp.length} species, wild-abundance odds)`
           : 'no fish in your unlocked waters yet — levels and biomes stock this pack')
         + '</span></span>'
         + `<span style="display:flex;gap:6px;flex:none;margin-left:auto">${actions}</span>`
@@ -4093,7 +4139,9 @@ export function initReefScene3D(canvas) {
     html += '<div class="m-sub" style="margin-top:10px">Every level-up also mints a free'
       + ' pack, its tier climbing with your level — and MYTHIC packs are never sold:'
       + ' they mint only at level 12 and every level beyond, so the top of the ladder'
-      + ' stays skill-gated. Season Packs come only from event pass tiers.</div>';
+      + ' stays skill-gated. Season Packs come only from event pass tiers. Within a'
+      + ' tier, species odds follow real-ocean abundance: commoner creatures roll more'
+      + ' often, endangered ones stay rare here too.</div>';
     packModal.body.innerHTML = html;
   }
   function showPackReveal(cards) {
@@ -4140,14 +4188,16 @@ export function initReefScene3D(canvas) {
           + bar(et.ms - (egg.at - now), et.ms);
       });
     html += '<div class="m-sub">Speed-up is free in the last 3 minutes; before that it costs'
-      + ' 2 🫧 per remaining minute (💎 for the Premium Egg), shrinking as the clock runs.</div>';
+      + ' 2 🫧 per remaining minute (💎 for the Premium Egg), shrinking as the clock runs.'
+      + ' Within a tier, odds follow real-ocean abundance — chromis outnumber whale sharks'
+      + ' out there, and in here too.</div>';
     html += `<div class="m-sec">Market — fish eggs · ${nestEggs.length}/${NEST_CAP} nest slots used</div>`;
     for (const [id, et] of Object.entries(EGG_TYPES)) {
       const buyable = eggBuyable(id);
       const odds = id === 'premium'
         ? `70% ${TIER_LABEL.legendary} (${packFishPool('legendary').length} species)`
-          + ` / 30% ${TIER_LABEL.mythic} (${packFishPool('mythic').length}), even odds within tier`
-        : `hatches 1 of ${packFishPool(et.tier).length} ${TIER_LABEL[et.tier]} fish, even odds`;
+          + ` / 30% ${TIER_LABEL.mythic} (${packFishPool('mythic').length}), wild-abundance odds within tier`
+        : `hatches 1 of ${packFishPool(et.tier).length} ${TIER_LABEL[et.tier]} fish, wild-abundance odds`;
       html += `<div class="m-row${buyable ? '' : ' locked'}">`
         + `<span class="dot" style="background:${hex(et.color)}"></span>`
         + `<span><b>${et.name}</b><br><span style="font-size:10.5px;color:#9fc4dc">`
