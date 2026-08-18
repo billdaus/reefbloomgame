@@ -3162,8 +3162,9 @@ export function initReefScene3D(canvas) {
   const clearSelBase = clearSel;
   clearSel = (...a) => { feedBtn.classList.remove('sel'); return clearSelBase(...a); };
 
-  // Coral grouped by home biome, mirroring Classic's per-biome shop. Fish are
-  // not sold here any more — they hatch from Market eggs at the Fish Nest.
+  // Coral grouped by home biome, mirroring Classic's per-biome shop. Fish only
+  // appear here once DISCOVERED — hatched from a Market egg or granted by a
+  // pack — after which the species can be bought outright like before.
   const stdCorals = coralSpecs.filter(s => !s.utility && !s.pearlCost);
   for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
     const bio = BIOMES[zid];
@@ -3173,6 +3174,26 @@ export function initReefScene3D(canvas) {
       label(`${bio.icon} ${bio.shortName}${lv} — coral · click a tile`);
       cs.forEach(s => button(s, 'coral'));
     }
+  }
+  const fishShopRows = [];
+  let fishShopLabel = null;
+  {
+    label('🐟 Fish Shop — discovered species · click the water');
+    fishShopLabel = paletteEl.lastChild;
+    for (const s of fishSpecs.filter(s => !s.eventId)) {
+      button(s, 'fish');
+      fishShopRows.push({ id: s.id, btn: rows[rows.length - 1].btn });
+    }
+  }
+  // A species row surfaces the moment an egg or a pack first reveals it.
+  function refreshFishShop() {
+    let any = false;
+    for (const r of fishShopRows) {
+      const own = seen.has(r.id);
+      r.btn.style.display = own ? '' : 'none';
+      any = any || own;
+    }
+    if (fishShopLabel) fishShopLabel.style.display = any ? '' : 'none';
   }
   const pearlC = coralSpecs.filter(s => s.pearlCost);
   if (pearlC.length) {
@@ -3216,7 +3237,8 @@ export function initReefScene3D(canvas) {
   }
   refreshExclRows();
 
-  onProgress = () => { refreshLocks(); refreshZoneLocks(); refreshExpMarkers(); };   // sync locks with level-ups
+  // Sync locks with level-ups; the fish shop follows the discovery set.
+  onProgress = () => { refreshLocks(); refreshZoneLocks(); refreshExpMarkers(); refreshFishShop(); };
   onProgress();
 
   // ── Pearl shop (basic hook — packs grant pearls, mirroring Classic) ───────────
