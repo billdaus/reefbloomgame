@@ -21,19 +21,50 @@
       padding: 5px 10px; border-radius: 8px;
     }
     .slot-btn.active { border-color: #7fd8ff; background: rgba(20,80,120,0.7); color: #eaf6ff; }
+    /* HUD — a row of frosted-glass chips; BE and Harmony carry mini fill bars,
+       and the clock dial's ring is the day ticking by. */
     #hud {
-      position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 3;
-      display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap;
-      justify-content: center; max-width: 94vw;
-      background: rgba(0,0,0,0.38); padding: 8px 16px; border-radius: 12px;
-      color: #eaf6ff;
+      /* Centered in the strip between the Classic button and the right menu,
+         so the chips never slide under either at narrow widths. */
+      position: fixed; top: 10px; left: 120px; right: 480px; z-index: 3;
+      display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap;
+      justify-content: center; pointer-events: none;
     }
-    #hud .stat { font-size: 15px; display: inline-flex; align-items: baseline; gap: 4px; }
-    #hud .be { font-size: 20px; font-weight: 700; }
-    #hud .be::before { content: "🫧 "; }
-    #hud .rate { font-size: 12px; color: #7fd8b0; margin-left: 4px; }
-    #hud .shop { cursor: pointer; }
-    #hud .shop:hover { color: #bfe6ff; }
+    .chip { pointer-events: auto; }
+    .chip {
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(160deg, rgba(12,44,66,0.82), rgba(4,20,34,0.86));
+      border: 1px solid rgba(127,216,255,0.22);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border-radius: 13px; padding: 6px 12px; color: #eaf6ff;
+    }
+    .chip .ico { font-size: 17px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
+    .chip .col { display: flex; flex-direction: column; gap: 3px; min-width: 54px; }
+    .chip .val {
+      font-size: 15px; font-weight: 700; letter-spacing: 0.3px; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .chip .rate { font-size: 10px; font-weight: 600; color: #7fd8b0; margin-left: 5px; }
+    .mini-bar {
+      height: 4px; border-radius: 2px; background: rgba(255,255,255,0.13); overflow: hidden;
+    }
+    .mini-bar span { display: block; height: 100%; width: 0; border-radius: 2px; transition: width 0.3s; }
+    #be-bar { background: linear-gradient(90deg, #4fc3f7, #7fd8ff); }
+    #hm-bar { background: #46c08a; }
+    .chip.shop { cursor: pointer; }
+    .chip.shop:hover { border-color: #7fd8ff; background: linear-gradient(160deg, rgba(20,70,100,0.85), rgba(8,32,50,0.88)); }
+    .chip.clock { padding: 5px 8px; }
+    .dial {
+      width: 28px; height: 28px; border-radius: 50%; position: relative; flex: none;
+      display: grid; place-items: center;
+      background: conic-gradient(#ffd54f 0%, rgba(255,255,255,0.14) 0);
+    }
+    .dial::after {
+      content: ""; position: absolute; inset: 2.5px; border-radius: 50%;
+      background: rgba(6,24,38,0.94);
+    }
+    .dial em { position: relative; z-index: 1; font-style: normal; font-size: 13px; line-height: 1; }
 
     #shop-overlay {
       position: fixed; inset: 0; z-index: 5; display: none;
@@ -135,6 +166,28 @@
     .remove-btn { border-color: rgba(239,83,80,0.5); color: #ffb4ac; }
     .remove-btn.on { background: rgba(239,83,80,0.55); border-color: #ef5350; color: #fff; }
 
+    /* 🎁 Packs — reveal cards flip in one after another; FREE marks a voucher. */
+    .pack-card {
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(20,80,120,0.45); border: 1px solid #2f6f92;
+      border-radius: 10px; padding: 12px 14px; margin: 8px 0;
+      opacity: 0; transform: translateY(10px) scale(0.97);
+      animation: packReveal 0.45s ease forwards;
+    }
+    .pack-card .pc-icon { font-size: 26px; line-height: 1; }
+    .pack-card small { color: #9fc4dc; }
+    @keyframes packReveal { to { opacity: 1; transform: none; } }
+    .pack-open-btn {
+      margin-left: auto; flex: none; font: inherit; font-size: 12px; cursor: pointer;
+      background: rgba(255,210,127,0.15); border: 1px solid #ffd27f; color: #ffd27f;
+      padding: 4px 12px; border-radius: 8px;
+    }
+    .pack-open-btn:hover { background: rgba(255,210,127,0.3); }
+    .free-badge {
+      font-size: 10px; color: #ffd27f; background: rgba(0,0,0,0.35);
+      padding: 1px 5px; border-radius: 8px; letter-spacing: 0.5px;
+    }
+
     #hint {
       position: fixed; left: 12px; bottom: 64px; z-index: 3;
       font-size: 12px; color: #9fc4dc; background: rgba(0,0,0,0.3);
@@ -154,6 +207,7 @@
 
     /* Touchscreens: fatter buttons and roomier rows so taps land first try. */
     @media (pointer: coarse) {
+      .chip { padding: 9px 13px; }
       .coral-btn { padding: 11px 12px; font-size: 14px; }
       #palette { gap: 7px; }
       #palette-toggle { padding: 11px 14px; font-size: 14px; }
@@ -166,17 +220,30 @@
   <div id="slots"></div>
   <div id="menu3d"></div>
   <div id="hud">
-    <span class="stat be"><span id="be-count">0</span><small class="rate" id="be-rate">+0.0/s</small></span>
-    <span class="stat" title="Harmony">⚖ <span id="hm-count">50</span></span>
-    <span class="stat" title="Level">⭐ <span id="lvl-count">1</span></span>
-    <span class="stat" title="Polyps · click a coral to upgrade it">🪸 <span id="polyp-count">0</span></span>
-    <span class="stat shop" id="shop-btn" title="Pearls · tap for the shop">💎 <span id="pearl-count">0</span></span>
+    <div class="chip" title="Bubble Energy — the bar shows how full your wallet is">
+      <span class="ico">🫧</span>
+      <div class="col">
+        <span class="val"><span id="be-count">0</span><small class="rate" id="be-rate">+0.0/s</small></span>
+        <div class="mini-bar"><span id="be-bar"></span></div>
+      </div>
+    </div>
+    <div class="chip" title="Harmony">
+      <span class="ico">⚖️</span>
+      <div class="col">
+        <span class="val" id="hm-count">50</span>
+        <div class="mini-bar"><span id="hm-bar"></span></div>
+      </div>
+    </div>
+    <div class="chip" title="Level"><span class="ico">⭐</span><span class="val" id="lvl-count">1</span></div>
+    <div class="chip" title="Polyps · click a coral to upgrade it"><span class="ico">🪸</span><span class="val" id="polyp-count">0</span></div>
+    <div class="chip shop" id="shop-btn" title="Pearls · tap for the shop"><span class="ico">💎</span><span class="val" id="pearl-count">0</span></div>
+    <div class="chip clock" title="Time of day"><div class="dial" id="tod-dial"><em id="tod-icon">☀️</em></div></div>
   </div>
   <canvas id="app3d"></canvas>
   <button id="palette-toggle">🪸 Species ▾</button>
   <div id="palette"></div>
   <div id="hint">🏖️ Beach far west · 🌿 Seagrass · 🪸 Coral Reef centre · 🌌 Twilight east — plant in the matching biome · click a coral to upgrade · tap a ＋ plot to expand a reef with 🪸 · ✕ Remove to sell · drag or arrow keys to move · right-drag or two fingers to orbit.</div>
-  <div id="version-badge-3d">3Dev 4.2</div>
+  <div id="version-badge-3d">3Dev 4.3</div>
   <script type="module">
     import { initReefScene3D } from './src/3d/ReefScene3D.js';
     initReefScene3D(document.getElementById('app3d'));

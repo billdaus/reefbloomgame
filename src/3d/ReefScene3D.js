@@ -895,12 +895,15 @@ const FISH_BODY = {
     body.scale.set(0.36 * (0.85 + rnd() * 0.3), 0.62 * deep, 1.18 * (0.9 + rnd() * 0.25));
     g.add(body);
     fishEyes(g, 0.11, 0.13, 0.3);
+    const pecs = [];
     for (const s of [-1, 1]) {
       const pec = finMesh([
         [0, 0], [0.16, 0.08, 0.27, 0.02], [0.2, -0.1, 0.24, -0.13], [0.08, -0.1, 0, 0]],
         finMat, s > 0 ? 1.15 : 1.98);
       pec.position.set(s * 0.15, -0.02, 0.22);
       pec.scale.setScalar(0.85 + rnd() * 0.4);
+      pec.userData.baseYaw = pec.rotation.y;
+      pecs.push(pec);
       g.add(pec);
     }
     const tail = new THREE.Group();
@@ -919,7 +922,7 @@ const FISH_BODY = {
       [0, 0], [0.1, -0.16, 0.24, -0.15], [0.3, -0.06, 0.32, 0.01], [0.16, 0.03, 0, 0]], finMat);
     anal.position.set(0, -0.2 * deep, -0.05);
     g.add(anal);
-    return { tail };
+    return { tail, pecs };
   },
   shark(g, { bodyMat, spec, rnd }) {
     // Long, slim, pointed; fins are body-colored, tail heterocercal.
@@ -1564,13 +1567,14 @@ function makeFish(spec) {
     side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
 
   const build = FISH_BODY[fishBodyOf(spec.id)];
-  const { tail, tailAxis, animate } = build(g, { bodyMat, finMat, spec, rnd }) ?? {};
+  const { tail, tailAxis, animate, pecs } = build(g, { bodyMat, finMat, spec, rnd }) ?? {};
 
   g.scale.setScalar(((spec.size ?? 14) / 16) * 0.55 * (0.92 + rnd() * 0.16));
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   g.userData.tail = tail ?? null;
   g.userData.tailAxis = tailAxis;
   g.userData.animate = animate ?? null;
+  g.userData.pecs = pecs ?? null;
   g.userData.baseScale = g.scale.x;
   g.userData.glowMat = biolum ? bodyMat : null;
   g.userData.hider = DAY_HIDER_SPECIES.has(spec.id);
@@ -2286,6 +2290,147 @@ export function initReefScene3D(canvas) {
   const placedFish = [];      // { id, b, cx, cz, R, y, w, phase, bob, bobw } (saved)
   const seen = new Set();     // journal — every species ever placed (saved)
   const exclOwned = new Set();   // event-pass exclusive species owned (saved)
+
+  // ── Rarity & Season Packs (Dragonperch's model, Reef Bloom pricing) ─────────
+  // One pack per rarity tier, three ways in: Common–Rare sell for 🫧, Super
+  // Rare–Legendary for 💎, and every level-up still mints a free pack for
+  // budget-tight players (the tier climbs with the milestone). MYTHIC packs are
+  // never sold — they mint only at level 12 and beyond, one per level-up, so
+  // the top of the ladder stays skill-gated. Every pack reveals three cards —
+  // riches, a free coral of the pack's tier, and a guaranteed fish of the
+  // pack's tier — with all odds published in the Packs menu in plain numbers.
+  // Event passes mint Season Packs that guarantee one of that event's
+  // exclusives.
+  const PACK_TIERS = ['common', 'uncommon', 'rare', 'superRare', 'epic', 'legendary', 'mythic'];
+  const MYTHIC_PACK_LEVEL = 12;   // level-ups from here mint the unbuyable pack
+  // Free-track mint: 2–3 common, 4–5 uncommon, 6–7 rare, 8–9 s.rare, 10 epic,
+  // 11 legendary, 12+ mythic — every tier is reachable without spending.
+  const packTierForLevel = (l) =>
+    l >= MYTHIC_PACK_LEVEL ? 'mythic'
+      : l === 11 ? 'legendary'
+      : PACK_TIERS[clamp(Math.floor((l - 2) / 2), 0, 4)];
+  const PACK_PRICE = {            // purchase channels; mythic deliberately absent
+    common:    { be: 75 },
+    uncommon:  { be: 150 },
+    rare:      { be: 250 },
+    superRare: { pearls: 20 },
+    epic:      { pearls: 35 },
+    legendary: { pearls: 60 },
+  };
+  const PACK_RICHES = {   // Riches card: 60% rolls the BE range, 40% the pearls range
+    common:    { be: [40, 80],   pearls: [2, 4] },
+    uncommon:  { be: [60, 120],  pearls: [3, 6] },
+    rare:      { be: [90, 180],  pearls: [5, 10] },
+    superRare: { be: [120, 240], pearls: [8, 15] },
+    epic:      { be: [160, 320], pearls: [12, 22] },
+    legendary: { be: [220, 440], pearls: [18, 35] },
+    mythic:    { be: [300, 600], pearls: [30, 60] },
+  };
+  const packs = {};         // tier -> unopened count (saved)
+  const seasonPacks = [];   // eventId per unopened Season Pack (saved)
+  const vouchers = {};      // coralId -> free placements left (saved)
+  let packBtn = null;       // menu button; assigned with the other menus
+
+  const rollRange = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
+  const packFishPool = (tier) => allFish().filter(s => s.tier === tier && !s.eventId);
+  const packCoralPool = (tier) =>
+    allCorals().filter(s => s.tier === tier && !s.eventId && !s.utility);
+  // Weekly featured fish — a fixed, disclosed 25% slice of the fish roll in
+  // packs of its tier. Deterministic per calendar week; nothing to save.
+  function featuredFish() {
+    const pool = allFish().filter(s => !s.eventId && s.tier !== 'common');
+    return pool.length ? pool[Math.floor(Date.now() / 604800000) % pool.length] : null;
+  }
+  const packCount = () =>
+    PACK_TIERS.reduce((n, t) => n + (packs[t] ?? 0), 0) + seasonPacks.length;
+  function refreshPackBtn() {
+    if (packBtn) packBtn.textContent = packCount() > 0 ? `🎁 ${packCount()}` : '🎁';
+  }
+  // Pack fish spawn straight into their own biome — the reveal IS the placement.
+  function packSpawnFish(spec) {
+    const zone = ZONES[primaryBiome(spec)] ?? ZONES.coral;
+    const st = fishState(spec,
+      zone.cx + (Math.random() - 0.5) * 6, zone.cz + (Math.random() - 0.5) * 6,
+      fishes.length, zone);
+    const g = attachFish(spec, st, true);
+    const rec = fishSaveData(st); placedFish.push(rec); g.userData.saveRef = rec;
+  }
+  function openRarityPack(tier) {
+    if (!(packs[tier] > 0)) return null;
+    packs[tier]--;
+    const lbl = TIER_LABEL[tier] ?? tier;
+    const cards = [];
+    // Card 1 — Riches.
+    const R = PACK_RICHES[tier];
+    if (Math.random() < 0.6) {
+      const amt = rollRange(R.be); be = Math.min(be + amt, beMax);
+      cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`, sub: 'Riches — the 60% roll' });
+    } else {
+      const amt = rollRange(R.pearls); pearls += amt;
+      cards.push({ icon: '💎', title: `+${amt} Pearls`, sub: 'Riches — the 40% roll' });
+    }
+    // Card 2 — a free-placement voucher for any coral of the pack's tier.
+    const cPool = packCoralPool(tier);
+    if (cPool.length) {
+      const spec = cPool[Math.floor(Math.random() * cPool.length)];
+      vouchers[spec.id] = (vouchers[spec.id] ?? 0) + 1;
+      cards.push({ icon: '🎟', title: `${spec.name} — free placement`,
+        sub: `Any ${lbl} coral can roll — yours to place free` });
+    } else {
+      const amt = rollRange(R.be); be = Math.min(be + amt, beMax);
+      cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`,
+        sub: `No ${lbl} coral exists to roll — consolation riches` });
+    }
+    // Card 3 — the guaranteed fish (featured takes a fixed 25% slice of its tier).
+    const feat = featuredFish();
+    const fPool = packFishPool(tier);
+    let spec = feat && feat.tier === tier && Math.random() < 0.25 ? feat : null;
+    if (!spec && fPool.length) spec = fPool[Math.floor(Math.random() * fPool.length)];
+    if (spec) {
+      packSpawnFish(spec);
+      cards.push({ icon: '🐟', title: `${spec.name} joins the reef!`,
+        sub: `Guaranteed ${lbl} fish${spec === feat ? " — ⭐ this week's featured" : ''}` });
+    }
+    refreshLocks(); refreshPackBtn(); refreshProgress(); refreshHud(); save();
+    return cards;
+  }
+  // Buying mints one pack of the tier and opens it on the spot. Mythic has no
+  // price row and can never pass through here.
+  function buyRarityPack(tier) {
+    const price = PACK_PRICE[tier];
+    if (!price) return null;
+    if (price.be) {
+      if (be < price.be) { flash(rateEl, 'not enough 🫧'); return null; }
+      be -= price.be;
+    } else {
+      if (pearls < price.pearls) { flash(rateEl, `need ${price.pearls} 💎`); return null; }
+      pearls -= price.pearls;
+    }
+    packs[tier] = (packs[tier] ?? 0) + 1;
+    return openRarityPack(tier);
+  }
+  function openSeasonPack(idx) {
+    const evId = seasonPacks[idx];
+    if (evId === undefined) return null;
+    seasonPacks.splice(idx, 1);
+    const def = EVENT_SCHEDULE.find(e => e.id === evId);
+    const pool = (def?.pass?.tiers ?? [])
+      .map(t => t.reward?.exclusive).filter(id => id && !exclOwned.has(id));
+    const cards = [];
+    if (pool.length) {
+      const id = pool[Math.floor(Math.random() * pool.length)];
+      exclOwned.add(id); refreshExclRows();
+      const spec = CORAL_SPECIES[id] ?? FISH_SPECIES[id];
+      cards.push({ icon: def?.icon ?? '🎁', title: `${spec?.name ?? id} unlocked!`,
+        sub: `${def?.name ?? 'Event'} exclusive — guaranteed one you didn't own` });
+    } else {
+      pearls += 15;
+      cards.push({ icon: '💎', title: '+15 Pearls',
+        sub: 'Every exclusive from this event is already owned' });
+    }
+    refreshPackBtn(); refreshHud(); save();
+    return cards;
+  }
   let ev3 = null;                // live event progress (saved)
   let dq = null;                 // today's daily quest (saved)
   const achUnlocked = new Set(); // achievement ids earned (saved)
@@ -2344,6 +2489,9 @@ export function initReefScene3D(canvas) {
     if (!f.home) return;
     f.home.userData.homed?.delete(f);
     f.home = null;
+    f.bed = null;
+    // Wake pointing the way we slept, so steering resumes without a snap.
+    if (f.hdg !== undefined && f.g) f.hdg = f.g.rotation.y;
   }
 
   // ── Cleaning stations (Classic's symbiosis mechanic) ─────────────────────────
@@ -2451,10 +2599,21 @@ export function initReefScene3D(canvas) {
       const req = LEVEL_REQS[level + 1];
       if (!req) break;
       const [c, f, h] = req;
-      if (placedCorals.length >= c && placedFish.length >= f && harmony >= h) level++;
-      else break;
+      if (placedCorals.length >= c && placedFish.length >= f && harmony >= h) {
+        level++;
+        // Every level-up mints a free pack (budget-tight players still climb
+        // the whole ladder). From level 12 on that's MYTHIC — its only mint.
+        const pt = packTierForLevel(level);
+        packs[pt] = (packs[pt] ?? 0) + 1;
+      } else break;
     }
-    if (level > before) droneTrigger('levelUp');
+    if (level > before) {
+      droneTrigger('levelUp');
+      refreshPackBtn();
+      flash(rateEl,
+        level >= MYTHIC_PACK_LEVEL ? '🎁 MYTHIC Pack earned!' : '🎁 Rarity Pack earned!',
+        '#ffd27f');
+    }
   }
 
   // Recompute reef-composition stats after any placement/removal.
@@ -2624,7 +2783,8 @@ export function initReefScene3D(canvas) {
         corals: placedCorals, fish: placedFish, seen: [...seen], exp: expansions,
         eggs: [...eggsClaimed], stations: placedStations,
         ev3, excl: [...exclOwned], dq,
-        ach: [...achUnlocked], sawNight }));
+        ach: [...achUnlocked], sawNight,
+        packs, vouchers, seasonPacks }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -2638,6 +2798,10 @@ export function initReefScene3D(canvas) {
   const lvlEl = document.getElementById('lvl-count');
   const polypEl = document.getElementById('polyp-count');
   const pearlEl = document.getElementById('pearl-count');
+  const beBarEl = document.getElementById('be-bar');
+  const hmBarEl = document.getElementById('hm-bar');
+  const todDialEl = document.getElementById('tod-dial');
+  const todIconEl = document.getElementById('tod-icon');
 
   function refreshHud() {
     if (beEl) beEl.textContent = Math.floor(be);
@@ -2648,6 +2812,31 @@ export function initReefScene3D(canvas) {
     if (lvlEl) lvlEl.textContent = level;
     if (polypEl) polypEl.textContent = Math.floor(polyps);
     if (pearlEl) pearlEl.textContent = Math.floor(pearls);
+    // Style writes below are guarded — refreshHud runs every frame.
+    if (beBarEl) {
+      const w = Math.round(clamp(be / beMax, 0, 1) * 100);
+      if (beBarEl.dataset.w != w) { beBarEl.dataset.w = w; beBarEl.style.width = `${w}%`; }
+    }
+    if (hmBarEl) {
+      const w = Math.round(clamp(harmony, 0, 100));
+      if (hmBarEl.dataset.w != w) {
+        hmBarEl.dataset.w = w;
+        hmBarEl.style.width = `${w}%`;
+        hmBarEl.style.background = w >= 70 ? '#46c08a' : w >= 40 ? '#ffd54f' : '#ef8a70';
+      }
+    }
+    if (todDialEl) {
+      const p = Math.round(timeOfDay * 100);
+      if (todDialEl.dataset.p != p) {
+        todDialEl.dataset.p = p;
+        todDialEl.style.background = `conic-gradient(#ffd54f ${p}%, rgba(255,255,255,0.14) 0)`;
+        if (todIconEl) {
+          todIconEl.textContent =
+            timeOfDay < 0.17 || timeOfDay >= 0.86 ? '🌙'
+              : timeOfDay < 0.33 ? '🌅' : timeOfDay < 0.7 ? '☀️' : '🌇';
+        }
+      }
+    }
   }
 
   // ── Save-slot switcher — one button opening the slot-select menu ─────────────
@@ -2693,19 +2882,30 @@ export function initReefScene3D(canvas) {
     const btn = document.createElement('button');
     btn.className = 'coral-btn';
     btn.innerHTML = `<span class="dot" style="background:${hex(spec.color)}"></span>`
-      + `${spec.name}${badge}<small>${n} ${unit}</small>`
+      + `${spec.name}${badge}<span class="free-badge" style="display:none">🎟 FREE</span>`
+      + `<small>${n} ${unit}</small>`
       + (need > 1 ? `<span class="lv">Lv${need}</span>` : '');
     btn.onclick = () => {
-      if (need > level) { flash(rateEl, `unlocks at Lv ${need}`); return; }
+      // A pack voucher lets its species be placed even below its unlock level.
+      if (need > level && !(vouchers[spec.id] > 0)) {
+        flash(rateEl, `unlocks at Lv ${need}`); return;
+      }
       selected = { type, spec };
       removeBtn.classList.remove('on');
       clearSel(); btn.classList.add('sel');
     };
     if (spec === selected.spec) btn.classList.add('sel');
-    rows.push({ btn, need });
+    rows.push({ btn, need, spec });
     paletteEl.appendChild(btn);
   }
-  function refreshLocks() { for (const r of rows) r.btn.classList.toggle('locked', r.need > level); }
+  function refreshLocks() {
+    for (const r of rows) {
+      const free = r.spec && vouchers[r.spec.id] > 0;
+      r.btn.classList.toggle('locked', r.need > level && !free);
+      const fb = r.btn.querySelector('.free-badge');
+      if (fb) fb.style.display = free ? '' : 'none';
+    }
+  }
   // Locked biomes render their grid ghosted until the level unlocks them.
   function refreshZoneLocks() {
     for (const t of tiles) {
@@ -3195,9 +3395,12 @@ export function initReefScene3D(canvas) {
       if (tier.reward.be) be = Math.min(be + tier.reward.be, beMax);
       if (tier.reward.pearls) pearls += tier.reward.pearls;
       if (tier.reward.exclusive) {
-        exclOwned.add(tier.reward.exclusive);
-        refreshExclRows();
-        droneQueue.push(`Pass tier unlocked: ${tier.label}. The reef gains a legend.`);
+        // 3D mints a Season Pack instead of unlocking the named species: the
+        // pack guarantees one of this event's exclusives you don't own yet.
+        // (Classic keeps direct unlocks — the shared schedule is untouched.)
+        seasonPacks.push(def.id);
+        refreshPackBtn();
+        droneQueue.push('Pass tier reached: a Season Pack is waiting in 🎁 Packs.');
       }
     });
   }
@@ -3531,10 +3734,85 @@ export function initReefScene3D(canvas) {
     achModal.body.innerHTML = html;
   }
 
+  // 🎁 Packs — Rarity Packs from level-ups, Season Packs from event passes.
+  // Every roll's odds are published right here, in plain numbers.
+  const packModal = buildMenuModal('🎁 Packs',
+    'Common–Rare cost 🫧, Super Rare–Legendary cost 💎 — MYTHIC packs are never sold.'
+    + ' All odds published below.');
+  function fillPack() {
+    const feat = featuredFish();
+    let html = '';
+    if (feat) {
+      html += `<div class="m-sub">⭐ Featured this week: <b>${feat.name}</b>`
+        + ` (${TIER_LABEL[feat.tier]}) — takes a fixed 25% of the fish roll in`
+        + ` ${TIER_LABEL[feat.tier]} packs.</div>`;
+    }
+    html += '<div class="m-sec">Rarity Packs — buy, or earn free at level-ups</div>';
+    for (const tier of PACK_TIERS) {
+      const n = packs[tier] ?? 0;
+      const R = PACK_RICHES[tier];
+      const fp = packFishPool(tier);
+      const price = PACK_PRICE[tier];
+      const priceTag = price ? (price.be ? `${price.be} 🫧` : `${price.pearls} 💎`) : null;
+      let actions = n ? `<button class="pack-open-btn" data-pack="${tier}">Open</button>` : '';
+      if (priceTag) {
+        actions += `<button class="pack-open-btn" data-pack-buy="${tier}">Buy ${priceTag}</button>`;
+      } else if (!n) {
+        actions = '<small>never sold — Lv 12+ level-ups only</small>';
+      }
+      html += `<div class="m-row${n || priceTag ? '' : ' locked'}">`
+        + `<span><b>${TIER_LABEL[tier]}</b>${n ? ` ×${n}` : ''}<br>`
+        + `<span style="font-size:10.5px;color:#9fc4dc">`
+        + `60%: ${R.be[0]}–${R.be[1]} 🫧 / 40%: ${R.pearls[0]}–${R.pearls[1]} 💎`
+        + ` · a free ${TIER_LABEL[tier]} coral 🎟 · guaranteed fish (${fp.length} species, even odds)`
+        + '</span></span>'
+        + `<span style="display:flex;gap:6px;flex:none;margin-left:auto">${actions}</span>`
+        + '</div>';
+    }
+    if (seasonPacks.length) {
+      html += '<div class="m-sec">Season Packs</div>';
+      seasonPacks.forEach((id, i) => {
+        const def = EVENT_SCHEDULE.find(e => e.id === id);
+        html += `<div class="m-row"><span>${def?.icon ?? '🎁'} <b>${def?.name ?? id}</b><br>`
+          + '<span style="font-size:10.5px;color:#9fc4dc">'
+          + 'Guarantees one event exclusive you don\'t own — even odds among the unowned'
+          + '</span></span>'
+          + `<button class="pack-open-btn" data-pack="season" data-idx="${i}">Open</button></div>`;
+      });
+    }
+    html += '<div class="m-sub" style="margin-top:10px">Every level-up also mints a free'
+      + ' pack, its tier climbing with your level — and MYTHIC packs are never sold:'
+      + ' they mint only at level 12 and every level beyond, so the top of the ladder'
+      + ' stays skill-gated. Season Packs come only from event pass tiers.</div>';
+    packModal.body.innerHTML = html;
+  }
+  function showPackReveal(cards) {
+    packModal.body.innerHTML = cards.map((c, i) =>
+      `<div class="pack-card" style="animation-delay:${(0.15 + i * 0.55).toFixed(2)}s">`
+      + `<span class="pc-icon">${c.icon}</span>`
+      + `<div><b>${c.title}</b><br><small>${c.sub}</small></div></div>`).join('')
+      + '<button class="m-tab" data-pack="back" style="margin-top:10px">← Back to packs</button>';
+  }
+  packModal.body.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-pack], button[data-pack-buy]');
+    if (!b) return;
+    if (b.dataset.packBuy) {
+      const cards = buyRarityPack(b.dataset.packBuy);
+      if (cards) showPackReveal(cards);
+      return;
+    }
+    if (b.dataset.pack === 'back') { fillPack(); return; }
+    const cards = b.dataset.pack === 'season'
+      ? openSeasonPack(Number(b.dataset.idx))
+      : openRarityPack(b.dataset.pack);
+    if (cards) showPackReveal(cards);
+  });
+
   const menuEl = document.getElementById('menu3d');
   if (menuEl) {
     [['📖 Journal', journal, fillJournal],
      ['🏆', achModal, fillAch],
+     ['🎁', packModal, fillPack],
      ['📅 Daily', daily, fillDaily],
      ['🎉 Event', eventModal, fillEvent],
      ['⚖ Advisor', advisor, fillAdvisor],
@@ -3545,6 +3823,8 @@ export function initReefScene3D(canvas) {
       b.onclick = () => { fill(); modal.show(); };
       menuEl.appendChild(b);
     });
+    packBtn = menuEl.children[2];
+    refreshPackBtn();
   }
 
   // ── Restore saved reef ───────────────────────────────────────────────────────
@@ -3584,8 +3864,18 @@ export function initReefScene3D(canvas) {
     (saved.excl ?? []).forEach(id => exclOwned.add(id));
     (saved.ach ?? []).forEach(id => achUnlocked.add(id));
     sawNight = !!saved.sawNight;
+    if (saved.packs) Object.assign(packs, saved.packs);
+    else {
+      // Pre-pack save: retro-mint the packs its level-ups would have earned.
+      for (let l = 2; l <= level; l++) {
+        const pt = packTierForLevel(l);
+        packs[pt] = (packs[pt] ?? 0) + 1;
+      }
+    }
+    Object.assign(vouchers, saved.vouchers ?? {});
+    (saved.seasonPacks ?? []).forEach(id => seasonPacks.push(id));
   }
-  ev3Init(); ev3Snapshot(); dqInit(); dqSnapshot(); refreshExclRows();
+  ev3Init(); ev3Snapshot(); dqInit(); dqSnapshot(); refreshExclRows(); refreshPackBtn();
   recomputeRates(); refreshProgress(); refreshHud();
   refreshExpMarkers(); refreshZoneLocks();
 
@@ -3766,6 +4056,13 @@ export function initReefScene3D(canvas) {
   });
   // Deduct a placement cost by currency (pearls / polyps / BE). False if unaffordable.
   function charge(spec, costTable) {
+    // A pack voucher trumps every currency: one free placement, then it's spent.
+    if (vouchers[spec.id] > 0) {
+      if (--vouchers[spec.id] <= 0) delete vouchers[spec.id];
+      refreshLocks();
+      flash(rateEl, '🎟 pack voucher spent', '#ffd27f');
+      return true;
+    }
     if (spec.pearlCost) {
       if (pearls < spec.pearlCost) { flash(rateEl, 'not enough 💎'); return false; }
       pearls -= spec.pearlCost;
@@ -4222,15 +4519,35 @@ export function initReefScene3D(canvas) {
         }
         if (f.px !== undefined) { f.px = cur.x; f.py = cur.y; f.pz = cur.z; }
       } else if (f.home) {
-        // Settle beside the shelter with a gentle hover.
+        // Bedding down is a journey, not a teleport: swim to the shelter nose
+        // first, then a quick burrow-in wiggle, then a slow-breathing sleep
+        // hover (the sideways sleep-lean comes from the roll pass below).
         const hp = f.home.position;
         const tx = hp.x + Math.sin(f.phase * 2.6) * 0.55;
         const tz = hp.z + Math.cos(f.phase * 3.1) * 0.55;
-        const ty = hp.y + 0.5 + Math.sin(t * 0.8 + f.phase) * 0.06;
-        const k = Math.min(1, dt * 1.4);
         const cur = f.g.position;
-        cur.set(cur.x + (tx - cur.x) * k, cur.y + (ty - cur.y) * k, cur.z + (tz - cur.z) * k);
-        f.g.rotation.x *= 0.92;
+        const dxh = tx - cur.x, dzh = tz - cur.z;
+        if (!f.bed && dxh * dxh + dzh * dzh > 2.6) {
+          const ty = Math.max(hp.y + 1.4, terrainHeight(cur.x, cur.z) + 0.9);
+          const dyh = ty - cur.y;
+          const d = Math.sqrt(dxh * dxh + dyh * dyh + dzh * dzh);
+          const step = Math.min((f.spd ?? 1.2) * 1.05 * dt, d);
+          cur.set(cur.x + (dxh / d) * step, cur.y + (dyh / d) * step, cur.z + (dzh / d) * step);
+          const want = Math.atan2(dxh, dzh);
+          let dh = want - f.g.rotation.y;
+          while (dh > Math.PI) dh -= Math.PI * 2;
+          while (dh < -Math.PI) dh += Math.PI * 2;
+          f.g.rotation.y += dh * Math.min(1, dt * 2.4);
+          f.g.rotation.x = -Math.asin(clamp(dyh / Math.max(d, 0.001), -1, 1)) * 0.4;
+        } else {
+          if (!f.bed) f.bed = t;                      // arrived — tuck in
+          const settle = clamp((t - f.bed) / 1.1, 0, 1);
+          const ty = hp.y + 0.5 - 0.14 * settle + Math.sin(t * 0.8 + f.phase) * 0.05;
+          const k = Math.min(1, dt * 1.6);
+          cur.set(cur.x + (tx - cur.x) * k, cur.y + (ty - cur.y) * k, cur.z + (tz - cur.z) * k);
+          f.g.rotation.y += Math.sin(t * 13 + f.phase) * 0.3 * (1 - settle);   // burrow wiggle
+          f.g.rotation.x *= 0.9;
+        }
         if (f.px !== undefined) { f.px = cur.x; f.py = cur.y; f.pz = cur.z; }
       } else if (f.benthic) {
         // Crawlers: creep along the terrain toward a nearby sand waypoint,
@@ -4324,13 +4641,52 @@ export function initReefScene3D(canvas) {
         const z = Math.sin(ang) * f.R + f.cz;
         f.g.position.set(x, f.y + Math.sin(t * f.bobw + f.phase) * f.bob * slow, z);
         const heading = Math.atan2(-Math.sin(ang) * f.w, Math.cos(ang) * f.w);
-        f.g.rotation.y = heading + Math.sin(t * 6 + f.phase) * 0.1 * slow;
+        f.g.rotation.y = heading;   // sway comes from the swim pass below
       }
+      // Fish with nowhere to shelter bed down on the sand right where they are:
+      // ease down to the seabed as sleepiness sets in, drift back up on waking.
+      f.sink = (f.sink ?? 0)
+        + ((wantsHide && !f.home && !f.benthic ? 1 : 0) - (f.sink ?? 0)) * Math.min(1, dt * 0.6);
+      if (f.sink > 0.01 && !f.clean && !f.benthic) {
+        const gy = terrainHeight(f.g.position.x, f.g.position.z) + 0.5;
+        f.g.position.y += (gy - f.g.position.y) * f.sink;
+      }
+      // ── Locomotion-aware swimming ────────────────────────────────────────────
+      // The tail beats in time with true swim speed (sprinters thrash, sleepers
+      // barely stir), the head counter-sways against each stroke, pectorals
+      // scull hardest at low speed, and the body banks into turns.
+      const gp = f.g.position;
+      if (f.lpx !== undefined && dt > 1e-4) {
+        const inst = Math.sqrt(
+          (gp.x - f.lpx) ** 2 + (gp.y - f.lpy) ** 2 + (gp.z - f.lpz) ** 2) / dt;
+        f.swim = (f.swim ?? inst) + (Math.min(inst, 12) - (f.swim ?? inst)) * Math.min(1, dt * 5);
+      }
+      f.lpx = gp.x; f.lpy = gp.y; f.lpz = gp.z;
+      const sw = clamp((f.swim ?? 0) / ((f.spd ?? 1.4) + 0.4), 0, 1.4);
+      // Bank is measured from heading change, before the sway is layered on.
+      let hd = f.g.rotation.y - (f.lh ?? f.g.rotation.y);
+      while (hd > Math.PI) hd -= Math.PI * 2;
+      while (hd < -Math.PI) hd += Math.PI * 2;
+      f.lh = f.g.rotation.y;
+      const rollT = f.bed ? (f.phase % 2 < 1 ? 0.35 : -0.35)
+        : f.benthic ? 0
+        : clamp((dt > 1e-4 ? -hd / dt : 0) * 0.25, -0.5, 0.5) * Math.min(sw, 1);
+      f.roll = (f.roll ?? 0) + (rollT - (f.roll ?? 0)) * Math.min(1, dt * 3);
       const ud = f.g.userData;
+      f.tailPh = (f.tailPh ?? f.phase) + dt * (2.2 + 10 * Math.min(sw, 1.2));
       if (ud.animate) ud.animate(t, f.phase);
       else if (ud.tail) {
-        if (ud.tailAxis === 'x') ud.tail.rotation.x = Math.sin(t * 4.5 + f.phase) * 0.28;
-        else ud.tail.rotation.y = Math.sin(t * 7 + f.phase) * 0.5;
+        const amp = 0.16 + 0.42 * Math.min(sw, 1);
+        if (ud.tailAxis === 'x') ud.tail.rotation.x = Math.sin(f.tailPh * 0.75) * amp * 0.65;
+        else ud.tail.rotation.y = Math.sin(f.tailPh) * amp;
+      }
+      if (!f.benthic && !ud.animate) {
+        f.g.rotation.y += Math.sin(f.tailPh) * (0.02 + 0.05 * Math.min(sw, 1));
+      }
+      if (ud.pecs) {
+        const scull = Math.sin(f.tailPh * 0.55 + f.phase) * (0.5 - 0.34 * Math.min(sw, 1));
+        ud.pecs[0].rotation.y = ud.pecs[0].userData.baseYaw + scull;
+        if (ud.pecs[1]) ud.pecs[1].rotation.y = ud.pecs[1].userData.baseYaw - scull;
       }
       // Petting reactions overlay whatever the fish was doing.
       if (f.react) {
@@ -4344,6 +4700,7 @@ export function initReefScene3D(canvas) {
           if (f.react.kind === 'roll') f.g.rotation.z = p * Math.PI * 2;   // barrel roll
         }
       }
+      if (f.react?.kind !== 'roll') f.g.rotation.z = f.roll;   // bank / sleep-lean
       // Nocturnal crevice-dwellers tuck away by day — visibly nestled at a
       // grotto if one has room, otherwise vanished into an unseen crevice.
       // Homed sleepers settle slightly smaller; everyone else stays full size.
