@@ -3445,7 +3445,7 @@ export function initReefScene3D(canvas) {
     + ` style="width:${clamp((v / max) * 100, 0, 100)}%"></span></div>`;
 
   // 📖 Journal — every species, discovered by placing it once (mirrors Classic's journal).
-  const journal = buildMenuModal('📖 Species Journal');
+  const journal = buildMenuModal('📖 Ocean Journal');
   let journalTab = 'all';
   const journalTabs = document.createElement('div');
   journalTabs.className = 'm-tabs';
@@ -3476,7 +3476,8 @@ export function initReefScene3D(canvas) {
     const note = found
       ? (SPECIES_LORE[spec.id] ?? 'A specimen of the reef.')
       : need > level ? `🔒 Unlocks at Lv${need}.` : 'Place one to record it.';
-    return `<div class="m-row${found ? '' : ' locked'}" style="align-items:flex-start">`
+    return `<div class="m-row${found ? '' : ' locked'}" data-sp="${spec.id}"`
+      + ` style="align-items:flex-start;cursor:pointer">`
       + `<span class="dot" style="background:${tierCol};margin-top:3px"></span>`
       + `<span style="flex:1;min-width:0">${found ? spec.name : '???'}${sci}`
       + `<span style="display:block;font-size:10.5px;line-height:1.35;color:#8fb4c9">${note}</span></span>`
@@ -4096,6 +4097,81 @@ export function initReefScene3D(canvas) {
     claim.onclick = () => { dqClaim(); fillDaily(); };
     daily.body.append(claim);
   }
+
+  // Species detail popup — tap any Ocean Journal row for the full entry:
+  // portrait swatch, facts, wild-abundance status, traits, and field notes.
+  // It layers over the journal (created after it, so it paints on top).
+  const speciesModal = buildMenuModal('Species');
+  const GROWTH_TOTAL_MS = STAGE_MS.reduce((a, b) => a + b, 0);
+  const abundanceText = (w) =>
+    w >= 2 ? 'Abundant — the ocean is full of them'
+      : w >= 1.4 ? 'Common on healthy reefs'
+      : w >= 1 ? 'Widespread'
+      : w >= 0.7 ? 'Uncommon'
+      : w >= 0.45 ? 'Sparse — a lucky find'
+      : w > 0.15 ? 'Rare — threatened in the real ocean'
+      : 'One of a kind';
+  function fillSpecies(spec, kind) {
+    const found = seen.has(spec.id);
+    const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+    const tierCol = hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5);
+    speciesModal.ov.querySelector('.m-title').textContent = found ? spec.name : '???';
+    speciesModal.ov.querySelector('.m-sub')?.remove();
+    speciesModal.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
+      `<div class="m-sub">${found && spec.scientific ? `<i>${spec.scientific}</i> · ` : ''}`
+      + `<span style="color:${tierCol}">${TIER_LABEL[spec.tier] ?? '?'}</span>`
+      + ` · ${kind === 'coral' ? '🪸 coral' : '🐟 fish'}</div>`);
+    const row = (k, v) => `<div class="m-row"><span>${k}</span><small>${v}</small></div>`;
+    const biomes = Object.keys(ZONES).filter(z => matchesBiome(spec, z))
+      .map(z => `${BIOMES[z].icon} ${BIOMES[z].shortName}`).join(' · ');
+    let html = '<div style="display:flex;align-items:center;gap:12px;margin:6px 0 10px">'
+      + `<span style="width:48px;height:48px;border-radius:50%;flex:none;`
+      + `background:radial-gradient(circle at 35% 35%, ${hex(spec.accentColor ?? spec.color)} 0%,`
+      + ` ${hex(spec.color)} 62%, #06131d 100%)"></span>`
+      + `<span style="font-size:11.5px;color:#9fc4dc;line-height:1.4">`
+      + (found ? (SPECIES_LORE[spec.id] ?? 'A specimen of the reef.')
+        : need > level ? `Not yet recorded. 🔒 Unlocks at Lv${need}.`
+          : `Not yet recorded — ${kind === 'coral' ? 'place one' : 'hatch one'} to complete this entry.`)
+      + '</span></div>';
+    html += row('Home waters', biomes || '—');
+    if (kind === 'fish') {
+      html += row('Reef layer', BENTHIC_SPECIES.has(spec.id) ? 'Seafloor crawler'
+        : spec.layer === 'B' ? 'Open water — big swimmers' : 'Reef shelter — small fish');
+    } else if (!spec.utility) {
+      html += row('Income (full grown)',
+        `+${((BE_PER_TICK[spec.tier] ?? 1) * stageOutput(CORAL_MAX_LEVEL) / TICK_SEC).toFixed(1)}/s 🫧`);
+      html += row('Growth', `hatchling → full grown in ${fmtMs(GROWTH_TOTAL_MS)}`);
+    }
+    if (spec.shelter) html += row('Shelter', `sleeps ${spec.homeCap ?? 6} fish overnight`);
+    if (spec.storage) html += row('Storage', `+${spec.storage} 🫧 wallet cap`);
+    if (!spec.eventId) {
+      const { n, unit } = priceOf(spec, kind);
+      html += row(kind === 'fish' ? 'Fish Shop (once discovered)' : 'Cost', `${n} ${unit}`);
+      html += row('In the wild', abundanceText(wildWeight(spec)));
+    } else {
+      html += row('Origin', '🎉 event exclusive');
+    }
+    const traits = [];
+    if (BIOLUM_SPECIES.has(spec.id)) traits.push('✨ lights the water after dark');
+    if (DAY_HIDER_SPECIES.has(spec.id)) traits.push('🌙 nocturnal — hides by day');
+    if (SCHOOL_SPECIES.has(spec.id)) traits.push('🐟 swims in schools');
+    if (spec.chaotic) traits.push('🌀 chaotic');
+    if (traits.length) html += row('Traits', traits.join('<br>'));
+    const inReef = kind === 'coral'
+      ? placedCorals.filter(e => e.id === spec.id).length
+      : placedFish.filter(f => f.id === spec.id).length;
+    html += row('In your reef', inReef ? `×${inReef}` : 'none yet');
+    speciesModal.body.innerHTML = html;
+  }
+  journal.body.addEventListener('click', (e) => {
+    const r = e.target.closest('[data-sp]');
+    if (!r) return;
+    const id = r.dataset.sp;
+    const spec = CORAL_SPECIES[id] ?? FISH_SPECIES[id];
+    if (!spec) return;
+    fillSpecies(spec, CORAL_SPECIES[id] ? 'coral' : 'fish');
+    speciesModal.show();
+  });
 
   // 🏆 Achievements — milestone list with unlock states and payouts.
   const achModal = buildMenuModal('🏆 Achievements');
