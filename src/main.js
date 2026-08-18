@@ -16,16 +16,24 @@ async function main() {
   // (auth codes are short-lived) — no-op while sign-in isn't configured.
   initAuth();
 
-  const app = new Application();
+  let app = new Application();
 
-  // Begin PixiJS init immediately (runs while player reads start / slot pages)
-  const initPromise = app.init({
+  // Begin PixiJS init immediately (runs while player reads start / slot pages).
+  // If the browser refuses the context (thermal throttling, GPU pressure),
+  // cool off briefly and retry once with a humbler ask before surrendering.
+  const baseOpts = {
     width:           SCREEN_W,
     height:          SCREEN_H,
     antialias:       true,
     backgroundColor: 0x1878c8,
     resolution:      Math.min(window.devicePixelRatio || 1, 2),
     autoDensity:     true,
+  };
+  const initPromise = app.init(baseOpts).catch(async (err) => {
+    console.error('Classic boot attempt failed:', err);
+    await new Promise(r => setTimeout(r, 1500));
+    app = new Application();
+    return app.init({ ...baseOpts, antialias: false, resolution: 1 });
   });
 
   function resize() {
