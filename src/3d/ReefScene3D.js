@@ -2498,12 +2498,30 @@ export function initReefScene3D(canvas) {
     if (s >= 60) return `${Math.floor(s / 60)}m ${s % 60}s`;
     return `${s}s`;
   };
-  const eggPool = (t) => t === 'premium'
-    ? (Math.random() < 0.7 ? packFishPool('legendary') : packFishPool('mythic'))
-    : packFishPool(EGG_TYPES[t].tier);
+  // Eggs are biome-gated: the hatch pool only holds fish whose home biome is
+  // unlocked, so an egg can't drop a twilight dweller into a locked zone. New
+  // biomes enrich every egg the moment they open (counts disclosed live).
+  const gatedTierPool = (tier) =>
+    packFishPool(tier).filter(s => zoneUnlocked(primaryBiome(s)));
+  function eggPool(t) {
+    if (t === 'premium') {
+      let leg = gatedTierPool('legendary'), myth = gatedTierPool('mythic');
+      if (!leg.length && !myth.length) {   // never brick a bought egg
+        leg = packFishPool('legendary'); myth = packFishPool('mythic');
+      }
+      const pick = Math.random() < 0.7 ? leg : myth;
+      return pick.length ? pick : (leg.length ? leg : myth);
+    }
+    const open = gatedTierPool(EGG_TYPES[t].tier);
+    return open.length ? open : packFishPool(EGG_TYPES[t].tier);
+  }
+  const eggBuyable = (t) => t === 'premium'
+    ? gatedTierPool('legendary').length + gatedTierPool('mythic').length > 0
+    : gatedTierPool(EGG_TYPES[t].tier).length > 0;
   function buyEgg(t) {
     const et = EGG_TYPES[t];
     if (!et) return;
+    if (!eggBuyable(t)) { flash(rateEl, 'no such fish in your biomes yet'); return; }
     if (nestEggs.length >= NEST_CAP) { flash(rateEl, 'the nest is full'); return; }
     if (et.be) {
       if (be < et.be) { flash(rateEl, 'not enough 🫧'); return; }
@@ -4069,15 +4087,19 @@ export function initReefScene3D(canvas) {
     });
     html += `<div class="m-sec">Market — fish eggs · ${nestEggs.length}/${NEST_CAP} nest slots used</div>`;
     for (const [id, et] of Object.entries(EGG_TYPES)) {
+      const buyable = eggBuyable(id);
       const odds = id === 'premium'
-        ? `70% ${TIER_LABEL.legendary} (${packFishPool('legendary').length} species)`
-          + ` / 30% ${TIER_LABEL.mythic} (${packFishPool('mythic').length}), even odds within tier`
-        : `hatches 1 of ${packFishPool(et.tier).length} ${TIER_LABEL[et.tier]} fish, even odds`;
-      html += `<div class="m-row"><span class="dot" style="background:${hex(et.color)}"></span>`
+        ? `70% ${TIER_LABEL.legendary} (${gatedTierPool('legendary').length} species)`
+          + ` / 30% ${TIER_LABEL.mythic} (${gatedTierPool('mythic').length}), even odds within tier`
+        : `hatches 1 of ${gatedTierPool(et.tier).length} ${TIER_LABEL[et.tier]} fish, even odds`;
+      html += `<div class="m-row${buyable ? '' : ' locked'}">`
+        + `<span class="dot" style="background:${hex(et.color)}"></span>`
         + `<span><b>${et.name}</b><br><span style="font-size:10.5px;color:#9fc4dc">`
-        + `${fmtMs(et.ms)} incubation · ${odds}</span></span>`
+        + `${fmtMs(et.ms)} incubation · `
+        + (buyable ? odds : 'no species in your unlocked biomes yet — new biomes stock this egg')
+        + '</span></span>'
         + `<button class="pack-open-btn" data-egg="${id}"`
-        + `${nestEggs.length >= NEST_CAP ? ' disabled' : ''}>`
+        + `${nestEggs.length >= NEST_CAP || !buyable ? ' disabled' : ''}>`
         + `${et.be ? `${et.be} 🫧` : `${et.pearls} 💎`}</button></div>`;
     }
     html += '<div class="m-sub" style="margin-top:8px">You can also tap the nest itself,'
