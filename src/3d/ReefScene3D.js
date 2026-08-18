@@ -4121,7 +4121,12 @@ export function initReefScene3D(canvas) {
     (saved.corals ?? []).forEach(({ b, c, r, id, level: lv, g }) => {
       const spec = CORAL_SPECIES[id] ?? (id === HIDEY_SPEC.id ? HIDEY_SPEC : null);
       const tile = tileAt(b ?? 'coral', c, r);
-      if (spec && tile && !tile.userData.occupied) addCoral(spec, tile, lv ?? 1, g);
+      if (!spec || !tile || tile.userData.occupied) return;
+      // Pre-growth-stage saves carry no `g` clock: those corals were adults
+      // under the old rules, so they load full grown — never demote a mature
+      // reef to hatchlings (or its income to a trickle).
+      const stage = g === undefined ? CORAL_MAX_LEVEL : (lv ?? 0);
+      addCoral(spec, tile, stage, g);
     });
     (saved.fish ?? []).forEach((d, i) => {
       const spec = FISH_SPECIES[d.id];

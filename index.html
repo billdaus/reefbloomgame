@@ -1097,6 +1097,23 @@
     }
   </script>
 
+  <script>
+    // Boot-failure beacon: surface any script error or failed asset load on
+    // screen — a silent blank page is undebuggable on iPad Safari.
+    window.addEventListener('error', function (e) {
+      var el = document.getElementById('boot-error');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'boot-error';
+        el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:9999;'
+          + 'background:rgba(130,25,25,0.93);color:#ffe9e0;padding:9px 12px;'
+          + 'border-radius:8px;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;';
+        document.documentElement.appendChild(el);
+      }
+      el.textContent = '⚠ ' + (e.message
+        || ('failed to load: ' + ((e.target && (e.target.src || e.target.href)) || 'resource')));
+    }, true);
+  </script>
   <script type="module" src="/src/main.js"></script>
 
   <!-- Spawn animated bubbles for both pages -->
