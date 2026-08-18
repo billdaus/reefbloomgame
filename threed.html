@@ -206,8 +206,53 @@
     }
 
     /* Touchscreens: fatter buttons and roomier rows so taps land first try. */
-    @media (pointer: coarse) {
+    /* Fat chips only where there's room for them (touch + wide screen). */
+    @media (pointer: coarse) and (min-width: 1201px) {
       .chip { padding: 9px 13px; }
+    }
+    /* Tablet: the strip between the side menus is too narrow for chips —
+       drop the HUD to its own second row, slightly compacted. */
+    @media (max-width: 1200px) {
+      #hud { left: 118px; right: 262px; top: 48px; }
+      .chip { padding: 5px 9px; gap: 6px; }
+      .chip .ico { font-size: 15px; }
+      .chip .val { font-size: 13.5px; }
+      .chip .col { min-width: 46px; }
+    }
+    @media (max-width: 900px) {
+      #hud { gap: 6px; }
+      .chip { padding: 4px 7px; gap: 5px; }
+      .chip .ico { font-size: 14px; }
+      .chip .col { min-width: 40px; }
+      .chip .rate { font-size: 9px; margin-left: 3px; }
+      .dial { width: 24px; height: 24px; }
+    }
+    /* Phones: dock the chips in one scrollable strip along the bottom, clear
+       of every panel; the hint line and version badge have no room to live. */
+    @media (max-width: 700px) {
+      #hud {
+        top: auto; left: 0; right: 0;
+        bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+        padding: 0 max(10px, env(safe-area-inset-right, 10px))
+                 0 max(10px, env(safe-area-inset-left, 10px));
+        flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
+        scrollbar-width: none;
+      }
+      #hud::-webkit-scrollbar { display: none; }
+      .chip { flex: none; }
+      #hint, #version-badge-3d { display: none; }
+      #palette { bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
+      /* Menu becomes one scrollable row beside the Classic button, so its
+         buttons never wrap down behind the species palette. */
+      #menu3d {
+        left: 104px; right: max(12px, env(safe-area-inset-right, 12px));
+        flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
+        scrollbar-width: none;
+      }
+      #menu3d::-webkit-scrollbar { display: none; }
+      .menu-btn { flex: none; }
+    }
+    @media (pointer: coarse) {
       .coral-btn { padding: 11px 12px; font-size: 14px; }
       #palette { gap: 7px; }
       #palette-toggle { padding: 11px 14px; font-size: 14px; }
