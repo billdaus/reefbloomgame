@@ -273,4 +273,20 @@ function makeBiomeChip(slotIdx, biome, icon, label, onReset) {
   return chip;
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  // Almost always Safari refusing a WebGL context (GPU process wedged, or too
+  // many open tabs). A readable card beats a silent blank page — saves are safe.
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;'
+    + 'justify-content:center;background:#0a3550;padding:24px;';
+  d.innerHTML = '<div style="max-width:440px;background:#0d3550;border:1px solid #2f6f92;'
+    + 'border-radius:14px;padding:22px 24px;color:#eaf6ff;font:15px/1.6 system-ui,sans-serif;">'
+    + '<div style="font-size:17px;font-weight:700;margin-bottom:8px">🪸 The reef couldn&rsquo;t start</div>'
+    + 'Your browser wouldn&rsquo;t give the game a graphics (WebGL) context. This usually'
+    + ' means too many open tabs or a glitched browser session &mdash; close a few tabs, or'
+    + ' fully quit and reopen the browser, then reload this page.'
+    + '<div style="margin-top:10px;color:#9fc4dc;font-size:13px">Your reef save is safe &mdash; '
+    + 'nothing is written until the game has fully started.</div></div>';
+  document.body.appendChild(d);
+});
