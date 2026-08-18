@@ -52,7 +52,11 @@ function zoneAt(x) {
 
 // Classic's biome membership rule (PlacementMenu._matchesBiome): no biome
 // field = coral-only; 'both' = coral + seagrass; arrays list biomes explicitly.
+// Lantern corals are the exception: they are lamps first and corals second,
+// and a lamp belongs anywhere it's dark — they place in every biome (3D only).
+const LANTERN_CORALS = new Set(['lanternCoral', 'wispCoral', 'phantomPolyp']);
 function matchesBiome(spec, biomeId) {
+  if (LANTERN_CORALS.has(spec.id)) return true;
   const b = spec.biome;
   if (!b || b === 'coral') return biomeId === 'coral';
   if (b === 'both') return biomeId === 'coral' || biomeId === 'seagrass';
@@ -2722,6 +2726,48 @@ export function initReefScene3D(canvas) {
     shelter: true, homeCap: 4, polypCost: 20, unlockLevel: 2,
     biome: ['coral', 'seagrass', 'deepTwilight'],
   };
+  // The Golden Tree — a 3D-only lantern-tree decoration for any biome: a
+  // driftwood trunk crowned in golden tufts that glow after dark. No income,
+  // pure light and beauty, priced in pearls.
+  const GOLDEN_SPEC = {
+    id: 'goldenTree', name: 'Golden Tree', scientific: 'Arbor aurea',
+    tier: 'legendary', tall: true, color: 0xffd54f, accentColor: 0xffecb3,
+    utility: true, lantern: true, pearlCost: 40, unlockLevel: 4,
+    biome: ['coral', 'seagrass', 'deepTwilight'],
+  };
+  function makeGoldenTree() {
+    const g = new THREE.Group();
+    const seedBase = 7777 + coralCounter++ * 7919;
+    const rnd = mulberry32(seedBase);
+    g.userData = { grow: 0, buildSeed: seedBase };
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.85 });
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: 0xffd54f, roughness: 0.35, emissive: 0xffb300, emissiveIntensity: 0.4 });
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.13, 1.1, 7), trunkMat);
+    trunk.position.y = 0.55;
+    g.add(trunk);
+    const tufts = 5 + Math.floor(rnd() * 3);
+    for (let i = 0; i < tufts; i++) {
+      const a = rnd() * Math.PI * 2, r = 0.14 + rnd() * 0.3, h = 0.95 + rnd() * 0.5;
+      const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.5, 5), trunkMat);
+      branch.position.set(Math.cos(a) * r * 0.6, h - 0.25, Math.sin(a) * r * 0.6);
+      branch.rotation.z = Math.cos(a) * 0.7;
+      branch.rotation.x = -Math.sin(a) * 0.7;
+      g.add(branch);
+      const tuft = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16 + rnd() * 0.12, 0), goldMat);
+      tuft.position.set(Math.cos(a) * r, h, Math.sin(a) * r);
+      g.add(tuft);
+    }
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), goldMat);
+    crown.position.y = 1.35;
+    g.add(crown);
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    g.rotation.y = rnd() * Math.PI * 2;
+    g.userData.seed = rnd() * 6.28;
+    g.userData.glowMats = [goldMat];   // brightens with the biolums after dark
+    g.scale.setScalar(0.01);
+    return g;
+  }
   function makeHideyHole() {
     const g = new THREE.Group();
     const seedBase = 4242 + coralCounter++ * 7919;
@@ -2749,7 +2795,9 @@ export function initReefScene3D(canvas) {
   function addCoral(spec, tile, lvl, growAt) {
     lvl ??= spec.utility ? CORAL_MAX_LEVEL : 0;
     tile.userData.occupied = true;
-    const group = spec.decor ? makeHideyHole() : makeCoral(spec, Math.max(1, lvl));
+    const group = spec.decor ? makeHideyHole()
+      : spec.id === 'goldenTree' ? makeGoldenTree()
+      : makeCoral(spec, Math.max(1, lvl));
     group.position.set(tile.position.x, ZONES[tile.userData.biome].floorY + 0.18, tile.position.z);
     const entry = {
       b: tile.userData.biome, c: tile.userData.c, r: tile.userData.r, id: spec.id, level: lvl,
@@ -2757,9 +2805,9 @@ export function initReefScene3D(canvas) {
     group.userData.spec = spec;
     group.userData.entry = entry;
     group.userData.levelScale = spec.decor ? 1 : stageScale(lvl);
-    if (BIOLUM_SPECIES.has(spec.id)) {
-      // Halo on every biolum coral; a real PointLight on the first few, so
-      // placing many can't blow the light budget.
+    if (BIOLUM_SPECIES.has(spec.id) || spec.lantern) {
+      // Halo on every biolum/lantern coral; a real PointLight on the first
+      // few, so placing many can't blow the light budget.
       const halo = makeHalo(spec.accentColor ?? spec.color, 3.6);
       halo.position.y = 0.7;
       group.add(halo);
@@ -3344,6 +3392,7 @@ export function initReefScene3D(canvas) {
   if (pearlC.length) {
     label('Pearl species · 💎');
     pearlC.forEach(s => button(s, 'coral'));
+    button(GOLDEN_SPEC, 'coral');   // the lantern-tree — lights any biome
   }
   const utilC = coralSpecs.filter(s => s.utility);
   if (utilC.length) {
@@ -4386,7 +4435,8 @@ export function initReefScene3D(canvas) {
       if (ZONES[b]) addStation(b, c, r, lv ?? 1);
     });
     (saved.corals ?? []).forEach(({ b, c, r, id, level: lv, g }) => {
-      const spec = CORAL_SPECIES[id] ?? (id === HIDEY_SPEC.id ? HIDEY_SPEC : null);
+      const spec = CORAL_SPECIES[id]
+        ?? (id === HIDEY_SPEC.id ? HIDEY_SPEC : id === GOLDEN_SPEC.id ? GOLDEN_SPEC : null);
       const tile = tileAt(b ?? 'coral', c, r);
       if (!spec || !tile || tile.userData.occupied) return;
       // Pre-growth-stage saves carry no `g` clock: those corals were adults
