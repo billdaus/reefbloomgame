@@ -309,25 +309,46 @@
   </script>
   <script type="module">
     import { initReefScene3D } from './src/3d/ReefScene3D.js';
-    try {
-      initReefScene3D(document.getElementById('app3d'));
-    } catch (err) {
-      console.error(err);
-      // Almost always Safari refusing a WebGL context (GPU process wedged, or
-      // too many open tabs). Show a readable card; saves are safe.
+    // Safari's GPU process can refuse WebGL contexts transiently (tab
+    // pressure, post-crash recovery). Retry on a fresh canvas with breathing
+    // room before giving up; if we do give up, show the REAL error too.
+    async function boot() {
+      const delays = [0, 1200, 2600];
+      let lastErr = null;
+      for (const wait of delays) {
+        if (wait) await new Promise(r => setTimeout(r, wait));
+        let cv = document.getElementById('app3d');
+        if (lastErr) {   // previous attempt poisoned the canvas's context slot
+          const fresh = cv.cloneNode(false);
+          cv.parentNode.replaceChild(fresh, cv);
+          cv = fresh;
+        }
+        try {
+          initReefScene3D(cv);
+          return;
+        } catch (err) {
+          lastErr = err;
+          console.error('3D boot attempt failed:', err);
+        }
+      }
       const d = document.createElement('div');
       d.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;'
         + 'justify-content:center;background:#0a3550;padding:24px;';
-      d.innerHTML = '<div style="max-width:440px;background:#0d3550;border:1px solid #2f6f92;'
+      d.innerHTML = '<div style="max-width:460px;background:#0d3550;border:1px solid #2f6f92;'
         + 'border-radius:14px;padding:22px 24px;color:#eaf6ff;font:15px/1.6 system-ui,sans-serif;">'
         + '<div style="font-size:17px;font-weight:700;margin-bottom:8px">🪸 The reef couldn&rsquo;t start</div>'
-        + 'Your browser wouldn&rsquo;t give the game a graphics (WebGL) context. This usually'
-        + ' means too many open tabs or a glitched browser session &mdash; close a few tabs, or'
-        + ' fully quit and reopen the browser, then reload this page.'
+        + 'The browser wouldn&rsquo;t give the 3D reef a working WebGL context, even after'
+        + ' three tries. Classic may still run (it can use simpler graphics). The surest'
+        + ' fix is closing other tabs and fully restarting the browser &mdash; or the device.'
         + '<div style="margin-top:10px;color:#9fc4dc;font-size:13px">Your reef save is safe &mdash; '
-        + 'nothing is written until the game has fully started.</div></div>';
+        + 'nothing is written until the game has fully started.</div>'
+        + '<div style="margin-top:10px;color:#ffb4ac;font-size:11px;font-family:ui-monospace,monospace;'
+        + 'white-space:pre-wrap;" id="boot-err-detail"></div></div>';
       document.body.appendChild(d);
+      const detail = document.getElementById('boot-err-detail');
+      if (detail && lastErr) detail.textContent = String(lastErr.message || lastErr);
     }
+    boot();
     const paletteToggle = document.getElementById('palette-toggle');
     paletteToggle.onclick = () => {
       const hidden = document.getElementById('palette').classList.toggle('hidden');

@@ -1782,7 +1782,18 @@ function makeDrone() {
 }
 
 export function initReefScene3D(canvas) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  } catch (e) {
+    // Safari under GPU pressure sometimes refuses the antialiased context (or
+    // hands back a broken one) while a modest ask still succeeds. The failed
+    // attempt poisons the canvas's context slot, so retry on a fresh canvas.
+    const fresh = canvas.cloneNode(false);
+    canvas.parentNode.replaceChild(fresh, canvas);
+    canvas = fresh;
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'default' });
+  }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;

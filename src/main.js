@@ -287,6 +287,8 @@ main().catch((err) => {
     + ' means too many open tabs or a glitched browser session &mdash; close a few tabs, or'
     + ' fully quit and reopen the browser, then reload this page.'
     + '<div style="margin-top:10px;color:#9fc4dc;font-size:13px">Your reef save is safe &mdash; '
-    + 'nothing is written until the game has fully started.</div></div>';
+    + 'nothing is written until the game has fully started.</div>'
+    + '<div style="margin-top:10px;color:#ffb4ac;font-size:11px;font-family:ui-monospace,monospace;'
+    + `white-space:pre-wrap;">${String(err?.message || err).replace(/</g, '&lt;')}</div></div>`;
   document.body.appendChild(d);
 });
