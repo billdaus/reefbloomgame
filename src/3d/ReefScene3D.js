@@ -234,6 +234,29 @@ function causticTexture(size = 256) {
 // ── Species-specific textures ─────────────────────────────────────────────────
 // Every species gets its own procedural skin, styled by its shape family and
 // painted in its own colors. Cached per species — instances share one texture.
+// Soft radial glow used by bioluminescent species to light their surroundings.
+let _haloTex = null;
+function haloTexture() {
+  if (_haloTex) return _haloTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 62);
+  g.addColorStop(0, 'rgba(255,255,255,0.9)');
+  g.addColorStop(0.4, 'rgba(255,255,255,0.28)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+  _haloTex = new THREE.CanvasTexture(c);
+  return _haloTex;
+}
+function makeHalo(color, size) {
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: haloTexture(), color, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false }));
+  halo.scale.set(size, size, 1);
+  halo.userData.keep = true;   // survives coral regrowth (clearCoralGroup)
+  return halo;
+}
+
 function hashId(id) {
   let h = 0;
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -832,9 +855,11 @@ function makeCoral(spec, lvl = 1) {
   return g;
 }
 // Strip a coral group bare (disposing its meshes) so it can regrow denser.
+// Children flagged `keep` (biolum halos and lights) ride through the regrow.
 function clearCoralGroup(g) {
   for (let i = g.children.length - 1; i >= 0; i--) {
     const c = g.children[i];
+    if (c.userData.keep) continue;
     g.remove(c);
     disposeGroup(c);
   }
@@ -1577,6 +1602,12 @@ function makeFish(spec) {
   g.userData.pecs = pecs ?? null;
   g.userData.baseScale = g.scale.x;
   g.userData.glowMat = biolum ? bodyMat : null;
+  if (biolum) {
+    // Biolums light the water around them after dark (halo fades in with nf).
+    const halo = makeHalo(spec.accentColor ?? spec.color, 4.5);
+    g.add(halo);
+    g.userData.bioHalo = halo;
+  }
   g.userData.hider = DAY_HIDER_SPECIES.has(spec.id);
   return g;
 }
@@ -2431,6 +2462,91 @@ export function initReefScene3D(canvas) {
     refreshPackBtn(); refreshHud(); save();
     return cards;
   }
+
+  // ── Fish Nest & Market (on the rocky outcrop with Bubbles) ──────────────────
+  // Fish are no longer bought outright: the Market sells rarity-by-rarity eggs
+  // that warm in the Fish Nest and hatch — after a real incubation time — into
+  // a random fish of the egg's tier (odds published in the modal). The Premium
+  // Egg is the 💎 path to the top tiers. Hatch clocks are absolute timestamps,
+  // so eggs keep incubating while the reef is closed.
+  const EGG_TYPES = {
+    common:    { name: 'Common Egg',     tier: 'common',    be: 5,   ms: 45e3,   color: 0xcfd8dc },
+    uncommon:  { name: 'Uncommon Egg',   tier: 'uncommon',  be: 12,  ms: 150e3,  color: 0x81c784 },
+    rare:      { name: 'Rare Egg',       tier: 'rare',      be: 25,  ms: 360e3,  color: 0x64b5f6 },
+    superRare: { name: 'Super Rare Egg', tier: 'superRare', be: 60,  ms: 900e3,  color: 0xb39ddb },
+    epic:      { name: 'Epic Egg',       tier: 'epic',      be: 120, ms: 1800e3, color: 0xef9a9a },
+    premium:   { name: 'Premium Egg',    pearls: 50,        ms: 3600e3, color: 0xffe082 },
+  };
+  const NEST_CAP = 4;
+  const nestEggs = [];            // { t: typeId, at: hatch epoch ms } (saved)
+  let starterEggsGiven = false;   // the level-1 welcome eggs (saved)
+  let nestEggGroup = null;        // egg meshes in the nest bowl; set at build
+  const fmtMs = (ms) => {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    if (s >= 3600) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+    if (s >= 60) return `${Math.floor(s / 60)}m ${s % 60}s`;
+    return `${s}s`;
+  };
+  const eggPool = (t) => t === 'premium'
+    ? (Math.random() < 0.7 ? packFishPool('legendary') : packFishPool('mythic'))
+    : packFishPool(EGG_TYPES[t].tier);
+  function buyEgg(t) {
+    const et = EGG_TYPES[t];
+    if (!et) return;
+    if (nestEggs.length >= NEST_CAP) { flash(rateEl, 'the nest is full'); return; }
+    if (et.be) {
+      if (be < et.be) { flash(rateEl, 'not enough 🫧'); return; }
+      be -= et.be;
+    } else {
+      if (pearls < et.pearls) { flash(rateEl, `need ${et.pearls} 💎`); return; }
+      pearls -= et.pearls;
+    }
+    nestEggs.push({ t, at: Date.now() + et.ms });
+    refreshNestEggs(); refreshHud(); save();
+  }
+  function nestTick() {
+    let hatchedAny = false;
+    for (let i = nestEggs.length - 1; i >= 0; i--) {
+      if (Date.now() < nestEggs[i].at) continue;
+      const egg = nestEggs.splice(i, 1)[0];
+      const pool = eggPool(egg.t);
+      if (!pool.length) continue;
+      const spec = pool[Math.floor(Math.random() * pool.length)];
+      packSpawnFish(spec);
+      if (placedFish.length === 1) droneTrigger('firstFish');
+      ev3Record('hatch_fish'); dqRecord('hatch_fish');
+      droneQueue.push(`🐣 A ${spec.name} hatched at the nest!`);
+      flash(rateEl, `🐣 ${spec.name} hatched!`, '#ffd27f');
+      hatchedAny = true;
+    }
+    if (!hatchedAny) return;
+    refreshNestEggs(); refreshProgress(); refreshHud(); save();
+    if (nestModal.ov.style.display === 'flex') fillNest();
+  }
+  // The egg meshes in the nest bowl mirror nestEggs one-to-one.
+  const eggMats = new Map();
+  function refreshNestEggs() {
+    if (!nestEggGroup) return;
+    while (nestEggGroup.children.length) {
+      const c = nestEggGroup.children[0];
+      nestEggGroup.remove(c); c.geometry.dispose();
+    }
+    nestEggs.forEach((egg, i) => {
+      let m = eggMats.get(egg.t);
+      if (!m) {
+        m = new THREE.MeshStandardMaterial({ color: EGG_TYPES[egg.t].color, roughness: 0.35 });
+        m.userData.shared = true;
+        eggMats.set(egg.t, m);
+      }
+      const a = (i / NEST_CAP) * Math.PI * 2 + 0.7;
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), m);
+      mesh.scale.y = 1.3;
+      mesh.position.set(Math.cos(a) * 0.28, 0.2, Math.sin(a) * 0.28);
+      mesh.userData.eggIdx = i;
+      nestEggGroup.add(mesh);
+    });
+  }
+
   let ev3 = null;                // live event progress (saved)
   let dq = null;                 // today's daily quest (saved)
   const achUnlocked = new Set(); // achievement ids earned (saved)
@@ -2445,22 +2561,99 @@ export function initReefScene3D(canvas) {
 
   const zoneUnlocked = (zid) => level >= ZONES[zid].unlock;
 
-  function levelScaleFor(lvl) { return 1 + (lvl - 1) * 0.04; }   // bulk comes from regrown geometry
+  // ── Coral growth stages — level 0 is a hatchling nub, level 5 full grown ────
+  // Corals plant as hatchlings and grow through stages on a real clock (epoch
+  // timestamps, so growth continues while the reef is closed). Scale carries
+  // the size; regrown geometry carries the density. Utility corals and decor
+  // are structures, not organisms — they place full grown.
+  let bioLightCount = 0;   // placed biolum corals holding a real PointLight
+  const STAGE_MS = [60e3, 150e3, 300e3, 600e3, 900e3];   // stage s -> s+1
+  const STAGE_NAMES = ['Hatchling', 'Sprout', 'Juvenile', 'Colony', 'Mature', 'Full grown'];
+  const stageScale = (s) => [0.22, 0.4, 0.55, 0.7, 0.85, 1][clamp(s, 0, 5)];
+  const stageOutput = (s) => s === 0 ? 0 : (s / 5) * (1 + (s - 1) * POLYP_BE_BONUS);
 
-  function addCoral(spec, tile, lvl = 1) {
+  // The Hidey-Hole — a 3D-only decoration (not in the shared species catalog):
+  // a rock pile with a dark bolt-hole that ordinary fish sleep in overnight.
+  const HIDEY_SPEC = {
+    id: 'hideyHole', name: 'Hidey-Hole', scientific: '',
+    tier: 'uncommon', tall: false, color: 0x7d8a99, utility: true, decor: true,
+    shelter: true, homeCap: 4, polypCost: 20, unlockLevel: 2,
+    biome: ['coral', 'seagrass', 'deepTwilight'],
+  };
+  function makeHideyHole() {
+    const g = new THREE.Group();
+    const seedBase = 4242 + coralCounter++ * 7919;
+    const rnd = mulberry32(seedBase);
+    g.userData = { grow: 0, buildSeed: seedBase };
+    for (const [x, z, s, sy] of [[0, 0, 0.62, 0.7], [-0.42, 0.3, 0.4, 0.55], [0.44, 0.26, 0.36, 0.5]] ) {
+      const r = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 0), rockMat);
+      r.position.set(x, 0.18 * sy, z);
+      r.scale.set(s, s * sy, s);
+      r.rotation.y = rnd() * Math.PI;
+      g.add(r);
+    }
+    const hole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.17, 0.2, 0.16, 12), pupilMat);
+    hole.rotation.x = Math.PI / 2 - 0.35;
+    hole.position.set(0.05, 0.3, 0.42);
+    g.add(hole);
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    g.rotation.y = rnd() * Math.PI * 2;
+    g.userData.seed = rnd() * 6.28;
+    g.scale.setScalar(0.01);
+    return g;
+  }
+
+  function addCoral(spec, tile, lvl, growAt) {
+    lvl ??= spec.utility ? CORAL_MAX_LEVEL : 0;
     tile.userData.occupied = true;
-    const group = makeCoral(spec, lvl);
+    const group = spec.decor ? makeHideyHole() : makeCoral(spec, Math.max(1, lvl));
     group.position.set(tile.position.x, ZONES[tile.userData.biome].floorY + 0.18, tile.position.z);
     const entry = {
-      b: tile.userData.biome, c: tile.userData.c, r: tile.userData.r, id: spec.id, level: lvl };
+      b: tile.userData.biome, c: tile.userData.c, r: tile.userData.r, id: spec.id, level: lvl,
+      g: growAt ?? (lvl < CORAL_MAX_LEVEL && !spec.utility ? Date.now() + STAGE_MS[lvl] : 0) };
     group.userData.spec = spec;
     group.userData.entry = entry;
-    group.userData.levelScale = levelScaleFor(lvl);
+    group.userData.levelScale = spec.decor ? 1 : stageScale(lvl);
+    if (BIOLUM_SPECIES.has(spec.id)) {
+      // Halo on every biolum coral; a real PointLight on the first few, so
+      // placing many can't blow the light budget.
+      const halo = makeHalo(spec.accentColor ?? spec.color, 3.6);
+      halo.position.y = 0.7;
+      group.add(halo);
+      group.userData.bioHalo = halo;
+      if (bioLightCount < 8) {
+        const pl = new THREE.PointLight(spec.accentColor ?? spec.color, 0, 7, 1.8);
+        pl.position.y = 0.9;
+        pl.userData.keep = true;
+        group.add(pl);
+        group.userData.bioLight = pl;
+        bioLightCount++;
+      }
+    }
     scene.add(group); corals.push(group);
     placedCorals.push(entry);
     seen.add(spec.id);
     if (spec.shelter) { group.userData.homed = new Set(); shelters.push(group); }
     return group;
+  }
+  // Time-based growth: advance every overdue stage in one pass, then regrow
+  // the same individual denser (same seed — new growth, not a new coral).
+  function growCoral(group) {
+    const e = group.userData.entry, spec = group.userData.spec;
+    if (!e || spec.utility || e.level >= CORAL_MAX_LEVEL || !e.g) return;
+    let grew = false;
+    while (e.level < CORAL_MAX_LEVEL && e.g && Date.now() >= e.g) {
+      e.level++;
+      e.g = e.level < CORAL_MAX_LEVEL ? e.g + STAGE_MS[e.level] : 0;
+      grew = true;
+    }
+    if (!grew) return;
+    clearCoralGroup(group);
+    buildCoralInto(group, spec, group.userData.buildSeed, Math.max(1, e.level));
+    group.userData.levelScale = stageScale(e.level);
+    group.userData.grow = Math.min(group.userData.grow, 0.85);
+    recomputeRates(); refreshHud();
   }
 
   // ── Shelter homes (Classic's Anemone Haven / Reef Grotto) ────────────────────
@@ -2482,7 +2675,21 @@ export function initReefScene3D(canvas) {
       const d = dx * dx + dz * dz;
       if (d < bd) { bd = d; best = s; }
     }
-    if (best) { best.userData.homed.add(f); f.home = best; }
+    if (!best) {
+      // Every shelter and Hidey-Hole is full (or missing) — nestle into a
+      // grown coral instead (2 sleepers each), so night finds the reef tucked
+      // into its coral rather than lying out on the sand.
+      for (const g of corals) {
+        const e = g.userData.entry;
+        if (!e || g.userData.spec?.utility || e.level < 3) continue;
+        const set = (g.userData.homed ??= new Set());
+        if (set.size >= 2) continue;
+        const dx = g.position.x - f.g.position.x, dz = g.position.z - f.g.position.z;
+        const d = dx * dx + dz * dz;
+        if (d < bd) { bd = d; best = g; }
+      }
+    }
+    if (best) { (best.userData.homed ??= new Set()).add(f); f.home = best; }
     return best;
   }
   function releaseHome(f) {
@@ -2554,7 +2761,7 @@ export function initReefScene3D(canvas) {
       const spec = CORAL_SPECIES[e.id];
       if (!spec) continue;
       if (!spec.utility) {
-        bePerTick += (BE_PER_TICK[spec.tier] ?? 1) * (1 + (e.level - 1) * POLYP_BE_BONUS);
+        bePerTick += (BE_PER_TICK[spec.tier] ?? 1) * stageOutput(e.level);
       }
       polypPerTick += POLYP_PER_CORAL_TICK * e.level;
       storage += spec.storage ?? 0;
@@ -2620,20 +2827,23 @@ export function initReefScene3D(canvas) {
   function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); ev3Snapshot(); dqSnapshot(); checkAch(); onProgress(); }
 
   function tryUpgrade(group) {
+    // Polyps buy time, not levels: "Grow now" jumps the coral to its next
+    // growth stage immediately and restarts the clock for the one after.
     const e = group.userData.entry;
-    if (!e) return;
-    if (e.level >= CORAL_MAX_LEVEL) { flash(rateEl, 'max level'); return; }
-    const cost = upgradeCost(e.level);
+    if (!e || group.userData.spec?.utility) return;
+    if (e.level >= CORAL_MAX_LEVEL) { flash(rateEl, 'fully grown'); return; }
+    const cost = upgradeCost(e.level + 1);
     if (polyps < cost) { flash(rateEl, `need ${cost} 🪸`); return; }
     polyps -= cost;
     e.level++;
-    // Regrow the same individual with more branches/stalks — the level shows
+    e.g = e.level < CORAL_MAX_LEVEL ? Date.now() + STAGE_MS[e.level] : 0;
+    // Regrow the same individual with more branches/stalks — the stage shows
     // as new growth, not an inflated copy of the old mesh.
     clearCoralGroup(group);
-    buildCoralInto(group, group.userData.spec, group.userData.buildSeed, e.level);
-    group.userData.levelScale = levelScaleFor(e.level);
+    buildCoralInto(group, group.userData.spec, group.userData.buildSeed, Math.max(1, e.level));
+    group.userData.levelScale = stageScale(e.level);
     group.userData.grow = Math.min(group.userData.grow, 0.82);   // small re-grow ease
-    recomputeRates(); refreshHud(); save();   // upgrade affects rates only, not harmony/level inputs
+    recomputeRates(); refreshHud(); save();   // growth affects rates only, not harmony/level inputs
   }
   // A fish circles an anchor inside its own biome's water column.
   function fishState(spec, cx, cz, i, zone) {
@@ -2734,8 +2944,9 @@ export function initReefScene3D(canvas) {
     if (!e || !spec) return;
     const refund = (spec.pearlCost || spec.utility) ? 0 : Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
     be = Math.min(be + refund, beMax);
+    for (const f of group.userData.homed ?? []) { f.home = null; f.bed = null; }
+    if (group.userData.bioLight) bioLightCount--;   // free a light slot
     if (spec.shelter) {
-      for (const f of group.userData.homed ?? []) f.home = null;
       const si = shelters.indexOf(group); if (si >= 0) shelters.splice(si, 1);
     }
     const ci = corals.indexOf(group); if (ci >= 0) corals.splice(ci, 1);
@@ -2784,7 +2995,8 @@ export function initReefScene3D(canvas) {
         eggs: [...eggsClaimed], stations: placedStations,
         ev3, excl: [...exclOwned], dq,
         ach: [...achUnlocked], sawNight,
-        packs, vouchers, seasonPacks }));
+        packs, vouchers, seasonPacks,
+        nest: nestEggs, starterEggs: starterEggsGiven }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -2950,35 +3162,29 @@ export function initReefScene3D(canvas) {
   const clearSelBase = clearSel;
   clearSel = (...a) => { feedBtn.classList.remove('sel'); return clearSelBase(...a); };
 
-  // Species grouped by home biome, mirroring Classic's per-biome shop.
+  // Coral grouped by home biome, mirroring Classic's per-biome shop. Fish are
+  // not sold here any more — they hatch from Market eggs at the Fish Nest.
   const stdCorals = coralSpecs.filter(s => !s.utility && !s.pearlCost);
-  const stdFish = fishSpecs.filter(s => !s.pearlCost);
   for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
     const bio = BIOMES[zid];
     const lv = ZONES[zid].unlock > 1 ? ` · Lv${ZONES[zid].unlock}` : '';
     const cs = stdCorals.filter(s => primaryBiome(s) === zid);
-    const fs = stdFish.filter(s => primaryBiome(s) === zid);
     if (cs.length) {
       label(`${bio.icon} ${bio.shortName}${lv} — coral · click a tile`);
       cs.forEach(s => button(s, 'coral'));
     }
-    if (fs.length) {
-      label(`${bio.icon} ${bio.shortName}${lv} — fish · click the water`);
-      fs.forEach(s => button(s, 'fish'));
-    }
   }
   const pearlC = coralSpecs.filter(s => s.pearlCost);
-  const pearlF = fishSpecs.filter(s => s.pearlCost);
-  if (pearlC.length || pearlF.length) {
+  if (pearlC.length) {
     label('Pearl species · 💎');
     pearlC.forEach(s => button(s, 'coral'));
-    pearlF.forEach(s => button(s, 'fish'));
   }
   const utilC = coralSpecs.filter(s => s.utility);
   if (utilC.length) {
     label('Utility · 🪸 polyps');
     button(STATION_SPEC, 'station');   // Classic's 2×2 cleaning station
     utilC.forEach(s => button(s, 'coral'));
+    button(HIDEY_SPEC, 'coral');       // fish bedroom — a decoration with a bolt-hole
   }
   // Event-pass exclusives: rows exist up front but stay hidden until owned.
   const exclRows = [];
@@ -3282,12 +3488,17 @@ export function initReefScene3D(canvas) {
       + `${spec.scientific ? ` · <i>${spec.scientific}</i>` : ''}</div>`);
     const max = e.level >= CORAL_MAX_LEVEL;
     const basePerTick = spec.utility ? 0 : (BE_PER_TICK[spec.tier] ?? 1);
-    const rate = lvl => basePerTick * (1 + (lvl - 1) * POLYP_BE_BONUS) / TICK_SEC;
-    const cost = upgradeCost(e.level);
+    const rate = s => basePerTick * stageOutput(s) / TICK_SEC;
+    const cost = upgradeCost(e.level + 1);
     const refund = (spec.pearlCost || spec.utility) ? 0
       : Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
-    let html = `<div class="m-row" style="border:none;padding-bottom:0"><span>Level</span>`
-      + `<small>${e.level} / ${CORAL_MAX_LEVEL}</small></div>${bar(e.level, CORAL_MAX_LEVEL)}`;
+    let html = `<div class="m-row" style="border:none;padding-bottom:0"><span>Growth</span>`
+      + `<small>${STAGE_NAMES[e.level]} · ${e.level} / ${CORAL_MAX_LEVEL}</small></div>`
+      + bar(e.level, CORAL_MAX_LEVEL);
+    if (!max && !spec.utility && e.g) {
+      html += `<div class="m-row"><span>Next stage</span>`
+        + `<small>${STAGE_NAMES[e.level + 1]} in ${fmtMs(e.g - Date.now())}</small></div>`;
+    }
     html += spec.utility
       ? '<div class="m-row"><span>Utility coral</span><small>no BE income</small></div>'
       : `<div class="m-row"><span>Income</span><small>+${rate(e.level).toFixed(1)}/s`
@@ -3297,9 +3508,9 @@ export function initReefScene3D(canvas) {
     upgrade.body.innerHTML = html;
     const up = document.createElement('button');
     up.className = 'shop-pack';
-    up.innerHTML = max ? '<span>Max level reached</span><span>—</span>'
-      : `<span>⬆ Upgrade to Lv${e.level + 1}</span><span>${cost} 🪸</span>`;
-    up.disabled = max || polyps < cost;
+    up.innerHTML = max ? '<span>Full grown</span><span>—</span>'
+      : `<span>🌱 Grow now → ${STAGE_NAMES[e.level + 1]}</span><span>${cost} 🪸</span>`;
+    up.disabled = max || spec.utility || polyps < cost;
     up.style.opacity = up.disabled ? 0.45 : 1;
     up.onclick = () => { if (!up.disabled) { tryUpgrade(g); fillUpgrade(); } };
     const sell = document.createElement('button');
@@ -3808,11 +4019,51 @@ export function initReefScene3D(canvas) {
     if (cards) showPackReveal(cards);
   });
 
+  // 🥚 Fish Nest & Market — incubating eggs with live timers, plus the egg shop.
+  const nestModal = buildMenuModal('🥚 Fish Nest & Market',
+    'Fish hatch from eggs warmed in the nest on the rocky outcrop. Eggs keep'
+    + ' incubating while the reef is closed. All odds published.');
+  function fillNest() {
+    const now = Date.now();
+    let html = '<div class="m-sec">Incubating</div>';
+    if (!nestEggs.length) html += '<div class="m-sub">The nest is empty — pick an egg below.</div>';
+    [...nestEggs].sort((a, b) => a.at - b.at).forEach(egg => {
+      const et = EGG_TYPES[egg.t];
+      html += `<div class="m-row" style="border:none;padding-bottom:2px">`
+        + `<span class="dot" style="background:${hex(et.color)}"></span>`
+        + `<span>${et.name}</span><small>🐣 in ${fmtMs(egg.at - now)}</small></div>`
+        + bar(et.ms - (egg.at - now), et.ms);
+    });
+    html += `<div class="m-sec">Market — fish eggs · ${nestEggs.length}/${NEST_CAP} nest slots used</div>`;
+    for (const [id, et] of Object.entries(EGG_TYPES)) {
+      const odds = id === 'premium'
+        ? `70% ${TIER_LABEL.legendary} (${packFishPool('legendary').length} species)`
+          + ` / 30% ${TIER_LABEL.mythic} (${packFishPool('mythic').length}), even odds within tier`
+        : `hatches 1 of ${packFishPool(et.tier).length} ${TIER_LABEL[et.tier]} fish, even odds`;
+      html += `<div class="m-row"><span class="dot" style="background:${hex(et.color)}"></span>`
+        + `<span><b>${et.name}</b><br><span style="font-size:10.5px;color:#9fc4dc">`
+        + `${fmtMs(et.ms)} incubation · ${odds}</span></span>`
+        + `<button class="pack-open-btn" data-egg="${id}"`
+        + `${nestEggs.length >= NEST_CAP ? ' disabled' : ''}>`
+        + `${et.be ? `${et.be} 🫧` : `${et.pearls} 💎`}</button></div>`;
+    }
+    html += '<div class="m-sub" style="margin-top:8px">You can also tap the nest itself,'
+      + ' on the rocky outcrop south-east of the reef.</div>';
+    nestModal.body.innerHTML = html;
+  }
+  nestModal.body.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-egg]');
+    if (!b || b.disabled) return;
+    buyEgg(b.dataset.egg);
+    fillNest();
+  });
+
   const menuEl = document.getElementById('menu3d');
   if (menuEl) {
     [['📖 Journal', journal, fillJournal],
      ['🏆', achModal, fillAch],
      ['🎁', packModal, fillPack],
+     ['🥚', nestModal, fillNest],
      ['📅 Daily', daily, fillDaily],
      ['🎉 Event', eventModal, fillEvent],
      ['⚖ Advisor', advisor, fillAdvisor],
@@ -3845,9 +4096,10 @@ export function initReefScene3D(canvas) {
     (saved.stations ?? []).forEach(({ b, c, r, level: lv }) => {
       if (ZONES[b]) addStation(b, c, r, lv ?? 1);
     });
-    (saved.corals ?? []).forEach(({ b, c, r, id, level: lv }) => {
-      const spec = CORAL_SPECIES[id], tile = tileAt(b ?? 'coral', c, r);
-      if (spec && tile && !tile.userData.occupied) addCoral(spec, tile, lv ?? 1);
+    (saved.corals ?? []).forEach(({ b, c, r, id, level: lv, g }) => {
+      const spec = CORAL_SPECIES[id] ?? (id === HIDEY_SPEC.id ? HIDEY_SPEC : null);
+      const tile = tileAt(b ?? 'coral', c, r);
+      if (spec && tile && !tile.userData.occupied) addCoral(spec, tile, lv ?? 1, g);
     });
     (saved.fish ?? []).forEach((d, i) => {
       const spec = FISH_SPECIES[d.id];
@@ -3874,6 +4126,15 @@ export function initReefScene3D(canvas) {
     }
     Object.assign(vouchers, saved.vouchers ?? {});
     (saved.seasonPacks ?? []).forEach(id => seasonPacks.push(id));
+    (saved.nest ?? []).forEach(e => nestEggs.push(e));
+    starterEggsGiven = !!saved.starterEggs;
+  }
+  if (!starterEggsGiven) {
+    // The level-1 welcome: two starter eggs already warming in the nest — the
+    // player's first fish arrive by hatching, teaching the loop from turn one.
+    nestEggs.push({ t: 'common', at: Date.now() + 45e3 });
+    nestEggs.push({ t: 'common', at: Date.now() + 120e3 });
+    starterEggsGiven = true;
   }
   ev3Init(); ev3Snapshot(); dqInit(); dqSnapshot(); refreshExclRows(); refreshPackBtn();
   recomputeRates(); refreshProgress(); refreshHud();
@@ -3885,9 +4146,63 @@ export function initReefScene3D(canvas) {
   // tiles, the expansion aprons, and the decor ring around them.
   const dockY = terrainHeight(15, 24);
   const DOCK_POS = new THREE.Vector3(15, dockY + 1.1, 24);
-  const dockRock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9, 0), rockMat);
-  dockRock.position.set(15, dockY + 0.2, 24);
-  dockRock.scale.y = 0.55; dockRock.castShadow = true; scene.add(dockRock);
+  // The rocky outcrop — one landmark holding Bubbles' perch, the Fish Nest,
+  // and the Market stall, in the open channel south-east of the reef.
+  const outcrop = new THREE.Group();
+  outcrop.position.set(15, dockY, 24);
+  const mkRock = (x, z, s, sy, ry = 0) => {
+    const r = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9, 0), rockMat);
+    r.position.set(x, 0.18, z);
+    r.scale.set(s, s * sy, s);
+    r.rotation.y = ry;
+    outcrop.add(r);
+    return r;
+  };
+  mkRock(0, 0, 1.2, 0.55);            // Bubbles' perch (the old dock rock)
+  mkRock(-1.8, 0.8, 0.95, 0.42, 1.3);
+  mkRock(1.9, -0.7, 1.0, 0.48, 2.4);
+  mkRock(-0.5, -1.6, 0.72, 0.36, 0.7);
+  mkRock(1.0, 1.6, 0.78, 0.4, 3.6);
+  // Fish Nest — a pebble-ring bowl on the west shoulder.
+  const nestGroup = new THREE.Group();
+  nestGroup.position.set(-1.8, 0.52, 0.8);
+  const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.62, 0.16, 14), rockMat);
+  nestGroup.add(dish);
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2;
+    const peb = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), rockMat);
+    peb.position.set(Math.cos(a) * 0.55, 0.1, Math.sin(a) * 0.55);
+    peb.scale.y = 0.75;
+    nestGroup.add(peb);
+  }
+  nestEggGroup = new THREE.Group();
+  nestGroup.add(nestEggGroup);
+  outcrop.add(nestGroup);
+  // Market stall — posts, a tilted canopy, a crate and barrel of wares.
+  const marketGroup = new THREE.Group();
+  marketGroup.position.set(1.9, 0.55, -0.7);
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.8 });
+  const canopyMat = new THREE.MeshStandardMaterial({ color: 0xffb74d, roughness: 0.7 });
+  for (const sx of [-0.55, 0.55]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.25, 8), postMat);
+    post.position.set(sx, 0.62, 0);
+    marketGroup.add(post);
+  }
+  const canopy = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.07, 1.0), canopyMat);
+  canopy.position.set(0, 1.28, -0.12);
+  canopy.rotation.x = -0.18;
+  marketGroup.add(canopy);
+  const crate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 0.5), postMat);
+  crate.position.set(-0.15, 0.22, 0.15);
+  crate.rotation.y = 0.5;
+  marketGroup.add(crate);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.5, 10), canopyMat);
+  barrel.position.set(0.42, 0.26, 0.28);
+  marketGroup.add(barrel);
+  outcrop.add(marketGroup);
+  outcrop.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  scene.add(outcrop);
+  refreshNestEggs();
   drone.position.copy(DOCK_POS);
   scene.add(drone);
 
@@ -4197,6 +4512,8 @@ export function initReefScene3D(canvas) {
       }
     }
 
+    // Tap the outcrop — nest, market stall, or rocks — to open Nest & Market.
+    if (castAll([outcrop], true)) { fillNest(); nestModal.show(); return; }
     // Tap a station or placed coral for its upgrade menu — before placement.
     const stHit = castAll(stationGroups, true);
     if (stHit) {
@@ -4389,11 +4706,27 @@ export function initReefScene3D(canvas) {
   const SUN_DAY = new THREE.Color(0xeaf6ff), SUN_NIGHT = new THREE.Color(0x8fb3e8);
   const FOG_DAY = new THREE.Color(0x11486a), FOG_NIGHT = new THREE.Color(0x071726);
   let running = true;
+  let lastSlow = 0;
   function frame() {
     if (!running) return;
     requestAnimationFrame(frame);
     const dt = clock.getDelta();
     const t = clock.getElapsedTime();
+    // Slow tick (1 Hz): egg hatching and coral growth run on absolute clocks.
+    if (t - lastSlow >= 1) {
+      lastSlow = t;
+      nestTick();
+      for (const g of corals) growCoral(g);
+      if (nestModal.ov.style.display === 'flex') fillNest();   // live countdowns
+    }
+    // Eggs wobble harder as hatch time closes in.
+    if (nestEggGroup) {
+      for (const egg of nestEggGroup.children) {
+        const d = nestEggs[egg.userData.eggIdx];
+        const urg = d ? clamp(1 - (d.at - Date.now()) / 15000, 0, 1) : 0;
+        egg.rotation.z = Math.sin(t * (4 + urg * 8) + egg.userData.eggIdx * 2) * (0.05 + urg * 0.22);
+      }
+    }
 
     be = Math.min(be + incomePerSec * dt, beMax);
     polyps = Math.min(polyps + polypPerSec * dt, POLYP_MAX);
@@ -4433,6 +4766,12 @@ export function initReefScene3D(canvas) {
       g.rotation.z = Math.sin(t * 0.8 + g.userData.seed) * 0.04;
       if (g.userData.glowMats) {
         for (const m of g.userData.glowMats) m.emissiveIntensity = 0.5 + nf * 0.85;
+      }
+      if (g.userData.bioHalo) {
+        // Biolums pour light into the water around them after dark.
+        const fl = 0.85 + Math.sin(t * 1.3 + g.userData.seed) * 0.15;
+        g.userData.bioHalo.material.opacity = nf * 0.5 * fl;
+        if (g.userData.bioLight) g.userData.bioLight.intensity = nf * 2.4 * fl;
       }
     }
     // Schools: refresh each shoal's shared waypoint and flock averages once,
@@ -4715,6 +5054,9 @@ export function initReefScene3D(canvas) {
         f.g.scale.setScalar(f.g.scale.x + (target - f.g.scale.x) * Math.min(1, dt * (puff > 1 ? 8 : 2)));
       }
       if (f.g.userData.glowMat) f.g.userData.glowMat.emissiveIntensity = nf * 0.9;
+      if (f.g.userData.bioHalo) {
+        f.g.userData.bioHalo.material.opacity = nf * 0.45 * (0.85 + Math.sin(t * 1.7 + f.phase) * 0.15);
+      }
     }
     for (const w of weeds) w.rotation.z = Math.sin(t * 0.9 + w.userData.seed) * 0.12;
     for (const o of orbs) {

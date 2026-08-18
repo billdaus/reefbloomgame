@@ -183,6 +183,7 @@
       padding: 4px 12px; border-radius: 8px;
     }
     .pack-open-btn:hover { background: rgba(255,210,127,0.3); }
+    .pack-open-btn:disabled { opacity: 0.4; cursor: default; }
     .free-badge {
       font-size: 10px; color: #ffd27f; background: rgba(0,0,0,0.35);
       padding: 1px 5px; border-radius: 8px; letter-spacing: 0.5px;
@@ -287,8 +288,8 @@
   <canvas id="app3d"></canvas>
   <button id="palette-toggle">🪸 Species ▾</button>
   <div id="palette"></div>
-  <div id="hint">🏖️ Beach far west · 🌿 Seagrass · 🪸 Coral Reef centre · 🌌 Twilight east — plant in the matching biome · click a coral to upgrade · tap a ＋ plot to expand a reef with 🪸 · ✕ Remove to sell · drag or arrow keys to move · right-drag or two fingers to orbit.</div>
-  <div id="version-badge-3d">3Dev 4.3</div>
+  <div id="hint">🏖️ Beach far west · 🌿 Seagrass · 🪸 Coral Reef centre · 🌌 Twilight east — plant in the matching biome · corals grow from hatchlings; tap one to check its stage · 🥚 fish hatch from Market eggs at the nest on the rocky outcrop (south-east) · tap a ＋ plot to expand a reef with 🪸 · ✕ Remove to sell · drag or arrow keys to move · right-drag or two fingers to orbit.</div>
+  <div id="version-badge-3d">3Dev 4.4</div>
   <script type="module">
     import { initReefScene3D } from './src/3d/ReefScene3D.js';
     initReefScene3D(document.getElementById('app3d'));
