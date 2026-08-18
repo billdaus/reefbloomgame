@@ -2374,9 +2374,18 @@ export function initReefScene3D(canvas) {
   let packBtn = null;       // menu button; assigned with the other menus
 
   const rollRange = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
-  const packFishPool = (tier) => allFish().filter(s => s.tier === tier && !s.eventId);
+  // Pack and egg pools are level- AND biome-gated: they only roll species the
+  // player could meet anyway — nothing above their level, nothing homed in a
+  // locked zone. Ungated tier lists remain as a never-brick fallback for eggs.
+  const tierFish = (tier) => allFish().filter(s => s.tier === tier && !s.eventId);
+  const fishAvailable = (s) =>
+    (s.unlockLevel ?? 1) <= level && zoneUnlocked(primaryBiome(s));
+  const coralAvailable = (s) =>
+    (s.unlockLevel ?? 1) <= level
+    && Object.keys(ZONES).some(z => zoneUnlocked(z) && matchesBiome(s, z));
+  const packFishPool = (tier) => tierFish(tier).filter(fishAvailable);
   const packCoralPool = (tier) =>
-    allCorals().filter(s => s.tier === tier && !s.eventId && !s.utility);
+    allCorals().filter(s => s.tier === tier && !s.eventId && !s.utility && coralAvailable(s));
   // Weekly featured fish — a fixed, disclosed 25% slice of the fish roll in
   // packs of its tier. Deterministic per calendar week; nothing to save.
   function featuredFish() {
@@ -2421,17 +2430,23 @@ export function initReefScene3D(canvas) {
     } else {
       const amt = rollRange(R.be); be = Math.min(be + amt, beMax);
       cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`,
-        sub: `No ${lbl} coral exists to roll — consolation riches` });
+        sub: `No ${lbl} coral is within your reach yet — consolation riches` });
     }
-    // Card 3 — the guaranteed fish (featured takes a fixed 25% slice of its tier).
+    // Card 3 — the guaranteed fish (featured takes a fixed 25% slice of its
+    // tier, but only once the featured fish itself is within the gate).
     const feat = featuredFish();
     const fPool = packFishPool(tier);
-    let spec = feat && feat.tier === tier && Math.random() < 0.25 ? feat : null;
+    let spec = feat && feat.tier === tier && fishAvailable(feat) && Math.random() < 0.25
+      ? feat : null;
     if (!spec && fPool.length) spec = fPool[Math.floor(Math.random() * fPool.length)];
     if (spec) {
       packSpawnFish(spec);
       cards.push({ icon: '🐟', title: `${spec.name} joins the reef!`,
         sub: `Guaranteed ${lbl} fish${spec === feat ? " — ⭐ this week's featured" : ''}` });
+    } else {
+      const amt = rollRange(R.be); be = Math.min(be + amt, beMax);
+      cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`,
+        sub: `No ${lbl} fish swims your unlocked waters yet — consolation riches` });
     }
     refreshLocks(); refreshPackBtn(); refreshProgress(); refreshHud(); save();
     return cards;
@@ -2441,6 +2456,9 @@ export function initReefScene3D(canvas) {
   function buyRarityPack(tier) {
     const price = PACK_PRICE[tier];
     if (!price) return null;
+    if (!packFishPool(tier).length) {
+      flash(rateEl, 'no such fish in your waters yet'); return null;
+    }
     if (price.be) {
       if (be < price.be) { flash(rateEl, 'not enough 🫧'); return null; }
       be -= price.be;
@@ -2498,26 +2516,25 @@ export function initReefScene3D(canvas) {
     if (s >= 60) return `${Math.floor(s / 60)}m ${s % 60}s`;
     return `${s}s`;
   };
-  // Eggs are biome-gated: the hatch pool only holds fish whose home biome is
-  // unlocked, so an egg can't drop a twilight dweller into a locked zone. New
-  // biomes enrich every egg the moment they open (counts disclosed live).
-  const gatedTierPool = (tier) =>
-    packFishPool(tier).filter(s => zoneUnlocked(primaryBiome(s)));
+  // Eggs share the packs' level+biome gate (packFishPool): the hatch pool
+  // only holds fish the player could meet anyway. Levels and new biomes
+  // enrich every egg the moment they arrive (counts disclosed live), and an
+  // already-bought egg falls back to the ungated tier list — never bricked.
   function eggPool(t) {
     if (t === 'premium') {
-      let leg = gatedTierPool('legendary'), myth = gatedTierPool('mythic');
+      let leg = packFishPool('legendary'), myth = packFishPool('mythic');
       if (!leg.length && !myth.length) {   // never brick a bought egg
-        leg = packFishPool('legendary'); myth = packFishPool('mythic');
+        leg = tierFish('legendary'); myth = tierFish('mythic');
       }
       const pick = Math.random() < 0.7 ? leg : myth;
       return pick.length ? pick : (leg.length ? leg : myth);
     }
-    const open = gatedTierPool(EGG_TYPES[t].tier);
-    return open.length ? open : packFishPool(EGG_TYPES[t].tier);
+    const open = packFishPool(EGG_TYPES[t].tier);
+    return open.length ? open : tierFish(EGG_TYPES[t].tier);
   }
   const eggBuyable = (t) => t === 'premium'
-    ? gatedTierPool('legendary').length + gatedTierPool('mythic').length > 0
-    : gatedTierPool(EGG_TYPES[t].tier).length > 0;
+    ? packFishPool('legendary').length + packFishPool('mythic').length > 0
+    : packFishPool(EGG_TYPES[t].tier).length > 0;
   function buyEgg(t) {
     const et = EGG_TYPES[t];
     if (!et) return;
@@ -4016,17 +4033,22 @@ export function initReefScene3D(canvas) {
       const fp = packFishPool(tier);
       const price = PACK_PRICE[tier];
       const priceTag = price ? (price.be ? `${price.be} 🫧` : `${price.pearls} 💎`) : null;
+      const stocked = fp.length > 0;
       let actions = n ? `<button class="pack-open-btn" data-pack="${tier}">Open</button>` : '';
       if (priceTag) {
-        actions += `<button class="pack-open-btn" data-pack-buy="${tier}">Buy ${priceTag}</button>`;
+        actions += `<button class="pack-open-btn" data-pack-buy="${tier}"`
+          + `${stocked ? '' : ' disabled'}>Buy ${priceTag}</button>`;
       } else if (!n) {
         actions = '<small>never sold — Lv 12+ level-ups only</small>';
       }
-      html += `<div class="m-row${n || priceTag ? '' : ' locked'}">`
+      html += `<div class="m-row${(n || priceTag) && stocked ? '' : ' locked'}">`
         + `<span><b>${TIER_LABEL[tier]}</b>${n ? ` ×${n}` : ''}<br>`
         + `<span style="font-size:10.5px;color:#9fc4dc">`
         + `60%: ${R.be[0]}–${R.be[1]} 🫧 / 40%: ${R.pearls[0]}–${R.pearls[1]} 💎`
-        + ` · a free ${TIER_LABEL[tier]} coral 🎟 · guaranteed fish (${fp.length} species, even odds)`
+        + ` · a free ${TIER_LABEL[tier]} coral 🎟 · `
+        + (stocked
+          ? `guaranteed fish (${fp.length} species, even odds)`
+          : 'no fish in your unlocked waters yet — levels and biomes stock this pack')
         + '</span></span>'
         + `<span style="display:flex;gap:6px;flex:none;margin-left:auto">${actions}</span>`
         + '</div>';
@@ -4089,9 +4111,9 @@ export function initReefScene3D(canvas) {
     for (const [id, et] of Object.entries(EGG_TYPES)) {
       const buyable = eggBuyable(id);
       const odds = id === 'premium'
-        ? `70% ${TIER_LABEL.legendary} (${gatedTierPool('legendary').length} species)`
-          + ` / 30% ${TIER_LABEL.mythic} (${gatedTierPool('mythic').length}), even odds within tier`
-        : `hatches 1 of ${gatedTierPool(et.tier).length} ${TIER_LABEL[et.tier]} fish, even odds`;
+        ? `70% ${TIER_LABEL.legendary} (${packFishPool('legendary').length} species)`
+          + ` / 30% ${TIER_LABEL.mythic} (${packFishPool('mythic').length}), even odds within tier`
+        : `hatches 1 of ${packFishPool(et.tier).length} ${TIER_LABEL[et.tier]} fish, even odds`;
       html += `<div class="m-row${buyable ? '' : ' locked'}">`
         + `<span class="dot" style="background:${hex(et.color)}"></span>`
         + `<span><b>${et.name}</b><br><span style="font-size:10.5px;color:#9fc4dc">`
