@@ -2725,16 +2725,25 @@ export function initReefScene3D(canvas) {
     tier: 'uncommon', tall: false, color: 0x7d8a99, utility: true, decor: true,
     shelter: true, homeCap: 4, polypCost: 20, unlockLevel: 2,
     biome: ['coral', 'seagrass', 'deepTwilight'],
+    lore: 'A pile of rocks with a dark doorway. Real reef fish spend their nights'
+      + ' wedged into exactly this kind of crevice — a bedroom is a bedroom.',
   };
   // The Golden Tree — a 3D-only lantern-tree decoration for any biome: a
   // driftwood trunk crowned in golden tufts that glow after dark. No income,
   // pure light and beauty, priced in pearls.
   const GOLDEN_SPEC = {
-    id: 'goldenTree', name: 'Golden Tree', scientific: 'Arbor aurea',
+    id: 'goldenTree', name: 'Golden Tree', scientific: 'Laurinque elenya',
     tier: 'legendary', tall: true, color: 0xffd54f, accentColor: 0xffecb3,
     utility: true, lantern: true, pearlCost: 40, unlockLevel: 4,
     biome: ['coral', 'seagrass', 'deepTwilight'],
+    lore: 'A real discovery: golden, tree-like corals over a metre tall were found'
+      + ' 360–529 m down on seamounts off Costa Rica — so unlike anything known that'
+      + ' scientists gave them a brand-new family, Laurinqueidae. In the wild they'
+      + ' rise from dark rock ringed by thousands of brittle stars: gilded trees'
+      + ' standing among stars.',
+    wildNote: 'Newly described — deep Pacific seamounts only',
   };
+  const LOCAL_SPECS = { hideyHole: HIDEY_SPEC, goldenTree: GOLDEN_SPEC };
   function makeGoldenTree() {
     const g = new THREE.Group();
     const seedBase = 7777 + coralCounter++ * 7919;
@@ -3523,7 +3532,7 @@ export function initReefScene3D(canvas) {
     const sci = found && spec.scientific
       ? ` <i style="color:#9fc4dc;font-weight:400">${spec.scientific}</i>` : '';
     const note = found
-      ? (SPECIES_LORE[spec.id] ?? 'A specimen of the reef.')
+      ? (SPECIES_LORE[spec.id] ?? spec.lore ?? 'A specimen of the reef.')
       : need > level ? `🔒 Unlocks at Lv${need}.` : 'Place one to record it.';
     return `<div class="m-row${found ? '' : ' locked'}" data-sp="${spec.id}"`
       + ` style="align-items:flex-start;cursor:pointer">`
@@ -3533,7 +3542,7 @@ export function initReefScene3D(canvas) {
       + `<small style="margin-top:2px">${biomeIcons(spec)} ${badge}</small></div>`;
   }
   function fillJournal() {
-    const cs = coralSpecs, fs = fishSpecs;
+    const cs = [...coralSpecs, ...Object.values(LOCAL_SPECS)], fs = fishSpecs;
     const all = [...cs, ...fs];
     const found = all.filter(s => seen.has(s.id)).length;
     journal.ov.querySelector('.m-sub')?.remove();
@@ -4178,7 +4187,7 @@ export function initReefScene3D(canvas) {
       + `background:radial-gradient(circle at 35% 35%, ${hex(spec.accentColor ?? spec.color)} 0%,`
       + ` ${hex(spec.color)} 62%, #06131d 100%)"></span>`
       + `<span style="font-size:11.5px;color:#9fc4dc;line-height:1.4">`
-      + (found ? (SPECIES_LORE[spec.id] ?? 'A specimen of the reef.')
+      + (found ? (SPECIES_LORE[spec.id] ?? spec.lore ?? 'A specimen of the reef.')
         : need > level ? `Not yet recorded. 🔒 Unlocks at Lv${need}.`
           : `Not yet recorded — ${kind === 'coral' ? 'place one' : 'hatch one'} to complete this entry.`)
       + '</span></div>';
@@ -4196,7 +4205,7 @@ export function initReefScene3D(canvas) {
     if (!spec.eventId) {
       const { n, unit } = priceOf(spec, kind);
       html += row(kind === 'fish' ? 'Fish Shop (once discovered)' : 'Cost', `${n} ${unit}`);
-      html += row('In the wild', abundanceText(wildWeight(spec)));
+      html += row('In the wild', spec.wildNote ?? abundanceText(wildWeight(spec)));
     } else {
       html += row('Origin', '🎉 event exclusive');
     }
@@ -4216,9 +4225,9 @@ export function initReefScene3D(canvas) {
     const r = e.target.closest('[data-sp]');
     if (!r) return;
     const id = r.dataset.sp;
-    const spec = CORAL_SPECIES[id] ?? FISH_SPECIES[id];
+    const spec = CORAL_SPECIES[id] ?? FISH_SPECIES[id] ?? LOCAL_SPECS[id];
     if (!spec) return;
-    fillSpecies(spec, CORAL_SPECIES[id] ? 'coral' : 'fish');
+    fillSpecies(spec, FISH_SPECIES[id] ? 'fish' : 'coral');
     speciesModal.show();
   });
 
@@ -4435,8 +4444,7 @@ export function initReefScene3D(canvas) {
       if (ZONES[b]) addStation(b, c, r, lv ?? 1);
     });
     (saved.corals ?? []).forEach(({ b, c, r, id, level: lv, g }) => {
-      const spec = CORAL_SPECIES[id]
-        ?? (id === HIDEY_SPEC.id ? HIDEY_SPEC : id === GOLDEN_SPEC.id ? GOLDEN_SPEC : null);
+      const spec = CORAL_SPECIES[id] ?? LOCAL_SPECS[id] ?? null;
       const tile = tileAt(b ?? 'coral', c, r);
       if (!spec || !tile || tile.userData.occupied) return;
       // Pre-growth-stage saves carry no `g` clock: those corals were adults
