@@ -2184,7 +2184,8 @@ export function initReefScene3D(canvas) {
     wreck: ['Old wreck. Pre-dates my logs, which means officially it is not my fault.',
       'I ran the numbers: 100% of ships down here made poor choices.'],
     gavin: ['That is Gavin. He was here before the reef. Show some respect.',
-      'Gavin does not talk. Gavin observes.'],
+      'Gavin has not stopped talking since I came online. You simply lack the frequency.',
+      'I asked Gavin a question once. That was four years ago. He is still answering.'],
     duck: ['Unidentified floating object. Threat assessment: adorable.',
       'It has been circling for years. I have stopped asking questions.'],
   };
