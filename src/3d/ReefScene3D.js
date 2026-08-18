@@ -2550,6 +2550,32 @@ export function initReefScene3D(canvas) {
     nestEggs.push({ t, at: Date.now() + et.ms });
     refreshNestEggs(); refreshHud(); save();
   }
+  // Speed-up: the last 3 minutes are always free; beyond that it costs 2 🫧
+  // per remaining minute — pearls instead for the Premium egg. Cost shrinks
+  // live as the clock runs down, printed on the button.
+  const EGG_RUSH_FREE_MS = 180e3;
+  function eggRushCost(egg) {
+    const rem = egg.at - Date.now();
+    if (rem <= EGG_RUSH_FREE_MS) return { free: true };
+    const remMin = Math.ceil(rem / 60e3);
+    return EGG_TYPES[egg.t].pearls
+      ? { pearls: Math.ceil(remMin / 6) }
+      : { be: remMin * 2 };
+  }
+  function speedUpEgg(i) {
+    const egg = nestEggs[i];
+    if (!egg) return;
+    const cost = eggRushCost(egg);
+    if (cost.be) {
+      if (be < cost.be) { flash(rateEl, 'not enough 🫧'); return; }
+      be -= cost.be;
+    } else if (cost.pearls) {
+      if (pearls < cost.pearls) { flash(rateEl, `need ${cost.pearls} 💎`); return; }
+      pearls -= cost.pearls;
+    }
+    egg.at = Date.now() - 1;
+    nestTick();   // hatches on the spot; refreshes HUD and the open modal
+  }
   function nestTick() {
     let hatchedAny = false;
     for (let i = nestEggs.length - 1; i >= 0; i--) {
@@ -4100,13 +4126,21 @@ export function initReefScene3D(canvas) {
     const now = Date.now();
     let html = '<div class="m-sec">Incubating</div>';
     if (!nestEggs.length) html += '<div class="m-sub">The nest is empty — pick an egg below.</div>';
-    [...nestEggs].sort((a, b) => a.at - b.at).forEach(egg => {
-      const et = EGG_TYPES[egg.t];
-      html += `<div class="m-row" style="border:none;padding-bottom:2px">`
-        + `<span class="dot" style="background:${hex(et.color)}"></span>`
-        + `<span>${et.name}</span><small>🐣 in ${fmtMs(egg.at - now)}</small></div>`
-        + bar(et.ms - (egg.at - now), et.ms);
-    });
+    nestEggs.map((egg, i) => ({ egg, i }))
+      .sort((a, b) => a.egg.at - b.egg.at)
+      .forEach(({ egg, i }) => {
+        const et = EGG_TYPES[egg.t];
+        const rc = eggRushCost(egg);
+        const rush = rc.free ? '⏩ Free' : rc.be ? `⏩ ${rc.be} 🫧` : `⏩ ${rc.pearls} 💎`;
+        html += `<div class="m-row" style="border:none;padding-bottom:2px">`
+          + `<span class="dot" style="background:${hex(et.color)}"></span>`
+          + `<span>${et.name}</span><small>🐣 in ${fmtMs(egg.at - now)}</small>`
+          + `<button class="pack-open-btn" data-speed="${i}" style="margin-left:8px">${rush}</button>`
+          + '</div>'
+          + bar(et.ms - (egg.at - now), et.ms);
+      });
+    html += '<div class="m-sub">Speed-up is free in the last 3 minutes; before that it costs'
+      + ' 2 🫧 per remaining minute (💎 for the Premium Egg), shrinking as the clock runs.</div>';
     html += `<div class="m-sec">Market — fish eggs · ${nestEggs.length}/${NEST_CAP} nest slots used</div>`;
     for (const [id, et] of Object.entries(EGG_TYPES)) {
       const buyable = eggBuyable(id);
@@ -4129,9 +4163,10 @@ export function initReefScene3D(canvas) {
     nestModal.body.innerHTML = html;
   }
   nestModal.body.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-egg]');
+    const b = e.target.closest('button[data-egg], button[data-speed]');
     if (!b || b.disabled) return;
-    buyEgg(b.dataset.egg);
+    if (b.dataset.speed !== undefined) speedUpEgg(Number(b.dataset.speed));
+    else buyEgg(b.dataset.egg);
     fillNest();
   });
 
