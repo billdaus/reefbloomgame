@@ -24,6 +24,7 @@ import {
   BIOLUM_SPECIES, DAY_HIDER_SPECIES,
 } from '../constants.js';
 import { LINES as BUBBLES_LINES } from '../entities/bubblesLines.js';
+import { createReefMusic } from './music.js';
 
 const TILE = 2;
 const SURFACE_Y = 13;     // the ocean surface — everything swims beneath it
@@ -2440,7 +2441,7 @@ export function initReefScene3D(canvas) {
     return pool.length ? pool[Math.floor(Date.now() / 604800000) % pool.length] : null;
   }
   const packCount = () =>
-    PACK_TIERS.reduce((n, t) => n + (packs[t] ?? 0), 0) + seasonPacks.length;
+    Object.values(packs).reduce((n, c) => n + c, 0) + seasonPacks.length;
   function refreshPackBtn() {
     if (packBtn) packBtn.textContent = packCount() > 0 ? `🎁 ${packCount()}` : '🎁';
   }
@@ -2516,6 +2517,26 @@ export function initReefScene3D(canvas) {
     packs[tier] = (packs[tier] ?? 0) + 1;
     return openRarityPack(tier);
   }
+  // The Starter Pack — every reef's welcome gift at level 1. Fixed contents,
+  // no rolls: a Starter Coral voucher, two Green Chromis, and a Clownfish.
+  // Opening it is the player's first taste of the pack ritual.
+  function openStarterPack() {
+    if (!(packs.starter > 0)) return null;
+    packs.starter--;
+    vouchers.starter = (vouchers.starter ?? 0) + 1;
+    const cards = [];
+    cards.push({ icon: '🎟', title: 'Starter Coral — free placement',
+      sub: 'Plant it on any Coral Reef tile — your reef begins here' });
+    packSpawnFish(FISH_SPECIES.blueChromis);
+    packSpawnFish(FISH_SPECIES.chromis);
+    cards.push({ icon: '🐟', title: 'A Blue and a Green Chromis join the reef!',
+      sub: 'Chromis school together — watch them find each other' });
+    packSpawnFish(FISH_SPECIES.clownfish);
+    cards.push({ icon: '🐠', title: 'A Clownfish joins the reef!',
+      sub: "The reef's first famous face" });
+    refreshLocks(); refreshPackBtn(); refreshProgress(); refreshHud(); save();
+    return cards;
+  }
   function openSeasonPack(idx) {
     const evId = seasonPacks[idx];
     if (evId === undefined) return null;
@@ -2556,6 +2577,7 @@ export function initReefScene3D(canvas) {
   const NEST_CAP = 4;
   const nestEggs = [];            // { t: typeId, at: hatch epoch ms } (saved)
   let starterEggsGiven = false;   // the level-1 welcome eggs (saved)
+  let starterPackGiven = false;   // the level-1 Starter Pack (saved)
   let nestEggGroup = null;        // egg meshes in the nest bowl; set at build
   const fmtMs = (ms) => {
     const s = Math.max(0, Math.ceil(ms / 1000));
@@ -2673,6 +2695,7 @@ export function initReefScene3D(canvas) {
   let sawNight = false;          // has this reef been seen after dark (saved)
   let be = START_BE, polyps = START_POLYPS, pearls = START_PEARLS;
   let harmony = START_HARMONY, level = START_LEVEL;
+  const music = createReefMusic();
   let timeOfDay = 0.3, nightFactor = 0;   // day/night cycle (saved)
   let fogEase = 0;                        // 1 = camera above the surface (clear air)
   let incomePerSec = 0, polypPerSec = 0, beMax = BE_MAX;
@@ -2996,8 +3019,10 @@ export function initReefScene3D(canvas) {
   // One school per species + biome; every member steers around a shared
   // drifting waypoint (picked here) plus boids forces (applied per frame).
   const schools = new Map();
+  // Chromis of any color shoal as one family — a blue and a green pair up.
+  const SCHOOL_GROUP = { blueChromis: 'chromis', chromis: 'chromis' };
   function schoolOf(st) {
-    const key = st.id + '|' + st.b;
+    const key = (SCHOOL_GROUP[st.id] ?? st.id) + '|' + st.b;
     let s = schools.get(key);
     if (!s) {
       s = { b: st.b, members: [], tx: st.cx, ty: st.y, tz: st.cz, until: 0 };
@@ -3115,7 +3140,8 @@ export function initReefScene3D(canvas) {
         ev3, excl: [...exclOwned], dq,
         ach: [...achUnlocked], sawNight,
         packs, vouchers, seasonPacks,
-        nest: nestEggs, starterEggs: starterEggsGiven }));
+        nest: nestEggs, starterEggs: starterEggsGiven,
+        starterPack: starterPackGiven }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -4099,6 +4125,13 @@ export function initReefScene3D(canvas) {
         + ` (${TIER_LABEL[feat.tier]}) — takes a fixed 25% of the fish roll in`
         + ` ${TIER_LABEL[feat.tier]} packs.</div>`;
     }
+    if (packs.starter > 0) {
+      html += '<div class="m-sec">Welcome gift</div>'
+        + `<div class="m-row"><span><b>STARTER</b> ×${packs.starter}<br>`
+        + '<span style="font-size:10.5px;color:#9fc4dc">Guaranteed, no rolls: a Starter'
+        + ' Coral 🎟 free placement, a Blue and a Green Chromis, and a Clownfish</span></span>'
+        + '<button class="pack-open-btn" data-pack="starter">Open</button></div>';
+    }
     html += '<div class="m-sec">Rarity Packs — buy, or earn free at level-ups</div>';
     for (const tier of PACK_TIERS) {
       const n = packs[tier] ?? 0;
@@ -4163,7 +4196,9 @@ export function initReefScene3D(canvas) {
     if (b.dataset.pack === 'back') { fillPack(); return; }
     const cards = b.dataset.pack === 'season'
       ? openSeasonPack(Number(b.dataset.idx))
-      : openRarityPack(b.dataset.pack);
+      : b.dataset.pack === 'starter'
+        ? openStarterPack()
+        : openRarityPack(b.dataset.pack);
     if (cards) showPackReveal(cards);
   });
 
@@ -4239,7 +4274,22 @@ export function initReefScene3D(canvas) {
     });
     packBtn = menuEl.children[2];
     refreshPackBtn();
+    // 🎵 Ambient music — procedural, starts on first gesture, preference saved.
+    const musicBtn = document.createElement('button');
+    musicBtn.className = 'menu-btn';
+    const musicOn = localStorage.getItem('rb3d_music') !== 'off';
+    music.setEnabled(musicOn);
+    musicBtn.textContent = musicOn ? '🎵' : '🔇';
+    musicBtn.onclick = () => {
+      const on = music.toggle();
+      musicBtn.textContent = on ? '🎵' : '🔇';
+      try { localStorage.setItem('rb3d_music', on ? 'on' : 'off'); } catch (e) { /* ignore */ }
+      music.poke();
+    };
+    menuEl.appendChild(musicBtn);
   }
+  // Browsers require a gesture before audio: any press wakes the ambience.
+  window.addEventListener('pointerdown', () => music.poke());
 
   // ── Restore saved reef ───────────────────────────────────────────────────────
   // Pre-biome saves lack `b`: corals default to the coral grid; fish anchors are
@@ -4296,6 +4346,13 @@ export function initReefScene3D(canvas) {
     (saved.seasonPacks ?? []).forEach(id => seasonPacks.push(id));
     (saved.nest ?? []).forEach(e => nestEggs.push(e));
     starterEggsGiven = !!saved.starterEggs;
+    starterPackGiven = !!saved.starterPack;
+  }
+  if (!starterPackGiven) {
+    // Level-1 welcome, part one: a Starter Pack waiting in 🎁 Packs — fixed
+    // contents, and the player's first taste of opening one.
+    packs.starter = (packs.starter ?? 0) + 1;
+    starterPackGiven = true;
   }
   if (!starterEggsGiven) {
     // The level-1 welcome: two starter eggs already warming in the nest — the
@@ -4886,6 +4943,7 @@ export function initReefScene3D(canvas) {
       nestTick();
       for (const g of corals) growCoral(g);
       if (nestModal.ov.style.display === 'flex') fillNest();   // live countdowns
+      music.setNight(nightFactor);
     }
     // Eggs wobble harder as hatch time closes in.
     if (nestEggGroup) {
@@ -5413,7 +5471,7 @@ export function initReefScene3D(canvas) {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  return { stop() { running = false; clearInterval(saveTimer); clearInterval(cleanTimer); save(); } };
+  return { stop() { running = false; clearInterval(saveTimer); clearInterval(cleanTimer); music.stop(); save(); } };
 }
 
 function flash(el, msg, color = '#ff8a80') {
