@@ -2728,13 +2728,14 @@ export function initReefScene3D(canvas) {
     lore: 'A pile of rocks with a dark doorway. Real reef fish spend their nights'
       + ' wedged into exactly this kind of crevice — a bedroom is a bedroom.',
   };
-  // The Golden Tree — a 3D-only lantern-tree decoration for any biome: a
-  // driftwood trunk crowned in golden tufts that glow after dark. No income,
-  // pure light and beauty, priced in pearls.
+  // The Golden Tree — a 3D-only decoration for any biome: a driftwood trunk
+  // crowned in golden tufts with a soft night shimmer. No income, priced in
+  // polyps like the other structures. The LAMPS of the reef are the lantern
+  // corals — the tree is jewelry, not infrastructure.
   const GOLDEN_SPEC = {
     id: 'goldenTree', name: 'Golden Tree', scientific: 'Laurinque elenya',
-    tier: 'legendary', tall: true, color: 0xffd54f, accentColor: 0xffecb3,
-    utility: true, lantern: true, pearlCost: 40, unlockLevel: 4,
+    tier: 'rare', tall: true, color: 0xffd54f, accentColor: 0xffecb3,
+    utility: true, polypCost: 30, unlockLevel: 4,
     biome: ['coral', 'seagrass', 'deepTwilight'],
     lore: 'A real discovery: golden, tree-like corals over a metre tall were found'
       + ' 360–529 m down on seamounts off Costa Rica — so unlike anything known that'
@@ -2814,15 +2815,18 @@ export function initReefScene3D(canvas) {
     group.userData.spec = spec;
     group.userData.entry = entry;
     group.userData.levelScale = spec.decor ? 1 : stageScale(lvl);
-    if (BIOLUM_SPECIES.has(spec.id) || spec.lantern) {
-      // Halo on every biolum/lantern coral; a real PointLight on the first
-      // few, so placing many can't blow the light budget.
-      const halo = makeHalo(spec.accentColor ?? spec.color, 3.6);
+    if (BIOLUM_SPECIES.has(spec.id)) {
+      // Halo on every biolum coral; a real PointLight on the first few, so
+      // placing many can't blow the light budget. The lantern family are the
+      // reef's designated lamps: bigger halos, brighter, longer throw.
+      const lamp = LANTERN_CORALS.has(spec.id);
+      group.userData.lampBoost = lamp ? 1.7 : 1;
+      const halo = makeHalo(spec.accentColor ?? spec.color, lamp ? 5.2 : 3.6);
       halo.position.y = 0.7;
       group.add(halo);
       group.userData.bioHalo = halo;
       if (bioLightCount < 8) {
-        const pl = new THREE.PointLight(spec.accentColor ?? spec.color, 0, 7, 1.8);
+        const pl = new THREE.PointLight(spec.accentColor ?? spec.color, 0, lamp ? 11 : 7, 1.8);
         pl.position.y = 0.9;
         pl.userData.keep = true;
         group.add(pl);
@@ -3401,7 +3405,6 @@ export function initReefScene3D(canvas) {
   if (pearlC.length) {
     label('Pearl species · 💎');
     pearlC.forEach(s => button(s, 'coral'));
-    button(GOLDEN_SPEC, 'coral');   // the lantern-tree — lights any biome
   }
   const utilC = coralSpecs.filter(s => s.utility);
   if (utilC.length) {
@@ -3409,6 +3412,7 @@ export function initReefScene3D(canvas) {
     button(STATION_SPEC, 'station');   // Classic's 2×2 cleaning station
     utilC.forEach(s => button(s, 'coral'));
     button(HIDEY_SPEC, 'coral');       // fish bedroom — a decoration with a bolt-hole
+    button(GOLDEN_SPEC, 'coral');      // the golden tree — jewelry for any biome
   }
   // Event-pass exclusives: rows exist up front but stay hidden until owned.
   const exclRows = [];
@@ -5128,10 +5132,11 @@ export function initReefScene3D(canvas) {
         for (const m of g.userData.glowMats) m.emissiveIntensity = 0.5 + nf * 0.85;
       }
       if (g.userData.bioHalo) {
-        // Biolums pour light into the water around them after dark.
+        // Biolums pour light into the water after dark; lanterns pour harder.
+        const boost = g.userData.lampBoost ?? 1;
         const fl = 0.85 + Math.sin(t * 1.3 + g.userData.seed) * 0.15;
-        g.userData.bioHalo.material.opacity = nf * 0.5 * fl;
-        if (g.userData.bioLight) g.userData.bioLight.intensity = nf * 2.4 * fl;
+        g.userData.bioHalo.material.opacity = nf * 0.5 * fl * Math.min(boost, 1.3);
+        if (g.userData.bioLight) g.userData.bioLight.intensity = nf * 2.4 * fl * boost;
       }
     }
     // Schools: refresh each shoal's shared waypoint and flock averages once,
