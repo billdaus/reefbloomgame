@@ -2813,6 +2813,37 @@ export function initReefScene3D(canvas) {
     [...allCorals(), GOLDEN_SPEC].filter(s =>
       !s.utility && !s.pearlCost && !s.eventId && !seen.has(s.id)
       && (zid ? primaryBiome(s) === zid : zoneUnlocked(primaryBiome(s))));
+  const surveyCanFind = () =>
+    ['coral', 'seagrass', 'deepTwilight'].some(z => discoverableCorals(z).length > 0);
+  // Resolve the live survey: 90% the surveyed biome, 5% each a drifter, with
+  // graceful fallbacks so a find happens whenever anything remains anywhere.
+  function resolveSurvey() {
+    if (!survey) return;
+    const { b, d = 0, cost = 40 } = survey;
+    survey = null;
+    const zids = ['coral', 'seagrass', 'deepTwilight'];
+    const others = zids.filter(z => z !== b);
+    const roll = Math.random();
+    let zid = roll < 0.9 ? b : roll < 0.95 ? others[0] : others[1];
+    let pool = discoverableCorals(zid);
+    if (!pool.length) { zid = b; pool = discoverableCorals(b); }
+    if (!pool.length) {
+      for (const z of zids) {
+        if (discoverableCorals(z).length) { zid = z; pool = discoverableCorals(z); break; }
+      }
+    }
+    if (pool.length) {
+      const spec = surveyPick(pool, d);
+      const drift = zid === b
+        ? ` recorded in the ${BIOMES[b].name}!`
+        : ` recorded — a drifter from the ${BIOMES[zid].name}!`;
+      discoverCoral(spec, `🔬 Survey complete: ${spec.name}${drift} The specimen is in your palette.`);
+    } else {
+      polyps = Math.min(polyps + cost, POLYP_MAX);
+      droneQueue.push('🔬 Survey complete: no unrecorded coral remains out there. Fee returned.');
+    }
+    if (journal.ov.style.display === 'flex') fillJournal();
+  }
   function discoverCoral(spec, line) {
     seen.add(spec.id);
     vouchers[spec.id] = (vouchers[spec.id] ?? 0) + 1;   // the specimen comes home
@@ -4945,7 +4976,8 @@ export function initReefScene3D(canvas) {
       blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }));
   scanCone.position.y = -1.75;
   drone.add(scanCone);
-  let surveySpot = null, scanTimer = 0;
+  let surveySpot = null, scanTimer = 0, scanFlash = null;
+  const SCAN_COLORS = { red: 0xff5252, yellow: 0xffd54f, green: 0x66ff88 };
   const dronePos = DOCK_POS.clone();
   let speechTimer = 0;
   let flavorTimer = 30 + Math.random() * 45;
@@ -5053,12 +5085,36 @@ export function initReefScene3D(canvas) {
             drone.rotation.y += dy * Math.min(1, dt * 5);
           }
         }
+      } else if (scanFlash) {
+        // Verdict flash: red = nothing here; yellow = a species we already
+        // know; green = a NEW species — and green ends the search.
+        drone.rotation.x += (0.45 - drone.rotation.x) * Math.min(1, dt * 4);
+        scanCone.material.opacity = 0.3 + Math.sin(t * 18) * 0.15;
+        if (t >= scanFlash.until) {
+          const kind = scanFlash.kind;
+          scanFlash = null;
+          scanCone.material.color.setHex(0x7fd8ff);
+          if (kind === 'green' || kind === 'yellowFinal') resolveSurvey();
+          else surveySpot = null;   // red or mid-search yellow: keep looking
+        }
       } else {
         scanTimer -= dt;
         drone.rotation.x += (0.45 - drone.rotation.x) * Math.min(1, dt * 4);   // nose down
         drone.rotation.y += dt * 0.9;                                          // slow sweep
         scanCone.material.opacity = 0.16 + Math.sin(t * 5) * 0.07;             // beam pulse
-        if (scanTimer <= 0) surveySpot = null;                                 // next spot
+        if (scanTimer <= 0) {
+          // Scan verdict. The final sweep inside the allotted time is ALWAYS
+          // green (something new remains) or yellow (only known species left).
+          const expired = Date.now() >= survey.at;
+          const canFind = surveyCanFind();
+          let kind = 'red';
+          if (expired) kind = canFind ? 'green' : 'yellowFinal';
+          else if (canFind && Math.random() < 0.045) kind = 'green';   // lucky early find
+          else if (Math.random() < 0.16) kind = 'yellow';              // known species
+          scanCone.material.color.setHex(
+            SCAN_COLORS[kind === 'yellowFinal' ? 'yellow' : kind] ?? SCAN_COLORS.red);
+          scanFlash = { kind, until: t + 1.0 };
+        }
       }
     } else if (droneState === 'floating' || droneState === 'returning') {
       const step = 5.5 * dt;
@@ -5489,27 +5545,13 @@ export function initReefScene3D(canvas) {
       nestTick();
       for (const g of corals) growCoral(g);
       seedTick();
-      // 🔬 Survey returns — 90% the surveyed biome, 5% each a drifter from
-      // another; rarity climbs with search depth and level.
-      if (survey && Date.now() >= survey.at) {
-        const { b, d = 0, cost = 40 } = survey;
-        survey = null;
-        const others = ['coral', 'seagrass', 'deepTwilight'].filter(z => z !== b);
-        const roll = Math.random();
-        let zid = roll < 0.9 ? b : roll < 0.95 ? others[0] : others[1];
-        let pool = discoverableCorals(zid);
-        if (!pool.length && zid !== b) { zid = b; pool = discoverableCorals(b); }
-        if (pool.length) {
-          const spec = surveyPick(pool, d);
-          const drift = zid === b
-            ? ` recorded in the ${BIOMES[b].name}!`
-            : ` recorded — a drifter from the ${BIOMES[zid].name}!`;
-          discoverCoral(spec, `🔬 Survey complete: ${spec.name}${drift} The specimen is in your palette.`);
-        } else {
-          polyps = Math.min(polyps + cost, POLYP_MAX);   // nothing left — refund
-          droneQueue.push(`🔬 Survey complete: no unrecorded coral remains out there. Fee returned.`);
-        }
-        if (journal.ov.style.display === 'flex') fillJournal();
+      // 🔬 Overdue survey with Bubbles not on site (e.g. loaded a save whose
+      // clock ran out offline before she reaches the grove): resolve directly.
+      // When she IS on site, her scan loop delivers the verdict — the final
+      // sweep flashes green (find) or yellow (nothing new left).
+      if (survey && Date.now() >= survey.at
+          && droneState !== 'surveying' && droneState !== 'toSurvey') {
+        resolveSurvey();
       }
       // 🐟 Fragment finders — a few species, incredibly rarely.
       let finders = 0;
