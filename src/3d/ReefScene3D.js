@@ -2791,7 +2791,7 @@ export function initReefScene3D(canvas) {
   const SURVEY_TIERS = [
     { name: 'Quick sweep', min: 8, cost: 30 },
     { name: 'Field survey', min: 25, cost: 60 },
-    { name: 'Deep expedition', min: 60, cost: 100 },
+    { name: 'Grand expedition', min: 60, cost: 100 },
   ];
   // Tier bias: base < 1 favors common tiers, > 1 favors rare ones. Search
   // depth and level push the base up; wild-abundance odds still apply.
