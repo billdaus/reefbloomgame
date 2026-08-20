@@ -466,6 +466,10 @@ function allFish() {
 }
 // Biome a species is listed under in the palette (placement may allow more).
 function primaryBiome(spec) {
+  // Lantern Coral rehomed to the shallows: it lights every biome, but its
+  // shop/journal listing lives in the Coral Reef now — the twilight's native
+  // glowing coral is the Golden Tree (as in the real deep Pacific).
+  if (spec.id === 'lanternCoral') return 'coral';
   const b = spec.biome;
   if (!b || b === 'coral' || b === 'both') return 'coral';
   if (Array.isArray(b)) return b.includes('coral') ? 'coral' : b[0];
@@ -2728,15 +2732,15 @@ export function initReefScene3D(canvas) {
     lore: 'A pile of rocks with a dark doorway. Real reef fish spend their nights'
       + ' wedged into exactly this kind of crevice — a bedroom is a bedroom.',
   };
-  // The Golden Tree — a 3D-only decoration for any biome: a driftwood trunk
-  // crowned in golden tufts with a soft night shimmer. No income, priced in
-  // polyps like the other structures. The LAMPS of the reef are the lantern
-  // corals — the tree is jewelry, not infrastructure.
+  // The Golden Tree — the deep twilight's native glowing coral, exactly where
+  // the real Laurinque elenya lives. A working income coral: plants as a
+  // hatchling, grows on the clock, pays BE like its rare-tier peers, and
+  // shimmers gold after dark. The reef's LAMPS remain the lantern corals.
   const GOLDEN_SPEC = {
     id: 'goldenTree', name: 'Golden Tree', scientific: 'Laurinque elenya',
     tier: 'rare', tall: true, color: 0xffd54f, accentColor: 0xffecb3,
-    utility: true, polypCost: 30, unlockLevel: 4,
-    biome: ['coral', 'seagrass', 'deepTwilight'],
+    unlockLevel: 1,
+    biome: 'deepTwilight',
     lore: 'A real discovery: golden, tree-like corals over a metre tall were found'
       + ' 360–529 m down on seamounts off Costa Rica — so unlike anything known that'
       + ' scientists gave them a brand-new family, Laurinqueidae. In the wild they'
@@ -2852,8 +2856,10 @@ export function initReefScene3D(canvas) {
       grew = true;
     }
     if (!grew) return;
-    clearCoralGroup(group);
-    buildCoralInto(group, spec, group.userData.buildSeed, Math.max(1, e.level));
+    if (spec.id !== 'goldenTree') {   // the tree keeps its build; scale carries growth
+      clearCoralGroup(group);
+      buildCoralInto(group, spec, group.userData.buildSeed, Math.max(1, e.level));
+    }
     group.userData.levelScale = stageScale(e.level);
     group.userData.grow = Math.min(group.userData.grow, 0.85);
     recomputeRates(); refreshHud();
@@ -2961,7 +2967,7 @@ export function initReefScene3D(canvas) {
   function recomputeRates() {
     let bePerTick = 0, polypPerTick = 0, storage = 0;
     for (const e of placedCorals) {
-      const spec = CORAL_SPECIES[e.id];
+      const spec = CORAL_SPECIES[e.id] ?? LOCAL_SPECS[e.id];
       if (!spec) continue;
       if (!spec.utility) {
         bePerTick += (BE_PER_TICK[spec.tier] ?? 1) * stageOutput(e.level);
@@ -3041,9 +3047,12 @@ export function initReefScene3D(canvas) {
     e.level++;
     e.g = e.level < CORAL_MAX_LEVEL ? Date.now() + STAGE_MS[e.level] : 0;
     // Regrow the same individual with more branches/stalks — the stage shows
-    // as new growth, not an inflated copy of the old mesh.
-    clearCoralGroup(group);
-    buildCoralInto(group, group.userData.spec, group.userData.buildSeed, Math.max(1, e.level));
+    // as new growth, not an inflated copy of the old mesh. (The Golden Tree
+    // keeps its build; scale carries its growth.)
+    if (group.userData.spec?.id !== 'goldenTree') {
+      clearCoralGroup(group);
+      buildCoralInto(group, group.userData.spec, group.userData.buildSeed, Math.max(1, e.level));
+    }
     group.userData.levelScale = stageScale(e.level);
     group.userData.grow = Math.min(group.userData.grow, 0.82);   // small re-grow ease
     recomputeRates(); refreshHud(); save();   // growth affects rates only, not harmony/level inputs
@@ -3376,6 +3385,7 @@ export function initReefScene3D(canvas) {
     const bio = BIOMES[zid];
     const lv = ZONES[zid].unlock > 1 ? ` · Lv${ZONES[zid].unlock}` : '';
     const cs = stdCorals.filter(s => primaryBiome(s) === zid);
+    if (zid === 'deepTwilight') cs.push(GOLDEN_SPEC);   // the twilight's native glow
     if (cs.length) {
       label(`${bio.icon} ${bio.shortName}${lv} — coral · click a tile`);
       cs.forEach(s => button(s, 'coral'));
@@ -3412,7 +3422,6 @@ export function initReefScene3D(canvas) {
     button(STATION_SPEC, 'station');   // Classic's 2×2 cleaning station
     utilC.forEach(s => button(s, 'coral'));
     button(HIDEY_SPEC, 'coral');       // fish bedroom — a decoration with a bolt-hole
-    button(GOLDEN_SPEC, 'coral');      // the golden tree — jewelry for any biome
   }
   // Event-pass exclusives: rows exist up front but stay hidden until owned.
   const exclRows = [];
