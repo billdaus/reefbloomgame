@@ -2821,6 +2821,70 @@ export function initReefScene3D(canvas) {
     refreshLocks(); refreshHud(); save();
   }
 
+  // ── Real or fiction ─────────────────────────────────────────────────────────
+  // Every species is identified as a real Earth creature or a Reef Bloom
+  // original. Shown in the journal (🌍/✨) and each species popup — a mixed
+  // roster is fine for a game, but a kid should always be able to tell which
+  // creatures they could actually meet.
+  const REAL_SPECIES = new Set([
+    // fish & friends
+    'blueChromis', 'chromis', 'zebraGoby', 'cardinalfish', 'clownfish', 'yellowTang',
+    'blueTang', 'octopus', 'moorishIdol', 'butterflyfish', 'zebrafish', 'seahorse',
+    'cuttlefish', 'morayEel', 'dolphin', 'shark', 'neonGoby', 'firefish', 'damselfish',
+    'royalGramma', 'pajamaCardinalfish', 'shrimpGoby', 'banggaiCardinalfish',
+    'cleanerWrasse', 'flameAngelfish', 'mandarinfish', 'harlequinTuskfish',
+    'blueRibbonEel', 'napoleonWrasse', 'giantMoray', 'horseshoeCrab', 'pipefish',
+    'sandDollar', 'conch', 'pufferfish', 'spottedEagleRay', 'dugong', 'seaUrchin',
+    'parrotfish', 'rabbitfish', 'cleanerShrimp', 'mantaRay', 'manatee', 'seaTurtle',
+    'lanternfish', 'ghostGoby', 'hatchetfish', 'dragonfish', 'flashlightFish',
+    'viperfish', 'barreleye', 'ribbonfish', 'anglerfish', 'gulperEel', 'fangtooth',
+    'frilledShark', 'giantSquid', 'nautilus', 'oarfish', 'mullet', 'sergeantMajor',
+    'hermitCrab', 'bonefish', 'flamingoTongue', 'stingray', 'lemonShark', 'sculpin',
+    'ochreStar', 'tidepoolCrab', 'chiton', 'opaleye', 'rubyOctopus', 'seaOtter',
+    'clownTriggerfish', 'sailfinTang', 'bumpheadParrotfish', 'coelacanth', 'opah',
+    // corals & flora
+    'staghorn', 'finger', 'brain', 'lettuce', 'star', 'bubble', 'candycane',
+    'toadstool', 'elkhorn', 'pillar', 'table', 'barnacles', 'redSeagrass', 'seaweed',
+    'seagrass', 'kelp', 'sunCoral', 'lagoonFan', 'fireCoral', 'mangroveSapling',
+    'tidepoolAnemone', 'gooseneckBarnacles', 'seaLettuce', 'corallineAlgae',
+    'anemoneHome', 'goldenTree',
+  ]);
+  const isRealSpecies = (id) => REAL_SPECIES.has(id);
+
+  // ── Field ID quiz ───────────────────────────────────────────────────────────
+  // Five true/false questions a day about species the player has recorded,
+  // generated from the journal's real data (tier, biome, glow, taxonomy) with
+  // a date seed so the day's paper is fixed. +4 🪸 per correct, +1 💎 perfect.
+  let quiz = { date: '', i: 0, score: 0 };   // (saved)
+  function quizQuestions() {
+    const today = EV_TODAY();
+    let seed = 0;
+    for (const ch of today) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const rng = mulberry32(seed ^ 0x5eed);
+    const known = [...allCorals(), ...allFish(), ...Object.values(LOCAL_SPECS)]
+      .filter(s => seen.has(s.id));
+    if (known.length < 3) return null;
+    const qs = [], used = new Set();
+    let guard = 0;
+    while (qs.length < 5 && guard++ < 60) {
+      const spec = known[Math.floor(rng() * known.length)];
+      if (used.has(spec.id)) continue;
+      used.add(spec.id);
+      qs.push(makeQuizQ(spec));
+    }
+    return qs.length ? qs : null;
+  }
+  function makeQuizQ(spec) {
+    const real = isRealSpecies(spec.id);
+    return {
+      q: `${spec.name} is a real species, found in Earth's oceans.`,
+      a: real,
+      why: real
+        ? `Real${spec.scientific ? ` — ${spec.scientific}` : ''}. You could meet one.`
+        : `Fiction — ${spec.name} was invented for Reef Bloom.`,
+    };
+  }
+
   // ── Coral seedlings ─────────────────────────────────────────────────────────
   // A fully grown coral occasionally releases a seedling of its own species —
   // a free placement, capped at 2 banked per species so mature reefs don't
@@ -3304,7 +3368,7 @@ export function initReefScene3D(canvas) {
         ach: [...achUnlocked], sawNight,
         packs, vouchers, seasonPacks,
         nest: nestEggs, starterEggs: starterEggsGiven,
-        starterPack: starterPackGiven, survey, coralDisc: true }));
+        starterPack: starterPackGiven, survey, coralDisc: true, quiz }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -3652,7 +3716,8 @@ export function initReefScene3D(canvas) {
       + `<span class="dot" style="background:${tierCol};margin-top:3px"></span>`
       + `<span style="flex:1;min-width:0">${found ? spec.name : '???'}${sci}`
       + `<span style="display:block;font-size:10.5px;line-height:1.35;color:#8fb4c9">${note}</span></span>`
-      + `<small style="margin-top:2px">${biomeIcons(spec)} ${badge}</small></div>`;
+      + `<small style="margin-top:2px" title="${isRealSpecies(spec.id) ? 'Real species' : 'Reef Bloom original'}">`
+      + `${isRealSpecies(spec.id) ? '🌍' : '✨'} ${biomeIcons(spec)} ${badge}</small></div>`;
   }
   function fillJournal() {
     const cs = [...coralSpecs, ...Object.values(LOCAL_SPECS)], fs = fishSpecs;
@@ -3694,6 +3759,12 @@ export function initReefScene3D(canvas) {
         + ' incredibly rarely, from foraging fish and from larvae settling on a reef held'
         + ' in high harmony.</div>';
     }
+    const quizDone = quiz.date === EV_TODAY() && quiz.i >= 5;
+    html += '<div class="m-sec">🧪 Field ID — real or fiction?</div>'
+      + '<div class="m-row"><span>Which of your species truly exist?<br>'
+      + '<span style="font-size:10.5px;color:#9fc4dc">+4 🪸 per correct · +1 💎 for a perfect day</span></span>'
+      + `<button class="pack-open-btn" data-quiz${quizDone ? ' disabled' : ''}>`
+      + `${quizDone ? `${quiz.score}/5 today` : 'Take the quiz'}</button></div>`;
     if (journalTab !== 'fish') html += group(cs, 'Coral');
     if (journalTab !== 'coral') html += group(fs, 'Fish');
     // Event exclusives — recorded ones get full entries; the rest stay a mystery.
@@ -4329,6 +4400,9 @@ export function initReefScene3D(canvas) {
         : need > level ? `Not yet recorded. 🔒 Unlocks at Lv${need}.`
           : `Not yet recorded — ${kind === 'coral' ? 'place one' : 'hatch one'} to complete this entry.`)
       + '</span></div>';
+    html += row('Identity', isRealSpecies(spec.id)
+      ? '🌍 Real species — found in Earth’s oceans'
+      : '✨ Reef Bloom original — fiction');
     html += row('Home waters', biomes || '—');
     if (kind === 'fish') {
       html += row('Reef layer', BENTHIC_SPECIES.has(spec.id) ? 'Seafloor crawler'
@@ -4359,7 +4433,61 @@ export function initReefScene3D(canvas) {
     html += row('In your reef', inReef ? `×${inReef}` : 'none yet');
     speciesModal.body.innerHTML = html;
   }
+  // 🧪 Field ID quiz modal — one question at a time, feedback with the fact.
+  const quizModal = buildMenuModal('🧪 Field ID',
+    'Real or fiction? Five species a day from your own journal.'
+    + ' +4 🪸 per correct answer, +1 💎 for a perfect day.');
+  let quizFeedback = null;   // { right, why } between question and Next
+  function fillQuiz() {
+    if (quiz.date !== EV_TODAY()) quiz = { date: EV_TODAY(), i: 0, score: 0 };
+    const qs = quizQuestions();
+    let html = '';
+    if (!qs) {
+      html = '<div class="m-sub">Record at least three species first — the quiz is'
+        + ' written from your own journal.</div>';
+    } else if (quizFeedback) {
+      html = `<div class="pack-card" style="animation-delay:0s">`
+        + `<span class="pc-icon">${quizFeedback.right ? '✅' : '❌'}</span>`
+        + `<div><b>${quizFeedback.right ? 'Correct — +4 🪸' : 'Not quite.'}</b><br>`
+        + `<small>${quizFeedback.why}</small></div></div>`
+        + `<button class="m-tab" data-quiz-next style="margin-top:10px">`
+        + `${quiz.i >= 5 ? 'Finish' : 'Next question'}</button>`;
+    } else if (quiz.i >= 5) {
+      html = `<div class="m-sub">Today's paper is done: <b>${quiz.score} / 5</b>`
+        + `${quiz.score === 5 ? ' — perfect! +1 💎 awarded.' : ''}`
+        + ' A fresh five arrive tomorrow.</div>';
+    } else {
+      const q = qs[quiz.i];
+      html = `<div class="m-sec">Question ${quiz.i + 1} of 5 · score ${quiz.score}</div>`
+        + `<div class="m-row" style="border:none"><span style="font-size:14px">${q.q}</span></div>`
+        + '<div style="display:flex;gap:8px;margin-top:8px">'
+        + '<button class="pack-open-btn" data-quiz-ans="true" style="flex:1">TRUE</button>'
+        + '<button class="pack-open-btn" data-quiz-ans="false" style="flex:1">FALSE</button></div>';
+    }
+    quizModal.body.innerHTML = html;
+  }
+  quizModal.body.addEventListener('click', (e) => {
+    const nx = e.target.closest('button[data-quiz-next]');
+    if (nx) { quizFeedback = null; fillQuiz(); return; }
+    const b = e.target.closest('button[data-quiz-ans]');
+    if (!b) return;
+    const qs = quizQuestions();
+    if (!qs || quiz.i >= 5) return;
+    const q = qs[quiz.i];
+    const right = (b.dataset.quizAns === 'true') === q.a;
+    quiz.i++;
+    if (right) { quiz.score++; polyps = Math.min(polyps + 4, POLYP_MAX); }
+    if (quiz.i >= 5 && quiz.score === 5) {
+      pearls += 1;
+      flash(rateEl, '🧪 Perfect paper! +1 💎', '#ffd27f');
+    }
+    quizFeedback = { right, why: q.why };
+    refreshHud(); save(); fillQuiz();
+  });
+
   journal.body.addEventListener('click', (e) => {
+    const qz = e.target.closest('button[data-quiz]');
+    if (qz) { quizFeedback = null; fillQuiz(); quizModal.show(); return; }
     const sv = e.target.closest('button[data-survey]');
     if (sv && !sv.disabled) {
       const zid = sv.dataset.survey;
@@ -4630,6 +4758,7 @@ export function initReefScene3D(canvas) {
     starterEggsGiven = !!saved.starterEggs;
     starterPackGiven = !!saved.starterPack;
     survey = saved.survey ?? null;
+    if (saved.quiz) quiz = saved.quiz;
     if (!saved.coralDisc) {
       // Pre-discovery save: everything the reef could already buy counts as
       // recorded — veterans lose nothing to the new gate.
