@@ -360,7 +360,7 @@ function coralTexture(spec, variant = 0) {
 // accent color; everyone else gets counter-shading plus a lateral stripe.
 const FISH_BANDED = new Set([
   'clownfish', 'zebraGoby', 'zebrafish', 'banggaiCardinalfish', 'pajamaCardinalfish',
-  'harlequinTuskfish', 'butterflyfish', 'moorishIdol', 'seaUrchin']);
+  'harlequinTuskfish', 'butterflyfish', 'moorishIdol', 'seaUrchin', 'clownTriggerfish']);
 const FISH_SPOTTED = new Set([
   'spottedEagleRay', 'pufferfish', 'mandarinfish', 'rainbowGoby', 'twilightWhaleShark',
   'flashlightFish', 'giantSquid']);
@@ -2343,6 +2343,42 @@ export function initReefScene3D(canvas) {
   const seen = new Set();     // journal — every species ever placed (saved)
   const exclOwned = new Set();   // event-pass exclusive species owned (saved)
 
+  // ── 3D-only roster additions ─────────────────────────────────────────────────
+  // Injected at runtime into this page's FISH_SPECIES instance — the shared
+  // catalog file is untouched and Classic never sees them.
+  Object.assign(FISH_SPECIES, {
+    clownTriggerfish: {
+      id: 'clownTriggerfish', name: 'Clown Triggerfish', scientific: 'Balistoides conspicillum',
+      tier: 'epic', layer: 'A', color: 0x263238, accentColor: 0xffca28,
+      size: 20, speed: 0.95, unlockLevel: 1, biome: 'coral',
+      lore: 'Polka-dot belly, painted lips, and a temper. Real clown triggerfish '
+        + 'guard their nests so fiercely that divers give them a wide, respectful lane.',
+    },
+    sailfinTang: {
+      id: 'sailfinTang', name: 'Sailfin Tang', scientific: 'Zebrasoma veliferum',
+      tier: 'epic', layer: 'A', color: 0x8d6e63, accentColor: 0xffe082,
+      size: 21, speed: 1.05, unlockLevel: 1, biome: 'both',
+      lore: 'Raises its dorsal like a mainsail to look twice its size — the reef’s '
+        + 'least expensive way to win an argument.',
+    },
+    bumpheadParrotfish: {
+      id: 'bumpheadParrotfish', name: 'Bumphead Parrotfish', scientific: 'Bolbometopon muricatum',
+      tier: 'epic', layer: 'B', color: 0x607d8b, accentColor: 0x9ccc65,
+      size: 34, speed: 0.7, unlockLevel: 1, biome: 'both',
+      lore: 'Headbutts coral to break off mouthfuls, digests the rock, and returns '
+        + 'it as sand. A single bumphead can make tonnes of beach a year — vulnerable '
+        + 'in the wild, and a one-fish construction crew here.',
+    },
+    coelacanth: {
+      id: 'coelacanth', name: 'Coelacanth', scientific: 'Latimeria chalumnae',
+      tier: 'epic', layer: 'B', color: 0x37474f, accentColor: 0x90a4ae,
+      size: 30, speed: 0.55, unlockLevel: 1, biome: 'deepTwilight',
+      lore: 'A living fossil: thought extinct for 66 million years until one turned '
+        + 'up in a fishing net in 1938. Its lobed fins move like a walk remembered '
+        + 'from four hundred million years ago.',
+    },
+  });
+
   // ── Rarity & Season Packs (Dragonperch's model, Reef Bloom pricing) ─────────
   // One pack per rarity tier, three ways in: Common–Rare sell for 🫧, Super
   // Rare–Legendary for 💎, and every level-up still mints a free pack for
@@ -2423,6 +2459,7 @@ export function initReefScene3D(canvas) {
     midnightTable: 0.9, giantMoray: 0.8, harlequinTuskfish: 0.8, fangtooth: 0.8,
     conch: 0.8, star: 0.8, phantomPolyp: 0.8, wispCoral: 0.8,
     mandarinfish: 0.7, blueRibbonEel: 0.7, anglerfish: 0.7,
+    clownTriggerfish: 0.8, sailfinTang: 1.3, bumpheadParrotfish: 0.5, coelacanth: 0.2,
     barreleye: 0.6, ribbonfish: 0.6, gulperEel: 0.6, nautilus: 0.6, dolphin: 0.6,
     abyssalRay: 0.6, rainbowCoral: 0.6, sunfire: 0.6,
     // threatened & endangered in the real ocean
@@ -2627,29 +2664,18 @@ export function initReefScene3D(canvas) {
     nestEggs.push({ t, at: Date.now() + et.ms });
     refreshNestEggs(); refreshHud(); save();
   }
-  // Speed-up: the last 3 minutes are always free; beyond that it costs 2 🫧
-  // per remaining minute — pearls instead for the Premium egg. Cost shrinks
-  // live as the clock runs down, printed on the button.
-  const EGG_RUSH_FREE_MS = 180e3;
+  // Speed-up: pearls, always — impatience is the premium currency's job.
+  // 1 💎 per 4 remaining minutes, minimum 1, shrinking as the clock runs.
   function eggRushCost(egg) {
-    const rem = egg.at - Date.now();
-    if (rem <= EGG_RUSH_FREE_MS) return { free: true };
-    const remMin = Math.ceil(rem / 60e3);
-    return EGG_TYPES[egg.t].pearls
-      ? { pearls: Math.ceil(remMin / 6) }
-      : { be: remMin * 2 };
+    const remMin = Math.ceil(Math.max(0, egg.at - Date.now()) / 60e3);
+    return { pearls: Math.max(1, Math.ceil(remMin / 4)) };
   }
   function speedUpEgg(i) {
     const egg = nestEggs[i];
     if (!egg) return;
     const cost = eggRushCost(egg);
-    if (cost.be) {
-      if (be < cost.be) { flash(rateEl, 'not enough 🫧'); return; }
-      be -= cost.be;
-    } else if (cost.pearls) {
-      if (pearls < cost.pearls) { flash(rateEl, `need ${cost.pearls} 💎`); return; }
-      pearls -= cost.pearls;
-    }
+    if (pearls < cost.pearls) { flash(rateEl, `need ${cost.pearls} 💎`); return; }
+    pearls -= cost.pearls;
     egg.at = Date.now() - 1;
     nestTick();   // hatches on the spot; refreshes HUD and the open modal
   }
@@ -2749,6 +2775,53 @@ export function initReefScene3D(canvas) {
     wildNote: 'Newly described — deep Pacific seamounts only',
   };
   const LOCAL_SPECS = { hideyHole: HIDEY_SPEC, goldenTree: GOLDEN_SPEC };
+
+  // ── Coral discovery ─────────────────────────────────────────────────────────
+  // Corals are discovered like fish now: the palette's standard coral rows show
+  // only recorded species (level-1 basics start known; utility structures and
+  // pearl species stay visible). Three discovery vectors:
+  //  🔬 Bubbles' surveys — fund with polyps, real timer, guaranteed find
+  //  🐟 fragment finders — a few specific species, incredibly rarely
+  //  ⚖ harmony settlement — larvae settle wild on a reef held in high harmony
+  let survey = null;              // { b: biomeId, at: epoch ms } (saved)
+  const SURVEY_COST = 40;         // polyps
+  const SURVEY_MIN = { coral: 10, seagrass: 14, deepTwilight: 18 };
+  const FRAGMENT_FINDERS = new Set(['parrotfish', 'bumpheadParrotfish', 'hermitCrab', 'ochreStar']);
+  const FRAGMENT_CHANCE = 1 / 7200;    // per finder per second — incredibly rare
+  const SETTLE_HARMONY = 85;
+  const SETTLE_CHANCE = 1 / 5400;      // per second while harmony holds
+  const discoverableCorals = (zid) =>
+    [...allCorals(), GOLDEN_SPEC].filter(s =>
+      !s.utility && !s.pearlCost && !s.eventId && !seen.has(s.id)
+      && (zid ? primaryBiome(s) === zid : zoneUnlocked(primaryBiome(s))));
+  function discoverCoral(spec, line) {
+    seen.add(spec.id);
+    vouchers[spec.id] = (vouchers[spec.id] ?? 0) + 1;   // the specimen comes home
+    droneQueue.push(line);
+    flash(rateEl, `📖 ${spec.name} recorded!`, '#ffd27f');
+    refreshLocks(); refreshHud(); save();
+  }
+
+  // ── Coral seedlings ─────────────────────────────────────────────────────────
+  // A fully grown coral occasionally releases a seedling of its own species —
+  // a free placement, capped at 2 banked per species so mature reefs don't
+  // mint coral forever. Clocks are absolute (saved per coral as entry.s).
+  const SEED_MIN = { common: 8, uncommon: 12, rare: 18, superRare: 25, epic: 35, legendary: 50, mythic: 70 };
+  function seedTick() {
+    const now = Date.now();
+    for (const g of corals) {
+      const e = g.userData.entry, spec = g.userData.spec;
+      if (!e || spec.utility || e.level < CORAL_MAX_LEVEL) continue;
+      const interval = (SEED_MIN[spec.tier] ?? 20) * 60e3;
+      if (!e.s) { e.s = now + interval; continue; }
+      if (now < e.s) continue;
+      if ((vouchers[spec.id] ?? 0) >= 2) { e.s = now + interval / 2; continue; }
+      e.s = now + interval;
+      vouchers[spec.id] = (vouchers[spec.id] ?? 0) + 1;
+      flash(rateEl, `🌱 ${spec.name} seedling!`, '#7fd8b0');
+      refreshLocks();
+    }
+  }
   function makeGoldenTree() {
     const g = new THREE.Group();
     const seedBase = 7777 + coralCounter++ * 7919;
@@ -3036,14 +3109,15 @@ export function initReefScene3D(canvas) {
   function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); ev3Snapshot(); dqSnapshot(); checkAch(); onProgress(); }
 
   function tryUpgrade(group) {
-    // Polyps buy time, not levels: "Grow now" jumps the coral to its next
+    // Pearls buy time, not levels: "Grow now" jumps the coral to its next
     // growth stage immediately and restarts the clock for the one after.
+    // (Polyps fund research surveys now — impatience is pearls' job.)
     const e = group.userData.entry;
     if (!e || group.userData.spec?.utility) return;
     if (e.level >= CORAL_MAX_LEVEL) { flash(rateEl, 'fully grown'); return; }
-    const cost = upgradeCost(e.level + 1);
-    if (polyps < cost) { flash(rateEl, `need ${cost} 🪸`); return; }
-    polyps -= cost;
+    const cost = e.level + 1;
+    if (pearls < cost) { flash(rateEl, `need ${cost} 💎`); return; }
+    pearls -= cost;
     e.level++;
     e.g = e.level < CORAL_MAX_LEVEL ? Date.now() + STAGE_MS[e.level] : 0;
     // Regrow the same individual with more branches/stalks — the stage shows
@@ -3211,7 +3285,7 @@ export function initReefScene3D(canvas) {
         ach: [...achUnlocked], sawNight,
         packs, vouchers, seasonPacks,
         nest: nestEggs, starterEggs: starterEggsGiven,
-        starterPack: starterPackGiven }));
+        starterPack: starterPackGiven, survey, coralDisc: true }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -3322,7 +3396,7 @@ export function initReefScene3D(canvas) {
       clearSel(); btn.classList.add('sel');
     };
     if (spec === selected.spec) btn.classList.add('sel');
-    rows.push({ btn, need, spec });
+    rows.push({ btn, need, spec, type });
     paletteEl.appendChild(btn);
   }
   function refreshLocks() {
@@ -3331,6 +3405,13 @@ export function initReefScene3D(canvas) {
       r.btn.classList.toggle('locked', r.need > level && !free);
       const fb = r.btn.querySelector('.free-badge');
       if (fb) fb.style.display = free ? '' : 'none';
+      // Coral discovery gate: standard coral rows hide until the species is
+      // recorded (or a seedling/voucher is banked). Level-1 basics start
+      // known; utility, pearl, and event rows keep their own rules.
+      if (r.type === 'coral' && r.spec && !r.spec.utility && !r.spec.pearlCost && !r.spec.eventId) {
+        const known = seen.has(r.spec.id) || free || r.need <= 1;
+        r.btn.style.display = known ? '' : 'none';
+      }
     }
   }
   // Locked biomes render their grid ghosted until the level unlocks them.
@@ -3568,7 +3649,26 @@ export function initReefScene3D(canvas) {
           + here.map(journalRow).join('')
         : '';
     }).join('');
-    let html = '';
+    let html = '<div class="m-sec">🔬 Research surveys — Bubbles finds new coral</div>';
+    if (survey) {
+      const bio = BIOMES[survey.b];
+      html += `<div class="m-row"><span>Bubbles is surveying ${bio.icon} ${bio.name}</span>`
+        + `<small>returns in <span id="survey-eta">${fmtMs(survey.at - Date.now())}</span></small></div>`;
+    } else {
+      for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
+        if (!zoneUnlocked(zid)) continue;
+        const bio = BIOMES[zid];
+        const left = discoverableCorals(zid).length;
+        html += `<div class="m-row"><span>${bio.icon} <b>${bio.shortName}</b><br>`
+          + `<span style="font-size:10.5px;color:#9fc4dc">${left} coral species still unrecorded`
+          + ` · ${SURVEY_MIN[zid]}m survey</span></span>`
+          + `<button class="pack-open-btn" data-survey="${zid}"`
+          + `${left && polyps >= SURVEY_COST ? '' : ' disabled'}>${SURVEY_COST} 🪸</button></div>`;
+      }
+      html += '<div class="m-sub">One survey at a time — a guaranteed new species from that'
+        + ' biome. New coral also arrives, incredibly rarely, from foraging fish and from'
+        + ' larvae settling on a reef held in high harmony.</div>';
+    }
     if (journalTab !== 'fish') html += group(cs, 'Coral');
     if (journalTab !== 'coral') html += group(fs, 'Fish');
     // Event exclusives — recorded ones get full entries; the rest stay a mystery.
@@ -3728,7 +3828,7 @@ export function initReefScene3D(canvas) {
     const max = e.level >= CORAL_MAX_LEVEL;
     const basePerTick = spec.utility ? 0 : (BE_PER_TICK[spec.tier] ?? 1);
     const rate = s => basePerTick * stageOutput(s) / TICK_SEC;
-    const cost = upgradeCost(e.level + 1);
+    const cost = e.level + 1;   // pearls
     const refund = (spec.pearlCost || spec.utility) ? 0
       : Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
     let html = `<div class="m-row" style="border:none;padding-bottom:0"><span>Growth</span>`
@@ -3748,8 +3848,8 @@ export function initReefScene3D(canvas) {
     const up = document.createElement('button');
     up.className = 'shop-pack';
     up.innerHTML = max ? '<span>Full grown</span><span>—</span>'
-      : `<span>🌱 Grow now → ${STAGE_NAMES[e.level + 1]}</span><span>${cost} 🪸</span>`;
-    up.disabled = max || spec.utility || polyps < cost;
+      : `<span>🌱 Grow now → ${STAGE_NAMES[e.level + 1]}</span><span>${cost} 💎</span>`;
+    up.disabled = max || spec.utility || pearls < cost;
     up.style.opacity = up.disabled ? 0.45 : 1;
     up.onclick = () => { if (!up.disabled) { tryUpgrade(g); fillUpgrade(); } };
     const sell = document.createElement('button');
@@ -4235,6 +4335,16 @@ export function initReefScene3D(canvas) {
     speciesModal.body.innerHTML = html;
   }
   journal.body.addEventListener('click', (e) => {
+    const sv = e.target.closest('button[data-survey]');
+    if (sv && !sv.disabled) {
+      const zid = sv.dataset.survey;
+      if (survey || polyps < SURVEY_COST || !discoverableCorals(zid).length) return;
+      polyps -= SURVEY_COST;
+      survey = { b: zid, at: Date.now() + SURVEY_MIN[zid] * 60e3 };
+      droneQueue.push(`🔬 Survey funded. Charting the ${BIOMES[zid].name} — back with something new.`);
+      refreshHud(); save(); fillJournal();
+      return;
+    }
     const r = e.target.closest('[data-sp]');
     if (!r) return;
     const id = r.dataset.sp;
@@ -4362,7 +4472,7 @@ export function initReefScene3D(canvas) {
       .forEach(({ egg, i }) => {
         const et = EGG_TYPES[egg.t];
         const rc = eggRushCost(egg);
-        const rush = rc.free ? '⏩ Free' : rc.be ? `⏩ ${rc.be} 🫧` : `⏩ ${rc.pearls} 💎`;
+        const rush = `⏩ ${rc.pearls} 💎`;
         html += `<div class="m-row" style="border:none;padding-bottom:2px">`
           + `<span class="dot" style="background:${hex(et.color)}"></span>`
           + `<span>${et.name}</span><small>🐣 in ${fmtMs(egg.at - now)}</small>`
@@ -4370,10 +4480,9 @@ export function initReefScene3D(canvas) {
           + '</div>'
           + bar(et.ms - (egg.at - now), et.ms);
       });
-    html += '<div class="m-sub">Speed-up is free in the last 3 minutes; before that it costs'
-      + ' 2 🫧 per remaining minute (💎 for the Premium Egg), shrinking as the clock runs.'
-      + ' Within a tier, odds follow real-ocean abundance — chromis outnumber whale sharks'
-      + ' out there, and in here too.</div>';
+    html += '<div class="m-sub">Speed-up costs pearls — 1 💎 per 4 minutes remaining,'
+      + ' shrinking as the clock runs. Within a tier, odds follow real-ocean abundance'
+      + ' — chromis outnumber whale sharks out there, and in here too.</div>';
     html += `<div class="m-sec">Market — fish eggs · ${nestEggs.length}/${NEST_CAP} nest slots used</div>`;
     for (const [id, et] of Object.entries(EGG_TYPES)) {
       const buyable = eggBuyable(id);
@@ -4494,6 +4603,16 @@ export function initReefScene3D(canvas) {
     (saved.nest ?? []).forEach(e => nestEggs.push(e));
     starterEggsGiven = !!saved.starterEggs;
     starterPackGiven = !!saved.starterPack;
+    survey = saved.survey ?? null;
+    if (!saved.coralDisc) {
+      // Pre-discovery save: everything the reef could already buy counts as
+      // recorded — veterans lose nothing to the new gate.
+      for (const s of [...allCorals(), GOLDEN_SPEC]) {
+        if (s.utility || s.pearlCost || s.eventId) continue;
+        const need = Math.max(s.unlockLevel ?? 1, ZONES[primaryBiome(s)].unlock);
+        if (need <= level) seen.add(s.id);
+      }
+    }
   }
   if (!starterPackGiven) {
     // Level-1 welcome, part one: a Starter Pack waiting in 🎁 Packs — fixed
@@ -5089,6 +5208,49 @@ export function initReefScene3D(canvas) {
       lastSlow = t;
       nestTick();
       for (const g of corals) growCoral(g);
+      seedTick();
+      // 🔬 Survey returns — a guaranteed new species from the chosen biome.
+      if (survey && Date.now() >= survey.at) {
+        const pool = discoverableCorals(survey.b);
+        const bio = BIOMES[survey.b];
+        survey = null;
+        if (pool.length) {
+          const spec = weightedPick(pool);
+          discoverCoral(spec,
+            `🔬 Survey complete: ${spec.name} recorded in the ${bio.name}! The specimen is in your palette.`);
+        } else {
+          polyps = Math.min(polyps + SURVEY_COST, POLYP_MAX);   // nothing left — refund
+          droneQueue.push(`🔬 Survey complete: the ${bio.name} holds no unrecorded coral. Fee returned.`);
+        }
+        if (journal.ov.style.display === 'flex') fillJournal();
+      }
+      // 🐟 Fragment finders — a few species, incredibly rarely.
+      let finders = 0;
+      for (const f of fishes) if (FRAGMENT_FINDERS.has(f.id)) finders++;
+      if (finders && Math.random() < finders * FRAGMENT_CHANCE) {
+        const pool = discoverableCorals();
+        if (pool.length) {
+          const spec = weightedPick(pool);
+          discoverCoral(spec, `A forager surfaced a coral fragment — ${spec.name} recorded!`);
+        }
+      }
+      // ⚖ Harmony settlement — larvae settle wild on a reef held in harmony.
+      if (harmony >= SETTLE_HARMONY && Math.random() < SETTLE_CHANCE) {
+        const pool = discoverableCorals();
+        if (pool.length) {
+          const spec = weightedPick(pool);
+          const spots = tiles.filter(tl => !tl.userData.occupied
+            && zoneUnlocked(tl.userData.biome) && matchesBiome(spec, tl.userData.biome));
+          if (spots.length) {
+            addCoral(spec, spots[Math.floor(Math.random() * spots.length)], 0);
+            droneQueue.push(`Larvae settled while the reef held its harmony — ${spec.name}, wild-grown!`);
+            flash(rateEl, `📖 ${spec.name} settled!`, '#ffd27f');
+            recomputeRates(); refreshProgress(); refreshHud(); save();
+          }
+        }
+      }
+      const eta = document.getElementById('survey-eta');
+      if (eta && survey) eta.textContent = fmtMs(survey.at - Date.now());
       if (nestModal.ov.style.display === 'flex') fillNest();   // live countdowns
       music.setNight(nightFactor);
     }
