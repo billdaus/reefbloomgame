@@ -4790,6 +4790,69 @@ export function initReefScene3D(canvas) {
   const drone = makeDrone();
   // Dock sits in the open channel south-east of the reef grid, clear of the
   // tiles, the expansion aprons, and the decor ring around them.
+  // ── Wild groves — dense life beyond the grid ─────────────────────────────────
+  // Untamed patches outside the buildable footprint: seagrass meadows in the
+  // seagrass zone, wild coral heads in the reef, a small grove in the
+  // twilight. These are where Bubbles lingers while running a survey.
+  const wildCorals = [];
+  const WILD_PATCH_POS = {};
+  {
+    const mkWildCoral = (spec, x, z, s) => {
+      if (!spec) return;
+      const g = makeCoral(spec, 3 + Math.floor(Math.random() * 3));
+      g.position.set(x, terrainHeight(x, z) + 0.15, z);
+      g.scale.setScalar(s);
+      g.userData.grow = 1;
+      scene.add(g);
+      wildCorals.push(g);
+    };
+    const sg = ZONES.seagrass;
+    const sgSpots = [[-13, 15], [11, -16], [-5, 19]];
+    for (const [ox, oz] of sgSpots) {
+      for (let i = 0; i < 22; i++) {
+        const a = Math.random() * Math.PI * 2, r = Math.random() * 4.5;
+        weedTuft(sg.cx + ox + Math.cos(a) * r, sg.cz + oz + Math.sin(a) * r,
+          3 + Math.floor(Math.random() * 3), [0x2e7d52, 0x3f9c63, 0x8d4a4a][i % 3]);
+      }
+    }
+    WILD_PATCH_POS.seagrass = new THREE.Vector3(sg.cx + sgSpots[0][0], 0, sg.cz + sgSpots[0][1]);
+    const cr = ZONES.coral;
+    const crSpots = [[-14, 14], [13, -15], [6, 18]];
+    const crSpecies = ['staghorn', 'brain', 'lettuce', 'finger', 'star', 'toadstool'];
+    for (const [ox, oz] of crSpots) {
+      for (let i = 0; i < 6; i++) {
+        const a = Math.random() * Math.PI * 2, r = 1 + Math.random() * 3.5;
+        mkWildCoral(CORAL_SPECIES[crSpecies[Math.floor(Math.random() * crSpecies.length)]],
+          cr.cx + ox + Math.cos(a) * r, cr.cz + oz + Math.sin(a) * r,
+          0.75 + Math.random() * 0.4);
+      }
+    }
+    WILD_PATCH_POS.coral = new THREE.Vector3(cr.cx + crSpots[0][0], 0, cr.cz + crSpots[0][1]);
+    const tw = ZONES.deepTwilight;
+    const twSpot = [10, 16];
+    const twSpecies = ['twilightBrain', 'lanternCoral', 'phantomPolyp', 'wispCoral'];
+    for (let i = 0; i < 5; i++) {
+      const a = Math.random() * Math.PI * 2, r = 1 + Math.random() * 3;
+      mkWildCoral(CORAL_SPECIES[twSpecies[i % twSpecies.length]],
+        tw.cx + twSpot[0] + Math.cos(a) * r, tw.cz + twSpot[1] + Math.sin(a) * r,
+        0.7 + Math.random() * 0.35);
+    }
+    {   // one wild Golden Tree stands in the twilight grove, as in the papers
+      const gt = makeGoldenTree();
+      const gx = tw.cx + twSpot[0], gz = tw.cz + twSpot[1];
+      gt.position.set(gx, terrainHeight(gx, gz) + 0.15, gz);
+      gt.scale.setScalar(0.95);
+      gt.userData.grow = 1;
+      scene.add(gt);
+      wildCorals.push(gt);
+    }
+    WILD_PATCH_POS.deepTwilight = new THREE.Vector3(tw.cx + twSpot[0], 0, tw.cz + twSpot[1]);
+    for (const k of Object.keys(WILD_PATCH_POS)) {
+      const p = WILD_PATCH_POS[k];
+      p.y = terrainHeight(p.x, p.z) + 2.4;   // Bubbles' working height
+    }
+  }
+
   const dockY = terrainHeight(15, 24);
   const DOCK_POS = new THREE.Vector3(15, dockY + 1.1, 24);
   // The rocky outcrop — one landmark holding Bubbles' perch, the Fish Nest,
@@ -4874,6 +4937,15 @@ export function initReefScene3D(canvas) {
 
   let droneState = 'docked';
   const droneTarget = DOCK_POS.clone();
+  // Scanning beam — a soft teal cone Bubbles sweeps over the seabed while
+  // working a survey spot. Invisible outside surveys.
+  const scanCone = new THREE.Mesh(
+    new THREE.ConeGeometry(1.5, 3.2, 16, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }));
+  scanCone.position.y = -1.75;
+  drone.add(scanCone);
+  let surveySpot = null, scanTimer = 0;
   const dronePos = DOCK_POS.clone();
   let speechTimer = 0;
   let flavorTimer = 30 + Math.random() * 45;
@@ -4903,6 +4975,11 @@ export function initReefScene3D(canvas) {
     droneTarget.copy(DOCK_POS);
   }
   function droneUpdate(dt, t, nf) {
+    // A live survey puts Bubbles to work in the wild groves of that biome.
+    if (survey && WILD_PATCH_POS[survey.b] && droneState === 'docked' && droneQueue.length === 0) {
+      droneState = 'toSurvey';
+      droneTarget.copy(WILD_PATCH_POS[survey.b]);
+    }
     if (droneState === 'docked' && droneQueue.length === 0) {
       flavorTimer -= dt;
       if (flavorTimer <= 0) {
@@ -4925,20 +5002,63 @@ export function initReefScene3D(canvas) {
     if (droneState === 'napping') {
       napTimer -= dt;
       drone.rotation.z = 0.42 + Math.sin(t * 0.9) * 0.03;   // keeled over, snoring
-      if (droneQueue.length || napTimer <= 0) droneWake(false);
+      if (droneQueue.length || napTimer <= 0 || survey) droneWake(false);
     }
     if (droneState === 'docked' && droneQueue.length > 0) {
       droneState = 'floating';
       droneTarget.copy(SPEAK_POS[Math.floor(Math.random() * SPEAK_POS.length)]);
-    } else if (droneState === 'toNap') {
+    } else if (droneState === 'toNap' || droneState === 'toSurvey') {
       const step = 5.5 * dt;
       const d = droneTarget.distanceTo(dronePos);
       if (d < Math.max(step, 0.25)) {
         dronePos.copy(droneTarget);
-        droneState = 'napping';
-        napTimer = 35 + Math.random() * 35;
+        if (droneState === 'toNap') {
+          droneState = 'napping';
+          napTimer = 35 + Math.random() * 35;
+        } else {
+          droneState = 'surveying';
+          surveySpot = null;
+        }
       } else {
         dronePos.lerp(droneTarget, step / d);
+      }
+    } else if (droneState === 'surveying') {
+      // Work the grove: hop to a random spot in the search area, nose down,
+      // sweep the scan beam, then pick the next spot — repeat till done.
+      const p = survey ? WILD_PATCH_POS[survey.b] : null;
+      if (!p) {
+        droneState = 'returning';
+        droneTarget.copy(DOCK_POS);
+      } else if (droneQueue.length) {
+        droneState = 'floating';
+        droneTarget.copy(SPEAK_POS[Math.floor(Math.random() * SPEAK_POS.length)]);
+      } else if (!surveySpot) {
+        const a = Math.random() * Math.PI * 2, r = 1 + Math.random() * 4;
+        surveySpot = new THREE.Vector3(
+          p.x + Math.cos(a) * r, p.y + (Math.random() - 0.5) * 0.8, p.z + Math.sin(a) * r);
+        scanTimer = 0;
+      } else if (scanTimer <= 0) {
+        const step = 3.2 * dt;
+        const d = surveySpot.distanceTo(dronePos);
+        if (d < Math.max(step, 0.2)) {
+          dronePos.copy(surveySpot);
+          scanTimer = 3.5 + Math.random() * 2.5;
+        } else {
+          dronePos.lerp(surveySpot, step / d);
+          const dx = surveySpot.x - dronePos.x, dz = surveySpot.z - dronePos.z;
+          if (dx * dx + dz * dz > 0.01) {
+            let dy = Math.atan2(dx, dz) - drone.rotation.y;
+            while (dy > Math.PI) dy -= Math.PI * 2;
+            while (dy < -Math.PI) dy += Math.PI * 2;
+            drone.rotation.y += dy * Math.min(1, dt * 5);
+          }
+        }
+      } else {
+        scanTimer -= dt;
+        drone.rotation.x += (0.45 - drone.rotation.x) * Math.min(1, dt * 4);   // nose down
+        drone.rotation.y += dt * 0.9;                                          // slow sweep
+        scanCone.material.opacity = 0.16 + Math.sin(t * 5) * 0.07;             // beam pulse
+        if (scanTimer <= 0) surveySpot = null;                                 // next spot
       }
     } else if (droneState === 'floating' || droneState === 'returning') {
       const step = 5.5 * dt;
@@ -4964,7 +5084,12 @@ export function initReefScene3D(canvas) {
     // Bob, face travel direction, spin the prop, light up after dark.
     drone.position.copy(dronePos);
     drone.position.y += Math.sin(t * 1.6) * (droneState === 'docked' ? 0.06 : 0.14);
-    const moving = droneState === 'floating' || droneState === 'returning';
+    if (droneState !== 'surveying') {
+      drone.rotation.x += (0 - drone.rotation.x) * Math.min(1, dt * 4);
+      scanCone.material.opacity += (0 - scanCone.material.opacity) * Math.min(1, dt * 4);
+    }
+    const moving = droneState === 'floating' || droneState === 'returning'
+      || droneState === 'toSurvey';
     if (moving) {
       const dx = droneTarget.x - dronePos.x, dz = droneTarget.z - dronePos.z;
       if (dx * dx + dz * dz > 0.01) {
