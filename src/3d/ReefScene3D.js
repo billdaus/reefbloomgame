@@ -2418,6 +2418,7 @@ export function initReefScene3D(canvas) {
   const seasonPacks = [];   // eventId per unopened Season Pack (saved)
   const vouchers = {};      // coralId -> free placements left (saved)
   let packBtn = null;       // menu button; assigned with the other menus
+  let dailyPackDate = '';   // last calendar day the free Daily Pack was opened (saved)
 
   const rollRange = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
   // Pack and egg pools are level- AND biome-gated: they only roll species the
@@ -2486,7 +2487,8 @@ export function initReefScene3D(canvas) {
     return pool.length ? pool[Math.floor(Date.now() / 604800000) % pool.length] : null;
   }
   const packCount = () =>
-    Object.values(packs).reduce((n, c) => n + c, 0) + seasonPacks.length;
+    Object.values(packs).reduce((n, c) => n + c, 0) + seasonPacks.length
+    + (dailyPackDate !== EV_TODAY() ? 1 : 0);   // the day's free pack counts
   function refreshPackBtn() {
     if (packBtn) packBtn.textContent = packCount() > 0 ? `🎁 ${packCount()}` : '🎁';
   }
@@ -2562,6 +2564,51 @@ export function initReefScene3D(canvas) {
     packs[tier] = (packs[tier] ?? 0) + 1;
     return openRarityPack(tier);
   }
+  // The Daily Pack — free, once a calendar day: modest riches (the polyp roll
+  // deliberately funds surveys), one seedling from coral you've ALREADY
+  // recorded (it grows the reef, never skips discovery), and a low-tier egg
+  // settling into the nest. The heartbeat of the slow economy.
+  function openDailyPack() {
+    if (dailyPackDate === EV_TODAY()) return null;
+    dailyPackDate = EV_TODAY();
+    const cards = [];
+    if (Math.random() < 0.6) {
+      const amt = rollRange([20, 50]);
+      be = Math.min(be + amt, beMax);
+      cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`, sub: 'Daily riches — the 60% roll' });
+    } else {
+      const amt = rollRange([5, 12]);
+      polyps = Math.min(polyps + amt, POLYP_MAX);
+      cards.push({ icon: '🪸', title: `+${amt} Polyps`,
+        sub: 'Daily riches — the 40% roll. Science fuel.' });
+    }
+    const kn = [...allCorals(), GOLDEN_SPEC]
+      .filter(s => !s.utility && !s.eventId && !s.pearlCost && seen.has(s.id));
+    if (kn.length) {
+      const spec = weightedPick(kn);
+      vouchers[spec.id] = (vouchers[spec.id] ?? 0) + 1;
+      cards.push({ icon: '🌱', title: `${spec.name} seedling`,
+        sub: 'From your recorded coral, wild-abundance odds — a free placement' });
+    } else {
+      polyps = Math.min(polyps + 10, POLYP_MAX);
+      cards.push({ icon: '🪸', title: '+10 Polyps',
+        sub: 'No recorded coral yet — nursery credit instead' });
+    }
+    const roll = Math.random();
+    const t = roll < 0.6 ? 'common' : roll < 0.85 ? 'uncommon' : 'rare';
+    if (nestEggs.length < NEST_CAP) {
+      nestEggs.push({ t, at: Date.now() + EGG_TYPES[t].ms });
+      refreshNestEggs();
+      cards.push({ icon: '🥚', title: `A ${EGG_TYPES[t].name} settles into the nest`,
+        sub: 'Incubating now — 60% common / 25% uncommon / 15% rare' });
+    } else {
+      be = Math.min(be + 10, beMax);
+      cards.push({ icon: '🫧', title: '+10 Bubble Energy', sub: 'The nest is full — energy instead' });
+    }
+    refreshLocks(); refreshPackBtn(); refreshHud(); save();
+    return cards;
+  }
+
   // The Starter Pack — every reef's welcome gift at level 1. Fixed contents,
   // no rolls: a Starter Coral voucher, two Green Chromis, and a Clownfish.
   // Opening it is the player's first taste of the pack ritual.
@@ -3400,7 +3447,8 @@ export function initReefScene3D(canvas) {
         ach: [...achUnlocked], sawNight,
         packs, vouchers, seasonPacks,
         nest: nestEggs, starterEggs: starterEggsGiven,
-        starterPack: starterPackGiven, survey, coralDisc: true, quiz }));
+        starterPack: starterPackGiven, survey, coralDisc: true, quiz,
+        dailyPack: dailyPackDate }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -4590,6 +4638,15 @@ export function initReefScene3D(canvas) {
         + ` (${TIER_LABEL[feat.tier]}) — takes a fixed 25% of the fish roll in`
         + ` ${TIER_LABEL[feat.tier]} packs.</div>`;
     }
+    const dailyOpen = dailyPackDate !== EV_TODAY();
+    html += '<div class="m-sec">🌅 Daily Pack — free, once a day</div>'
+      + '<div class="m-row"><span>Riches, a seedling from your recorded coral, an egg for the nest<br>'
+      + '<span style="font-size:10.5px;color:#9fc4dc">60%: 20–50 🫧 / 40%: 5–12 🪸'
+      + ' · 🌱 wild-abundance seedling · 🥚 60/25/15 common/uncommon/rare</span></span>'
+      + (dailyOpen
+        ? '<button class="pack-open-btn" data-pack="daily">Open</button>'
+        : '<small>tomorrow 🌅</small>')
+      + '</div>';
     if (packs.starter > 0) {
       html += '<div class="m-sec">Welcome gift</div>'
         + `<div class="m-row"><span><b>STARTER</b> ×${packs.starter}<br>`
@@ -4663,7 +4720,9 @@ export function initReefScene3D(canvas) {
       ? openSeasonPack(Number(b.dataset.idx))
       : b.dataset.pack === 'starter'
         ? openStarterPack()
-        : openRarityPack(b.dataset.pack);
+        : b.dataset.pack === 'daily'
+          ? openDailyPack()
+          : openRarityPack(b.dataset.pack);
     if (cards) showPackReveal(cards);
   });
 
@@ -4813,6 +4872,7 @@ export function initReefScene3D(canvas) {
     starterPackGiven = !!saved.starterPack;
     survey = saved.survey ?? null;
     if (saved.quiz) quiz = saved.quiz;
+    dailyPackDate = saved.dailyPack ?? '';
     if (!saved.coralDisc) {
       // Pre-discovery save: everything the reef could already buy counts as
       // recorded — veterans lose nothing to the new gate.
