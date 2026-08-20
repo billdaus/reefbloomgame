@@ -2783,9 +2783,28 @@ export function initReefScene3D(canvas) {
   //  🔬 Bubbles' surveys — fund with polyps, real timer, guaranteed find
   //  🐟 fragment finders — a few specific species, incredibly rarely
   //  ⚖ harmony settlement — larvae settle wild on a reef held in high harmony
-  let survey = null;              // { b: biomeId, at: epoch ms } (saved)
-  const SURVEY_COST = 40;         // polyps
-  const SURVEY_MIN = { coral: 10, seagrass: 14, deepTwilight: 18 };
+  let survey = null;   // { b: biomeId, at: epoch ms, d: tier idx, cost } (saved)
+  // Expedition length is a choice: longer searches (and higher reef levels)
+  // reach rarer species. 90% the find is from the surveyed biome; 5% each
+  // it's a drifter from one of the other biomes — either way it comes home
+  // as a free-placement voucher.
+  const SURVEY_TIERS = [
+    { name: 'Quick sweep', min: 8, cost: 30 },
+    { name: 'Field survey', min: 25, cost: 60 },
+    { name: 'Deep expedition', min: 60, cost: 100 },
+  ];
+  // Tier bias: base < 1 favors common tiers, > 1 favors rare ones. Search
+  // depth and level push the base up; wild-abundance odds still apply.
+  function surveyPick(pool, d) {
+    const base = 0.55 + 0.25 * d + level * 0.015;
+    const ws = pool.map(s =>
+      wildWeight(s) * Math.pow(base, Math.max(0, PACK_TIERS.indexOf(s.tier))));
+    let total = 0;
+    for (const w of ws) total += w;
+    let r = Math.random() * total;
+    for (let i = 0; i < pool.length; i++) { r -= ws[i]; if (r <= 0) return pool[i]; }
+    return pool[pool.length - 1];
+  }
   const FRAGMENT_FINDERS = new Set(['parrotfish', 'bumpheadParrotfish', 'hermitCrab', 'ochreStar']);
   const FRAGMENT_CHANCE = 1 / 7200;    // per finder per second — incredibly rare
   const SETTLE_HARMONY = 85;
@@ -3109,15 +3128,15 @@ export function initReefScene3D(canvas) {
   function refreshProgress() { harmony = computeHarmony(); checkLevelUp(); ev3Snapshot(); dqSnapshot(); checkAch(); onProgress(); }
 
   function tryUpgrade(group) {
-    // Pearls buy time, not levels: "Grow now" jumps the coral to its next
+    // Polyps buy time, not levels: "Grow now" jumps the coral to its next
     // growth stage immediately and restarts the clock for the one after.
-    // (Polyps fund research surveys now — impatience is pearls' job.)
+    // (Pearls rush eggs; polyps grow coral and fund research.)
     const e = group.userData.entry;
     if (!e || group.userData.spec?.utility) return;
     if (e.level >= CORAL_MAX_LEVEL) { flash(rateEl, 'fully grown'); return; }
-    const cost = e.level + 1;
-    if (pearls < cost) { flash(rateEl, `need ${cost} 💎`); return; }
-    pearls -= cost;
+    const cost = upgradeCost(e.level + 1);
+    if (polyps < cost) { flash(rateEl, `need ${cost} 🪸`); return; }
+    polyps -= cost;
     e.level++;
     e.g = e.level < CORAL_MAX_LEVEL ? Date.now() + STAGE_MS[e.level] : 0;
     // Regrow the same individual with more branches/stalks — the stage shows
@@ -3652,22 +3671,28 @@ export function initReefScene3D(canvas) {
     let html = '<div class="m-sec">🔬 Research surveys — Bubbles finds new coral</div>';
     if (survey) {
       const bio = BIOMES[survey.b];
-      html += `<div class="m-row"><span>Bubbles is surveying ${bio.icon} ${bio.name}</span>`
+      html += `<div class="m-row"><span>Bubbles is on a ${SURVEY_TIERS[survey.d ?? 0].name.toLowerCase()}`
+        + ` in ${bio.icon} ${bio.name}</span>`
         + `<small>returns in <span id="survey-eta">${fmtMs(survey.at - Date.now())}</span></small></div>`;
     } else {
       for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
         if (!zoneUnlocked(zid)) continue;
         const bio = BIOMES[zid];
         const left = discoverableCorals(zid).length;
+        const btns = SURVEY_TIERS.map((st, i) =>
+          `<button class="pack-open-btn" data-survey="${zid}" data-tier="${i}"`
+          + ` style="padding:3px 8px;font-size:11px"`
+          + `${left && polyps >= st.cost ? '' : ' disabled'}>${st.min}m · ${st.cost} 🪸</button>`).join('');
         html += `<div class="m-row"><span>${bio.icon} <b>${bio.shortName}</b><br>`
-          + `<span style="font-size:10.5px;color:#9fc4dc">${left} coral species still unrecorded`
-          + ` · ${SURVEY_MIN[zid]}m survey</span></span>`
-          + `<button class="pack-open-btn" data-survey="${zid}"`
-          + `${left && polyps >= SURVEY_COST ? '' : ' disabled'}>${SURVEY_COST} 🪸</button></div>`;
+          + `<span style="font-size:10.5px;color:#9fc4dc">${left} species unrecorded</span></span>`
+          + `<span style="display:flex;gap:5px;flex:none;margin-left:auto">${btns}</span></div>`;
       }
-      html += '<div class="m-sub">One survey at a time — a guaranteed new species from that'
-        + ' biome. New coral also arrives, incredibly rarely, from foraging fish and from'
-        + ' larvae settling on a reef held in high harmony.</div>';
+      html += '<div class="m-sub">One survey at a time. 90% the find is from the surveyed'
+        + ' biome — longer expeditions and higher reef levels reach rarer species'
+        + ' (wild-abundance odds apply) — and 5% each it&rsquo;s a drifter from another biome.'
+        + ' Every find comes home as a free-placement voucher. New coral also arrives,'
+        + ' incredibly rarely, from foraging fish and from larvae settling on a reef held'
+        + ' in high harmony.</div>';
     }
     if (journalTab !== 'fish') html += group(cs, 'Coral');
     if (journalTab !== 'coral') html += group(fs, 'Fish');
@@ -3828,7 +3853,7 @@ export function initReefScene3D(canvas) {
     const max = e.level >= CORAL_MAX_LEVEL;
     const basePerTick = spec.utility ? 0 : (BE_PER_TICK[spec.tier] ?? 1);
     const rate = s => basePerTick * stageOutput(s) / TICK_SEC;
-    const cost = e.level + 1;   // pearls
+    const cost = upgradeCost(e.level + 1);   // polyps
     const refund = (spec.pearlCost || spec.utility) ? 0
       : Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
     let html = `<div class="m-row" style="border:none;padding-bottom:0"><span>Growth</span>`
@@ -3848,8 +3873,8 @@ export function initReefScene3D(canvas) {
     const up = document.createElement('button');
     up.className = 'shop-pack';
     up.innerHTML = max ? '<span>Full grown</span><span>—</span>'
-      : `<span>🌱 Grow now → ${STAGE_NAMES[e.level + 1]}</span><span>${cost} 💎</span>`;
-    up.disabled = max || spec.utility || pearls < cost;
+      : `<span>🌱 Grow now → ${STAGE_NAMES[e.level + 1]}</span><span>${cost} 🪸</span>`;
+    up.disabled = max || spec.utility || polyps < cost;
     up.style.opacity = up.disabled ? 0.45 : 1;
     up.onclick = () => { if (!up.disabled) { tryUpgrade(g); fillUpgrade(); } };
     const sell = document.createElement('button');
@@ -4338,10 +4363,11 @@ export function initReefScene3D(canvas) {
     const sv = e.target.closest('button[data-survey]');
     if (sv && !sv.disabled) {
       const zid = sv.dataset.survey;
-      if (survey || polyps < SURVEY_COST || !discoverableCorals(zid).length) return;
-      polyps -= SURVEY_COST;
-      survey = { b: zid, at: Date.now() + SURVEY_MIN[zid] * 60e3 };
-      droneQueue.push(`🔬 Survey funded. Charting the ${BIOMES[zid].name} — back with something new.`);
+      const st = SURVEY_TIERS[Number(sv.dataset.tier) || 0];
+      if (survey || polyps < st.cost || !discoverableCorals(zid).length) return;
+      polyps -= st.cost;
+      survey = { b: zid, at: Date.now() + st.min * 60e3, d: Number(sv.dataset.tier) || 0, cost: st.cost };
+      droneQueue.push(`🔬 ${st.name} funded. Charting the ${BIOMES[zid].name} — back with something new.`);
       refreshHud(); save(); fillJournal();
       return;
     }
@@ -5209,18 +5235,25 @@ export function initReefScene3D(canvas) {
       nestTick();
       for (const g of corals) growCoral(g);
       seedTick();
-      // 🔬 Survey returns — a guaranteed new species from the chosen biome.
+      // 🔬 Survey returns — 90% the surveyed biome, 5% each a drifter from
+      // another; rarity climbs with search depth and level.
       if (survey && Date.now() >= survey.at) {
-        const pool = discoverableCorals(survey.b);
-        const bio = BIOMES[survey.b];
+        const { b, d = 0, cost = 40 } = survey;
         survey = null;
+        const others = ['coral', 'seagrass', 'deepTwilight'].filter(z => z !== b);
+        const roll = Math.random();
+        let zid = roll < 0.9 ? b : roll < 0.95 ? others[0] : others[1];
+        let pool = discoverableCorals(zid);
+        if (!pool.length && zid !== b) { zid = b; pool = discoverableCorals(b); }
         if (pool.length) {
-          const spec = weightedPick(pool);
-          discoverCoral(spec,
-            `🔬 Survey complete: ${spec.name} recorded in the ${bio.name}! The specimen is in your palette.`);
+          const spec = surveyPick(pool, d);
+          const drift = zid === b
+            ? ` recorded in the ${BIOMES[b].name}!`
+            : ` recorded — a drifter from the ${BIOMES[zid].name}!`;
+          discoverCoral(spec, `🔬 Survey complete: ${spec.name}${drift} The specimen is in your palette.`);
         } else {
-          polyps = Math.min(polyps + SURVEY_COST, POLYP_MAX);   // nothing left — refund
-          droneQueue.push(`🔬 Survey complete: the ${bio.name} holds no unrecorded coral. Fee returned.`);
+          polyps = Math.min(polyps + cost, POLYP_MAX);   // nothing left — refund
+          droneQueue.push(`🔬 Survey complete: no unrecorded coral remains out there. Fee returned.`);
         }
         if (journal.ov.style.display === 'flex') fillJournal();
       }
