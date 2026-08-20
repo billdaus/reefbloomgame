@@ -2568,10 +2568,10 @@ export function initReefScene3D(canvas) {
   function openStarterPack() {
     if (!(packs.starter > 0)) return null;
     packs.starter--;
-    vouchers.starter = (vouchers.starter ?? 0) + 1;
+    vouchers.starter = (vouchers.starter ?? 0) + 3;
     const cards = [];
-    cards.push({ icon: '🎟', title: 'Starter Coral — free placement',
-      sub: 'Plant it on any Coral Reef tile — your reef begins here' });
+    cards.push({ icon: '🎟', title: 'Three Starter Coral seedlings',
+      sub: 'Plant them on Coral Reef tiles — your reef begins here' });
     packSpawnFish(FISH_SPECIES.blueChromis);
     packSpawnFish(FISH_SPECIES.chromis);
     cards.push({ icon: '🐟', title: 'A Blue and a Green Chromis join the reef!',
@@ -3344,7 +3344,8 @@ export function initReefScene3D(canvas) {
   function removeCoralGroup(group) {
     const e = group.userData.entry, spec = group.userData.spec;
     if (!e || !spec) return;
-    const refund = (spec.pearlCost || spec.utility) ? 0 : Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
+    const refund = (spec.pearlCost || spec.utility) ? 0
+      : Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
     be = Math.min(be + refund, beMax);
     for (const f of group.userData.homed ?? []) { f.home = null; f.bed = null; }
     if (group.userData.bioLight) bioLightCount--;   // free a light slot
@@ -3477,6 +3478,13 @@ export function initReefScene3D(canvas) {
     if (spec.polypCost) return { n: spec.polypCost, unit: '🪸' };
     return { n: (type === 'coral' ? CORAL_COST : FISH_COST)[spec.tier] ?? 0, unit: '🫧' };
   }
+  // Coral works like the Fish Shop: an UNRECORDED species places only from a
+  // banked 🎟 seedling/find — once recorded, it's buyable at its 🫧 price.
+  const seedOnly = (spec, type) =>
+    type === 'coral' && !spec.utility && !spec.polypCost && !spec.eventId;
+  const coralKnown = (spec) =>
+    seen.has(spec.id)
+    || Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock) <= 1;
 
   const rows = [];   // { btn, need }  for lock refresh
   let clearSel = () => { rows.forEach(r => r.btn.classList.remove('sel')); };
@@ -3505,6 +3513,10 @@ export function initReefScene3D(canvas) {
       if (need > level && !(vouchers[spec.id] > 0)) {
         flash(rateEl, `unlocks at Lv ${need}`); return;
       }
+      if (seedOnly(spec, type) && !coralKnown(spec) && !(vouchers[spec.id] > 0)) {
+        flash(rateEl, '🌱 not yet recorded — needs a seedling or a find');
+        return;
+      }
       selected = { type, spec };
       removeBtn.classList.remove('on');
       clearSel(); btn.classList.add('sel');
@@ -3518,7 +3530,11 @@ export function initReefScene3D(canvas) {
       const free = r.spec && vouchers[r.spec.id] > 0;
       r.btn.classList.toggle('locked', r.need > level && !free);
       const fb = r.btn.querySelector('.free-badge');
-      if (fb) fb.style.display = free ? '' : 'none';
+      if (fb) {
+        const n = vouchers[r.spec?.id] ?? 0;
+        fb.style.display = n > 0 ? '' : 'none';
+        if (n > 0) fb.textContent = `🎟 ×${n}`;
+      }
       // Coral discovery gate: standard coral rows hide until the species is
       // recorded (or a seedling/voucher is banked). Level-1 basics start
       // known; utility, pearl, and event rows keep their own rules.
@@ -4446,8 +4462,15 @@ export function initReefScene3D(canvas) {
     if (spec.shelter) html += row('Shelter', `sleeps ${spec.homeCap ?? 6} fish overnight`);
     if (spec.storage) html += row('Storage', `+${spec.storage} 🫧 wallet cap`);
     if (!spec.eventId) {
-      const { n, unit } = priceOf(spec, kind);
-      html += row(kind === 'fish' ? 'Fish Shop (once discovered)' : 'Cost', `${n} ${unit}`);
+      if (seedOnly(spec, kind)) {
+        const { n, unit } = priceOf(spec, kind);
+        html += row('Once recorded', `${n} ${unit} to place`);
+        html += row('Seedlings banked', `${vouchers[spec.id] ?? 0}`);
+        if (!found) html += row('How to record', '🌱 a seedling find — surveys, foragers, packs, harmony');
+      } else {
+        const { n, unit } = priceOf(spec, kind);
+        html += row(kind === 'fish' ? 'Fish Shop (once discovered)' : 'Cost', `${n} ${unit}`);
+      }
       html += row('In the wild', spec.wildNote ?? abundanceText(wildWeight(spec)));
     } else {
       html += row('Origin', '🎉 event exclusive');
@@ -4570,8 +4593,8 @@ export function initReefScene3D(canvas) {
     if (packs.starter > 0) {
       html += '<div class="m-sec">Welcome gift</div>'
         + `<div class="m-row"><span><b>STARTER</b> ×${packs.starter}<br>`
-        + '<span style="font-size:10.5px;color:#9fc4dc">Guaranteed, no rolls: a Starter'
-        + ' Coral 🎟 free placement, a Blue and a Green Chromis, and a Clownfish</span></span>'
+        + '<span style="font-size:10.5px;color:#9fc4dc">Guaranteed, no rolls: three Starter'
+        + ' Coral seedlings 🎟, a Blue and a Green Chromis, and a Clownfish</span></span>'
         + '<button class="pack-open-btn" data-pack="starter">Open</button></div>';
     }
     html += '<div class="m-sec">Rarity Packs — buy, or earn free at level-ups</div>';
@@ -5198,12 +5221,18 @@ export function initReefScene3D(canvas) {
   });
   // Deduct a placement cost by currency (pearls / polyps / BE). False if unaffordable.
   function charge(spec, costTable) {
-    // A pack voucher trumps every currency: one free placement, then it's spent.
+    // A banked seedling/voucher is a free placement, then it's spent.
     if (vouchers[spec.id] > 0) {
       if (--vouchers[spec.id] <= 0) delete vouchers[spec.id];
       refreshLocks();
-      flash(rateEl, '🎟 pack voucher spent', '#ffd27f');
+      flash(rateEl, '🎟 seedling planted', '#7fd8b0');
       return true;
+    }
+    // An unrecorded coral can't be bought — it needs a seedling or a find.
+    // Once recorded, it sells at its normal price like any fish-shop species.
+    if (costTable === CORAL_COST && seedOnly(spec, 'coral') && !coralKnown(spec)) {
+      flash(rateEl, '🌱 not yet recorded — needs a seedling or a find');
+      return false;
     }
     if (spec.pearlCost) {
       if (pearls < spec.pearlCost) { flash(rateEl, 'not enough 💎'); return false; }
