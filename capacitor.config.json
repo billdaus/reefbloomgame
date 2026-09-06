@@ -1,9 +1,9 @@
 {
   "appId": "com.billdaus.reefbloom",
   "appName": "Reef Bloom",
-  "webDir": "dist",
+  "webDir": "dist-app",
   "ios": {
     "contentInset": "never",
-    "backgroundColor": "#0a3a6a"
+    "backgroundColor": "#0a3550"
   }
 }

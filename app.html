@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Reef Bloom</title>
+  <!--
+    App Home screen — iOS app shell only. Built by `vite build --mode app` as the
+    shell's index.html (see vite.config.js); the website never ships this page.
+    Pure HTML/CSS/JS, no imports: it reads the 3D edition's save slots straight
+    from localStorage and hands off to threed.html with the chosen slot.
+  -->
+  <style>
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
+      --sar: env(safe-area-inset-right, 0px);
+      --ink: #eaf6ff;
+      --ink-dim: rgba(234,246,255,0.62);
+      --accent: #7fd8ff;
+      --glass: rgba(3,18,28,0.42);
+      --glass-line: rgba(127,216,255,0.22);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      min-height: 100dvh; overflow-x: hidden; overflow-y: auto;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink);
+      background: linear-gradient(180deg, #70d4f8 0%, #28a0e0 32%, #1468b0 66%, #0a3050 100%);
+      -webkit-user-select: none; user-select: none;
+    }
+
+    /* ── The sea: light rays, rising bubbles, a sandy floor ─────────────── */
+    .sea { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+    .ray {
+      position: absolute; top: -20%; height: 140%; width: 18vw; min-width: 90px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0) 70%);
+      transform: skewX(-14deg); opacity: 0.55; filter: blur(6px);
+      animation: sway 11s ease-in-out infinite alternate;
+    }
+    .ray:nth-child(1) { left: 6%;  animation-delay: -2s; }
+    .ray:nth-child(2) { left: 30%; width: 10vw; animation-delay: -6s; opacity: 0.35; }
+    .ray:nth-child(3) { left: 58%; animation-delay: -4s; }
+    .ray:nth-child(4) { left: 82%; width: 12vw; animation-delay: -9s; opacity: 0.4; }
+    @keyframes sway { from { transform: skewX(-14deg) translateX(-2vw); } to { transform: skewX(-10deg) translateX(3vw); } }
+
+    .bubble {
+      position: absolute; bottom: -40px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.75), rgba(255,255,255,0.18) 55%, rgba(255,255,255,0.05));
+      border: 1px solid rgba(255,255,255,0.35);
+      animation: rise linear infinite;
+    }
+    @keyframes rise {
+      0%   { transform: translate(0, 0) scale(0.9); opacity: 0; }
+      8%   { opacity: 0.85; }
+      50%  { transform: translate(14px, -50vh) scale(1); }
+      100% { transform: translate(-10px, -108vh) scale(1.08); opacity: 0; }
+    }
+
+    .floor { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 26vh; min-height: 140px; }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    main {
+      position: relative; z-index: 1;
+      min-height: 100dvh; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 22px; text-align: center;
+      padding: calc(28px + var(--sat)) calc(20px + var(--sar)) calc(24px + var(--sab)) calc(20px + var(--sal));
+    }
+    .hero { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .kicker { font-size: 12px; letter-spacing: 5px; color: rgba(255,255,255,0.72); text-transform: uppercase; }
+    h1 {
+      font-size: clamp(52px, 9vw, 88px); font-weight: 800; line-height: 1; letter-spacing: 3px; color: #fff;
+      text-shadow: 0 0 60px rgba(100,200,255,0.6), 0 4px 40px rgba(0,60,120,0.55);
+    }
+    .sub { font-size: 15px; letter-spacing: 1px; color: rgba(255,255,255,0.62); }
+
+    .greet {
+      max-width: 520px; font-size: 14px; line-height: 1.45; color: var(--ink);
+      background: var(--glass); border: 1px solid var(--glass-line); border-radius: 999px;
+      padding: 8px 16px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    }
+    .greet b { color: var(--accent); font-weight: 600; }
+
+    .dive {
+      display: inline-flex; align-items: center; gap: 10px; text-decoration: none;
+      font-size: 18px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: #06263f;
+      background: #fff; border-radius: 999px; padding: 18px 46px;
+      box-shadow: 0 10px 40px rgba(0,40,90,0.35), 0 0 0 0 rgba(255,255,255,0.4);
+      transition: transform 0.12s ease, box-shadow 0.2s ease;
+    }
+    .dive:active { transform: scale(0.97); }
+    .dive small { font-size: 12px; letter-spacing: 1px; text-transform: none; font-weight: 600; color: #2c6a94; }
+
+    .reefs {
+      width: 100%; max-width: 760px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px;
+    }
+    .reef {
+      font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+      background: var(--glass); border: 1px solid var(--glass-line); border-radius: 16px;
+      padding: 14px 16px; display: flex; flex-direction: column; gap: 7px;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.12s ease, border-color 0.2s ease;
+    }
+    .reef:active { transform: scale(0.98); }
+    .reef.active { border-color: var(--accent); background: rgba(20,80,120,0.55); box-shadow: 0 0 0 1px rgba(127,216,255,0.35), 0 0 30px rgba(127,216,255,0.18); }
+    .reef .name { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 15px; }
+    .reef .tag { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+    .reef .stats { font-size: 14px; color: var(--ink); letter-spacing: 0.3px; }
+    .reef .meta { font-size: 12px; color: var(--ink-dim); display: flex; flex-wrap: wrap; gap: 6px 10px; }
+    .reef .meta .ready { color: #ffe08a; }
+    .reef.empty .stats { color: var(--ink-dim); font-style: italic; }
+
+    footer { font-size: 12px; letter-spacing: 1px; color: rgba(255,255,255,0.5); }
+
+    /* Short viewports (phones sideways): tighten the hero so the reefs stay on screen. */
+    @media (max-height: 560px) {
+      main { gap: 12px; justify-content: flex-start; }
+      h1 { font-size: 44px; }
+      .kicker, .sub, footer { display: none; }
+      .dive { padding: 12px 30px; font-size: 15px; }
+      .reefs { grid-template-columns: repeat(3, 1fr); }
+      .reef { padding: 10px 12px; gap: 4px; }
+      .floor { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ray, .bubble { animation: none; }
+      .bubble { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sea" id="sea" aria-hidden="true">
+    <div class="ray"></div><div class="ray"></div><div class="ray"></div><div class="ray"></div>
+    <svg class="floor" viewBox="0 0 1000 200" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0c3a5c"/><stop offset="1" stop-color="#061e33"/>
+        </linearGradient>
+      </defs>
+      <!-- coral silhouettes, planted on the dune line -->
+      <g fill="#0a2e4a" opacity="0.9">
+        <path d="M120 130 c-4-30 6-52 14-60 c-8 22 0 40 4 58 c6-28 18-40 30-46 c-14 16-20 34-22 50 z"/>
+        <path d="M300 122 c0-26 12-40 22-44 c-4 18 2 32 6 44 c2-22 14-36 26-40 c-10 14-16 28-16 42 z"/>
+        <circle cx="520" cy="126" r="26"/><circle cx="548" cy="132" r="18"/><circle cx="498" cy="134" r="16"/>
+        <path d="M720 128 c-2-34 10-56 20-64 c-6 24 2 42 6 62 c4-30 20-44 32-50 c-16 18-22 36-24 52 z"/>
+        <path d="M880 124 c-10-4-16-16-12-30 c8 8 18 6 26 0 c2 12-4 26-14 30 z"/>
+      </g>
+      <path fill="url(#sand)" d="M0 200 L0 135 C120 120 180 150 300 138 C420 126 470 150 600 136 C720 122 780 150 900 134 C960 126 990 132 1000 130 L1000 200 Z"/>
+    </svg>
+  </div>
+
+  <main>
+    <header class="hero">
+      <div class="kicker">A coral reef, yours to grow</div>
+      <h1>Reef Bloom</h1>
+      <div class="sub">Place coral. Hatch fish. Watch life flourish.</div>
+    </header>
+
+    <p class="greet" id="greet"></p>
+
+    <a class="dive" id="dive" href="./threed.html">Dive in</a>
+
+    <section class="reefs" id="reefs" aria-label="Your reefs"></section>
+
+    <footer id="ver">3Dev 4.7 · iPad edition</footer>
+  </main>
+
+  <script>
+    (function () {
+      var SAVE_BASE = 'reefbloom_3d_save_v1';   // same keys the 3D edition uses
+      var SLOT_KEY  = 'reefbloom_3d_slot';
+      var PLAYED    = 'reefbloom_app_played_s';   // app-only: when each reef was last opened
+      var SLOTS = ['1', '2', '3'];
+      var GAME = './threed.html';
+
+      function read(s) {
+        try { return JSON.parse(localStorage.getItem(SAVE_BASE + '_s' + s)); } catch (e) { return null; }
+      }
+      function ago(ms) {
+        var m = Math.round(ms / 60000);
+        if (m < 2) return 'just now';
+        if (m < 60) return m + ' min ago';
+        var h = Math.round(m / 60);
+        if (h < 36) return h + (h === 1 ? ' hour' : ' hours') + ' ago';
+        var d = Math.round(h / 24);
+        return d + (d === 1 ? ' day' : ' days') + ' ago';
+      }
+      var today = new Date().toISOString().slice(0, 10);
+      var now = Date.now();
+
+      var current = localStorage.getItem(SLOT_KEY) || '1';
+      if (SLOTS.indexOf(current) < 0) current = '1';
+
+      // ── Reef cards ───────────────────────────────────────────────────────
+      var reefs = document.getElementById('reefs');
+      var anySave = false;
+      SLOTS.forEach(function (s) {
+        var info = read(s);
+        var card = document.createElement('button');
+        card.className = 'reef' + (s === current ? ' active' : '') + (info ? '' : ' empty');
+        var name = '<div class="name"><span>🐚 Reef ' + s + '</span>'
+          + (s === current ? '<span class="tag">▶ current</span>' : '') + '</div>';
+        var stats, meta = [];
+        if (info) {
+          anySave = true;
+          stats = 'Lv ' + (info.level || 1) + ' · ' + Math.floor(info.be || 0) + ' 🫧 · '
+            + (info.corals || []).length + ' 🪸 · ' + (info.fish || []).length + ' 🐠';
+          var played = Number(localStorage.getItem(PLAYED + s)) || info.savedAt;
+          if (played) meta.push('played ' + ago(now - played));
+          if (info.dailyPack !== today) meta.push('<span class="ready">🎁 Daily Pack ready</span>');
+          var hatched = (info.nest || []).filter(function (e) { return e && e.at <= now; }).length;
+          if (hatched) meta.push('<span class="ready">🥚 ' + hatched + ' ready to hatch</span>');
+        } else {
+          stats = 'Empty — start a fresh reef';
+        }
+        card.innerHTML = name + '<div class="stats">' + stats + '</div>'
+          + (meta.length ? '<div class="meta">' + meta.map(function (m) { return '<span>' + m + '</span>'; }).join('') + '</div>' : '');
+        card.onclick = function () { open(s); };
+        reefs.appendChild(card);
+      });
+
+      // ── Dive button follows the current slot ─────────────────────────────
+      var dive = document.getElementById('dive');
+      var cur = read(current);
+      dive.innerHTML = cur
+        ? 'Continue <small>Reef ' + current + ' · Lv ' + (cur.level || 1) + '</small>'
+        : (anySave ? 'New reef <small>Reef ' + current + '</small>' : 'Start your reef');
+      dive.onclick = function (ev) { ev.preventDefault(); open(current); };
+
+      function open(s) {
+        try { localStorage.setItem(SLOT_KEY, s); localStorage.setItem(PLAYED + s, String(Date.now())); } catch (e) { /* ignore */ }
+        location.href = GAME;
+      }
+
+      // ── Bubbles says hello (one line a day, scripted — no runtime AI) ──────
+      var LINES = [
+        'Tide’s in. Let’s see who hatched while you were gone.',
+        'I counted the fish twice. One of them counted me back.',
+        'Corals grow slowly. That’s the trick — they never stop.',
+        'Every reef starts with one polyp and a lot of patience.',
+        'The seagrass is whispering again. Probably about snacks.',
+        'Sunrise on the reef. Best time to check the nest.',
+        'Somewhere out past the grid, something new is growing.',
+        'Gavin is awake. I’m updating my threat model.'
+      ];
+      var doy = Math.floor((now - new Date(new Date().getFullYear(), 0, 0)) / 864e5);
+      document.getElementById('greet').innerHTML = '🤿 <b>Bubbles:</b> ' + LINES[doy % LINES.length];
+
+      // ── Rising bubbles ────────────────────────────────────────────────────
+      var sea = document.getElementById('sea');
+      for (var i = 0; i < 18; i++) {
+        var b = document.createElement('span');
+        b.className = 'bubble';
+        var size = 6 + Math.random() * 22;
+        b.style.width = b.style.height = size + 'px';
+        b.style.left = (Math.random() * 100) + '%';
+        b.style.animationDuration = (9 + Math.random() * 12) + 's';
+        b.style.animationDelay = (-Math.random() * 20) + 's';
+        sea.appendChild(b);
+      }
+    })();
+  </script>
+</body>
+</html>

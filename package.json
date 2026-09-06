@@ -7,8 +7,9 @@
     "dev": "node scripts/gen-mobile.mjs && vite",
     "build": "node scripts/gen-mobile.mjs && vite build",
     "preview": "vite preview",
-    "ios:sync": "npm run build && cap sync ios",
-    "ios:open": "npm run build && cap sync ios && cap open ios"
+    "build:app": "vite build --mode app",
+    "ios:sync": "npm run build:app && cap sync ios",
+    "ios:open": "npm run build:app && cap sync ios && cap open ios"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity": "^3.1067.0",
