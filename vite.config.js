@@ -19,6 +19,11 @@ const APP_SHELL_INJECT = `
     document.addEventListener('visibilitychange', function () { if (document.hidden) flush(); });
   </script>
   <style>
+    /* App feel: no long-press callouts or text selection, no rubber-banding,
+       and the reef surfaces with a short fade instead of a hard cut from Home. */
+    html.app-shell { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; overscroll-behavior: none; }
+    html.app-shell body { animation: appSurface 0.5s ease-out both; }
+    @keyframes appSurface { from { opacity: 0; } to { opacity: 1; } }
     /* Edge-to-edge WebView: keep the fixed top chrome below the status bar. */
     :root { --sat: env(safe-area-inset-top, 0px); }
     #back { top: calc(12px + var(--sat)); }
