@@ -5,7 +5,7 @@ edition only** — Classic and the website pages stay web-only. The native Xcode
 project lives in `ios/` and is committed to the repo; the app's web build is
 copied into it by `cap sync`.
 
-- **App ID:** `com.billdaus.reefbloom`
+- **App ID:** `com.defenestrationtech.games.reefbloom`
 - **App name:** Reef Bloom
 - **Dependencies:** Swift Package Manager (no CocoaPods needed)
 - **Requires:** Node 22+ (`nvm use 22`), and Xcode 16+ on a Mac to build
