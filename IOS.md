@@ -51,6 +51,35 @@ device needs a signing team selected under **App target → Signing & Capabiliti
 (a free Apple ID works for personal devices; App Store distribution needs the
 $99/yr Apple Developer Program).
 
+## Versions and TestFlight
+
+The App Store version lives in the Xcode project (`MARKETING_VERSION`, shown
+as `CFBundleShortVersionString`) with an integer build number
+(`CURRENT_PROJECT_VERSION`). The scheme is **major.minor.patch** starting at
+**1.0.0 (1)**; each TestFlight upload needs a higher build number, so bump
+before every archive:
+
+```bash
+npm run version:bump          # 1.0.0 (1) → 1.0.1 (2); also updates the Home footer + package.json
+npm run version:bump minor    # → 1.1.0
+npm run version:bump 2.0.0    # exact
+```
+
+Then archive and upload. Either from Xcode (`npm run ios:open`, pick your team
+under Signing & Capabilities the first time, destination "Any iOS Device",
+Product → Archive, Distribute App → TestFlight), or from the terminal:
+
+```bash
+npm run ios:archive   # build:app + cap sync + xcodebuild archive into Xcode's Archives folder
+```
+
+The archive appears in Xcode's Organizer (Window → Organizer), where
+Distribute App → TestFlight uploads it. Builds show in App Store Connect's
+TestFlight tab ~10–30 minutes later; internal testers need no review.
+
+Commit the bump and tag it (`git tag ios-v1.0.1`) so the store build maps to
+a commit.
+
 ## Building without a Mac
 
 The **iOS Build (Simulator)** GitHub Actions workflow

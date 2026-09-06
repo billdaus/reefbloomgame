@@ -281,9 +281,10 @@
       var doy = Math.floor((now - new Date(new Date().getFullYear(), 0, 0)) / 864e5);
       document.getElementById('greet').innerHTML = '🤿 <b>Bubbles:</b> ' + LINES[doy % LINES.length];
 
-      // Footer says which kind of device this is (both are the same build).
+      // Footer: game build, App Store version (kept in step by scripts/bump-version.mjs), device.
+      var APP_VERSION = '1.0.0';
       var isPad = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      document.getElementById('ver').textContent = '3Dev 4.7 · ' + (isPad ? 'iPad' : 'iPhone') + ' edition';
+      document.getElementById('ver').textContent = '3Dev 4.7 · v' + APP_VERSION + ' · ' + (isPad ? 'iPad' : 'iPhone') + ' edition';
 
       // ── Rising bubbles ────────────────────────────────────────────────────
       var sea = document.getElementById('sea');
