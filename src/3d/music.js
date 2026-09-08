@@ -161,12 +161,24 @@ export function createReefMusic() {
     master.gain.linearRampToValueAtTime(enabled ? 0.5 : 0, ctx.currentTime + 3);
   }
 
+  // Resume a parked context. Safari/WebKit reports "interrupted" (not
+  // "suspended") after the tab or app leaves the foreground, and never
+  // restarts it by itself — so treat anything short of running as resumable.
+  function wake() {
+    try {
+      if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {});
+    } catch (e) { /* ignore */ }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+  window.addEventListener('pageshow', wake);
+  window.addEventListener('focus', wake);
+
   return {
-    // Call from any user gesture: builds lazily, resumes if suspended.
+    // Call from any user gesture: builds lazily, resumes if parked.
     poke() {
       try {
         if (!ctx) build();
-        if (ctx && ctx.state === 'suspended') ctx.resume();
+        else wake();
       } catch (e) { /* audio unavailable — the reef stays silent, not broken */ }
     },
     setNight(v) { nf = v; },
