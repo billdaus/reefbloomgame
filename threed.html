@@ -104,6 +104,21 @@
       padding: 5px 2px; border-bottom: 1px solid rgba(47,111,146,0.25);
     }
     .m-row .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+    .j-thumb {
+      width: 44px; height: 44px; flex: none; border-radius: 8px;
+      background: radial-gradient(circle at 40% 32%, #16455f, #0a2438 78%);
+      border: 1px solid rgba(47,111,146,0.55); object-fit: cover;
+    }
+    span.j-thumb.mystery {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 20px; color: #4f7a95;
+    }
+    .j-facts { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0 2px; }
+    .j-fact {
+      font-size: 9.5px; color: #a8d4e8; white-space: nowrap;
+      background: rgba(30,80,110,0.45); border: 1px solid rgba(127,216,255,0.22);
+      border-radius: 6px; padding: 1px 6px;
+    }
     .m-row small { color: #9fc4dc; margin-left: auto; text-align: right; flex: none; }
     .m-row.locked { opacity: 0.45; }
     .m-bar {
@@ -198,6 +213,35 @@
       position: fixed; right: 10px; bottom: 8px; z-index: 3;
       font-size: 12px; color: #7fa8c0; letter-spacing: 1px; pointer-events: none;
     }
+    /* 🎓 Reef Orientation coach card + the pulse ring on the UI it points at. */
+    #tut-card {
+      position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%);
+      z-index: 4; width: min(430px, 92vw); display: none;
+      background: rgba(5,13,24,0.92); border: 1.5px solid #4080a8; border-radius: 12px;
+      padding: 10px 14px 6px; color: #ddeeff;
+    }
+    #tut-card .t-head {
+      display: flex; justify-content: space-between; gap: 10px;
+      font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase;
+      color: #7fd8ff; margin-bottom: 5px;
+    }
+    #tut-card .t-text { font-size: 12.5px; line-height: 1.5; }
+    #tut-card .t-skip {
+      display: block; margin-left: auto; padding: 5px 0 2px;
+      background: none; border: none; color: #6f9ab5;
+      font: inherit; font-size: 10.5px; cursor: pointer;
+    }
+    #tut-card .t-skip:hover { color: #9fc4dc; }
+    #tut-card.pulse { animation: tutpulse 0.6s ease; }
+    @keyframes tutpulse {
+      0% { border-color: #7fffb0; box-shadow: 0 0 16px rgba(127,255,176,0.35); }
+      100% { border-color: #4080a8; box-shadow: none; }
+    }
+    .tut-glow { animation: tutglow 1.5s ease-in-out infinite; }
+    @keyframes tutglow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(127,216,255,0); }
+      50% { box-shadow: 0 0 15px 3px rgba(127,216,255,0.6); }
+    }
     #bubbles-speech {
       position: fixed; z-index: 4; display: none; max-width: 240px; width: max-content;
       transform: translate(-50%, -115%);
@@ -289,7 +333,7 @@
   <button id="palette-toggle">🪸 Species ▾</button>
   <div id="palette"></div>
   <div id="hint">🏖️ Beach far west · 🌿 Seagrass · 🪸 Coral Reef centre · 🌌 Twilight east — plant in the matching biome · corals grow from hatchlings; tap one to check its stage · 🥚 fish hatch from Market eggs at the nest on the rocky outcrop (south-east) · tap a ＋ plot to expand a reef with 🪸 · ✕ Remove to sell · drag or arrow keys to move · right-drag or two fingers to orbit.</div>
-  <div id="version-badge-3d">3Dev 4.7</div>
+  <div id="version-badge-3d">3Dev 4.8</div>
   <script>
     // Boot-failure beacon: with no console on iPad, a silent blank page is
     // undebuggable — surface any script error or failed asset load on screen.

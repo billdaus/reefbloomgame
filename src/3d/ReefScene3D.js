@@ -2774,6 +2774,10 @@ export function initReefScene3D(canvas) {
   const achUnlocked = new Set(); // achievement ids earned (saved)
   const droneQueue = [];         // Bubbles' pending speech lines
   let sawNight = false;          // has this reef been seen after dark (saved)
+  let tutDone = false;           // reef orientation finished or skipped (saved)
+  let tutPaid = false;           // graduation pearls dispensed — pays once (saved)
+  const tutSeen = new Set();     // one-shot actions the tutorial watches for
+  const tutNote = (k) => { tutSeen.add(k); };
   let be = START_BE, polyps = START_POLYPS, pearls = START_PEARLS;
   let harmony = START_HARMONY, level = START_LEVEL;
   const music = createReefMusic();
@@ -3248,6 +3252,8 @@ export function initReefScene3D(canvas) {
     while (level < MAX_LEVEL) {
       const req = LEVEL_REQS[level + 1];
       if (!req) break;
+      // Level 2 also asks for the Reef Orientation — finished or skipped.
+      if (level + 1 === 2 && !tutDone) break;
       const [c, f, h] = req;
       if (placedCorals.length >= c && placedFish.length >= f && harmony >= h) {
         level++;
@@ -3448,7 +3454,7 @@ export function initReefScene3D(canvas) {
         packs, vouchers, seasonPacks,
         nest: nestEggs, starterEggs: starterEggsGiven,
         starterPack: starterPackGiven, survey, coralDisc: true, quiz,
-        dailyPack: dailyPackDate }));
+        dailyPack: dailyPackDate, tut: tutDone, tutp: tutPaid }));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -3774,7 +3780,8 @@ export function initReefScene3D(canvas) {
     `<div class="m-bar"><span class="${v >= max ? 'full' : cls}"`
     + ` style="width:${clamp((v / max) * 100, 0, 100)}%"></span></div>`;
 
-  // 📖 Journal — every species, discovered by placing it once (mirrors Classic's journal).
+  // 📖 Ocean Journal — every species, discovered by placing it once (mirrors
+  // Classic's journal), with a rendered thumbnail and quick facts per entry.
   const journal = buildMenuModal('📖 Ocean Journal');
   let journalTab = 'all';
   const journalTabs = document.createElement('div');
@@ -3792,8 +3799,77 @@ export function initReefScene3D(canvas) {
     journalTabs.appendChild(b);
   });
   journal.head.appendChild(journalTabs);
-  // A journal entry: tier dot + name, scientific name and field notes once the
-  // species has been recorded, biome icons and a tier badge on the right.
+  // Thumbnails — each recorded species is photographed once: its real 3D model
+  // is built, framed by its bounding box, and rendered on a tiny offscreen
+  // canvas. Data URLs are cached so every journal open after the first is free.
+  let thumbCtx = null;
+  const thumbCache = new Map();
+  function speciesThumb(spec) {
+    if (thumbCache.has(spec.id)) return thumbCache.get(spec.id);
+    if (!thumbCtx) {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 96;
+      const r = new THREE.WebGLRenderer({
+        canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
+      r.setSize(96, 96, false);
+      r.setClearColor(0x000000, 0);
+      const sc = new THREE.Scene();
+      sc.add(new THREE.AmbientLight(0xbfdcee, 1.0));
+      const key = new THREE.DirectionalLight(0xffffff, 1.7);
+      key.position.set(2, 4, 3); sc.add(key);
+      const fill = new THREE.DirectionalLight(0x7fb8d4, 0.5);
+      fill.position.set(-3, 1, -2); sc.add(fill);
+      const cam = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
+      thumbCtx = { r, sc, cam, cv };
+    }
+    const { r, sc, cam, cv } = thumbCtx;
+    const g = spec.layer ? makeFish(spec) : makeCoral(spec);
+    if (!spec.layer) g.scale.setScalar(1);   // corals spawn at 0.01 to grow in
+    sc.add(g);
+    const box = new THREE.Box3().setFromObject(g);
+    const c = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const dist = (maxDim / 2) / Math.tan((cam.fov * Math.PI) / 360) * 1.2;
+    const dir = spec.layer
+      ? new THREE.Vector3(1, 0.35, 0.55)     // fish: 3/4 side profile
+      : new THREE.Vector3(1, 0.6, 1);        // coral: from above the shoulder
+    cam.position.copy(c).addScaledVector(dir.normalize(), dist);
+    cam.lookAt(c);
+    r.render(sc, cam);
+    const url = cv.toDataURL();
+    sc.remove(g); disposeGroup(g);
+    thumbCache.set(spec.id, url);
+    return url;
+  }
+
+  // Quick facts — a field-guide line derived from the spec and behaviour tables.
+  function quickFacts(spec) {
+    const facts = [];
+    if (spec.layer) {
+      const s = spec.size ?? 14;
+      facts.push('📏 ' + (s <= 12 ? 'Tiny' : s <= 17 ? 'Small'
+        : s <= 24 ? 'Medium' : s <= 34 ? 'Large' : 'Huge'));
+      facts.push(spec.nocturnal ? '🌙 Nocturnal'
+        : DAY_HIDER_SPECIES.has(spec.id) ? '🌙 Hides by day' : '☀️ Active by day');
+      facts.push(SCHOOL_SPECIES.has(spec.id) ? '🐟 Schools'
+        : BENTHIC_SPECIES.has(spec.id) ? '🦀 Bottom-dweller'
+        : roamProfile(spec) ? '🧭 Wide roamer' : '🌀 Keeps a home patch');
+      if (BIOLUM_SPECIES.has(spec.id)) facts.push('✨ Glows at night');
+      if ((spec.speed ?? 1) >= 1.3) facts.push('💨 Quick swimmer');
+    } else {
+      facts.push(spec.tall ? '⬆️ Grows tall' : '🪨 Low mound');
+      if (spec.shelter) {
+        facts.push(spec.homeFor === 'A' ? '🏠 Shelters small fish'
+          : '🏠 Day-roost for nocturnals');
+      } else facts.push('🪸 Habitat builder');
+    }
+    if (spec.eventId) facts.push('🎉 Event exclusive');
+    return facts;
+  }
+
+  // A journal entry: rendered thumbnail + name, quick facts and field notes
+  // once the species has been recorded, biome icons and a tier badge.
   function journalRow(spec) {
     const found = seen.has(spec.id);
     const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
@@ -3801,15 +3877,21 @@ export function initReefScene3D(canvas) {
     const badge = `<span style="font-size:9px;letter-spacing:1px;color:${tierCol};`
       + `border:1px solid ${tierCol};border-radius:4px;padding:1px 4px">`
       + `${TIER_LABEL[spec.tier] ?? '?'}</span>`;
+    const thumb = found
+      ? `<img class="j-thumb" src="${speciesThumb(spec)}" alt="">`
+      : '<span class="j-thumb mystery">?</span>';
     const sci = found && spec.scientific
       ? ` <i style="color:#9fc4dc;font-weight:400">${spec.scientific}</i>` : '';
+    const facts = found
+      ? `<span class="j-facts">${quickFacts(spec)
+          .map(f => `<span class="j-fact">${f}</span>`).join('')}</span>` : '';
     const note = found
       ? (SPECIES_LORE[spec.id] ?? spec.lore ?? 'A specimen of the reef.')
       : need > level ? `🔒 Unlocks at Lv${need}.` : 'Place one to record it.';
     return `<div class="m-row${found ? '' : ' locked'}" data-sp="${spec.id}"`
       + ` style="align-items:flex-start;cursor:pointer">`
-      + `<span class="dot" style="background:${tierCol};margin-top:3px"></span>`
-      + `<span style="flex:1;min-width:0">${found ? spec.name : '???'}${sci}`
+      + thumb
+      + `<span style="flex:1;min-width:0">${found ? spec.name : '???'}${sci}${facts}`
       + `<span style="display:block;font-size:10.5px;line-height:1.35;color:#8fb4c9">${note}</span></span>`
       + `<small style="margin-top:2px" title="${isRealSpecies(spec.id) ? 'Real species' : 'Reef Bloom original'}">`
       + `${isRealSpecies(spec.id) ? '🌍' : '✨'} ${biomeIcons(spec)} ${badge}</small></div>`;
@@ -3872,7 +3954,7 @@ export function initReefScene3D(canvas) {
       const hidden = excl.length - owned.length;
       html += '<div class="m-sec">Event exclusives · 🎉</div>' + owned.map(journalRow).join('');
       if (hidden > 0) {
-        html += `<div class="m-row locked"><span class="dot" style="background:#546e7a"></span>`
+        html += `<div class="m-row locked"><span class="j-thumb mystery">?</span>`
           + `<span style="flex:1;min-width:0">???`
           + `<span style="display:block;font-size:10.5px;line-height:1.35;color:#8fb4c9">`
           + `${hidden} event ${hidden === 1 ? 'species remains' : 'species remain'} hidden — `
@@ -3949,6 +4031,7 @@ export function initReefScene3D(canvas) {
         + line('Corals placed', placedCorals.length, c);
       if (f > 0) html += line('Fish hatched', placedFish.length, f);
       if (h > 0) html += line('Harmony', harmony, h);
+      if (level === 1) html += line('🎓 Reef Orientation', tutDone ? 1 : 0, 1);
     }
     html += '<div class="m-sec">Biomes</div>';
     for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
@@ -4053,7 +4136,7 @@ export function initReefScene3D(canvas) {
     };
     upgrade.body.append(up, sell);
   }
-  function openUpgrade(g) { upgradeTarget = g; fillUpgrade(); upgrade.show(); }
+  function openUpgrade(g) { upgradeTarget = g; fillUpgrade(); upgrade.show(); tutNote('upgrade'); }
 
   // Station menu — same modal shell, station-flavoured contents.
   function fillStation(g) {
@@ -4308,6 +4391,7 @@ export function initReefScene3D(canvas) {
     else if (['octopus', 'rubyOctopus', 'giantSquid', 'cuttlefish'].includes(id)) kind = 'ink';
     else if (id === 'seaOtter') kind = 'roll';
     f.react = { kind, start: nowMs, until: nowMs + 1500 };
+    tutNote('pet');
     heartBurst(f.g.position, 3);
     if (kind === 'ink') inkCloud(f.g.position);
     if (Math.random() < 0.12) droneTrigger('tapped');
@@ -4781,7 +4865,7 @@ export function initReefScene3D(canvas) {
 
   const menuEl = document.getElementById('menu3d');
   if (menuEl) {
-    [['📖 Journal', journal, fillJournal],
+    [['📖 Ocean Journal', journal, () => { tutNote('journal'); fillJournal(); }],
      ['🏆', achModal, fillAch],
      ['🎁', packModal, fillPack],
      ['🥚', nestModal, fillNest],
@@ -4882,6 +4966,9 @@ export function initReefScene3D(canvas) {
         if (need <= level) seen.add(s.id);
       }
     }
+    // Pre-tutorial saves with a grown reef graduate automatically.
+    tutDone = saved.tut ?? (saved.corals?.length ?? 0) > 0;
+    tutPaid = saved.tutp ?? tutDone;
   }
   if (!starterPackGiven) {
     // Level-1 welcome, part one: a Starter Pack waiting in 🎁 Packs — fixed
@@ -4899,6 +4986,138 @@ export function initReefScene3D(canvas) {
   ev3Init(); ev3Snapshot(); dqInit(); dqSnapshot(); refreshExclRows(); refreshPackBtn();
   recomputeRates(); refreshProgress(); refreshHud();
   refreshExpMarkers(); refreshZoneLocks();
+
+  // ── 🎓 Reef Orientation — Bubbles walks new keepers through the basics ───────
+  // A coach card of steps that each watch real game state (or a one-shot
+  // tutNote pinged from the mechanic itself) and advance only when the player
+  // has actually done the thing. Auto-starts on fresh reefs, skippable,
+  // replayable from the 🎓 menu button; completion pays 5 pearls, once.
+  const TUT_STEPS = [
+    { say: 'Orientation protocol engaged. First: drag to glide around, '
+        + 'right-drag or two fingers to orbit. Arrow keys also work. '
+        + 'Go on, wiggle the camera. I will know.',
+      done: () => tutSeen.has('camera') },
+    { say: 'Pick a coral from the Species panel and tap a tile on the 🪸 Coral '
+        + 'Reef grid in the centre — the level-1 basics are already on file. '
+        + 'I recommend a cheap one. I always recommend the cheap one.',
+      glow: '#palette', done: () => placedCorals.length >= 1 },
+    { say: 'Coral hatchlings breathe out Bubble Energy 🫧 — that +/s by your '
+        + 'counter is your reef working, and it rises as they grow. Plant '
+        + 'until you have three corals. Three is a good number. I checked.',
+      glow: '#hud', done: () => placedCorals.length >= 3 },
+    { say: 'Three corals down. Now, fish: two starter eggs are already warming '
+        + 'in the 🥚 nest on the rocky outcrop, south-east. The first hatches '
+        + 'any minute — no action required. Feels wrong, I know.',
+      glow: '#menu3d', done: () => placedFish.length >= 1 },
+    { say: 'Tap your fish to say hello. Every family reacts in its own way. '
+        + 'I have logged 11 distinct reactions. Possibly 12.',
+      done: () => tutSeen.has('pet') },
+    { say: 'Select 🍤 Feed at the bottom of the panel, then tap the water. '
+        + 'Stand back — mealtime is not dignified.',
+      glow: '#palette', done: () => tutSeen.has('feed') },
+    { say: 'Tap a planted coral to open its care panel — it shows the growth '
+        + 'stage, and polyps 🪸 spent there regrow it bigger and richer.',
+      done: () => tutSeen.has('upgrade') },
+    { say: 'Last one: open the 📖 Ocean Journal, top right. Every species you '
+        + 'place gets a page. I wrote the field notes. Most are accurate.',
+      glow: '#menu3d', done: () => tutSeen.has('journal') },
+  ];
+  const tutCard = document.createElement('div');
+  tutCard.id = 'tut-card';
+  tutCard.innerHTML = '<div class="t-head"><span>🤖 Bubbles · Reef Orientation</span>'
+    + '<span class="t-step"></span></div><div class="t-text"></div>'
+    + '<button class="t-skip">Skip tutorial</button>';
+  document.body.appendChild(tutCard);
+  const tutStepEl = tutCard.querySelector('.t-step');
+  const tutTextEl = tutCard.querySelector('.t-text');
+  const hintEl = document.getElementById('hint');
+  let tutStep = 0, tutTimer = null, tutGlowEl = null, tutHideTimer = null;
+
+  function tutGlow(sel) {
+    tutGlowEl?.classList.remove('tut-glow');
+    tutGlowEl = sel ? document.querySelector(sel) : null;
+    tutGlowEl?.classList.add('tut-glow');
+  }
+  function tutShow() {
+    const s = TUT_STEPS[tutStep];
+    tutStepEl.textContent = `${tutStep + 1} / ${TUT_STEPS.length}`;
+    tutTextEl.textContent = s.say;
+    tutGlow(s.glow);
+    tutCard.classList.remove('pulse');
+    void tutCard.offsetWidth;               // restart the advance-pulse animation
+    tutCard.classList.add('pulse');
+  }
+  function tutEnd(graduated) {
+    clearInterval(tutTimer); tutTimer = null;
+    tutGlow(null);
+    tutDone = true;
+    refreshProgress();   // orientation gates Level 2 — unlock it on the spot
+    tutCard.querySelector('.t-skip').style.display = 'none';
+    if (graduated) {
+      tutStepEl.textContent = '🎓';
+      if (!tutPaid) {
+        tutPaid = true;
+        pearls += 5;
+        tutTextEl.textContent = 'Orientation complete. Dispensing 5 pearls 💎 — '
+          + 'and your Starter Pack is still waiting in 🎁 Packs, top right. '
+          + 'The reef is yours now. I will be over here, observing. Neutrally.';
+      } else {
+        tutTextEl.textContent = 'Orientation complete. Again. The pearls were '
+          + 'a one-time offer, but the knowledge is forever. Allegedly.';
+      }
+      droneTrigger('tutorialDone');
+      tutHideTimer = setTimeout(() => {
+        tutCard.style.display = 'none';
+        if (hintEl) hintEl.style.display = '';
+      }, 7000);
+      refreshHud();
+    } else {
+      tutCard.style.display = 'none';
+      if (hintEl) hintEl.style.display = '';
+    }
+    save();
+  }
+  function tutStart() {
+    if (tutTimer) return;
+    clearTimeout(tutHideTimer);
+    tutDone = false;
+    tutStep = 0;
+    tutSeen.clear();
+    // Reloads and replays skip past state the reef already satisfies.
+    while (tutStep < TUT_STEPS.length && TUT_STEPS[tutStep].done()) tutStep++;
+    if (tutStep >= TUT_STEPS.length) { tutEnd(true); return; }
+    tutCard.style.display = 'block';
+    tutCard.querySelector('.t-skip').style.display = '';
+    if (hintEl) hintEl.style.display = 'none';   // the card is the hint for now
+    tutShow();
+    tutTimer = setInterval(() => {
+      if (!TUT_STEPS[tutStep].done()) return;
+      tutStep++;
+      if (tutStep >= TUT_STEPS.length) tutEnd(true);
+      else tutShow();
+    }, 400);
+  }
+  tutCard.querySelector('.t-skip').onclick = () => tutEnd(false);
+  if (menuEl) {
+    const b = document.createElement('button');
+    b.className = 'menu-btn';
+    b.textContent = '🎓';
+    b.title = 'Replay the reef orientation';
+    b.onclick = tutStart;
+    menuEl.appendChild(b);
+  }
+  // Step 1 watches for a real camera move: a drag on the canvas or arrow keys.
+  let tutPtr = null;
+  renderer.domElement.addEventListener('pointerdown',
+    e => { tutPtr = { x: e.clientX, y: e.clientY }; });
+  renderer.domElement.addEventListener('pointermove', e => {
+    if (tutPtr && !tutSeen.has('camera')
+      && Math.hypot(e.clientX - tutPtr.x, e.clientY - tutPtr.y) > 45) tutNote('camera');
+  });
+  renderer.domElement.addEventListener('pointerup', () => { tutPtr = null; });
+  window.addEventListener('keydown',
+    e => { if (e.key.startsWith('Arrow')) tutNote('camera'); });
+  if (!tutDone) tutStart();
 
   // ── Bubbles the drone — dock, speech overlay, and state machine ──────────────
   const drone = makeDrone();
@@ -4964,6 +5183,32 @@ export function initReefScene3D(canvas) {
     for (const k of Object.keys(WILD_PATCH_POS)) {
       const p = WILD_PATCH_POS[k];
       p.y = terrainHeight(p.x, p.z) + 2.4;   // Bubbles' working height
+    }
+
+    // Cosmetic fringes — untended coral in the channels between the zones and
+    // on the outer flats. Pure scenery: no tiles, no income, nothing to tap.
+    // Spots sit clear of every buildable footprint and expansion strip
+    // (zone x-bands ± the 5-tile aprons), the outcrop, and the vent.
+    const fringes = [
+      // [x, z, corals, spread, species pool, weed tufts]
+      [-16,   12, 6, 4.2, ['lettuce', 'lagoonFan', 'star', 'finger'], 8],
+      [-15,  -14, 7, 3.4, ['staghorn', 'brain', 'finger', 'toadstool'], 5],
+      [-46,   -6, 4, 2.4, ['lagoonFan', 'lettuce'], 12],
+      [14.5, -13, 6, 3.0, ['star', 'toadstool', 'brain', 'lanternCoral'], 4],
+      [20,     8, 5, 2.0, ['staghorn', 'star', 'finger'], 4],
+      [47,     7, 5, 3.0, ['twilightBrain', 'wispCoral', 'phantomPolyp', 'lanternCoral'], 0],
+    ];
+    for (const [px, pz, n, spread, pool, tufts] of fringes) {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * spread;
+        mkWildCoral(CORAL_SPECIES[pool[Math.floor(Math.random() * pool.length)]],
+          px + Math.cos(a) * r, pz + Math.sin(a) * r, 0.6 + Math.random() * 0.45);
+      }
+      for (let i = 0; i < tufts; i++) {
+        const a = Math.random() * Math.PI * 2, r = 1 + Math.random() * (spread + 1.5);
+        weedTuft(px + Math.cos(a) * r, pz + Math.sin(a) * r,
+          3 + Math.floor(Math.random() * 3), [0x2e7d52, 0x3f9c63, 0x557f3f][i % 3]);
+      }
     }
   }
 
@@ -5474,6 +5719,7 @@ export function initReefScene3D(canvas) {
       feedCd = nowMs + 2500;
       dropFood(hit.point.x, hit.point.z,
         Math.min(hit.point.y + 5, SURFACE_Y - 1.2));
+      tutNote('feed');
     } else {
       const hit = ray.intersectObject(floor, false)[0];
       if (!hit) return;
