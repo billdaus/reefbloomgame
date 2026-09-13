@@ -3880,44 +3880,84 @@ export function initReefScene3D(canvas) {
   // Thumbnails — each recorded species is photographed once: its real 3D model
   // is built, framed by its bounding box, and rendered on a tiny offscreen
   // canvas. Data URLs are cached so every journal open after the first is free.
-  let thumbCtx = null;
+  // The offscreen renderer is a SECOND WebGL context, and iOS reclaims spare
+  // contexts under memory pressure or after backgrounding — rendering on a
+  // reclaimed one throws from deep inside three ("shaderSource must be an
+  // instance of WebGLShader"). So the context lives only for one batch of
+  // thumbnails and is released right after, every render is guarded, and a
+  // failure falls back to a plain colour disc instead of a crash banner.
+  let thumbCtx = null, thumbBroken = false, thumbRelease = 0;
   const thumbCache = new Map();
+  function thumbFallback(spec) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 96;
+    const ctx = cv.getContext('2d');
+    const grd = ctx.createRadialGradient(34, 30, 4, 48, 48, 46);
+    grd.addColorStop(0, hex(spec.accentColor ?? spec.color ?? 0x7fb8d4));
+    grd.addColorStop(0.62, hex(spec.color ?? 0x2f6f92));
+    grd.addColorStop(1, '#06131d');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(48, 48, 40, 0, Math.PI * 2); ctx.fill();
+    return cv.toDataURL();
+  }
+  function releaseThumbRenderer() {
+    clearTimeout(thumbRelease);
+    thumbBroken = false;
+    if (!thumbCtx) return;
+    const { r } = thumbCtx;
+    thumbCtx = null;
+    try { r.dispose(); r.forceContextLoss(); } catch (e) { /* already gone */ }
+  }
   function speciesThumb(spec) {
     if (thumbCache.has(spec.id)) return thumbCache.get(spec.id);
-    if (!thumbCtx) {
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = 96;
-      const r = new THREE.WebGLRenderer({
-        canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
-      r.setSize(96, 96, false);
-      r.setClearColor(0x000000, 0);
-      const sc = new THREE.Scene();
-      sc.add(new THREE.AmbientLight(0xbfdcee, 1.0));
-      const key = new THREE.DirectionalLight(0xffffff, 1.7);
-      key.position.set(2, 4, 3); sc.add(key);
-      const fill = new THREE.DirectionalLight(0x7fb8d4, 0.5);
-      fill.position.set(-3, 1, -2); sc.add(fill);
-      const cam = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
-      thumbCtx = { r, sc, cam, cv };
+    if (thumbBroken) return thumbFallback(spec);
+    let url = null;
+    try {
+      if (!thumbCtx) {
+        const cv = document.createElement('canvas');
+        cv.width = cv.height = 96;
+        const r = new THREE.WebGLRenderer({
+          canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
+        r.setSize(96, 96, false);
+        r.setClearColor(0x000000, 0);
+        const sc = new THREE.Scene();
+        sc.add(new THREE.AmbientLight(0xbfdcee, 1.0));
+        const key = new THREE.DirectionalLight(0xffffff, 1.7);
+        key.position.set(2, 4, 3); sc.add(key);
+        const fill = new THREE.DirectionalLight(0x7fb8d4, 0.5);
+        fill.position.set(-3, 1, -2); sc.add(fill);
+        const cam = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
+        thumbCtx = { r, sc, cam, cv };
+      }
+      const { r, sc, cam, cv } = thumbCtx;
+      if (r.getContext()?.isContextLost?.()) throw new Error('thumbnail context lost');
+      const g = spec.layer ? makeFish(spec) : makeCoral(spec);
+      if (!spec.layer) g.scale.setScalar(1);   // corals spawn at 0.01 to grow in
+      sc.add(g);
+      const box = new THREE.Box3().setFromObject(g);
+      const c = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      const dist = (maxDim / 2) / Math.tan((cam.fov * Math.PI) / 360) * 1.2;
+      const dir = spec.layer
+        ? new THREE.Vector3(1, 0.35, 0.55)     // fish: 3/4 side profile
+        : new THREE.Vector3(1, 0.6, 1);        // coral: from above the shoulder
+      cam.position.copy(c).addScaledVector(dir.normalize(), dist);
+      cam.lookAt(c);
+      r.render(sc, cam);
+      url = cv.toDataURL();
+      sc.remove(g); disposeGroup(g);
+      thumbCache.set(spec.id, url);
+    } catch (e) {
+      // Dead or refused context: drop it, stop trying for this batch, and
+      // let the next journal open start fresh.
+      releaseThumbRenderer();
+      thumbBroken = true;
+      url = thumbFallback(spec);
     }
-    const { r, sc, cam, cv } = thumbCtx;
-    const g = spec.layer ? makeFish(spec) : makeCoral(spec);
-    if (!spec.layer) g.scale.setScalar(1);   // corals spawn at 0.01 to grow in
-    sc.add(g);
-    const box = new THREE.Box3().setFromObject(g);
-    const c = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z) || 1;
-    const dist = (maxDim / 2) / Math.tan((cam.fov * Math.PI) / 360) * 1.2;
-    const dir = spec.layer
-      ? new THREE.Vector3(1, 0.35, 0.55)     // fish: 3/4 side profile
-      : new THREE.Vector3(1, 0.6, 1);        // coral: from above the shoulder
-    cam.position.copy(c).addScaledVector(dir.normalize(), dist);
-    cam.lookAt(c);
-    r.render(sc, cam);
-    const url = cv.toDataURL();
-    sc.remove(g); disposeGroup(g);
-    thumbCache.set(spec.id, url);
+    // One context per batch, none held between them.
+    clearTimeout(thumbRelease);
+    thumbRelease = setTimeout(releaseThumbRenderer, 400);
     return url;
   }
 
@@ -4769,6 +4809,41 @@ export function initReefScene3D(canvas) {
     const spec = CORAL_SPECIES[id] ?? FISH_SPECIES[id] ?? LOCAL_SPECS[id];
     if (!spec) return;
     fillSpecies(spec, FISH_SPECIES[id] ? 'fish' : 'coral');
+    speciesModal.show();
+  });
+
+  // 🐟 Fish ID toast — tapping a fish names it at the bottom of the screen for
+  // a few seconds (the pet reaction still plays). Tapping the toast opens the
+  // species page; coral keeps its full upgrade modal because that's where its
+  // actions live, but a fish has nothing to act on — just something to learn.
+  const fishToast = document.getElementById('fish-toast');
+  let fishToastSpec = null, fishToastTimer = 0;
+  function showFishToast(spec) {
+    if (!fishToast || !spec) return;
+    fishToastSpec = spec;
+    const found = seen.has(spec.id);
+    const tierCol = hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5);
+    fishToast.innerHTML = (found
+      ? `<img class="ft-thumb" src="${speciesThumb(spec)}" alt="">`
+      : '<span class="ft-thumb"></span>')
+      + `<span><span class="ft-name">${found ? spec.name : 'Unrecorded fish'}</span><br>`
+      + `<span class="ft-sub">${found && spec.scientific ? `<i>${spec.scientific}</i> · ` : ''}`
+      + `<span style="color:${tierCol}">${TIER_LABEL[spec.tier] ?? '?'}</span>`
+      + `${isRealSpecies(spec.id) ? ' · 🌍 real species' : ''}</span></span>`
+      + '<span class="ft-more">Learn more ›</span>';
+    fishToast.classList.add('show');
+    clearTimeout(fishToastTimer);
+    fishToastTimer = setTimeout(hideFishToast, 4500);
+  }
+  function hideFishToast() {
+    clearTimeout(fishToastTimer);
+    fishToast?.classList.remove('show');
+  }
+  fishToast?.addEventListener('click', () => {
+    const spec = fishToastSpec;
+    hideFishToast();
+    if (!spec) return;
+    fillSpecies(spec, 'fish');
     speciesModal.show();
   });
 
@@ -5809,7 +5884,11 @@ export function initReefScene3D(canvas) {
       if (fHit) {
         const g = ancestorWith(fHit, 'stateRef');
         const st = g?.userData.stateRef;
-        if (st) { petFish(st); return; }
+        if (st) {
+          petFish(st);
+          showFishToast(FISH_SPECIES[st.id] ?? LOCAL_SPECS[st.id]);
+          return;
+        }
       }
     }
 
