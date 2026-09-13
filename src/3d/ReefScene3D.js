@@ -25,6 +25,7 @@ import {
 } from '../constants.js';
 import { LINES as BUBBLES_LINES } from '../entities/bubblesLines.js';
 import { createReefMusic } from './music.js';
+import { PEARL_PACKS, isNative as iapIsNative, loadProducts as iapLoadProducts, purchase as iapPurchase } from './iap.js';
 
 const TILE = 2;
 const SURFACE_Y = 13;     // the ocean surface — everything swims beneath it
@@ -3716,7 +3717,11 @@ export function initReefScene3D(canvas) {
   onProgress = () => { refreshLocks(); refreshZoneLocks(); refreshExpMarkers(); refreshFishShop(); };
   onProgress();
 
-  // ── Pearl shop (basic hook — packs grant pearls, mirroring Classic) ───────────
+  // ── Pearl shop ───────────────────────────────────────────────────────────────
+  // In the iOS app the packs are real StoreKit purchases (src/3d/iap.js): names
+  // and prices come from the App Store and pearls are granted only after a
+  // verified transaction. On the website there is no store, so the rows keep
+  // the original stub behaviour.
   const shopOverlay = document.createElement('div');
   shopOverlay.id = 'shop-overlay';
   const panel = document.createElement('div');
@@ -3724,14 +3729,10 @@ export function initReefScene3D(canvas) {
   panel.innerHTML = '<div style="font-size:16px;font-weight:700;">💎 Pearl Shop</div>'
     + '<div style="font-size:11px;color:#9fc4dc;margin:4px 0 12px;">'
     + 'Support the reef — each pack grants pearls.</div>';
-  [{ pearls: 10, price: '$0.99' }, { pearls: 35, price: '$2.99' }, { pearls: 60, price: '$4.99' }]
-    .forEach(p => {
-      const row = document.createElement('button');
-      row.className = 'shop-pack';
-      row.innerHTML = `<span>💎 ${p.pearls} pearls</span><span>${p.price}</span>`;
-      row.onclick = () => { pearls += p.pearls; refreshHud(); save(); };
-      panel.appendChild(row);
-    });
+  const shopList = document.createElement('div');
+  const shopNote = document.createElement('div');
+  shopNote.style.cssText = 'font-size:11px;color:#9fc4dc;margin:6px 0 2px;min-height:14px;text-align:center;';
+  panel.append(shopList, shopNote);
   const closeBtn = document.createElement('button');
   closeBtn.className = 'shop-close'; closeBtn.textContent = 'Close';
   closeBtn.onclick = () => { shopOverlay.style.display = 'none'; };
@@ -3739,8 +3740,56 @@ export function initReefScene3D(canvas) {
   shopOverlay.appendChild(panel);
   shopOverlay.onclick = e => { if (e.target === shopOverlay) shopOverlay.style.display = 'none'; };
   document.body.appendChild(shopOverlay);
-  document.getElementById('shop-btn')?.addEventListener('click',
-    () => { shopOverlay.style.display = 'flex'; });
+
+  function grantPearls(n) {
+    pearls += n; refreshHud(); save();
+    droneQueue.push(`💎 ${n} pearls added to the reef fund. Spend them wisely. Or not — I'm not your accountant.`);
+  }
+  function shopRow(label, priceText, onBuy) {
+    const row = document.createElement('button');
+    row.className = 'shop-pack';
+    row.innerHTML = `<span>${label}</span><span>${priceText}</span>`;
+    row.onclick = onBuy;
+    shopList.appendChild(row);
+    return row;
+  }
+  let shopBusy = false;
+  function renderShopWeb() {
+    shopList.innerHTML = '';
+    PEARL_PACKS.forEach(p => shopRow(`💎 ${p.pearls} pearls`, p.price, () => { grantPearls(p.pearls); }));
+  }
+  async function renderShopNative() {
+    shopList.innerHTML = '';
+    shopNote.textContent = 'Loading prices…';
+    let products;
+    try { products = await iapLoadProducts(); }
+    catch (e) { shopNote.textContent = 'The App Store is not available right now.'; return; }
+    if (!products.length) { shopNote.textContent = 'Pearl packs are not available right now.'; return; }
+    shopNote.textContent = '';
+    products.forEach(p => {
+      const row = shopRow(`💎 ${p.pearls} pearls`, p.priceString, async () => {
+        if (shopBusy) return;
+        shopBusy = true;
+        shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = true; });
+        shopNote.textContent = '';
+        try {
+          const n = await iapPurchase(p.id);
+          grantPearls(n);
+          shopOverlay.style.display = 'none';
+        } catch (e) {
+          if (!e?.cancelled) shopNote.textContent = 'Purchase didn\'t go through. Nothing was charged.';
+        } finally {
+          shopBusy = false;
+          shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = false; });
+        }
+      });
+      row.title = p.title;
+    });
+  }
+  document.getElementById('shop-btn')?.addEventListener('click', () => {
+    shopOverlay.style.display = 'flex';
+    if (iapIsNative()) renderShopNative(); else renderShopWeb();
+  });
 
   // ── Menus (Journal / Harmony Advisor / Progress — Classic's menus in DOM) ─────
   const openModals = [];

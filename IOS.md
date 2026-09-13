@@ -80,6 +80,40 @@ TestFlight tab ~10–30 minutes later; internal testers need no review.
 Commit the bump and tag it (`git tag ios-v1.0.1`) so the store build maps to
 a commit.
 
+## In-app purchases
+
+The Pearl Shop sells three consumable pearl packs through StoreKit 2 via
+`@capgo/native-purchases`. The product IDs, pearl amounts and fallback prices
+live in `src/3d/iap.js` and must match App Store Connect (Monetization →
+In-App Purchases) exactly:
+
+| Product ID (suffix) | Pearls | Price |
+|---|---|---|
+| `…reefbloom.pearls10` | 10 | $0.99 |
+| `…reefbloom.pearls35` | 35 | $2.99 |
+| `…reefbloom.pearls60` | 60 | $4.99 |
+
+Inside the app the shop shows the App Store's own names and localized prices
+and grants pearls only after a verified transaction; on the website (no
+store) the rows keep their original stub behaviour. The plugin is imported
+lazily so the web bundle never loads it. Promotional images for App Store
+Connect are rendered by `node scripts/render-iap-images.mjs` into `assets/iap/`.
+
+One-time setup:
+
+1. Xcode → App target → Signing & Capabilities → **+ Capability → In-App Purchase**.
+2. App Store Connect → Business → Agreements: the **Paid Apps** agreement must
+   be active (banking + tax), or StoreKit returns no products at all.
+3. Create the three products (type *Consumable*) with a localization, price and
+   review screenshot so each reaches *Ready to Submit*.
+4. Users and Access → Sandbox → Test Accounts: make a sandbox tester, then on
+   the iPad sign in under Settings → App Store → Sandbox Account.
+
+For the Simulator, add a StoreKit configuration file (File → New → File →
+StoreKit Configuration File, "Sync with App Store Connect") and select it under
+the scheme's Run → Options → StoreKit Configuration; purchases then work with
+no sandbox account. TestFlight builds use the sandbox automatically.
+
 ## Building without a Mac
 
 The **iOS Build (Simulator)** GitHub Actions workflow
