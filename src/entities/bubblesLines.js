@@ -40,6 +40,11 @@ export const LINES = {
     "I have three hearts. You stressed all of them. Wait, that's octopuses.",
     "Fine. It's fine. Everything is fine.",
   ],
+  tutorialDone: [
+    "Orientation complete. You are now 94% qualified. The rest is vibes.",
+    "Training protocol finished. I'd say I taught you everything I know, but that took four minutes.",
+    "Graduation logged. There is no ceremony. I ate the certificate. Filed. I meant filed.",
+  ],
   flavor: [
     "Everything looks good! I have no idea what I'm looking for.",
     "I keep a detailed log of this reef. I lost it. The log.",
