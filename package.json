@@ -1,7 +1,7 @@
 {
   "name": "reef-bloom",
-  "version": "1.0.0",
-  "description": "Reef Bloom \u2014 ecosystem stewardship prototype",
+  "version": "1.0.1",
+  "description": "Reef Bloom — ecosystem stewardship prototype",
   "type": "module",
   "scripts": {
     "dev": "node scripts/gen-mobile.mjs && vite",
