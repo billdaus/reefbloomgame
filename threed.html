@@ -198,6 +198,49 @@
       background: rgba(255,210,127,0.15); border: 1px solid #ffd27f; color: #ffd27f;
       padding: 4px 12px; border-radius: 8px;
     }
+    /* Pack rewards land visibly: the reveal card gets a ✓ stamp, the HUD chip
+       it feeds pops above the modal dim and a "+N" floats off it. Spending
+       floats a red "−N" the same way, so a buy never goes unnoticed. */
+    .pack-card .pc-added {
+      margin-left: auto; flex: none; font-size: 11px; font-weight: 700; color: #7fd8b0;
+      background: rgba(127,216,176,0.12); border: 1px solid rgba(127,216,176,0.5);
+      border-radius: 999px; padding: 2px 8px; opacity: 0; transform: scale(0.6);
+      animation: addedPop 0.35s cubic-bezier(0.2,1.4,0.4,1) forwards;
+    }
+    @keyframes addedPop { to { opacity: 1; transform: none; } }
+    #hud.gain { z-index: 6; }
+    .chip.gain { animation: chipGain 0.7s ease; }
+    .chip.spend { animation: chipSpend 0.7s ease; }
+    @keyframes chipGain {
+      30% { transform: scale(1.12); border-color: #7fd8b0; box-shadow: 0 0 18px rgba(127,216,176,0.7); }
+    }
+    @keyframes chipSpend {
+      30% { transform: scale(1.08); border-color: #ff8a80; box-shadow: 0 0 18px rgba(255,138,128,0.6); }
+    }
+    .hud-float {
+      position: fixed; z-index: 7; pointer-events: none; transform: translate(-50%, 0);
+      font: 700 14px system-ui, sans-serif; color: #7fd8b0; white-space: nowrap;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.7); animation: hudFloat 1.3s ease-out forwards;
+    }
+    .hud-float.spend { color: #ff8a80; }
+    @keyframes hudFloat {
+      0% { opacity: 0; transform: translate(-50%, 6px); }
+      15% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -34px); }
+    }
+    .pack-confirm { text-align: center; padding: 6px 0; }
+    .pack-confirm .pc-cost {
+      font-size: 26px; font-weight: 800; color: #ff8a80; margin: 6px 0 2px;
+      font-variant-numeric: tabular-nums;
+    }
+    .pack-confirm .pc-after { font-size: 12px; color: #9fc4dc; }
+    .pack-confirm .pc-auto {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      font-size: 11px; color: #9fc4dc; margin: 12px 0 4px; cursor: pointer;
+    }
+    .pack-confirm .pc-actions { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+    .pack-confirm .pack-open-btn { margin-left: 0; padding: 8px 16px; font-size: 13px; }
+    .pack-confirm .pack-open-btn:disabled { opacity: 0.45; cursor: default; }
     .pack-open-btn:hover { background: rgba(255,210,127,0.3); }
     .pack-open-btn:disabled { opacity: 0.4; cursor: default; }
     .free-badge {

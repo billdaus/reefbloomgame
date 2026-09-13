@@ -2511,10 +2511,10 @@ export function initReefScene3D(canvas) {
     const R = PACK_RICHES[tier];
     if (Math.random() < 0.6) {
       const amt = rollRange(R.be); be = Math.min(be + amt, beMax);
-      cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`, sub: 'Riches — the 60% roll' });
+      cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`, sub: 'Riches — the 60% roll', gain: { be: amt } });
     } else {
       const amt = rollRange(R.pearls); pearls += amt;
-      cards.push({ icon: '💎', title: `+${amt} Pearls`, sub: 'Riches — the 40% roll' });
+      cards.push({ icon: '💎', title: `+${amt} Pearls`, sub: 'Riches — the 40% roll', gain: { pearls: amt } });
     }
     // Card 2 — a free-placement voucher for any coral of the pack's tier.
     const cPool = packCoralPool(tier);
@@ -2522,11 +2522,12 @@ export function initReefScene3D(canvas) {
       const spec = weightedPick(cPool);
       vouchers[spec.id] = (vouchers[spec.id] ?? 0) + 1;
       cards.push({ icon: '🎟', title: `${spec.name} — free placement`,
-        sub: `Any ${lbl} coral can roll (wild-abundance odds) — yours to place free` });
+        sub: `Any ${lbl} coral can roll (wild-abundance odds) — yours to place free`,
+        added: '✓ in your palette' });
     } else {
       const amt = rollRange(R.be); be = Math.min(be + amt, beMax);
       cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`,
-        sub: `No ${lbl} coral is within your reach yet — consolation riches` });
+        sub: `No ${lbl} coral is within your reach yet — consolation riches`, gain: { be: amt } });
     }
     // Card 3 — the guaranteed fish (featured takes a fixed 25% slice of its
     // tier, but only once the featured fish itself is within the gate).
@@ -2538,11 +2539,12 @@ export function initReefScene3D(canvas) {
     if (spec) {
       packSpawnFish(spec);
       cards.push({ icon: '🐟', title: `${spec.name} joins the reef!`,
-        sub: `Guaranteed ${lbl} fish${spec === feat ? " — ⭐ this week's featured" : ''}` });
+        sub: `Guaranteed ${lbl} fish${spec === feat ? " — ⭐ this week's featured" : ''}`,
+        added: '✓ swimming now' });
     } else {
       const amt = rollRange(R.be); be = Math.min(be + amt, beMax);
       cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`,
-        sub: `No ${lbl} fish swims your unlocked waters yet — consolation riches` });
+        sub: `No ${lbl} fish swims your unlocked waters yet — consolation riches`, gain: { be: amt } });
     }
     refreshLocks(); refreshPackBtn(); refreshProgress(); refreshHud(); save();
     return cards;
@@ -2576,12 +2578,12 @@ export function initReefScene3D(canvas) {
     if (Math.random() < 0.6) {
       const amt = rollRange([20, 50]);
       be = Math.min(be + amt, beMax);
-      cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`, sub: 'Daily riches — the 60% roll' });
+      cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`, sub: 'Daily riches — the 60% roll', gain: { be: amt } });
     } else {
       const amt = rollRange([5, 12]);
       polyps = Math.min(polyps + amt, POLYP_MAX);
       cards.push({ icon: '🪸', title: `+${amt} Polyps`,
-        sub: 'Daily riches — the 40% roll. Science fuel.' });
+        sub: 'Daily riches — the 40% roll. Science fuel.', gain: { polyps: amt } });
     }
     const kn = [...allCorals(), GOLDEN_SPEC]
       .filter(s => !s.utility && !s.eventId && !s.pearlCost && seen.has(s.id));
@@ -2589,11 +2591,12 @@ export function initReefScene3D(canvas) {
       const spec = weightedPick(kn);
       vouchers[spec.id] = (vouchers[spec.id] ?? 0) + 1;
       cards.push({ icon: '🌱', title: `${spec.name} seedling`,
-        sub: 'From your recorded coral, wild-abundance odds — a free placement' });
+        sub: 'From your recorded coral, wild-abundance odds — a free placement',
+        added: '✓ in your palette' });
     } else {
       polyps = Math.min(polyps + 10, POLYP_MAX);
       cards.push({ icon: '🪸', title: '+10 Polyps',
-        sub: 'No recorded coral yet — nursery credit instead' });
+        sub: 'No recorded coral yet — nursery credit instead', gain: { polyps: 10 } });
     }
     const roll = Math.random();
     const t = roll < 0.6 ? 'common' : roll < 0.85 ? 'uncommon' : 'rare';
@@ -2601,10 +2604,10 @@ export function initReefScene3D(canvas) {
       nestEggs.push({ t, at: Date.now() + EGG_TYPES[t].ms });
       refreshNestEggs();
       cards.push({ icon: '🥚', title: `A ${EGG_TYPES[t].name} settles into the nest`,
-        sub: 'Incubating now — 60% common / 25% uncommon / 15% rare' });
+        sub: 'Incubating now — 60% common / 25% uncommon / 15% rare', added: '✓ in the nest' });
     } else {
       be = Math.min(be + 10, beMax);
-      cards.push({ icon: '🫧', title: '+10 Bubble Energy', sub: 'The nest is full — energy instead' });
+      cards.push({ icon: '🫧', title: '+10 Bubble Energy', sub: 'The nest is full — energy instead', gain: { be: 10 } });
     }
     refreshLocks(); refreshPackBtn(); refreshHud(); save();
     return cards;
@@ -2619,14 +2622,14 @@ export function initReefScene3D(canvas) {
     vouchers.starter = (vouchers.starter ?? 0) + 3;
     const cards = [];
     cards.push({ icon: '🎟', title: 'Three Starter Coral seedlings',
-      sub: 'Plant them on Coral Reef tiles — your reef begins here' });
+      sub: 'Plant them on Coral Reef tiles — your reef begins here', added: '✓ in your palette' });
     packSpawnFish(FISH_SPECIES.blueChromis);
     packSpawnFish(FISH_SPECIES.chromis);
     cards.push({ icon: '🐟', title: 'A Blue and a Green Chromis join the reef!',
-      sub: 'Chromis school together — watch them find each other' });
+      sub: 'Chromis school together — watch them find each other', added: '✓ swimming now' });
     packSpawnFish(FISH_SPECIES.clownfish);
     cards.push({ icon: '🐠', title: 'A Clownfish joins the reef!',
-      sub: "The reef's first famous face" });
+      sub: "The reef's first famous face", added: '✓ swimming now' });
     refreshLocks(); refreshPackBtn(); refreshProgress(); refreshHud(); save();
     return cards;
   }
@@ -2643,11 +2646,11 @@ export function initReefScene3D(canvas) {
       exclOwned.add(id); refreshExclRows();
       const spec = CORAL_SPECIES[id] ?? FISH_SPECIES[id];
       cards.push({ icon: def?.icon ?? '🎁', title: `${spec?.name ?? id} unlocked!`,
-        sub: `${def?.name ?? 'Event'} exclusive — guaranteed one you didn't own` });
+        sub: `${def?.name ?? 'Event'} exclusive — guaranteed one you didn't own`, added: '✓ unlocked' });
     } else {
       pearls += 15;
       cards.push({ icon: '💎', title: '+15 Pearls',
-        sub: 'Every exclusive from this event is already owned' });
+        sub: 'Every exclusive from this event is already owned', gain: { pearls: 15 } });
     }
     refreshPackBtn(); refreshHud(); save();
     return cards;
@@ -3474,6 +3477,32 @@ export function initReefScene3D(canvas) {
   const todDialEl = document.getElementById('tod-dial');
   const todIconEl = document.getElementById('tod-icon');
 
+  // A resource change the player should *see*: the chip pops above the modal
+  // dim for a beat and a "+N" (or red "−N") floats off it. Used by pack
+  // reveals and pack buys — the HUD number ticking alone is too easy to miss.
+  const hudEl = document.getElementById('hud');
+  function hudGain(key, amt) {
+    const valEl = key === 'be' ? beEl : key === 'pearls' ? pearlEl : key === 'polyps' ? polypEl : null;
+    const chip = valEl?.closest('.chip');
+    if (!chip || !amt) return;
+    const icon = key === 'be' ? '🫧' : key === 'pearls' ? '💎' : '🪸';
+    const spend = amt < 0;
+    const cls = spend ? 'spend' : 'gain';
+    hudEl?.classList.add('gain');
+    chip.classList.remove('gain', 'spend');
+    void chip.offsetWidth;                 // restart the animation if it's mid-flight
+    chip.classList.add(cls);
+    const r = chip.getBoundingClientRect();
+    const f = document.createElement('div');
+    f.className = 'hud-float' + (spend ? ' spend' : '');
+    f.textContent = `${spend ? '−' : '+'}${Math.abs(Math.round(amt))} ${icon}`;
+    f.style.left = `${r.left + r.width / 2}px`;
+    f.style.top = `${r.top - 6}px`;
+    document.body.appendChild(f);
+    setTimeout(() => { f.remove(); chip.classList.remove(cls); }, 1350);
+    clearTimeout(hudGain._t);
+    hudGain._t = setTimeout(() => hudEl?.classList.remove('gain'), 1500);
+  }
   function refreshHud() {
     if (beEl) beEl.textContent = Math.floor(be);
     if (rateEl && !(performance.now() < Number(rateEl.dataset.flashUntil ?? 0))) {
@@ -3748,7 +3777,7 @@ export function initReefScene3D(canvas) {
   document.body.appendChild(shopOverlay);
 
   function grantPearls(n) {
-    pearls += n; refreshHud(); save();
+    pearls += n; refreshHud(); save(); hudGain('pearls', n);
     droneQueue.push(`💎 ${n} pearls added to the reef fund. Spend them wisely. Or not — I'm not your accountant.`);
   }
   function shopRow(label, priceText, onBuy) {
@@ -4831,24 +4860,86 @@ export function initReefScene3D(canvas) {
       + ' stays skill-gated. Season Packs come only from event pass tiers. Within a'
       + ' tier, species odds follow real-ocean abundance: commoner creatures roll more'
       + ' often, endangered ones stay rare here too.</div>';
+    if (packConfirmSkipped()) {
+      html += '<div class="m-sub" style="margin-top:8px;display:flex;align-items:center;gap:8px">'
+        + 'Packs buy without asking. '
+        + '<button class="m-tab" data-pack="askagain">Ask before buying</button></div>';
+    }
     packModal.body.innerHTML = html;
   }
   function showPackReveal(cards) {
-    packModal.body.innerHTML = cards.map((c, i) =>
-      `<div class="pack-card" style="animation-delay:${(0.15 + i * 0.55).toFixed(2)}s">`
-      + `<span class="pc-icon">${c.icon}</span>`
-      + `<div><b>${c.title}</b><br><small>${c.sub}</small></div></div>`).join('')
+    packModal.body.innerHTML = cards.map((c, i) => {
+      const d = 0.15 + i * 0.55;
+      return `<div class="pack-card" style="animation-delay:${d.toFixed(2)}s">`
+        + `<span class="pc-icon">${c.icon}</span>`
+        + `<div><b>${c.title}</b><br><small>${c.sub}</small></div>`
+        + `<span class="pc-added" style="animation-delay:${(d + 0.4).toFixed(2)}s">`
+        + `${c.added ?? '✓ added'}</span></div>`;
+    }).join('')
       + '<button class="m-tab" data-pack="back" style="margin-top:10px">← Back to packs</button>';
+    // The HUD chip pops the moment its card lands, so the number ticking up
+    // and the card saying so read as one event.
+    cards.forEach((c, i) => {
+      if (!c.gain) return;
+      const [key, amt] = Object.entries(c.gain)[0];
+      setTimeout(() => hudGain(key, amt), (0.15 + i * 0.55 + 0.3) * 1000);
+    });
+  }
+  // Buying asks first — the price leaves the HUD in one tap, which is easy to
+  // miss — unless the player has ticked "don't ask again" (a device preference,
+  // not part of the save). The Packs footer offers the way back.
+  const PACK_CONFIRM_KEY = 'rb3d_pack_confirm';
+  const packConfirmSkipped = () => {
+    try { return localStorage.getItem(PACK_CONFIRM_KEY) === 'skip'; } catch (e) { return false; }
+  };
+  const setPackConfirm = (skip) => {
+    try { localStorage.setItem(PACK_CONFIRM_KEY, skip ? 'skip' : 'ask'); } catch (e) { /* ignore */ }
+  };
+  function showBuyConfirm(tier) {
+    const price = PACK_PRICE[tier];
+    if (!price) return;
+    const cost = price.be ?? price.pearls;
+    const cur = price.be ? '🫧' : '💎';
+    const have = Math.floor(price.be ? be : pearls);
+    const lbl = TIER_LABEL[tier] ?? tier;
+    const short = have < cost;
+    packModal.body.innerHTML = '<div class="pack-confirm">'
+      + `<div class="m-sec">Buy a ${lbl} pack?</div>`
+      + `<div class="pc-cost">−${cost} ${cur}</div>`
+      + (short
+        ? `<div class="pc-after">You have ${have} ${cur} — ${cost - have} ${cur} short.</div>`
+        : `<div class="pc-after">You have ${have} ${cur} → <b>${have - cost} ${cur}</b> after.</div>`)
+      + `<div class="m-sub" style="margin-top:8px">It opens right away: riches, a free ${lbl}`
+      + ` coral 🎟, and a guaranteed ${lbl} fish.</div>`
+      + '<label class="pc-auto"><input type="checkbox" data-pack-autoconfirm> Don\'t ask again</label>'
+      + '<div class="pc-actions">'
+      + `<button class="pack-open-btn" data-pack-confirm="${tier}"${short ? ' disabled' : ''}>`
+      + `Buy for ${cost} ${cur}</button>`
+      + '<button class="m-tab" data-pack="back">Cancel</button></div></div>';
+  }
+  function buyPackNow(tier) {
+    const price = PACK_PRICE[tier];
+    const cards = buyRarityPack(tier);
+    if (!cards) return;
+    if (price?.be) hudGain('be', -price.be); else if (price?.pearls) hudGain('pearls', -price.pearls);
+    showPackReveal(cards);
   }
   packModal.body.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-pack], button[data-pack-buy]');
+    const b = e.target.closest('button[data-pack], button[data-pack-buy], button[data-pack-confirm]');
     if (!b) return;
     if (b.dataset.packBuy) {
-      const cards = buyRarityPack(b.dataset.packBuy);
-      if (cards) showPackReveal(cards);
+      if (packConfirmSkipped()) buyPackNow(b.dataset.packBuy);
+      else showBuyConfirm(b.dataset.packBuy);
+      return;
+    }
+    if (b.dataset.packConfirm) {
+      const auto = packModal.body.querySelector('[data-pack-autoconfirm]');
+      if (auto?.checked) setPackConfirm(true);
+      buyPackNow(b.dataset.packConfirm);
       return;
     }
     if (b.dataset.pack === 'back') { fillPack(); return; }
+    if (b.dataset.pack === 'askagain') { setPackConfirm(false); fillPack(); return; }
     const cards = b.dataset.pack === 'season'
       ? openSeasonPack(Number(b.dataset.idx))
       : b.dataset.pack === 'starter'
