@@ -72,10 +72,15 @@ const biomeIcons = (spec) =>
 // tangs and cleaners genuinely commute between the reef and the seagrass flats.
 // The seagrass band stops short of the beach slope so fish never strand.
 const ZONE_BAND = { seagrass: [-50, -16], coral: [-16, 16], deepTwilight: [16, 52] };
+// Big open-water swimmers (dolphins, sharks, rays, turtles, whale sharks…)
+// ignore biome bands altogether: the whole lagoon is theirs, beach slope to
+// the deep drop-off and far out over open water beyond the grids.
+const LAGOON = { x0: -46, x1: 50, z: 34 };
 function roamProfile(spec) {
   const zs = Object.keys(ZONES).filter(id => matchesBiome(spec, id));
   const big = (spec.size ?? 14) >= 22;
-  if (zs.length < 2 && !big) return null;
+  if (big && !BENTHIC_SPECIES.has(spec.id)) return { x0: LAGOON.x0, x1: LAGOON.x1, wide: true };
+  if (zs.length < 2) return null;
   return {
     x0: Math.min(...zs.map(z => ZONE_BAND[z][0])) + 2,
     x1: Math.max(...zs.map(z => ZONE_BAND[z][1])) - 2,
@@ -2398,13 +2403,17 @@ export function initReefScene3D(canvas) {
     l >= MYTHIC_PACK_LEVEL ? 'mythic'
       : l === 11 ? 'legendary'
       : PACK_TIERS[clamp(Math.floor((l - 2) / 2), 0, 4)];
-  const PACK_PRICE = {            // purchase channels; mythic deliberately absent
+  // Purchase channels — Bubble Energy only, mythic deliberately absent. Pearls
+  // (the real-money currency) never buy a random roll, and Bubble Energy can't
+  // be bought with pearls anywhere, so packs are not loot boxes under Apple's
+  // age-rating definition and the app rates 4+.
+  const PACK_PRICE = {
     common:    { be: 75 },
     uncommon:  { be: 150 },
     rare:      { be: 250 },
-    superRare: { pearls: 20 },
-    epic:      { pearls: 35 },
-    legendary: { pearls: 60 },
+    superRare: { be: 450 },
+    epic:      { be: 700 },
+    legendary: { be: 1000 },
   };
   const PACK_RICHES = {   // Riches card: 60% rolls the BE range, 40% the pearls range
     common:    { be: [40, 80],   pearls: [2, 4] },
@@ -2668,7 +2677,10 @@ export function initReefScene3D(canvas) {
     rare:      { name: 'Rare Egg',       tier: 'rare',      be: 25,  ms: 360e3,  color: 0x64b5f6 },
     superRare: { name: 'Super Rare Egg', tier: 'superRare', be: 60,  ms: 900e3,  color: 0xb39ddb },
     epic:      { name: 'Epic Egg',       tier: 'epic',      be: 120, ms: 1800e3, color: 0xef9a9a },
-    premium:   { name: 'Premium Egg',    pearls: 50,        ms: 3600e3, color: 0xffe082 },
+    legendary: { name: 'Legendary Egg',  tier: 'legendary', be: 400, ms: 2700e3, color: 0xffd54f },
+    // The one pearl egg hatches exactly the mythic you pick — pearls buy a
+    // choice, never a roll (see PACK_PRICE).
+    mythic:    { name: 'Mythic Egg',     tier: 'mythic',    pearls: 50, ms: 3600e3, color: 0xffe082, choose: true },
   };
   const NEST_CAP = 4;
   const nestEggs = [];            // { t: typeId, at: hatch epoch ms } (saved)
@@ -2686,25 +2698,26 @@ export function initReefScene3D(canvas) {
   // enrich every egg the moment they arrive (counts disclosed live), and an
   // already-bought egg falls back to the ungated tier list — never bricked.
   function eggPool(t) {
-    if (t === 'premium') {
-      let leg = packFishPool('legendary'), myth = packFishPool('mythic');
-      if (!leg.length && !myth.length) {   // never brick a bought egg
-        leg = tierFish('legendary'); myth = tierFish('mythic');
-      }
-      const pick = Math.random() < 0.7 ? leg : myth;
-      return pick.length ? pick : (leg.length ? leg : myth);
-    }
-    const open = packFishPool(EGG_TYPES[t].tier);
-    return open.length ? open : tierFish(EGG_TYPES[t].tier);
+    const et = EGG_TYPES[t] ?? EGG_TYPES.common;
+    const open = packFishPool(et.tier);
+    return open.length ? open : tierFish(et.tier);
   }
-  const eggBuyable = (t) => t === 'premium'
-    ? packFishPool('legendary').length + packFishPool('mythic').length > 0
-    : packFishPool(EGG_TYPES[t].tier).length > 0;
-  function buyEgg(t) {
+  // What a given egg will hatch: a chosen species for choice eggs, else a
+  // wild-abundance roll from the tier's pool.
+  function eggHatchSpec(egg) {
+    if (egg.sp && FISH_SPECIES[egg.sp]) return FISH_SPECIES[egg.sp];
+    const pool = eggPool(egg.t);
+    return pool.length ? weightedPick(pool) : null;
+  }
+  const eggBuyable = (t) => packFishPool(EGG_TYPES[t].tier).length > 0;
+  function buyEgg(t, sp) {
     const et = EGG_TYPES[t];
     if (!et) return;
     if (!eggBuyable(t)) { flash(rateEl, 'no such fish in your biomes yet'); return; }
     if (nestEggs.length >= NEST_CAP) { flash(rateEl, 'the nest is full'); return; }
+    if (et.choose && !packFishPool(et.tier).some(s => s.id === sp)) {
+      flash(rateEl, 'pick which species to hatch'); return;
+    }
     if (et.be) {
       if (be < et.be) { flash(rateEl, 'not enough 🫧'); return; }
       be -= et.be;
@@ -2712,7 +2725,7 @@ export function initReefScene3D(canvas) {
       if (pearls < et.pearls) { flash(rateEl, `need ${et.pearls} 💎`); return; }
       pearls -= et.pearls;
     }
-    nestEggs.push({ t, at: Date.now() + et.ms });
+    nestEggs.push(et.choose ? { t, at: Date.now() + et.ms, sp } : { t, at: Date.now() + et.ms });
     refreshNestEggs(); refreshHud(); save();
   }
   // Speed-up: pearls, always — impatience is the premium currency's job.
@@ -2735,9 +2748,8 @@ export function initReefScene3D(canvas) {
     for (let i = nestEggs.length - 1; i >= 0; i--) {
       if (Date.now() < nestEggs[i].at) continue;
       const egg = nestEggs.splice(i, 1)[0];
-      const pool = eggPool(egg.t);
-      if (!pool.length) continue;
-      const spec = weightedPick(pool);
+      const spec = eggHatchSpec(egg);
+      if (!spec) continue;
       packSpawnFish(spec);
       if (placedFish.length === 1) droneTrigger('firstFish');
       ev3Record('hatch_fish'); dqRecord('hatch_fish');
@@ -2760,7 +2772,7 @@ export function initReefScene3D(canvas) {
     nestEggs.forEach((egg, i) => {
       let m = eggMats.get(egg.t);
       if (!m) {
-        m = new THREE.MeshStandardMaterial({ color: EGG_TYPES[egg.t].color, roughness: 0.35 });
+        m = new THREE.MeshStandardMaterial({ color: (EGG_TYPES[egg.t] ?? EGG_TYPES.common).color, roughness: 0.35 });
         m.userData.shared = true;
         eggMats.set(egg.t, m);
       }
@@ -3318,7 +3330,8 @@ export function initReefScene3D(canvas) {
   }
   function newRoamTarget(f) {
     f.tx = f.bx0 + Math.random() * (f.bx1 - f.bx0);
-    f.tz = -26 + Math.random() * 52;
+    const zr = f.wide ? LAGOON.z : 26;
+    f.tz = -zr + Math.random() * zr * 2;
     const floorY = terrainHeight(f.tx, f.tz);
     const [lo, hi] = f.alt ?? [1.6, 4.6];
     const ceiling = f.alt ? SURFACE_Y - 0.9 : 11;   // surface-rafters may ride high
@@ -3380,7 +3393,7 @@ export function initReefScene3D(canvas) {
       // Roamers steer between waypoints; runtime-only state, not saved.
       const style = ROAM_STYLE[spec.id];
       st.roam = true;
-      st.bx0 = prof.x0; st.bx1 = prof.x1;
+      st.bx0 = prof.x0; st.bx1 = prof.x1; st.wide = !!prof.wide;
       st.px = st.cx; st.py = st.y; st.pz = st.cz;
       st.spd = (0.6 + (spec.speed ?? 1) * 0.9) * (style?.drift ?? 1);
       st.hdg = st.phase;
@@ -4362,13 +4375,14 @@ export function initReefScene3D(canvas) {
   // Event shop: pearls buy this event's exclusives outright, plus two themed
   // bundles. Each item can be bought once per event.
   function ev3ShopItems(def) {
-    const items = [
-      { label: `${def.icon} 250 🫧 bundle`, pearls: 15, reward: { be: 250 } },
-      { label: `${def.icon} 120 🪸 bundle`, pearls: 20, reward: { polyps: 120 } },
-    ];
+    // Exclusives only — pearls buy a specific species outright. No currency
+    // bundles: 🫧 and 🪸 fund random things (packs, eggs, surveys), and the
+    // 4+ age rating depends on real money never reaching a roll.
+    const items = [];
     (def.pass?.tiers ?? []).forEach((t) => {
       if (t.reward?.exclusive) {
         items.push({
+          key: `excl:${t.reward.exclusive}`,
           label: t.label, pearls: 45 + items.length * 5,
           reward: { exclusive: t.reward.exclusive },
         });
@@ -4380,12 +4394,12 @@ export function initReefScene3D(canvas) {
     const def = ev3Def();
     if (!ev3 || !def || !ev3Live()) return;
     ev3.shopBought ??= [];
-    if (ev3.shopBought.includes(i)) return;
     const item = ev3ShopItems(def)[i];
+    if (item && ev3.shopBought.includes(item.key)) return;
     if (!item || pearls < item.pearls) { flash(rateEl, `need ${item?.pearls ?? '?'} 💎`); return; }
     if (item.reward.exclusive && exclOwned.has(item.reward.exclusive)) return;
     pearls -= item.pearls;
-    ev3.shopBought.push(i);
+    ev3.shopBought.push(item.key);
     if (item.reward.be) be = Math.min(be + item.reward.be, beMax);
     if (item.reward.polyps) polyps = Math.min(polyps + item.reward.polyps, POLYP_MAX);
     if (item.reward.exclusive) {
@@ -4605,7 +4619,7 @@ export function initReefScene3D(canvas) {
       '<div class="m-sec">Event shop · 💎 · one of each</div>');
     ev3ShopItems(def).forEach((item, i) => {
       const owned = item.reward.exclusive && exclOwned.has(item.reward.exclusive);
-      const bought = ev3.shopBought.includes(i) || owned;
+      const bought = ev3.shopBought.includes(item.key) || owned;
       const btn = document.createElement('button');
       btn.className = 'shop-pack';
       btn.innerHTML = bought
@@ -4865,7 +4879,7 @@ export function initReefScene3D(canvas) {
   // 🎁 Packs — Rarity Packs from level-ups, Season Packs from event passes.
   // Every roll's odds are published right here, in plain numbers.
   const packModal = buildMenuModal('🎁 Packs',
-    'Common–Rare cost 🫧, Super Rare–Legendary cost 💎 — MYTHIC packs are never sold.'
+    'Packs cost 🫧 only — never pearls, never real money — and MYTHIC packs are never sold.'
     + ' All odds published below.');
   function fillPack() {
     const feat = featuredFish();
@@ -4891,7 +4905,7 @@ export function initReefScene3D(canvas) {
         + ' Coral seedlings 🎟, a Blue and a Green Chromis, and a Clownfish</span></span>'
         + '<button class="pack-open-btn" data-pack="starter">Open</button></div>';
     }
-    html += '<div class="m-sec">Rarity Packs — buy, or earn free at level-ups</div>';
+    html += '<div class="m-sec">Rarity Packs — buy with 🫧, or earn free at level-ups</div>';
     for (const tier of PACK_TIERS) {
       const n = packs[tier] ?? 0;
       const R = PACK_RICHES[tier];
@@ -5052,18 +5066,25 @@ export function initReefScene3D(canvas) {
     html += `<div class="m-sec">Market — fish eggs · ${nestEggs.length}/${NEST_CAP} nest slots used</div>`;
     for (const [id, et] of Object.entries(EGG_TYPES)) {
       const buyable = eggBuyable(id);
-      const odds = id === 'premium'
-        ? `70% ${TIER_LABEL.legendary} (${packFishPool('legendary').length} species)`
-          + ` / 30% ${TIER_LABEL.mythic} (${packFishPool('mythic').length}), wild-abundance odds within tier`
-        : `hatches 1 of ${packFishPool(et.tier).length} ${TIER_LABEL[et.tier]} fish, wild-abundance odds`;
+      const pool = packFishPool(et.tier);
+      const odds = et.choose
+        ? `hatches the ${TIER_LABEL[et.tier]} you choose — no roll (${pool.length} to pick from)`
+        : `hatches 1 of ${pool.length} ${TIER_LABEL[et.tier]} fish, wild-abundance odds`;
+      const full = nestEggs.length >= NEST_CAP;
       html += `<div class="m-row${buyable ? '' : ' locked'}">`
         + `<span class="dot" style="background:${hex(et.color)}"></span>`
         + `<span><b>${et.name}</b><br><span style="font-size:10.5px;color:#9fc4dc">`
         + `${fmtMs(et.ms)} incubation · `
         + (buyable ? odds : 'no species in your unlocked biomes yet — new biomes stock this egg')
-        + '</span></span>'
+        + '</span>'
+        + (et.choose && buyable
+          ? `<br><select class="egg-pick" data-egg-pick="${id}" style="margin-top:4px">`
+            + pool.map(s => `<option value="${s.id}">${s.name}</option>`).join('')
+            + '</select>'
+          : '')
+        + '</span>'
         + `<button class="pack-open-btn" data-egg="${id}"`
-        + `${nestEggs.length >= NEST_CAP || !buyable ? ' disabled' : ''}>`
+        + `${full || !buyable ? ' disabled' : ''}>`
         + `${et.be ? `${et.be} 🫧` : `${et.pearls} 💎`}</button></div>`;
     }
     html += '<div class="m-sub" style="margin-top:8px">You can also tap the nest itself,'
@@ -5074,7 +5095,10 @@ export function initReefScene3D(canvas) {
     const b = e.target.closest('button[data-egg], button[data-speed]');
     if (!b || b.disabled) return;
     if (b.dataset.speed !== undefined) speedUpEgg(Number(b.dataset.speed));
-    else buyEgg(b.dataset.egg);
+    else {
+      const pick = nestModal.body.querySelector(`select[data-egg-pick="${b.dataset.egg}"]`);
+      buyEgg(b.dataset.egg, pick?.value);
+    }
     fillNest();
   });
 
@@ -5166,7 +5190,7 @@ export function initReefScene3D(canvas) {
     }
     Object.assign(vouchers, saved.vouchers ?? {});
     (saved.seasonPacks ?? []).forEach(id => seasonPacks.push(id));
-    (saved.nest ?? []).forEach(e => nestEggs.push(e));
+    (saved.nest ?? []).forEach(e => nestEggs.push(e.t === 'premium' ? { ...e, t: 'legendary' } : e));
     starterEggsGiven = !!saved.starterEggs;
     starterPackGiven = !!saved.starterPack;
     survey = saved.survey ?? null;
