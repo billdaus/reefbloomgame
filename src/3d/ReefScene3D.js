@@ -3806,34 +3806,71 @@ export function initReefScene3D(canvas) {
     shopList.innerHTML = '';
     PEARL_PACKS.forEach(p => shopRow(`💎 ${p.pearls} pearls`, p.price, () => { grantPearls(p.pearls); }));
   }
+  // Native shop: the rows appear at once with the pearl counts, prices fill in
+  // when StoreKit answers. The first product fetch after launch can take
+  // seconds (longer in the TestFlight sandbox), so it's also kicked off in the
+  // background right after the reef loads — by the time anyone opens the shop
+  // it's usually already cached. A slow store gets a retry instead of a wait.
+  const SHOP_TIMEOUT_MS = 8000;
+  let shopOpenSeq = 0;
+  function wireShopRow(row, p) {
+    row.onclick = async () => {
+      if (shopBusy || row.disabled) return;
+      shopBusy = true;
+      shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = true; });
+      shopNote.textContent = '';
+      try {
+        const n = await iapPurchase(p.id);
+        grantPearls(n);
+        shopOverlay.style.display = 'none';
+      } catch (e) {
+        if (!e?.cancelled) shopNote.textContent = 'Purchase didn\'t go through. Nothing was charged.';
+      } finally {
+        shopBusy = false;
+        shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = false; });
+      }
+    };
+    row.title = p.title ?? '';
+  }
   async function renderShopNative() {
+    const seq = ++shopOpenSeq;
     shopList.innerHTML = '';
-    shopNote.textContent = 'Loading prices…';
-    let products;
-    try { products = await iapLoadProducts(); }
-    catch (e) { shopNote.textContent = 'The App Store is not available right now.'; return; }
+    // Placeholder rows: right pearl counts, prices pending, nothing tappable yet.
+    const rows = new Map();
+    PEARL_PACKS.forEach(p => {
+      const row = shopRow(`💎 ${p.pearls} pearls`, '…', () => {});
+      row.disabled = true;
+      rows.set(p.id, row);
+    });
+    shopNote.textContent = 'Fetching prices from the App Store…';
+    let products = null, failed = false;
+    try {
+      products = await Promise.race([
+        iapLoadProducts(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), SHOP_TIMEOUT_MS)),
+      ]);
+    } catch (e) { failed = true; }
+    if (seq !== shopOpenSeq) return;   // the shop was reopened meanwhile
+    if (failed || !products) {
+      shopNote.innerHTML = 'The App Store is slow to answer. '
+        + '<button class="m-tab" data-shop-retry style="margin-left:6px">Try again</button>';
+      shopNote.querySelector('[data-shop-retry]').onclick = () => renderShopNative();
+      return;
+    }
     if (!products.length) { shopNote.textContent = 'Pearl packs are not available right now.'; return; }
     shopNote.textContent = '';
-    products.forEach(p => {
-      const row = shopRow(`💎 ${p.pearls} pearls`, p.priceString, async () => {
-        if (shopBusy) return;
-        shopBusy = true;
-        shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = true; });
-        shopNote.textContent = '';
-        try {
-          const n = await iapPurchase(p.id);
-          grantPearls(n);
-          shopOverlay.style.display = 'none';
-        } catch (e) {
-          if (!e?.cancelled) shopNote.textContent = 'Purchase didn\'t go through. Nothing was charged.';
-        } finally {
-          shopBusy = false;
-          shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = false; });
-        }
-      });
-      row.title = p.title;
-    });
+    // Fill prices into the rows that exist; drop any pack the store didn't return.
+    const byId = new Map(products.map(p => [p.id, p]));
+    for (const [id, row] of rows) {
+      const p = byId.get(id);
+      if (!p) { row.remove(); continue; }
+      row.innerHTML = `<span>💎 ${p.pearls} pearls</span><span>${p.priceString}</span>`;
+      row.disabled = false;
+      wireShopRow(row, p);
+    }
   }
+  // Warm the price cache shortly after launch so the shop opens ready.
+  if (iapIsNative()) setTimeout(() => { iapLoadProducts().catch(() => {}); }, 1500);
   document.getElementById('shop-btn')?.addEventListener('click', () => {
     shopOverlay.style.display = 'flex';
     if (iapIsNative()) renderShopNative(); else renderShopWeb();
