@@ -25,7 +25,10 @@ import {
 } from '../constants.js';
 import { LINES as BUBBLES_LINES } from '../entities/bubblesLines.js';
 import { createReefMusic } from './music.js';
-import { PEARL_PACKS, isNative as iapIsNative, loadProducts as iapLoadProducts, purchase as iapPurchase } from './iap.js';
+import {
+  PEARL_PACKS, isNative as iapIsNative, loadProducts as iapLoadProducts, purchase as iapPurchase,
+  startTransactionListener as iapStartListener, takePendingPearls as iapTakePending,
+} from './iap.js';
 
 const TILE = 2;
 const SURFACE_Y = 13;     // the ocean surface — everything swims beneath it
@@ -3821,10 +3824,19 @@ export function initReefScene3D(canvas) {
       shopNote.textContent = '';
       try {
         const n = await iapPurchase(p.id);
-        grantPearls(n);
+        if (n > 0) grantPearls(n);     // 0: the update stream already paid it out
         shopOverlay.style.display = 'none';
       } catch (e) {
-        if (!e?.cancelled) shopNote.textContent = 'Purchase didn\'t go through. Nothing was charged.';
+        // Not every non-success is a failure: an approval can be pending, and an
+        // interrupted purchase (new terms, payment update) finishes later — in
+        // both cases the pearls arrive through the transaction listener.
+        if (e?.cancelled) { /* the player backed out — say nothing */ }
+        else if (e?.pending) {
+          shopNote.textContent = 'Waiting for approval. Your pearls will arrive as soon as the purchase is approved.';
+        } else {
+          shopNote.textContent = 'The App Store couldn\'t finish that purchase'
+            + (e?.reason ? ` (${e.reason})` : '') + '. If it completes later, your pearls are added automatically.';
+        }
       } finally {
         shopBusy = false;
         shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = false; });
@@ -3871,6 +3883,15 @@ export function initReefScene3D(canvas) {
   }
   // Warm the price cache shortly after launch so the shop opens ready.
   if (iapIsNative()) setTimeout(() => { iapLoadProducts().catch(() => {}); }, 1500);
+  // Purchases can also complete OUTSIDE the buy tap — interrupted purchases,
+  // approvals, anything finished while the app was closed. Listen for them, and
+  // collect pearls banked while only the Home screen was open. Deferred a tick
+  // so the saved reef (and its pearl balance) has been restored first.
+  if (iapIsNative()) setTimeout(() => {
+    const owed = iapTakePending();
+    if (owed > 0) grantPearls(owed);
+    iapStartListener((n) => grantPearls(n));
+  }, 0);
   document.getElementById('shop-btn')?.addEventListener('click', () => {
     shopOverlay.style.display = 'flex';
     if (iapIsNative()) renderShopNative(); else renderShopWeb();

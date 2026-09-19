@@ -26,6 +26,8 @@ const APP_SHELL_INJECT = `
     @keyframes appSurface { from { opacity: 0; } to { opacity: 1; } }
     /* Edge-to-edge WebView: keep the fixed top chrome below the status bar. */
     :root { --sat: env(safe-area-inset-top, 0px); }
+    /* The "3Dev x.y" badge is a web dev-build marker; store builds must not read as betas (guideline 2.2). */
+    #version-badge-3d { display: none !important; }
     #back { top: calc(12px + var(--sat)); }
     #slots { top: calc(46px + var(--sat)); }
     #menu3d { top: calc(12px + var(--sat)); }

@@ -174,7 +174,7 @@
 
     <section class="reefs" id="reefs" aria-label="Your reefs"></section>
 
-    <footer id="ver">3Dev 4.7 · iPad edition</footer>
+    <footer id="ver">Reef Bloom</footer>
   </main>
 
   <script>
@@ -284,7 +284,7 @@
       // Footer: game build, App Store version (kept in step by scripts/bump-version.mjs), device.
       var APP_VERSION = '1.0.5';
       var isPad = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      document.getElementById('ver').textContent = '3Dev 4.7 · v' + APP_VERSION + ' · ' + (isPad ? 'iPad' : 'iPhone') + ' edition';
+      document.getElementById('ver').textContent = 'Reef Bloom v' + APP_VERSION + ' · ' + (isPad ? 'iPad' : 'iPhone') + ' edition';
 
       // ── Rising bubbles ────────────────────────────────────────────────────
       var sea = document.getElementById('sea');
@@ -299,6 +299,12 @@
         sea.appendChild(b);
       }
     })();
+  </script>
+  <script type="module">
+    // StoreKit can deliver a finished purchase while only this Home screen is
+    // open; bank its pearls so the next reef to load collects them.
+    import { startTransactionListener } from './src/3d/iap.js';
+    startTransactionListener();
   </script>
 </body>
 </html>

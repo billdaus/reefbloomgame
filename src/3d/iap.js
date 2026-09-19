@@ -58,10 +58,68 @@ export function loadProducts() {
   return productsPromise;
 }
 
+// ── Paying out exactly once ────────────────────────────────────────────────────
+// A purchase can complete in two places: inside purchaseProduct(), or later
+// through StoreKit's transaction-update stream — after an interrupted purchase
+// (new terms, payment update, authentication), an Ask-to-Buy approval, or a
+// purchase that finished while the app was closed. App Review exercises those
+// flows in the sandbox. Both paths funnel through markGranted() so a
+// transaction pays out once, whichever path sees it first.
+const GRANTED_KEY = 'rb3d_iap_granted';   // transaction ids already paid out
+const PENDING_KEY = 'rb3d_iap_pending';   // pearls owed to the reef, applied on next reef load
+
+function readJSON(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (e) { return fallback; }
+}
+function writeJSON(key, v) {
+  try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* storage full / disabled */ }
+}
+/** Records a transaction as paid out. Returns false if it already was. */
+function markGranted(txId) {
+  if (txId === undefined || txId === null || txId === '') return true;   // nothing to dedupe on
+  const ids = readJSON(GRANTED_KEY, []);
+  const id = String(txId);
+  if (ids.includes(id)) return false;
+  ids.push(id);
+  writeJSON(GRANTED_KEY, ids.slice(-200));
+  return true;
+}
+/** Pearls credited while no reef was open (e.g. on the Home screen). Clears the tab. */
+export function takePendingPearls() {
+  const n = Number(readJSON(PENDING_KEY, 0)) || 0;
+  if (n) writeJSON(PENDING_KEY, 0);
+  return n;
+}
+
+let listening = false, grantHandler = null;
+/**
+ * Subscribes to transactions that complete outside purchase(). With a handler
+ * (the reef), pearls are granted on the spot; without one (the Home screen)
+ * they're banked and applied when a reef next loads. Safe to call repeatedly —
+ * later calls just swap the handler.
+ */
+export async function startTransactionListener(handler) {
+  grantHandler = handler ?? null;
+  if (!isNative() || listening) return;
+  listening = true;
+  try {
+    const np = await plugin();
+    await np.addListener('transactionUpdated', (tx) => {
+      const pack = packById(tx?.productIdentifier);
+      if (!pack || tx.revocationDate) return;
+      if (!markGranted(tx.transactionId)) return;
+      if (grantHandler) grantHandler(pack.pearls);
+      else writeJSON(PENDING_KEY, (Number(readJSON(PENDING_KEY, 0)) || 0) + pack.pearls);
+    });
+  } catch (e) { listening = false; }
+}
+
 /**
  * Runs the StoreKit purchase sheet for one pack. Resolves to the number of
- * pearls to grant once the transaction is verified and finished by the plugin.
- * Rejects with `{ cancelled: true }` when the user backs out of the sheet.
+ * pearls to grant (0 if the update stream already paid this transaction out).
+ * Rejects with `cancelled: true` when the user backs out, `pending: true` when
+ * the purchase awaits approval (pearls arrive later via the listener), and
+ * otherwise with `reason` set to StoreKit's own description of what went wrong.
  */
 export async function purchase(id) {
   const pack = packById(id);
@@ -71,10 +129,16 @@ export async function purchase(id) {
   try {
     tx = await np.purchaseProduct({ productIdentifier: id, productType: 'inapp', quantity: 1 });
   } catch (err) {
-    const msg = String(err?.message ?? err).toLowerCase();
-    if (msg.includes('cancel')) { const e = new Error('cancelled'); e.cancelled = true; throw e; }
-    throw err;
+    const reason = String(err?.message ?? err ?? '').trim();
+    const low = reason.toLowerCase();
+    const e = new Error(reason || 'purchase failed');
+    if (low.includes('cancel')) e.cancelled = true;
+    else if (low.includes('pending')) e.pending = true;
+    else e.reason = reason;
+    throw e;
   }
-  if (!tx || tx.productIdentifier !== id) throw new Error('Purchase did not complete');
-  return pack.pearls;
+  if (!tx || tx.productIdentifier !== id) {
+    const e = new Error('The App Store returned no transaction.'); e.reason = e.message; throw e;
+  }
+  return markGranted(tx.transactionId) ? pack.pearls : 0;
 }
