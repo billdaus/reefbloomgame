@@ -10,6 +10,7 @@
 // localStorage slot, but not Classic's save. Run `npm run dev` → /threed.html.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { EVENT_SCHEDULE, eventDaysRemaining } from '../systems/EventSystem.js';
 import { CHALLENGE_POOL } from '../systems/QuestSystem.js';
 import { SPECIES_LORE } from '../systems/JournalSystem.js';
@@ -302,7 +303,7 @@ function coralTexture(spec, variant = 0) {
   // New shape families reuse the closest existing pattern.
   const shape = spec.id === 'candycane' ? 'candycane'
     : raw === 'lettuce' ? 'plate'
-    : raw === 'kelp' ? 'grass'
+    : raw === 'kelp' || raw === 'sapling' ? 'grass'
     : raw;
   if (shape === 'candycane') {
     // Signature pale bands around each tube.
@@ -505,7 +506,8 @@ function shapeOf(spec) {
   if (id === 'bubble') return 'bubble';
   if (['brain', 'ghost', 'twilightBrain'].includes(id)) return 'brain';
   if (['seaweed', 'seagrass', 'redSeagrass'].includes(id)) return 'grass';
-  if (['kelp', 'mangroveSapling'].includes(id)) return 'kelp';
+  if (id === 'kelp') return 'kelp';
+  if (id === 'mangroveSapling') return 'sapling';
   if (['abyssalFan', 'lagoonFan', 'sunsetFan'].includes(id)) return 'fan';
   if (id === 'barnacles') return 'barnacles';
   if (id === 'anemoneHome') return 'anemone';
@@ -695,8 +697,91 @@ const BODY = {
       g.add(bulb);
     }
   },
-  // Giant kelp: tall stalks with leaf blades and float bulbs.
-  kelp(g, { mat, tipMat, lvl = 1 }, rnd) {
+  // Giant kelp (Macrocystis pyrifera), built the way it actually grows: a
+  // knobbly holdfast, long flexible stipes that rise and bend over with the
+  // current into a canopy, and along each stipe a run of long wrinkled blades,
+  // every one buoyed by its own gas bladder at the base. Golden-olive, not
+  // grass green. Everything is merged into four meshes per plant, so a kelp
+  // forest costs fewer draw calls than the old stick-and-leaf version did.
+  kelp(g, { lvl = 1 }, rnd) {
+    const stipeM = new THREE.MeshStandardMaterial({ color: 0x6d6528, roughness: 0.75 });
+    const bladeM = new THREE.MeshStandardMaterial({
+      color: 0xa8952f, roughness: 0.55, side: THREE.DoubleSide,
+      emissive: 0x3d3408, emissiveIntensity: 0.22 });
+    const bulbM = new THREE.MeshStandardMaterial({ color: 0xd2bc5c, roughness: 0.35 });
+    const holdM = new THREE.MeshStandardMaterial({ color: 0x57501f, roughness: 0.9, flatShading: true });
+    const stipes = [], blades = [], bulbs = [], hold = [];
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler();
+    const ONE = new THREE.Vector3(1, 1, 1);
+    const place = (list, geo, pos, euler, scale = ONE) => {
+      Q.setFromEuler(euler);
+      geo.applyMatrix4(M.compose(pos, Q, scale));
+      list.push(geo);
+    };
+    // One long blade: lance-shaped, ruffled along the edges, drooping at the tip.
+    const bladeGeo = (len, wid, phase) => {
+      const geo = new THREE.PlaneGeometry(wid, len, 2, 7);
+      geo.translate(0, len / 2, 0);
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i);
+        const t = Math.min(1, Math.max(0, y / len));   // clamp: -1e-17 to a fractional power is NaN
+        const w = 0.22 + 0.78 * Math.sin(Math.PI * Math.pow(t, 0.75));
+        const edge = Math.abs(x) / (wid / 2 || 1);
+        pos.setX(i, x * w);
+        pos.setZ(i, Math.sin(t * 11 + phase) * 0.022 * edge - t * t * len * 0.3);
+      }
+      geo.computeVertexNormals();
+      return geo;
+    };
+    const lean = rnd() * Math.PI * 2;                       // the current every stipe bends with
+    const lx = Math.cos(lean), lz = Math.sin(lean);
+    const N = Math.min(6, 2 + Math.ceil(lvl / 2) + (rnd() < 0.5 ? 1 : 0));
+    const H = 2.5 + lvl * 0.36;
+    for (let i = 0; i < N; i++) {
+      const a = rnd() * Math.PI * 2, rr = 0.05 + rnd() * 0.2;
+      const bx = Math.cos(a) * rr, bz = Math.sin(a) * rr;
+      const h = H * (0.78 + rnd() * 0.36);
+      const wob = () => (rnd() - 0.5) * 0.22;
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(bx, 0.1, bz),
+        new THREE.Vector3(bx + lx * h * 0.05 + wob(), h * 0.3, bz + lz * h * 0.05 + wob()),
+        new THREE.Vector3(bx + lx * h * 0.14 + wob(), h * 0.62, bz + lz * h * 0.14 + wob()),
+        new THREE.Vector3(bx + lx * h * 0.3 + wob(), h * 0.88, bz + lz * h * 0.3 + wob()),
+        new THREE.Vector3(bx + lx * h * 0.52, h * 0.97, bz + lz * h * 0.52),   // the canopy lays over
+      ]);
+      stipes.push(new THREE.TubeGeometry(curve, 16, 0.026, 5, false));
+      const count = 7 + lvl;
+      for (let j = 0; j < count; j++) {
+        const k = 0.16 + 0.82 * (j / (count - 1));
+        const p = curve.getPoint(k);
+        const side = j % 2 ? 1 : -1;
+        const len = 0.5 + k * 0.55 + rnd() * 0.18, wid = 0.11 + k * 0.06;
+        // Blades stream out to alternating sides and trail down-current.
+        const yaw = lean + side * (0.9 + rnd() * 0.5);
+        E.set(0, -yaw + Math.PI / 2, -(1.05 + rnd() * 0.35), 'YXZ');
+        place(blades, bladeGeo(len, wid, rnd() * 6.28), p, E);
+        const bulb = new THREE.SphereGeometry(0.046, 7, 6);
+        const out = new THREE.Vector3(Math.cos(yaw), 0.15, Math.sin(yaw)).multiplyScalar(0.05);
+        E.set(0, -yaw, 0.5, 'YXZ');
+        place(bulbs, bulb, p.clone().add(out), E, new THREE.Vector3(1.7, 1, 1));
+      }
+    }
+    // Holdfast: a tangle of root-like knobs gripping the rock.
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2 + rnd() * 0.5, r = 0.1 + rnd() * 0.16;
+      const knob = new THREE.ConeGeometry(0.07 + rnd() * 0.04, 0.2 + rnd() * 0.12, 5);
+      E.set((rnd() - 0.5) * 0.9, a, (rnd() - 0.5) * 0.9);
+      place(hold, knob, new THREE.Vector3(Math.cos(a) * r, 0.14, Math.sin(a) * r), E);
+    }
+    for (const [list, m] of [[stipes, stipeM], [blades, bladeM], [bulbs, bulbM], [hold, holdM]]) {
+      const merged = mergeGeometries(list, false);
+      list.forEach(x => x.dispose());
+      if (merged) g.add(new THREE.Mesh(merged, m));
+    }
+  },
+  // Mangrove sapling: upright stalks with leaf blades and bud tips.
+  sapling(g, { mat, tipMat, lvl = 1 }, rnd) {
     const m = mat.clone(); m.side = THREE.DoubleSide;
     const N = 3 + Math.floor(rnd() * 3) + (lvl - 1);
     for (let i = 0; i < N; i++) {
@@ -1115,6 +1200,49 @@ const FISH_BODY = {
       for (let i = 1; i < N; i++) {
         segs[i].position.x = Math.sin(t * 3.4 + phase - i * 0.75) * 0.05 * (i * 0.45 + 0.4);
       }
+    };
+    return { animate };
+  },
+  pipefish(g, { bodyMat, finMat, spec, rnd }) {
+    // A straightened seahorse: pencil-thin body armoured in bony rings
+    // (angular, not round, in cross-section), a long tube snout with a tiny
+    // upturned mouth, one small fluttering dorsal fin and a little fan tail.
+    // Pipefish swim stiffly — the fin does the work, the body barely bends.
+    const ringM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.accentColor ?? spec.color).multiplyScalar(0.85), roughness: 0.7 });
+    const N = 16, L = 1.8, z0 = 0.62, step = L / N;
+    const segs = [];
+    for (let i = 0; i < N; i++) {
+      const k = i / (N - 1);
+      const r = 0.056 * (1 - k * 0.66) + 0.01;
+      const seg = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.9, r, step * 1.12, 7), bodyMat);
+      body.rotation.x = Math.PI / 2;
+      seg.add(body);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.04, r * 0.2, 4, 7), ringM);
+      ring.position.z = step * 0.5;
+      seg.add(ring);
+      seg.position.z = z0 - i * step;
+      g.add(seg); segs.push(seg);
+    }
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), bodyMat);
+    head.scale.set(0.9, 0.95, 1.7); head.position.z = z0 + 0.1; g.add(head);
+    const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.027, 0.36, 6), bodyMat);
+    snout.rotation.x = Math.PI / 2; snout.position.z = z0 + 0.36; g.add(snout);
+    const mouth = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.05, 6), ringM);
+    mouth.rotation.x = -Math.PI / 2 + 0.5; mouth.position.set(0, 0.012, z0 + 0.55); g.add(mouth);
+    fishEyes(g, 0.05, 0.022, z0 + 0.13, 0.62);
+    const dorsal = finMesh([[0, 0], [0.04, 0.13, 0.17, 0.11], [0.24, 0.0, 0, 0]], finMat);
+    dorsal.position.set(0, 0.035, z0 - L * 0.38); g.add(dorsal);
+    const fan = finMesh([[0, 0], [0.1, 0.075], [0.135, 0], [0.1, -0.075], [0, 0]], finMat);
+    fan.position.z = z0 - L + step * 0.4; g.add(fan);
+    const animate = (t, phase) => {
+      for (let i = 2; i < N; i++) {
+        segs[i].position.x = Math.sin(t * 2.0 + phase - i * 0.45) * 0.0035 * i;
+      }
+      fan.position.x = segs[N - 1].position.x;
+      dorsal.rotation.z = Math.sin(t * 17 + phase) * 0.22;      // the blur of a pipefish's fin
+      dorsal.position.x = segs[Math.round(N * 0.38)].position.x;
     };
     return { animate };
   },
@@ -1591,6 +1719,7 @@ function fishBodyOf(id) {
   if (id === 'tidepoolCrab') return 'crab';
   if (id === 'chiton') return 'chiton';
   if (id === 'cleanerShrimp') return 'shrimp';
+  if (id === 'pipefish') return 'pipefish';
   return 'generic';
 }
 
