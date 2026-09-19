@@ -2274,6 +2274,8 @@ export function initReefScene3D(canvas) {
   };
   const EXP_SIZE = 5;
   const expansions = Object.fromEntries(Object.keys(ZONES).map(z => [z, []]));   // saved
+  // Set once the wild groves exist (they're built after the saved reef loads).
+  let relocateWildDecor = () => {};
   const expCost = (zid) => 40 * (expansions[zid].length + 1);
   function buildExpansion(zid, key) {
     const zn = ZONES[zid], p = EXP_PATCHES[key];
@@ -2341,6 +2343,7 @@ export function initReefScene3D(canvas) {
     if (polyps < cost) { flash(rateEl, `need ${cost} 🪸`); return; }
     polyps -= cost;
     buildExpansion(zid, key);
+    relocateWildDecor();      // untended coral on the new plot moves aside
     refreshExpMarkers(); refreshZoneLocks(); refreshHud(); save();
     flash(rateEl, `reef expanded!`, '#7fd8b0');
   }
@@ -5475,6 +5478,7 @@ export function initReefScene3D(canvas) {
   // seagrass zone, wild coral heads in the reef, a small grove in the
   // twilight. These are where Bubbles lingers while running a survey.
   const wildCorals = [];
+  const wildTufts = [];
   const WILD_PATCH_POS = {};
   {
     const mkWildCoral = (spec, x, z, s) => {
@@ -5491,8 +5495,8 @@ export function initReefScene3D(canvas) {
     for (const [ox, oz] of sgSpots) {
       for (let i = 0; i < 22; i++) {
         const a = Math.random() * Math.PI * 2, r = Math.random() * 4.5;
-        weedTuft(sg.cx + ox + Math.cos(a) * r, sg.cz + oz + Math.sin(a) * r,
-          3 + Math.floor(Math.random() * 3), [0x2e7d52, 0x3f9c63, 0x8d4a4a][i % 3]);
+        wildTufts.push(weedTuft(sg.cx + ox + Math.cos(a) * r, sg.cz + oz + Math.sin(a) * r,
+          3 + Math.floor(Math.random() * 3), [0x2e7d52, 0x3f9c63, 0x8d4a4a][i % 3]));
       }
     }
     WILD_PATCH_POS.seagrass = new THREE.Vector3(sg.cx + sgSpots[0][0], 0, sg.cz + sgSpots[0][1]);
@@ -5553,10 +5557,65 @@ export function initReefScene3D(canvas) {
       }
       for (let i = 0; i < tufts; i++) {
         const a = Math.random() * Math.PI * 2, r = 1 + Math.random() * (spread + 1.5);
-        weedTuft(px + Math.cos(a) * r, pz + Math.sin(a) * r,
-          3 + Math.floor(Math.random() * 3), [0x2e7d52, 0x3f9c63, 0x557f3f][i % 3]);
+        wildTufts.push(weedTuft(px + Math.cos(a) * r, pz + Math.sin(a) * r,
+          3 + Math.floor(Math.random() * 3), [0x2e7d52, 0x3f9c63, 0x557f3f][i % 3]));
       }
     }
+
+    // Wild scenery yields to the player's reef. The groves and fringes are
+    // seeded with a random spread, and several land on the 5×5 expansion plots
+    // (the twilight Golden Tree stands squarely on one). Whenever a plot is
+    // owned — bought now, or restored from a save — every wild coral and tuft
+    // on it moves out to the open channel beside that biome, at the same
+    // north–south position so the grove still reads as a grove. Unowned plots
+    // keep their scenery; it's only in the way once there are tiles under it.
+    const PLOT_PAD = 0.9;                         // keep clear of the tile edge too
+    const KEEP_OUT = [[15, 24, 5.5], [46, -16, 4]];   // the outcrop; the vent
+    const plotRect = (zn, p) => {
+      const half = (zn.grid * TILE) / 2;
+      return {
+        x0: zn.cx + p.c0 * TILE - half - PLOT_PAD, x1: zn.cx + (p.c0 + EXP_SIZE) * TILE - half + PLOT_PAD,
+        z0: zn.cz + p.r0 * TILE - half - PLOT_PAD, z1: zn.cz + (p.r0 + EXP_SIZE) * TILE - half + PLOT_PAD,
+      };
+    };
+    const ownedPlotAt = (x, z) => {
+      for (const [zid, keys] of Object.entries(expansions)) {
+        for (const key of keys) {
+          const r = plotRect(ZONES[zid], EXP_PATCHES[key]);
+          if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) return ZONES[zid];
+        }
+      }
+      return null;
+    };
+    const blocked = (x, z) => inBuildArea(x, z, PLOT_PAD)
+      || x < -48 || x > 50 || Math.abs(z) > 36
+      || KEEP_OUT.some(([kx, kz, kr]) => (x - kx) ** 2 + (z - kz) ** 2 < kr * kr);
+    relocateWildDecor = () => {
+      for (const g of [...wildCorals, ...wildTufts]) {
+        const zn = ownedPlotAt(g.position.x, g.position.z);
+        if (!zn) continue;
+        // Nearest side channel first, then the far one; walk outward and nudge
+        // along z until a free spot turns up. Deterministic per object so a
+        // reload puts it back in the same place.
+        const half = (zn.grid * TILE) / 2;
+        const side = g.position.x >= zn.cx ? 1 : -1;
+        const seed = Math.abs(Math.sin(g.position.x * 12.9898 + g.position.z * 78.233)) % 1;
+        let spot = null;
+        search:
+        for (const dir of [side, -side]) {
+          for (let out = 1.6; out <= 7; out += 0.9) {
+            for (const dz of [0, 1.5, -1.5, 3, -3, 5, -5]) {
+              const x = zn.cx + dir * (half + out + seed * 1.2), z = g.position.z + dz;
+              if (!blocked(x, z)) { spot = [x, z]; break search; }
+            }
+          }
+        }
+        if (!spot) { g.visible = false; continue; }   // nowhere sensible: step out of the way entirely
+        const lift = g.position.y - terrainHeight(g.position.x, g.position.z);
+        g.position.set(spot[0], terrainHeight(spot[0], spot[1]) + lift, spot[1]);
+      }
+    };
+    relocateWildDecor();   // plots restored from the save are already owned
   }
 
   const dockY = terrainHeight(15, 24);
