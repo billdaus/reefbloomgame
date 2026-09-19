@@ -23,15 +23,41 @@ export function isNative() {
   return typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.();
 }
 
+// NEVER resolve a promise with the plugin itself. A Capacitor plugin is a Proxy
+// that answers every property with a native-method wrapper — including `then` —
+// so `await`ing it (or returning it from a .then callback) makes the Promise
+// machinery call NativePurchases.then() as a native method, which rejects as
+// unimplemented and takes every call down with it. The promise carries a plain
+// holder object instead; callers reach the plugin through `.np`.
 let pluginPromise = null;
 function plugin() {
   if (!pluginPromise) {
-    pluginPromise = import('@capgo/native-purchases').then(m => m.NativePurchases);
+    pluginPromise = import('@capgo/native-purchases')
+      .then(m => ({ np: m.NativePurchases }))
+      .catch(err => { pluginPromise = null; throw err; });
   }
   return pluginPromise;
 }
 
 let productsPromise = null;
+
+// Last prices StoreKit gave us, kept so the shop can open with real prices on
+// screen instantly while a fresh fetch runs behind it. These are StoreKit's own
+// localized strings, only remembered — never hardcoded — and the purchase itself
+// always goes through StoreKit at the live price.
+const PRODUCTS_KEY = 'rb3d_iap_products';
+/** Forget an in-flight or failed product fetch so the next loadProducts() asks StoreKit again. */
+export function resetProducts() { productsPromise = null; }
+
+/** Remembered products in PEARL_PACKS order, or [] if StoreKit has never answered. */
+export function cachedProducts() {
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem(PRODUCTS_KEY)) ?? []; } catch (e) { saved = []; }
+  if (!Array.isArray(saved)) return [];
+  const byId = new Map(saved.filter(p => p && p.id && p.priceString).map(p => [p.id, p]));
+  return PEARL_PACKS.filter(p => byId.has(p.id))
+    .map(p => ({ id: p.id, pearls: p.pearls, title: byId.get(p.id).title ?? '', priceString: byId.get(p.id).priceString }));
+}
 
 /**
  * Loads the pearl packs from the App Store. Resolves to an array in
@@ -43,15 +69,19 @@ export function loadProducts() {
   if (!isNative()) return Promise.resolve([]);
   if (!productsPromise) {
     productsPromise = plugin()
-      .then(np => np.getProducts({ productIdentifiers: PEARL_PACKS.map(p => p.id), productType: 'inapp' }))
+      .then(({ np }) => np.getProducts({ productIdentifiers: PEARL_PACKS.map(p => p.id), productType: 'inapp' }))
       .then(({ products }) => {
         const byId = new Map(products.map(p => [p.identifier, p]));
-        return PEARL_PACKS
+        const list = PEARL_PACKS
           .filter(p => byId.has(p.id))
           .map(p => {
             const sp = byId.get(p.id);
             return { id: p.id, pearls: p.pearls, title: sp.title, priceString: sp.priceString };
           });
+        if (list.length) {
+          try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
+        }
+        return list;
       })
       .catch(err => { productsPromise = null; throw err; });   // retry on next open
   }
@@ -74,12 +104,15 @@ function readJSON(key, fallback) {
 function writeJSON(key, v) {
   try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* storage full / disabled */ }
 }
+const grantedThisSession = new Set();
 /** Records a transaction as paid out. Returns false if it already was. */
 function markGranted(txId) {
   if (txId === undefined || txId === null || txId === '') return true;   // nothing to dedupe on
-  const ids = readJSON(GRANTED_KEY, []);
   const id = String(txId);
-  if (ids.includes(id)) return false;
+  if (grantedThisSession.has(id)) return false;
+  const ids = readJSON(GRANTED_KEY, []);
+  if (ids.includes(id)) { grantedThisSession.add(id); return false; }
+  grantedThisSession.add(id);
   ids.push(id);
   writeJSON(GRANTED_KEY, ids.slice(-200));
   return true;
@@ -90,6 +123,8 @@ export function takePendingPearls() {
   if (n) writeJSON(PENDING_KEY, 0);
   return n;
 }
+
+const PURCHASE_TIMEOUT_MS = 180000;   // the sheet can sit open a long while (passwords, Ask to Buy)
 
 let listening = false, grantHandler = null;
 /**
@@ -103,7 +138,7 @@ export async function startTransactionListener(handler) {
   if (!isNative() || listening) return;
   listening = true;
   try {
-    const np = await plugin();
+    const { np } = await plugin();
     await np.addListener('transactionUpdated', (tx) => {
       const pack = packById(tx?.productIdentifier);
       if (!pack || tx.revocationDate) return;
@@ -124,10 +159,13 @@ export async function startTransactionListener(handler) {
 export async function purchase(id) {
   const pack = packById(id);
   if (!pack) throw new Error(`Unknown pearl pack: ${id}`);
-  const np = await plugin();
+  const { np } = await plugin();
   let tx;
   try {
-    tx = await np.purchaseProduct({ productIdentifier: id, productType: 'inapp', quantity: 1 });
+    tx = await Promise.race([
+      np.purchaseProduct({ productIdentifier: id, productType: 'inapp', quantity: 1 }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('The App Store did not answer in time')), PURCHASE_TIMEOUT_MS)),
+    ]);
   } catch (err) {
     const reason = String(err?.message ?? err ?? '').trim();
     const low = reason.toLowerCase();

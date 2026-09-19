@@ -28,6 +28,7 @@ import { createReefMusic } from './music.js';
 import {
   PEARL_PACKS, isNative as iapIsNative, loadProducts as iapLoadProducts, purchase as iapPurchase,
   startTransactionListener as iapStartListener, takePendingPearls as iapTakePending,
+  cachedProducts as iapCachedProducts, resetProducts as iapResetProducts,
 } from './iap.js';
 
 const TILE = 2;
@@ -3128,6 +3129,15 @@ export function initReefScene3D(canvas) {
   const shelters = [];
   const isNocturnalSpec = (spec) =>
     primaryBiome(spec) === 'deepTwilight' || !!spec.nocturnal;
+  // A bed has to be in water the fish actually lives in. Without this the
+  // nearest free bed won regardless of biome, and reef fish (chromis!) commuted
+  // into the Deep Twilight every night to sleep in its coral.
+  const bedBiome = (g) => g.userData.entry?.b
+    ?? (Object.keys(ZONE_BAND).find(z => g.position.x >= ZONE_BAND[z][0] && g.position.x < ZONE_BAND[z][1]) ?? 'coral');
+  const bedSuits = (f, spec, g) => {
+    const b = bedBiome(g);
+    return b === f.b || matchesBiome(spec, b);
+  };
   function claimHome(f) {
     const spec = FISH_SPECIES[f.id];
     let best = null, bd = Infinity;
@@ -3136,7 +3146,7 @@ export function initReefScene3D(canvas) {
       const match = sp.homeFor === 'nocturnal' ? f.noct
         : (sp.homeFor === 'A' || sp.homeFor === 'B') ? spec.layer === sp.homeFor
         : true;
-      if (!match || s.userData.homed.size >= (sp.homeCap ?? 6)) continue;
+      if (!match || !bedSuits(f, spec, s) || s.userData.homed.size >= (sp.homeCap ?? 6)) continue;
       const dx = s.position.x - f.g.position.x, dz = s.position.z - f.g.position.z;
       const d = dx * dx + dz * dz;
       if (d < bd) { bd = d; best = s; }
@@ -3147,7 +3157,7 @@ export function initReefScene3D(canvas) {
       // into its coral rather than lying out on the sand.
       for (const g of corals) {
         const e = g.userData.entry;
-        if (!e || g.userData.spec?.utility || e.level < 3) continue;
+        if (!e || g.userData.spec?.utility || e.level < 3 || !bedSuits(f, spec, g)) continue;
         const set = (g.userData.homed ??= new Set());
         if (set.size >= 2) continue;
         const dx = g.position.x - f.g.position.x, dz = g.position.z - f.g.position.z;
@@ -3793,8 +3803,11 @@ export function initReefScene3D(canvas) {
   document.body.appendChild(shopOverlay);
 
   function grantPearls(n) {
-    pearls += n; refreshHud(); save(); hudGain('pearls', n);
-    droneQueue.push(`💎 ${n} pearls added to the reef fund. Spend them wisely. Or not — I'm not your accountant.`);
+    pearls += n; save();      // the payout and its persistence come first, unconditionally
+    try {
+      refreshHud(); hudGain('pearls', n);
+      droneQueue.push(`💎 ${n} pearls added to the reef fund. Spend them wisely. Or not — I'm not your accountant.`);
+    } catch (e) { /* cosmetic only */ }
   }
   function shopRow(label, priceText, onBuy) {
     const row = document.createElement('button');
@@ -3822,11 +3835,9 @@ export function initReefScene3D(canvas) {
       shopBusy = true;
       shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = true; });
       shopNote.textContent = '';
-      try {
-        const n = await iapPurchase(p.id);
-        if (n > 0) grantPearls(n);     // 0: the update stream already paid it out
-        shopOverlay.style.display = 'none';
-      } catch (e) {
+      let paid = null;
+      try { paid = await iapPurchase(p.id); }
+      catch (e) {
         // Not every non-success is a failure: an approval can be pending, and an
         // interrupted purchase (new terms, payment update) finishes later — in
         // both cases the pearls arrive through the transaction listener.
@@ -3837,9 +3848,12 @@ export function initReefScene3D(canvas) {
           shopNote.textContent = 'The App Store couldn\'t finish that purchase'
             + (e?.reason ? ` (${e.reason})` : '') + '. If it completes later, your pearls are added automatically.';
         }
-      } finally {
-        shopBusy = false;
-        shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = false; });
+      }
+      shopBusy = false;
+      shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = false; });
+      if (paid !== null) {
+        if (paid > 0) grantPearls(paid);   // 0: the update stream already paid it out
+        shopOverlay.style.display = 'none';
       }
     };
     row.title = p.title ?? '';
@@ -3847,25 +3861,51 @@ export function initReefScene3D(canvas) {
   async function renderShopNative() {
     const seq = ++shopOpenSeq;
     shopList.innerHTML = '';
-    // Placeholder rows: right pearl counts, prices pending, nothing tappable yet.
     const rows = new Map();
+    // Fast path: StoreKit's last answer is remembered, so real prices are on
+    // screen and tappable the instant the shop opens; a fresh fetch then
+    // updates them in place without any waiting state.
+    const remembered = iapCachedProducts();
+    if (remembered.length) {
+      shopNote.textContent = '';
+      remembered.forEach(p => {
+        const row = shopRow(`💎 ${p.pearls} pearls`, p.priceString, () => {});
+        wireShopRow(row, p);
+        rows.set(p.id, row);
+      });
+      if (shopBusy) rows.forEach(r => { r.disabled = true; });
+      iapLoadProducts().then(fresh => {
+        if (seq !== shopOpenSeq || shopBusy) return;
+        if (fresh.some(p => !rows.has(p.id)) || fresh.length !== rows.size) { renderShopNative(); return; }
+        for (const p of fresh) {
+          rows.get(p.id).innerHTML = `<span>💎 ${p.pearls} pearls</span><span>${p.priceString}</span>`;
+        }
+      }).catch(() => { /* remembered prices stay; buying still goes through StoreKit */ });
+      return;
+    }
+    // First ever open: right pearl counts, prices pending, nothing tappable yet.
     PEARL_PACKS.forEach(p => {
       const row = shopRow(`💎 ${p.pearls} pearls`, '…', () => {});
       row.disabled = true;
       rows.set(p.id, row);
     });
     shopNote.textContent = 'Fetching prices from the App Store…';
-    let products = null, failed = false;
+    let products = null, failure = null;
     try {
       products = await Promise.race([
         iapLoadProducts(),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), SHOP_TIMEOUT_MS)),
       ]);
-    } catch (e) { failed = true; }
+    } catch (e) { failure = e ?? new Error('unknown'); iapResetProducts(); }
     if (seq !== shopOpenSeq) return;   // the shop was reopened meanwhile
-    if (failed || !products) {
-      shopNote.innerHTML = 'The App Store is slow to answer. '
-        + '<button class="m-tab" data-shop-retry style="margin-left:6px">Try again</button>';
+    if (failure || !products) {
+      // A stall and an outright failure are different problems — say which, and
+      // show the store's own reason so a screenshot is enough to diagnose it.
+      const slow = failure?.message === 'timeout';
+      const why = !slow && failure?.message ? ` (${String(failure.message).slice(0, 120)})` : '';
+      shopNote.textContent = slow ? 'The App Store is slow to answer. ' : `Couldn't reach the App Store${why}. `;
+      shopNote.insertAdjacentHTML('beforeend',
+        '<button class="m-tab" data-shop-retry style="margin-left:6px">Try again</button>');
       shopNote.querySelector('[data-shop-retry]').onclick = () => renderShopNative();
       return;
     }
@@ -5101,6 +5141,7 @@ export function initReefScene3D(canvas) {
   const nestModal = buildMenuModal('🥚 Fish Nest & Market',
     'Fish hatch from eggs warmed in the nest on the rocky outcrop. Eggs keep'
     + ' incubating while the reef is closed. All odds published.');
+  const eggPicks = {};   // egg type → chosen species id (Mythic Egg)
   function fillNest() {
     const now = Date.now();
     let html = '<div class="m-sec">Incubating</div>';
@@ -5108,7 +5149,7 @@ export function initReefScene3D(canvas) {
     nestEggs.map((egg, i) => ({ egg, i }))
       .sort((a, b) => a.egg.at - b.egg.at)
       .forEach(({ egg, i }) => {
-        const et = EGG_TYPES[egg.t];
+        const et = EGG_TYPES[egg.t] ?? EGG_TYPES.common;
         const rc = eggRushCost(egg);
         const rush = `⏩ ${rc.pearls} 💎`;
         html += `<div class="m-row" style="border:none;padding-bottom:2px">`
@@ -5137,7 +5178,7 @@ export function initReefScene3D(canvas) {
         + '</span>'
         + (et.choose && buyable
           ? `<br><select class="egg-pick" data-egg-pick="${id}" style="margin-top:4px">`
-            + pool.map(s => `<option value="${s.id}">${s.name}</option>`).join('')
+            + pool.map(s => `<option value="${s.id}"${eggPicks[id] === s.id ? ' selected' : ''}>${s.name}</option>`).join('')
             + '</select>'
           : '')
         + '</span>'
@@ -5149,13 +5190,22 @@ export function initReefScene3D(canvas) {
       + ' on the rocky outcrop south-east of the reef.</div>';
     nestModal.body.innerHTML = html;
   }
+  // The modal re-renders every second for its countdowns; the chosen species
+  // lives here so that re-render can't silently snap the picker back to the
+  // first option (which would hatch the wrong fish for 50 💎).
+  nestModal.body.addEventListener('change', (e) => {
+    const sel = e.target.closest('select[data-egg-pick]');
+    if (sel) eggPicks[sel.dataset.eggPick] = sel.value;
+  });
   nestModal.body.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-egg], button[data-speed]');
     if (!b || b.disabled) return;
     if (b.dataset.speed !== undefined) speedUpEgg(Number(b.dataset.speed));
     else {
       const pick = nestModal.body.querySelector(`select[data-egg-pick="${b.dataset.egg}"]`);
-      buyEgg(b.dataset.egg, pick?.value);
+      const want = eggPicks[b.dataset.egg];
+      const stillOffered = [...(pick?.options ?? [])].some(o => o.value === want);
+      buyEgg(b.dataset.egg, stillOffered ? want : pick?.value);
     }
     fillNest();
   });
@@ -6216,7 +6266,8 @@ export function initReefScene3D(canvas) {
       }
       const eta = document.getElementById('survey-eta');
       if (eta && survey) eta.textContent = fmtMs(survey.at - Date.now());
-      if (nestModal.ov.style.display === 'flex') fillNest();   // live countdowns
+      if (nestModal.ov.style.display === 'flex'
+        && !document.activeElement?.matches?.('select[data-egg-pick]')) fillNest();   // live countdowns
       music.setNight(nightFactor);
     }
     // Eggs wobble harder as hatch time closes in.

@@ -303,8 +303,10 @@
   <script type="module">
     // StoreKit can deliver a finished purchase while only this Home screen is
     // open; bank its pearls so the next reef to load collects them.
-    import { startTransactionListener } from './src/3d/iap.js';
+    import { startTransactionListener, loadProducts } from './src/3d/iap.js';
     startTransactionListener();
+    // Warm StoreKit's product cache so the reef's Pearl Shop opens with prices.
+    setTimeout(() => { loadProducts().catch(() => {}); }, 800);
   </script>
 </body>
 </html>
