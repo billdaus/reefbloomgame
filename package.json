@@ -1,6 +1,6 @@
 {
   "name": "reef-bloom",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Reef Bloom — ecosystem stewardship prototype",
   "type": "module",
   "scripts": {
