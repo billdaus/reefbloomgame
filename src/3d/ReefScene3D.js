@@ -251,17 +251,40 @@ function causticTexture(size = 256) {
 // Every species gets its own procedural skin, styled by its shape family and
 // painted in its own colors. Cached per species — instances share one texture.
 // Soft radial glow used by bioluminescent species to light their surroundings.
+// Built from raw pixels, not a canvas gradient, and with the glow in RGB rather
+// than alpha. The old version was a white radial gradient fading out through
+// the ALPHA channel — and on Apple devices CoreGraphics dithers canvas gradients
+// with per-channel noise while the canvas stores premultiplied alpha. Out at the
+// faint rim, where alpha is 2–3 of 255, a one-step difference between channels
+// un-premultiplies into magenta or green; tinted by a lantern's warm colour and
+// added over the sand, that was a scatter of little red and green splotches
+// around every lamp (invisible on desktop Chrome, which doesn't dither). Here
+// R = G = B for every texel, so there is nothing for chroma noise to be, and the
+// values are sRGB-encoded so the dim outer glow gets fine steps instead of bands.
 let _haloTex = null;
 function haloTexture() {
   if (_haloTex) return _haloTex;
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const ctx = c.getContext('2d');
-  const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 62);
-  g.addColorStop(0, 'rgba(255,255,255,0.9)');
-  g.addColorStop(0.4, 'rgba(255,255,255,0.28)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
-  _haloTex = new THREE.CanvasTexture(c);
+  const N = 128, data = new Uint8Array(N * N * 4);
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const enc = (v) => (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const r = Math.hypot(x - 63.5, y - 63.5) / 62;      // 0 at the core, 1 at the rim
+      const glow = r >= 1 ? 0
+        : r <= 0.065 ? 0.9
+        : r < 0.4 ? lerp(0.9, 0.28, (r - 0.065) / 0.335)
+        : lerp(0.28, 0, (r - 0.4) / 0.6);
+      const v = Math.round(255 * enc(glow));
+      const i = (y * N + x) * 4;
+      data[i] = data[i + 1] = data[i + 2] = v; data[i + 3] = 255;
+    }
+  }
+  _haloTex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+  _haloTex.colorSpace = THREE.SRGBColorSpace;
+  _haloTex.magFilter = THREE.LinearFilter;
+  _haloTex.minFilter = THREE.LinearMipmapLinearFilter;
+  _haloTex.generateMipmaps = true;
+  _haloTex.needsUpdate = true;
   return _haloTex;
 }
 function makeHalo(color, size) {

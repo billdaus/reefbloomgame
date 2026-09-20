@@ -55,13 +55,23 @@ $99/yr Apple Developer Program).
 
 The App Store version lives in the Xcode project (`MARKETING_VERSION`, shown
 as `CFBundleShortVersionString`) with an integer build number
-(`CURRENT_PROJECT_VERSION`). The scheme is **major.minor.patch** starting at
-**1.0.0 (1)**; each TestFlight upload needs a higher build number, so bump
-before every archive:
+(`CURRENT_PROJECT_VERSION`). The scheme is **Major.Minor.Patch**, chosen by
+what the release contains:
+
+| Number | Meaning | Example |
+|---|---|---|
+| Major | Big release / major changes | 2.0.0 |
+| Minor | New features or content | 1.1.0 |
+| Patch | Bug fixes / maintenance | 1.0.1 |
+
+Every TestFlight upload needs a higher build number, so bump before every
+archive — but a re-upload of the same release keeps its version:
 
 ```bash
-npm run version:bump          # 1.0.0 (1) → 1.0.1 (2); also updates the Home footer + package.json
-npm run version:bump minor    # → 1.1.0
+npm run version:bump          # patch: 1.1.0 (11) → 1.1.1 (12); also updates the Home footer + package.json
+npm run version:bump minor    # → 1.2.0   (any new feature or content)
+npm run version:bump major    # → 2.0.0
+npm run version:bump build    # same version, build +1  (re-upload of the same release)
 npm run version:bump 2.0.0    # exact
 ```
 
