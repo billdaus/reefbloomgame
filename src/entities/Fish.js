@@ -164,6 +164,7 @@ export class Fish {
       case 'neonGoby':          this._drawNeonGoby(g, sz, c, ac);          break;
       case 'firefish':          this._drawFirefish(g, sz, c, ac);          break;
       case 'damselfish':        this._drawDamselfish(g, sz, c, ac);        break;
+      case 'garibaldi':         this._drawDamselfish(g, sz, c, ac);        break;
       case 'royalGramma':       this._drawRoyalGramma(g, sz, c, ac);       break;
       case 'pajamaCardinalfish': this._drawPajamaCardinalfish(g, sz, c, ac); break;
       case 'shrimpGoby':        this._drawShrimpGoby(g, sz, c, ac);        break;

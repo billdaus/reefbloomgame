@@ -2,6 +2,8 @@ import { state } from '../state.js';
 import { BE_MAX } from '../constants.js';
 
 // ── Event schedule ─────────────────────────────────────────────────────────────
+// Entries recur EVERY YEAR on the month and day given (see "Yearly recurrence"
+// below) — the year in startDate/endDate is only when the event was authored.
 // Each event now has progressive quest sets. Earlier sets are gentle; later sets
 // demand more. Claiming a set grants tokens. Tokens unlock pass tiers.
 // Daily quests still contribute 1 bonus token each via recordQuestClaimed().
@@ -207,6 +209,40 @@ export const EVENT_SCHEDULE = [
     },
   },
   {
+    id:          'golden_kelp_2026',
+    name:        'Golden Kelp Harvest',
+    icon:        '🍂',
+    theme:       0xd99a2b,
+    startDate:   '2026-09-22',
+    endDate:     '2026-10-12',
+    description: 'Autumn light turns the kelp forest gold — gather the season\'s bounty before the first storms roll in.',
+    reward: { be: 300, pearls: 75 },
+    questSets: [
+      { label: 'First Leaves', tokenReward: 2, challenges: [
+        { type: 'place_coral', label: 'Place 4 coral',     target: 4 },
+        { type: 'have_fish',   label: 'Have 5 fish alive', target: 5 },
+      ]},
+      { label: 'Golden Canopy', tokenReward: 3, challenges: [
+        { type: 'hatch_fish',    label: 'Hatch 6 fish',     target: 6   },
+        { type: 'reach_harmony', label: 'Reach 55 Harmony', target: 55  },
+        { type: 'earn_be',       label: 'Earn 600 🫧',       target: 600 },
+      ]},
+      { label: 'Harvest Moon', tokenReward: 4, challenges: [
+        { type: 'place_coral', label: 'Place 12 coral',     target: 12   },
+        { type: 'have_fish',   label: 'Have 12 fish alive', target: 12   },
+        { type: 'earn_be',     label: 'Earn 1,500 🫧',       target: 1500 },
+      ]},
+    ],
+    pass: {
+      tiers: [
+        { threshold: 1, reward: { be: 100 },                  label: '100 🫧'       },
+        { threshold: 3, reward: { pearls: 20 },               label: '20 💎'        },
+        { threshold: 5, reward: { exclusive: 'amberKelp' },   label: '🍂 Amber Kelp' },
+        { threshold: 8, reward: { exclusive: 'garibaldi' },   label: '🧡 Garibaldi'  },
+      ],
+    },
+  },
+  {
     id:          'twilight_festival_2026',
     name:        'Twilight Festival',
     icon:        '🌌',
@@ -255,8 +291,64 @@ function _today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// ── Yearly recurrence ─────────────────────────────────────────────────────────
+// Events come round every year. Only the MONTH and DAY of a schedule entry's
+// startDate / endDate matter; the year written there is just the year the event
+// was first authored. Everything outside this block works with "occurrences":
+// a copy of the entry carrying that year's real dates and a per-year id
+// (`coral_bloom_2027`), so a save's progress belongs to one year's run and the
+// festival starts fresh the next time it comes round. Exclusives a player has
+// unlocked are stored by species id, so they stay owned across years.
+const _baseId = (id) => String(id).replace(/_\d{4}$/, '');
+const _monthDay = (d) => d.slice(5);   // 'MM-DD'
+
+function _occurrence(def, year) {
+  const s = _monthDay(def.startDate), e = _monthDay(def.endDate);
+  return {
+    ...def,
+    baseId:    _baseId(def.id),
+    id:        `${_baseId(def.id)}_${year}`,
+    startDate: `${year}-${s}`,
+    endDate:   `${e >= s ? year : year + 1}-${e}`,   // a window may run over New Year
+  };
+}
+
+/** The event running on `today` ('YYYY-MM-DD'), as this year's occurrence — or null. */
+export function liveEvent(today = _today()) {
+  const y = Number(today.slice(0, 4));
+  for (const def of EVENT_SCHEDULE) {
+    for (const yr of [y, y - 1]) {                   // y - 1 catches a window begun last December
+      const o = _occurrence(def, yr);
+      if (today >= o.startDate && today <= o.endDate) return o;
+    }
+  }
+  return null;
+}
+
+/** The next event to start after `today`, this year or next — or null if the schedule is empty. */
+export function nextEvent(today = _today()) {
+  const y = Number(today.slice(0, 4));
+  let best = null;
+  for (const def of EVENT_SCHEDULE) {
+    for (const yr of [y, y + 1]) {
+      const o = _occurrence(def, yr);
+      if (o.startDate > today && (!best || o.startDate < best.startDate)) best = o;
+    }
+  }
+  return best;
+}
+
+/** Resolve a saved event id (any year, or a legacy unsuffixed one) to its occurrence — or null. */
+export function eventById(id) {
+  if (!id) return null;
+  const def = EVENT_SCHEDULE.find(d => _baseId(d.id) === _baseId(id));
+  if (!def) return null;
+  const m = String(id).match(/_(\d{4})$/);
+  return _occurrence(def, m ? Number(m[1]) : Number(def.startDate.slice(0, 4)));
+}
+
 function _activeScheduled(today) {
-  return EVENT_SCHEDULE.find(e => today >= e.startDate && today <= e.endDate) ?? null;
+  return liveEvent(today);
 }
 
 export function eventDaysRemaining(endDate) {

@@ -48,10 +48,13 @@ export class SeasonalAmbience {
     this._particleC.removeChildren();
     if (!newId) return;
 
-    if      (newId === 'coral_bloom_2026')        this._buildCoralBloom();
-    else if (newId === 'moonfish_migration_2026') this._buildMoonfishMigration();
-    else if (newId === 'pearl_tide_2026')         this._buildPearlTide();
-    else if (newId === 'bioluminescence_2026')    this._buildBioluminescence();
+    // Events recur yearly and carry that year in their id (coral_bloom_2027);
+    // the ambience belongs to the event, not the year.
+    const base = String(newId ?? '').replace(/_\d{4}$/, '');
+    if      (base === 'coral_bloom')        this._buildCoralBloom();
+    else if (base === 'moonfish_migration') this._buildMoonfishMigration();
+    else if (base === 'pearl_tide')         this._buildPearlTide();
+    else if (base === 'bioluminescence')    this._buildBioluminescence();
   }
 
   // ── Bioluminescence Bloom ────────────────────────────────────────────────────

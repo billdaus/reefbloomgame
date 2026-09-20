@@ -390,6 +390,11 @@ export const CORAL_SPECIES = {
     tier: TIER.LEGENDARY, tall: true, color: 0x9c64ff, unlockLevel: 1,
     eventId: 'twilight_festival_2026',
   },
+  amberKelp: {
+    id: 'amberKelp', name: 'Amber Kelp', scientific: 'Macrocystis aurantia',
+    tier: TIER.LEGENDARY, tall: true, color: 0xd9902b, accentColor: 0xffc04d, unlockLevel: 1,
+    eventId: 'golden_kelp_2026', biome: ['coral', 'seagrass', 'deepTwilight'],
+  },
   sunsetFan: {
     id: 'sunsetFan', name: 'Sunset Fan', scientific: 'Gorgonia crepuscula',
     tier: TIER.LEGENDARY, tall: true, color: 0xff8a50, accentColor: 0xffd180, unlockLevel: 1,
@@ -879,6 +884,12 @@ export const FISH_SPECIES = {
     tier: TIER.LEGENDARY, layer: 'B', color: 0x4a2b8c, accentColor: 0x9c64ff,
     size: 22, speed: 0.8, unlockLevel: 1,
     eventId: 'twilight_festival_2026',
+  },
+  garibaldi: {
+    id: 'garibaldi', name: 'Garibaldi', scientific: 'Hypsypops rubicundus',
+    tier: TIER.LEGENDARY, layer: 'A', color: 0xff6d00, accentColor: 0xffab40,
+    size: 19, speed: 1.0, unlockLevel: 1,
+    eventId: 'golden_kelp_2026', biome: ['coral', 'seagrass'],
   },
   goldenSeahorse: {
     id: 'goldenSeahorse', name: 'Golden Seahorse', scientific: 'Hippocampus aestas',

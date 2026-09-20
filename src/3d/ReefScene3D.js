@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { EVENT_SCHEDULE, eventDaysRemaining } from '../systems/EventSystem.js';
+import { eventDaysRemaining, liveEvent, nextEvent, eventById } from '../systems/EventSystem.js';
 import { CHALLENGE_POOL } from '../systems/QuestSystem.js';
 import { SPECIES_LORE } from '../systems/JournalSystem.js';
 import {
@@ -506,7 +506,7 @@ function shapeOf(spec) {
   if (id === 'bubble') return 'bubble';
   if (['brain', 'ghost', 'twilightBrain'].includes(id)) return 'brain';
   if (['seaweed', 'seagrass', 'redSeagrass'].includes(id)) return 'grass';
-  if (id === 'kelp') return 'kelp';
+  if (id === 'kelp' || id === 'amberKelp') return 'kelp';
   if (id === 'mangroveSapling') return 'sapling';
   if (['abyssalFan', 'lagoonFan', 'sunsetFan'].includes(id)) return 'fan';
   if (id === 'barnacles') return 'barnacles';
@@ -703,13 +703,15 @@ const BODY = {
   // every one buoyed by its own gas bladder at the base. Golden-olive, not
   // grass green. Everything is merged into four meshes per plant, so a kelp
   // forest costs fewer draw calls than the old stick-and-leaf version did.
-  kelp(g, { lvl = 1 }, rnd) {
-    const stipeM = new THREE.MeshStandardMaterial({ color: 0x6d6528, roughness: 0.75 });
+  kelp(g, { lvl = 1 }, rnd, spec) {
+    // Amber Kelp (the autumn event exclusive) is the same plant in fall colours.
+    const amber = spec?.id === 'amberKelp';
+    const stipeM = new THREE.MeshStandardMaterial({ color: amber ? 0x8a4f1a : 0x6d6528, roughness: 0.75 });
     const bladeM = new THREE.MeshStandardMaterial({
-      color: 0xa8952f, roughness: 0.55, side: THREE.DoubleSide,
-      emissive: 0x3d3408, emissiveIntensity: 0.22 });
-    const bulbM = new THREE.MeshStandardMaterial({ color: 0xd2bc5c, roughness: 0.35 });
-    const holdM = new THREE.MeshStandardMaterial({ color: 0x57501f, roughness: 0.9, flatShading: true });
+      color: amber ? 0xe08a1e : 0xa8952f, roughness: 0.55, side: THREE.DoubleSide,
+      emissive: amber ? 0x5a2a04 : 0x3d3408, emissiveIntensity: amber ? 0.3 : 0.22 });
+    const bulbM = new THREE.MeshStandardMaterial({ color: amber ? 0xffc04d : 0xd2bc5c, roughness: 0.35 });
+    const holdM = new THREE.MeshStandardMaterial({ color: amber ? 0x6a3c14 : 0x57501f, roughness: 0.9, flatShading: true });
     const stipes = [], blades = [], bulbs = [], hold = [];
     const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler();
     const ONE = new THREE.Vector3(1, 1, 1);
@@ -918,6 +920,48 @@ let coralCounter = 1;
 // Build (or REBUILD) a coral's meshes into `g`. Deterministic per seed, so an
 // upgrade regrows the same individual with more branches/bulk — the extra
 // level shows as new growth, not an inflated copy of the old mesh.
+// Bake a finished, static model down to ONE mesh per material. The coral
+// builders assemble a colony from dozens of little primitives — every branch,
+// polyp and blade its own mesh — and every mesh is a draw call, paid twice once
+// shadows are on. A hundred-coral reef was issuing ~10,000 draw calls a frame.
+// Nothing animates inside a coral (the whole group sways and scales), so the
+// parts can be merged with their transforms baked in: a staghorn goes from ~40
+// draw calls to 3. Children flagged `keep`, and anything that isn't a mesh
+// (halo sprites, lights), are left exactly as they were.
+function mergeByMaterial(root) {
+  root.updateMatrixWorld(true);
+  const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const buckets = new Map(), spent = [];
+  const M = new THREE.Matrix4();
+  root.traverse(o => {
+    if (!o.isMesh || o.userData.keep || Array.isArray(o.material)) return;
+    for (let p = o.parent; p && p !== root; p = p.parent) if (p.userData.keep) return;
+    let geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    for (const name of Object.keys(geo.attributes)) {
+      if (name !== 'position' && name !== 'normal' && name !== 'uv') geo.deleteAttribute(name);
+    }
+    if (!geo.attributes.normal) geo.computeVertexNormals();
+    if (!geo.attributes.uv) {
+      geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+    }
+    geo.applyMatrix4(M.multiplyMatrices(toRoot, o.matrixWorld));
+    if (!buckets.has(o.material)) buckets.set(o.material, []);
+    buckets.get(o.material).push(geo);
+    spent.push(o);
+  });
+  if (spent.length < 2) { buckets.forEach(list => list.forEach(x => x.dispose())); return; }
+  for (const o of spent) { o.parent.remove(o); o.geometry.dispose(); }
+  for (const [mat, list] of buckets) {
+    const merged = list.length > 1 ? mergeGeometries(list, false) : list[0];
+    if (list.length > 1) list.forEach(x => x.dispose());
+    if (merged) root.add(new THREE.Mesh(merged, mat));
+  }
+  // drop the now-empty scaffolding groups
+  const empties = [];
+  root.traverse(o => { if (o !== root && o.isGroup && !o.children.length && !o.userData.keep) empties.push(o); });
+  empties.forEach(o => o.parent?.remove(o));
+}
+
 function buildCoralInto(g, spec, seedBase, lvl = 1) {
   const rnd = mulberry32(seedBase);
   // Slightly desaturated, rough, and barely emissive — real corals aren't neon;
@@ -945,6 +989,7 @@ function buildCoralInto(g, spec, seedBase, lvl = 1) {
   inner.scale.set(0.82 + rnd() * 0.36, 0.78 + rnd() * 0.5, 0.82 + rnd() * 0.36);
   g.add(inner);
   (BODY[shapeOf(spec)] || BODY.brain)(inner, { mat, tipMat, lvl }, rnd, spec);
+  mergeByMaterial(g);
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   g.rotation.y = rnd() * Math.PI * 2;
   g.userData.seed = rnd() * 6.28;
@@ -1007,13 +1052,41 @@ const scleraMat = new THREE.MeshStandardMaterial({ color: 0xe8eef2, roughness: 0
 scleraMat.userData.shared = true;
 const pupilMat = new THREE.MeshStandardMaterial({ color: 0x0a1420, roughness: 0.15 });
 pupilMat.userData.shared = true;
+// Both eyes share one mesh for the whites and one for the pupils (two draw
+// calls per fish, not four), and eyes never cast shadows — at 150+ fish that
+// is a meaningful slice of the frame.
 function fishEyes(g, x, y, z, s = 1) {
+  const whites = [], pupils = [];
   for (const side of [-1, 1]) {
-    const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.042 * s, 10, 8), scleraMat);
-    sclera.position.set(side * x, y, z); g.add(sclera);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.026 * s, 8, 8), pupilMat);
-    pupil.position.set(side * (x + 0.018 * s), y, z + 0.014 * s); g.add(pupil);
+    const w = new THREE.SphereGeometry(0.042 * s, 10, 8);
+    w.translate(side * x, y, z); whites.push(w);
+    const p = new THREE.SphereGeometry(0.026 * s, 8, 8);
+    p.translate(side * (x + 0.018 * s), y, z + 0.014 * s); pupils.push(p);
   }
+  for (const [parts, mat] of [[whites, scleraMat], [pupils, pupilMat]]) {
+    const merged = mergeGeometries(parts, false);
+    parts.forEach(q => q.dispose());
+    const m = new THREE.Mesh(merged, mat);
+    m.userData.noShadow = true;
+    g.add(m);
+  }
+}
+
+// Half-width of a sculpted body at height y, station z (in the body's scaled
+// space): the widest vertex near that spot. Used to seat eyes ON the head —
+// body girth is randomised per fish, and a fixed eye offset left the widest
+// individuals with both eyes buried inside their own skull.
+function bodyHalfWidthAt(body, y, z) {
+  const pos = body.geometry.attributes.position, sc = body.scale;
+  let best = 0, nearest = Infinity, nearestX = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const vx = Math.abs(pos.getX(i) * sc.x), vy = pos.getY(i) * sc.y, vz = pos.getZ(i) * sc.z;
+    const dy = Math.abs(vy - y), dz = Math.abs(vz - z);
+    if (dy < 0.05 && dz < 0.06) best = Math.max(best, vx);
+    const d = dy + dz;
+    if (d < nearest) { nearest = d; nearestX = vx; }
+  }
+  return best || nearestX;
 }
 
 // ── Species body builders — each returns { tail?, tailAxis?, animate? } ───────
@@ -1023,7 +1096,8 @@ const FISH_BODY = {
     const deep = 0.85 + rnd() * 0.35;
     body.scale.set(0.36 * (0.85 + rnd() * 0.3), 0.62 * deep, 1.18 * (0.9 + rnd() * 0.25));
     g.add(body);
-    fishEyes(g, 0.11, 0.13, 0.3);
+    // Seat the eyes on the actual head surface, bulging out by a third.
+    fishEyes(g, Math.max(0.09, bodyHalfWidthAt(body, 0.13, 0.3) - 0.014), 0.13, 0.3);
     const pecs = [];
     for (const s of [-1, 1]) {
       const pec = finMesh([
@@ -1743,7 +1817,8 @@ function makeFish(spec) {
   const { tail, tailAxis, animate, pecs } = build(g, { bodyMat, finMat, spec, rnd }) ?? {};
 
   g.scale.setScalar(((spec.size ?? 14) / 16) * 0.55 * (0.92 + rnd() * 0.16));
-  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.traverse(o => { if (o.isMesh) o.castShadow = !o.userData.noShadow; });
+  g.userData.big = (spec.size ?? 14) >= 22;
   g.userData.tail = tail ?? null;
   g.userData.tailAxis = tailAxis;
   g.userData.animate = animate ?? null;
@@ -1943,6 +2018,26 @@ export function initReefScene3D(canvas) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'default' });
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // Context loss (GPU memory pressure, backgrounding, a driver reset) must never
+  // become a death loop. three.js restores its own GL state when the browser
+  // hands the context back; what it can't do is stop the pressure that caused
+  // it. So each loss steps the graphics down — sharpness first, then shadows —
+  // and the setting sticks for the session.
+  let contextLosses = 0, prCeiling = Infinity;
+  canvas.addEventListener('webglcontextlost', (ev) => {
+    ev.preventDefault();                       // ask the browser to restore it
+    contextLosses++;
+  });
+  canvas.addEventListener('webglcontextrestored', () => {
+    if (contextLosses >= 1) { prCeiling = 1.5; renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); }
+    if (contextLosses >= 2) {
+      prCeiling = 1;
+      renderer.setPixelRatio(1);
+      renderer.shadowMap.enabled = false;
+      scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => { m.needsUpdate = true; }); });
+    }
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
@@ -2782,7 +2877,7 @@ export function initReefScene3D(canvas) {
     const evId = seasonPacks[idx];
     if (evId === undefined) return null;
     seasonPacks.splice(idx, 1);
-    const def = EVENT_SCHEDULE.find(e => e.id === evId);
+    const def = eventById(evId);
     const pool = (def?.pass?.tiers ?? [])
       .map(t => t.reward?.exclusive).filter(id => id && !exclOwned.has(id));
     const cards = [];
@@ -3062,6 +3157,7 @@ export function initReefScene3D(canvas) {
   // creatures they could actually meet.
   const REAL_SPECIES = new Set([
     // fish & friends
+    'garibaldi',
     'blueChromis', 'chromis', 'zebraGoby', 'cardinalfish', 'clownfish', 'yellowTang',
     'blueTang', 'octopus', 'moorishIdol', 'butterflyfish', 'zebrafish', 'seahorse',
     'cuttlefish', 'morayEel', 'dolphin', 'shark', 'neonGoby', 'firefish', 'damselfish',
@@ -3548,6 +3644,7 @@ export function initReefScene3D(canvas) {
       newRoamTarget(st);
     }
     scene.add(st.g); fishes.push(st);
+    refreshFishShadows();
     if (placed) seen.add(spec.id);
     return st.g;
   }
@@ -3574,6 +3671,21 @@ export function initReefScene3D(canvas) {
     recomputeRates(); refreshProgress(); refreshHud(); save();
     if (refund > 0) flash(rateEl, `+${refund} BE`, '#7fd8b0');
   }
+  // Every shadow caster is drawn a second time into the shadow map. A few fish
+  // shadows sell the depth of the water; two hundred of them halve the frame
+  // rate for something nobody can see. Small fish stop casting past 30 fish,
+  // big ones past 90. Re-evaluated only when the population crosses a band.
+  let fishShadowBand = -1;
+  function refreshFishShadows() {
+    const n = fishes.length;
+    const band = n <= 30 ? 0 : n <= 90 ? 1 : 2;
+    const apply = (f) => {
+      const cast = band === 0 || (band === 1 && f.g.userData.big);
+      f.g.traverse(o => { if (o.isMesh) o.castShadow = cast && !o.userData.noShadow; });
+    };
+    if (band !== fishShadowBand) { fishShadowBand = band; fishes.forEach(apply); }
+    else if (n) apply(fishes[n - 1]);                   // the newcomer joins the current band
+  }
   function removeFishGroup(group) {
     const st = group.userData.stateRef;
     if (!st || !group.userData.placed) return;
@@ -3581,6 +3693,7 @@ export function initReefScene3D(canvas) {
     const refund = spec?.pearlCost ? 0 : Math.floor((FISH_COST[spec?.tier] ?? 0) / 2);
     be = Math.min(be + refund, beMax);
     const fi = fishes.indexOf(st); if (fi >= 0) fishes.splice(fi, 1);
+    refreshFishShadows();
     releaseHome(st);
     if (st.school) {
       const mi = st.school.members.indexOf(st);
@@ -4121,19 +4234,22 @@ export function initReefScene3D(canvas) {
   });
   journal.head.appendChild(journalTabs);
   // Thumbnails — each recorded species is photographed once: its real 3D model
-  // is built, framed by its bounding box, and rendered on a tiny offscreen
-  // canvas. Data URLs are cached so every journal open after the first is free.
-  // The offscreen renderer is a SECOND WebGL context, and iOS reclaims spare
-  // contexts under memory pressure or after backgrounding — rendering on a
-  // reclaimed one throws from deep inside three ("shaderSource must be an
-  // instance of WebGLShader"). So the context lives only for one batch of
-  // thumbnails and is released right after, every render is guarded, and a
-  // failure falls back to a plain colour disc instead of a crash banner.
-  let thumbCtx = null, thumbBroken = false, thumbRelease = 0;
+  // is built, framed by its bounding box, and rendered offscreen. Data URLs are
+  // cached, so every later journal open (and fish toast) is free.
+  //
+  // The photo is taken with the GAME'S OWN renderer into a render target — never
+  // a second WebGL context. WebKit caps a page at 16 live contexts and, at the
+  // cap, force-loses the OLDEST one: the reef itself. An earlier version made a
+  // context per batch of thumbnails, so enough journal opens and first-time fish
+  // taps killed the main view — the screen flashed between the page's blue
+  // background and the reef as the context died and revived, until iOS gave up
+  // on the app. One context, ever.
+  const THUMB_PX = 96, THUMB_SS = 2;               // rendered at 2× and downsampled = cheap AA
+  let thumbRig = null;
   const thumbCache = new Map();
   function thumbFallback(spec) {
     const cv = document.createElement('canvas');
-    cv.width = cv.height = 96;
+    cv.width = cv.height = THUMB_PX;
     const ctx = cv.getContext('2d');
     const grd = ctx.createRadialGradient(34, 30, 4, 48, 48, 46);
     grd.addColorStop(0, hex(spec.accentColor ?? spec.color ?? 0x7fb8d4));
@@ -4143,38 +4259,31 @@ export function initReefScene3D(canvas) {
     ctx.beginPath(); ctx.arc(48, 48, 40, 0, Math.PI * 2); ctx.fill();
     return cv.toDataURL();
   }
-  function releaseThumbRenderer() {
-    clearTimeout(thumbRelease);
-    thumbBroken = false;
-    if (!thumbCtx) return;
-    const { r } = thumbCtx;
-    thumbCtx = null;
-    try { r.dispose(); r.forceContextLoss(); } catch (e) { /* already gone */ }
-  }
   function speciesThumb(spec) {
     if (thumbCache.has(spec.id)) return thumbCache.get(spec.id);
-    if (thumbBroken) return thumbFallback(spec);
-    let url = null;
+    let g = null;
+    const prevTarget = renderer.getRenderTarget();
+    const prevColor = renderer.getClearColor(new THREE.Color());
+    const prevAlpha = renderer.getClearAlpha();
     try {
-      if (!thumbCtx) {
-        const cv = document.createElement('canvas');
-        cv.width = cv.height = 96;
-        const r = new THREE.WebGLRenderer({
-          canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
-        r.setSize(96, 96, false);
-        r.setClearColor(0x000000, 0);
+      if (renderer.getContext().isContextLost()) throw new Error('context lost');
+      if (!thumbRig) {
+        const n = THUMB_PX * THUMB_SS;
+        const rt = new THREE.WebGLRenderTarget(n, n);
+        rt.texture.colorSpace = THREE.SRGBColorSpace;
         const sc = new THREE.Scene();
         sc.add(new THREE.AmbientLight(0xbfdcee, 1.0));
         const key = new THREE.DirectionalLight(0xffffff, 1.7);
         key.position.set(2, 4, 3); sc.add(key);
         const fill = new THREE.DirectionalLight(0x7fb8d4, 0.5);
         fill.position.set(-3, 1, -2); sc.add(fill);
-        const cam = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
-        thumbCtx = { r, sc, cam, cv };
+        const big = document.createElement('canvas'); big.width = big.height = n;
+        const small = document.createElement('canvas'); small.width = small.height = THUMB_PX;
+        thumbRig = { rt, sc, cam: new THREE.PerspectiveCamera(30, 1, 0.05, 100),
+          buf: new Uint8Array(n * n * 4), big, small, n };
       }
-      const { r, sc, cam, cv } = thumbCtx;
-      if (r.getContext()?.isContextLost?.()) throw new Error('thumbnail context lost');
-      const g = spec.layer ? makeFish(spec) : makeCoral(spec);
+      const { rt, sc, cam, buf, big, small, n } = thumbRig;
+      g = spec.layer ? makeFish(spec) : makeCoral(spec);
       if (!spec.layer) g.scale.setScalar(1);   // corals spawn at 0.01 to grow in
       sc.add(g);
       const box = new THREE.Box3().setFromObject(g);
@@ -4187,21 +4296,32 @@ export function initReefScene3D(canvas) {
         : new THREE.Vector3(1, 0.6, 1);        // coral: from above the shoulder
       cam.position.copy(c).addScaledVector(dir.normalize(), dist);
       cam.lookAt(c);
-      r.render(sc, cam);
-      url = cv.toDataURL();
-      sc.remove(g); disposeGroup(g);
+      renderer.setRenderTarget(rt);
+      renderer.setClearColor(0x000000, 0);
+      renderer.clear();
+      renderer.render(sc, cam);
+      renderer.readRenderTargetPixels(rt, 0, 0, n, n, buf);
+      // GL rows run bottom-up; flip into a 2D canvas, then downsample.
+      const bctx = big.getContext('2d');
+      const img = bctx.createImageData(n, n);
+      for (let y = 0; y < n; y++) {
+        img.data.set(buf.subarray((n - 1 - y) * n * 4, (n - y) * n * 4), y * n * 4);
+      }
+      bctx.putImageData(img, 0, 0);
+      const sctx = small.getContext('2d');
+      sctx.clearRect(0, 0, THUMB_PX, THUMB_PX);
+      sctx.imageSmoothingQuality = 'high';
+      sctx.drawImage(big, 0, 0, THUMB_PX, THUMB_PX);
+      const url = small.toDataURL();
       thumbCache.set(spec.id, url);
+      return url;
     } catch (e) {
-      // Dead or refused context: drop it, stop trying for this batch, and
-      // let the next journal open start fresh.
-      releaseThumbRenderer();
-      thumbBroken = true;
-      url = thumbFallback(spec);
+      return thumbFallback(spec);      // never an error banner; try again next time
+    } finally {
+      renderer.setRenderTarget(prevTarget);
+      renderer.setClearColor(prevColor, prevAlpha);
+      if (g) { thumbRig?.sc.remove(g); disposeGroup(g); }
     }
-    // One context per batch, none held between them.
-    clearTimeout(thumbRelease);
-    thumbRelease = setTimeout(releaseThumbRenderer, 400);
-    return url;
   }
 
   // Quick facts — a field-guide line derived from the spec and behaviour tables.
@@ -4535,13 +4655,15 @@ export function initReefScene3D(canvas) {
   // Progress is per-slot and saved; exclusive unlocks persist forever.
   const EV_TODAY = () => new Date().toISOString().slice(0, 10);
   function ev3Init() {
-    const live = EVENT_SCHEDULE.find(e => EV_TODAY() >= e.startDate && EV_TODAY() <= e.endDate);
+    // Events recur yearly; `live` is this year's occurrence with a per-year id,
+    // so last year's finished run doesn't mark this year's as already done.
+    const live = liveEvent(EV_TODAY());
     if (live && (!ev3 || ev3.id !== live.id)) {
       ev3 = { id: live.id, setIdx: 0, tokens: 0, prog: {},
         setsClaimed: [], tiersClaimed: [], rewardClaimed: false };
     }
   }
-  const ev3Def = () => EVENT_SCHEDULE.find(e => e.id === ev3?.id) ?? null;
+  const ev3Def = () => eventById(ev3?.id);
   const ev3Live = () => {
     const d = ev3Def();
     return !!d && EV_TODAY() >= d.startDate && EV_TODAY() <= d.endDate;
@@ -4816,10 +4938,15 @@ export function initReefScene3D(canvas) {
     ev3Init(); ev3Snapshot();
     const def = ev3Def();
     if (!def || !ev3Live()) {
-      const next = EVENT_SCHEDULE.find(e => e.startDate > EV_TODAY());
-      eventModal.body.innerHTML = '<div class="m-sub">No event is running right now.</div>'
-        + (next ? `<div class="m-row"><span>${next.icon} ${next.name}</span>`
-          + `<small>starts ${next.startDate}</small></div>` : '');
+      const next = nextEvent(EV_TODAY());
+      const when = next ? new Date(next.startDate + 'T12:00:00')
+        .toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+      eventModal.body.innerHTML = '<div class="m-sub">No event is running right now.'
+        + ' Events come round every year.</div>'
+        + (next ? `<div class="m-sec">Next up</div>`
+          + `<div class="m-row"><span>${next.icon} <b>${next.name}</b><br>`
+          + `<span style="font-size:10.5px;color:#9fc4dc">${next.description}</span></span>`
+          + `<small>starts ${when}</small></div>` : '');
       return;
     }
     const days = eventDaysRemaining(def.endDate);
@@ -5165,7 +5292,7 @@ export function initReefScene3D(canvas) {
     if (seasonPacks.length) {
       html += '<div class="m-sec">Season Packs</div>';
       seasonPacks.forEach((id, i) => {
-        const def = EVENT_SCHEDULE.find(e => e.id === id);
+        const def = eventById(id);
         html += `<div class="m-row"><span>${def?.icon ?? '🎁'} <b>${def?.name ?? id}</b><br>`
           + '<span style="font-size:10.5px;color:#9fc4dc">'
           + 'Guarantees one event exclusive you don\'t own — even odds among the unowned'
@@ -6408,11 +6535,33 @@ export function initReefScene3D(canvas) {
   const FOG_DAY = new THREE.Color(0x11486a), FOG_NIGHT = new THREE.Color(0x071726);
   let running = true;
   let lastSlow = 0;
+  // Adaptive resolution. Pixel count is the one cost that scales with nothing
+  // the player did, so it's the first thing to give: if frames run slow for a
+  // few seconds the render scale steps down (never below 1×), and it steps back
+  // up only after a long comfortable stretch, so it can't oscillate.
+  const PR_MAX = Math.min(window.devicePixelRatio, 2), PR_STEPS = [1, 1.25, 1.5, 2].filter(v => v <= PR_MAX + 0.01);
+  if (!PR_STEPS.includes(PR_MAX)) PR_STEPS.push(PR_MAX);
+  let prIdx = PR_STEPS.length - 1, frameAvg = 16, slowFor = 0, fastFor = 0;
+  function adaptResolution(dt) {
+    if (dt <= 0 || dt > 0.25) return;                   // ignore tab-switch hitches
+    while (prIdx > 0 && PR_STEPS[prIdx] > prCeiling) prIdx--;   // a lost context lowers the ceiling for good
+    frameAvg += (dt * 1000 - frameAvg) * 0.05;
+    slowFor = frameAvg > 27 ? slowFor + dt : 0;          // under ~37 fps
+    fastFor = frameAvg < 15 ? fastFor + dt : 0;          // comfortably above 60
+    let next = prIdx;
+    if (slowFor > 3 && prIdx > 0) next = prIdx - 1;
+    else if (fastFor > 20 && prIdx < PR_STEPS.length - 1 && PR_STEPS[prIdx + 1] <= prCeiling) next = prIdx + 1;
+    if (next === prIdx) return;
+    prIdx = next; slowFor = 0; fastFor = 0; frameAvg = 18;
+    renderer.setPixelRatio(PR_STEPS[prIdx]);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
   function frame() {
     if (!running) return;
     requestAnimationFrame(frame);
     const dt = clock.getDelta();
     const t = clock.getElapsedTime();
+    adaptResolution(dt);
     // Slow tick (1 Hz): egg hatching and coral growth run on absolute clocks.
     if (t - lastSlow >= 1) {
       lastSlow = t;

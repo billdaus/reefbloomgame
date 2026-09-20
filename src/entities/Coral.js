@@ -57,6 +57,7 @@ export class Coral {
       case 'seaweed':      this._drawSeaweed(g, s, c);       break;
       case 'seagrass':     this._drawSeagrass(g, s, c);      break;
       case 'kelp':         this._drawKelp(g, s, c);          break;
+      case 'amberKelp':    this._drawKelp(g, s, c);          break;
       case 'twilightBrain': this._drawTwilightBrain(g, s, c); break;
       case 'phantomPolyp': this._drawPhantomPolyp(g, s, c); break;
       case 'midnightTable':   this._drawMidnightTable(g, s, c);   break;
@@ -130,6 +131,7 @@ export class Coral {
       case 'redSeagrass':
       case 'seaweed':
       case 'kelp':         this._growBlades(g, s, c, level); break;
+      case 'amberKelp':    this._growBlades(g, s, c, level); break;
       case 'sunfire':      this._growRadial(g, s, c, level); break;
       case 'table':
       case 'midnightTable': this._growShelf(g, s, c, level); break;

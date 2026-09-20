@@ -31,6 +31,7 @@ const CORAL_LORE = {
   phantomPolyp:  'Translucent columns of azooxanthellate coral that feed entirely on passing zooplankton. No sunlight reaches this depth — every calorie comes from the water column.',
   midnightTable:  'A deep-sea table coral that uses bioluminescent lure patterns on its underside to attract and harvest zooplankton drifting through the twilight zone.',
   pearlOrganPipe: 'A rare colour morph of Tubipora musica whose skeletal tubes are saturated with nacre, producing a lustrous pearl sheen. Colonies grow in tight clusters — each tube opening bears eight ivory polyp arms that retract at the slightest shadow.',
+  amberKelp:     'A Reef Bloom original, grown from a true story: giant kelp can add two feet in a single day, and in low autumn light a kelp canopy really does glow amber, sheltering hundreds of species beneath it.',
 };
 
 const FISH_LORE = {
@@ -107,6 +108,7 @@ const FISH_LORE = {
   twilightWhaleShark:  'A twilight-adapted filter-feeder whose bioluminescent spots pulse in slow rhythmic waves. Visible from 20 metres away, drawing clouds of zooplankton toward its open mouth.',
   sakuraAnthias:       'Female Pseudanthias sakura live in harems of up to 12 individuals. If the dominant male disappears, the largest female transforms into a male within days — changing both behaviour and the brilliant rose-pink of her elongated third dorsal spine.',
   opah:                'The only known fully warm-blooded fish. Lampris guttatus heats its blood by rapidly flapping its pectoral fins, maintaining brain and muscle temperature up to 5 °C above the surrounding water — giving it reflexes no cold-blooded fish can match.',
+  garibaldi:     'California\'s state marine fish, and a real one: the brightest orange on any kelp reef. Males farm a patch of red algae as a nest for months and charge anything that comes near it — divers included.',
 };
 
 // ─── Static resource entries ──────────────────────────────────────────────────
