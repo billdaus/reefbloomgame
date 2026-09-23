@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 18 — Reef Bloom Is on the App Store. The 3D reef is now an iPad and iPhone app: what it took to get there, the fall event that greets new players, an honest account of the rejection, and what the phone taught us about the reef." />
+  <title>Reef Bloom Is on the App Store — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 18 — App Store blue with a shelf of autumn kelp: the reef, boxed
+       and shipped, arriving in the season it launches into. */
+    :root {
+      --nl-bg-1: #0b2f52;
+      --nl-bg-2: #082542;
+      --nl-bg-3: #061a30;
+      --nl-bg-4: #04111f;
+      --theme-glow:   rgba(217, 154, 43, 0.16);
+      --theme-accent: #f2b544;
+      --theme-rule:   rgba(242, 181, 68, 0.5);
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 18% 22%, rgba(242,181,68,0.10) 0, transparent 7%),
+        radial-gradient(circle at 78% 34%, rgba(242,181,68,0.07) 0, transparent 6%),
+        radial-gradient(circle at 56% 72%, rgba(127,216,255,0.06) 0, transparent 4%),
+        radial-gradient(circle at 30% 80%, rgba(127,216,255,0.05) 0, transparent 3%);
+      z-index: 0;
+    }
+    .store-cta {
+      display: inline-block; margin: 8px 0 4px; padding: 12px 22px; border-radius: 999px;
+      background: #fff; color: #0a3050; font-weight: 700; letter-spacing: 0.4px;
+      text-decoration: none;
+    }
+    .store-cta:hover { background: #ffe9b8; }
+    .fact-table { width: 100%; border-collapse: collapse; margin: 14px 0 18px; font-size: 0.95em; }
+    .fact-table td { padding: 7px 10px; border-bottom: 1px solid var(--theme-rule); vertical-align: top; }
+    .fact-table td:first-child { color: var(--theme-accent); white-space: nowrap; }
+    @media (max-width: 640px) {
+      .fact-table, .fact-table tbody, .fact-table tr, .fact-table td { display: block; width: 100%; }
+      .fact-table td { padding: 6px 0; border-bottom: none; }
+      .fact-table td:first-child { padding-top: 14px; white-space: normal; font-weight: 700; }
+      .fact-table tr { border-bottom: 1px solid var(--theme-rule); }
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/issue-17.html">← Issue 17: Gilded Trees, Standing Among Stars</a>
+
+      <div class="byline">
+        <span>Issue 18</span>
+        <span>September 23, 2026</span>
+        <span>Launch Edition</span>
+      </div>
+      <h1 class="issue-title">Reef Bloom Is on the App Store</h1>
+      <p class="issue-deck">The 3D reef is now an app. Search for <strong>Reef Bloom</strong> on an iPad or iPhone and it is there, with a real icon, a real price of nothing, and a fall festival already under way. This issue is the story of the three weeks between "let's put it in the store" and "Release This Version" — including the day Apple said no, and why they were right to.</p>
+
+      <p class="lede">We have written seventeen issues about a game that lived in a browser tab. As of this morning it also lives on the Home screen, between the calculator and whatever your child has downloaded without asking. <strong>Reef Bloom 1.1.0</strong> was approved by App Review and released to the App Store today. It is free, it is rated 4+ everywhere it is sold, and it runs the same reef as the website — the 3D edition, with its three biomes, its Fish Nest, its Ocean Journal, and its published pack odds — as a native app with nothing to install but the app.</p>
+
+      <p style="text-align:center;"><a class="store-cta" href="https://apps.apple.com/app/id6809200807">Get Reef Bloom on the App Store →</a></p>
+
+      <h3>What the app is</h3>
+
+      <p>It is the 3D reef, wrapped for iOS. The website stays exactly as it was — Classic, the phone version, and the 3D edition all continue at reefbloomgame.com — but the app is the 3D reef only, with its own Home screen showing your three reefs, how long since you last visited each, and whether a Daily Pack is waiting. Saves live on the device. Nothing requires an account, because nothing ever has.</p>
+
+      <p>The one thing the app has that the website does not is a Pearl Shop that takes real money. Pearls have always been the reef's premium currency; on the website they arrive through rewarded ads, and in the app they can also be bought outright, in packs of ten, thirty-five, or sixty, through Apple's own store. We want to be precise about what those pearls can and cannot do, because the precision is the whole point of the next section.</p>
+
+      <h3>Why the app is rated 4+, and what we changed to earn it</h3>
+
+      <p>Apple asks every app a long questionnaire before assigning it an age rating, and one of the questions is about <em>loot boxes</em>: randomised items that can be bought with real money, or with an in-game currency that real money can buy. Answer yes and the app is 9+ at best — and 16+ in Australia and 18 in Brazil, whose regulators take the matter seriously. Reef Bloom's Rarity Packs have random contents. The top three tiers cost pearls. Pearls could be bought. That is a loot box, and we answered yes.</p>
+
+      <p>Then our publisher asked the question that every economy in this game has eventually had to answer: <em>what would it take to be honest about this?</em> The answer was a clean rule, which now governs the app:</p>
+
+      <blockquote>Pearls only ever buy a specific, known thing. Nothing with random contents can be bought with pearls, and no currency that buys random things can be bought with pearls either.</blockquote>
+
+      <p>So four things changed. Rarity Packs are now priced in Bubble Energy at every tier — 450, 700 and 1,000 🫧 for Super Rare, Epic and Legendary — and Mythic packs remain, as ever, never for sale. The event shop no longer sells Bubble Energy or polyps for pearls, because those currencies fund packs, eggs and surveys, all of which roll dice. And the Premium Egg, which hatched a random legendary-or-mythic fish for fifty pearls, is gone. In its place: a <strong>Legendary Egg</strong> for 400 🫧 that rolls a legendary, and a <strong>Mythic Egg</strong> for fifty pearls that hatches <em>the mythic you choose</em> from a list. A choice, not a roll. We re-answered the questionnaire, and the app is 4+ in all 172 countries it will be sold in.</p>
+
+      <p>We think this is a better game, not just a more compliant one. Fifty pearls for exactly the Oarfish you wanted beats a coin flip. And a nine-year-old can now be handed the app without a parent reading the fine print, which was rather the idea.</p>
+
+      <h3>The rejection</h3>
+
+      <p>We submitted on a Sunday evening. On Friday morning Apple rejected us, citing guideline 2.1(b), App Completeness: <em>"error notification appeared when we tried to purchase submitted in app purchase products."</em> They attached a screenshot. In the screenshot, the Pearl Shop shows three packs with no prices — three little ellipses where the dollar signs should be — and a line of our own text reading "The App Store is slow to answer."</p>
+
+      <p>It was not slow. It was never going to answer. The bug, once found, was one line: the code that talks to Apple's store had been handed to the app in a way that made every request silently vanish, on every device, forever. Our own testing had not caught it because we had tested the shop in a browser, where Apple's store does not exist and a stand-in politely pretended to work. The reviewer, sitting with a real iPad, was the first person to actually press the button.</p>
+
+      <p>We fixed it, and then — because one bug found by someone else is a strong hint that there are others — we had the entire purchase path reviewed a second time, cold. That review found two more: purchases that completed while the app was closed were being lost, and the Mythic Egg's species picker quietly reset itself every second, so a player who chose the Oarfish would usually get whatever fish was first in the list. Both fixed. Purchases were then tested, for real, in Apple's sandbox, on a phone, by a human. We resubmitted on Sunday and were approved on Tuesday.</p>
+
+      <p>In the family tradition of this publication, the rejection goes in the archive of things we said confidently before checking — next to <em>Arbor aurea</em> and the till-less shop. It is the most useful entry there. A reviewer with a real device is worth a hundred green checkmarks.</p>
+
+      <h3>What the phone taught us about the reef</h3>
+
+      <p>Three weeks of playing the reef on real devices, instead of a desktop browser, turned up things the desktop never showed. Each one has its own fix in 1.1.0:</p>
+
+      <table class="fact-table">
+        <tr><td>The flashing crash</td><td>On a big reef, the screen would flicker between the blue page background and the reef, and then the app would die. Cause: the Ocean Journal's thumbnails each borrowed a fresh graphics context from the phone, and iPads only lend sixteen. At the seventeenth, the phone reclaimed the oldest — which was the reef. Thumbnails are now photographed with the reef's own renderer. One context, for life.</td></tr>
+        <tr><td>Slow with lots of fish</td><td>A reef of 189 fish and 109 corals was asking the phone to draw about 14,000 things per frame. Every branch, polyp and blade of every coral was its own draw, and each was drawn twice for shadows. Corals are now baked to a few solid pieces each. Same reef: 3,700 draws, and twice the frame rate.</td></tr>
+        <tr><td>Fish with no eyes</td><td>Every fish gets a random girth. The widest ones had both eyes inside their own heads. Eyes now sit on the actual surface of the actual fish.</td></tr>
+        <tr><td>Red and green speckles around lanterns</td><td>The glow around lantern corals was drawn with a soft gradient that Apple devices dither in a way that, at the faint edges, leaks stray colour. Rebuilt from raw pixels. The glow is the same; the confetti is gone.</td></tr>
+        <tr><td>Chromis in the twilight</td><td>Every night, reef fish walked into the Deep Twilight to sleep, because the nearest empty bed won regardless of biome. Fish now bed down only in water they actually live in.</td></tr>
+      </table>
+
+      <h3>Kelp that looks like kelp, and a fish that looks like a pipefish</h3>
+
+      <p>Two long-standing grievances, settled. Giant kelp used to be green sticks with four leaves. It is now built the way <em>Macrocystis</em> grows: a knobbly holdfast, long stipes bending over together into a canopy, and along each stipe a run of long ruffled blades, each buoyed by its own gas bladder — in golden-olive, because that is the colour of kelp. The pipefish, which had been wearing a generic fish body, now has its own: pencil-thin, armoured in bony rings, a tube snout, and one small dorsal fin doing all the work while the body stays stiff, which is exactly how pipefish swim. Also: dolphins, sharks, rays, turtles and the whale shark now roam the whole lagoon — beach to drop-off and out over open water — instead of pacing their own biome.</p>
+
+      <h3>Events now come round every year, starting with this one</h3>
+
+      <p>A confession that only the App Store made necessary. Reef Bloom's seasonal events were written with full dates — April 11 to 17, 2026, and so on — which meant every one of them had quietly expired by July, and the Event menu had been reading "No event is running right now" for two months. Nobody noticed, because nobody looks at an empty menu twice. Events are now yearly: they recur on their month and day, each year's run starts fresh, and anything you unlocked stays unlocked.</p>
+
+      <p>And there is a new one, timed for the launch. <strong>🍂 Golden Kelp Harvest</strong> runs September 22 to October 12, every year from now on: three quest sets, an event pass, and two exclusives. <strong>Amber Kelp</strong> is the new kelp model in autumn colours. The <strong>Garibaldi</strong> is real — California's state marine fish, the brightest orange thing on any kelp reef, whose males farm a patch of red algae as a nest and charge anything that comes near it, divers included. Its Ocean Journal entry says so. Anyone who installs the app this week will find the festival already under way.</p>
+
+      <h3>The fine print, which we also mean</h3>
+
+      <p>Reef Bloom is free on the App Store. The only things for sale are the three pearl packs, and pearls buy specific things. There are no ads in the app. The app collects no data — Apple's privacy label says "Data Not Collected," and it says that because it is true. Saves stay on your device. The 27 countries of the European Union are not in the launch list yet, for regulatory paperwork reasons that have nothing to do with the reef and everything to do with forms; we will get there.</p>
+
+      <p>Reef Bloom remains, first and last, Liam's game. It now has a listing, a review history, and a release button, and the same rule it has always had: you are a steward, not a controller. Plant something. The kelp is gold this month.</p>
+
+      <p class="signoff">— The Reef Bloom team, from the Home screen</p>
+
+      <a class="back-link" href="/newsletter/" style="margin-top:32px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
