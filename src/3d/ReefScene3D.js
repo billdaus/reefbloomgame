@@ -3093,7 +3093,7 @@ export function initReefScene3D(canvas) {
     }
     if (!hatchedAny) return;
     refreshNestEggs(); refreshProgress(); refreshHud(); save();
-    if (nestModal.ov.style.display === 'flex') fillNest();
+    if (bubblesCounter.open) fillNest();
   }
   // The egg meshes in the nest bowl mirror nestEggs one-to-one.
   const eggMats = new Map();
@@ -4150,14 +4150,139 @@ export function initReefScene3D(canvas) {
   onProgress = () => { refreshLocks(); refreshZoneLocks(); refreshExpMarkers(); refreshFishShop(); };
   onProgress();
 
+  // ── Counter screens ──────────────────────────────────────────────────────────
+  // A "counter" is a full-screen shop run by a character: their portrait,
+  // speech bubble and the balances stay pinned up top while shelves of cards
+  // scroll beneath, and the bubble follows the shelf — whichever card sits in
+  // front of you is the one they're talking about. Skip-7's Pearl Market and
+  // Bubbles' Nest & Market are both built on it.
+  const counters = [];
+  function buildCounter({ id, who, face, balances }) {
+    const el = document.createElement('div');
+    el.className = 'counter'; el.id = id;
+    el.innerHTML = '<div class="ct-top">'
+      + `<img class="ct-face" alt="${who}">`
+      + `<div class="ct-bubble"><span class="ct-who">${who}</span><span class="ct-say"></span></div>`
+      + '<div class="ct-side"><button class="ct-close">Close ✕</button><div class="ct-bal"></div></div>'
+      + '</div><div class="ct-body"></div>';
+    document.body.appendChild(el);
+    const c = {
+      el, body: el.querySelector('.ct-body'), faceEl: el.querySelector('.ct-face'),
+      bubble: el.querySelector('.ct-bubble'), sayEl: el.querySelector('.ct-say'),
+      balEl: el.querySelector('.ct-bal'), items: [], shelves: [], focus: null, open: false,
+    };
+    let sayTimer = 0;
+    c.say = (text) => {
+      if (c.sayEl.textContent === text) return;
+      clearTimeout(sayTimer);
+      c.bubble.classList.add('swap');
+      sayTimer = setTimeout(() => { c.sayEl.textContent = text; c.bubble.classList.remove('swap'); }, 160);
+    };
+    c.sayNow = (text) => { clearTimeout(sayTimer); c.sayEl.textContent = text; c.bubble.classList.remove('swap'); };
+    c.focusCard = (card) => {
+      if (c.focus === card) return;
+      c.focus?.classList.remove('focus');
+      c.focus = card;
+      card?.classList.add('focus');
+      if (card?.dataset.say) c.say(card.dataset.say);
+    };
+    // A shelf is a section heading; cards added after it belong to it. Give a
+    // shelf its own line for when it holds no cards (or nothing to focus).
+    c.shelf = (title, sub, say) => {
+      const h = document.createElement('div');
+      h.className = 'ct-shelf';
+      h.innerHTML = `<span>${title}</span>` + (sub ? `<small>${sub}</small>` : '');
+      c.body.appendChild(h);
+      const grid = document.createElement('div'); grid.className = 'ct-grid';
+      c.body.appendChild(grid);
+      const s = { el: h, grid, say, cards: [] };
+      c.shelves.push(s);
+      return s;
+    };
+    // A card: an image or an icon disc, a name, a tag, a line of small text, an
+    // optional extra element (a picker, a progress bar) and one or more buttons.
+    c.card = (shelf, { key, say, img, icon, color, name, tag, tagColor, sub, extra, buttons = [] }) => {
+      const card = document.createElement('div');
+      card.className = 'ct-item';
+      if (say) card.dataset.say = say;
+      let pic;
+      if (img !== undefined) { pic = document.createElement('img'); pic.className = 'ct-tank'; pic.alt = ''; if (img) pic.src = img; }
+      else {
+        pic = document.createElement('div'); pic.className = 'ct-tank ct-disc' + (color == null ? ' plain' : '');
+        pic.innerHTML = `<span style="background:${hex(color ?? 0x7fb8d4)}"></span><em>${icon ?? ''}</em>`;
+      }
+      const nm = document.createElement('div'); nm.className = 'ct-name'; nm.textContent = name;
+      card.append(pic, nm);
+      let tagEl = null;
+      if (tag) { tagEl = document.createElement('div'); tagEl.className = 'ct-tier'; tagEl.textContent = tag; if (tagColor) tagEl.style.color = tagColor; card.appendChild(tagEl); }
+      let subEl = null;
+      if (sub !== undefined) { subEl = document.createElement('div'); subEl.className = 'ct-sub'; subEl.innerHTML = sub; card.appendChild(subEl); }
+      if (extra) card.appendChild(extra);
+      const btnEls = buttons.map(b => {
+        const btn = document.createElement('button'); btn.className = 'ct-buy';
+        btn.textContent = b.label; btn.disabled = !!b.disabled;
+        btn.onclick = (e) => { e.stopPropagation(); c.focusCard(card); b.onClick?.(btn); };
+        card.appendChild(btn);
+        return btn;
+      });
+      card.onclick = () => c.focusCard(card);
+      shelf.grid.appendChild(card);
+      const it = { key, card, pic, tagEl, subEl, buttons: btnEls, shelf };
+      shelf.cards.push(it); c.items.push(it);
+      return it;
+    };
+    c.clearShelf = (shelf) => {
+      for (const it of shelf.cards) { c.items.splice(c.items.indexOf(it), 1); if (c.focus === it.card) c.focus = null; }
+      shelf.cards.length = 0; shelf.grid.innerHTML = '';
+    };
+    // Which shelf is in front of you: the last one whose heading has passed the
+    // upper third of the view (or the last of all at the very bottom). Within
+    // it, the nearest card speaks; a shelf with no cards speaks for itself.
+    let raf = 0;
+    c.body.addEventListener('scroll', () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const top = c.body.getBoundingClientRect().top;
+        const line = top + c.body.clientHeight * 0.36;
+        const atEnd = c.body.scrollTop > 0 && c.body.scrollTop + c.body.clientHeight >= c.body.scrollHeight - 4;
+        let cur = c.shelves[0];
+        for (const s of c.shelves) if (s.el.getBoundingClientRect().top < line + 40) cur = s;
+        if (atEnd) cur = c.shelves[c.shelves.length - 1];
+        if (!cur) return;
+        if (!cur.cards.length) { c.focusCard(null); if (cur.say) c.say(cur.say); return; }
+        let best = null, bestD = Infinity;
+        for (const it of cur.cards) {
+          const r = it.card.getBoundingClientRect();
+          const d = Math.abs((r.top + r.height / 2) - line);
+          if (d < bestD) { bestD = d; best = it.card; }
+        }
+        if (best) c.focusCard(best);
+      });
+    }, { passive: true });
+    c.refreshBal = () => { c.balEl.innerHTML = balances().map(([ico, v]) => `<span>${ico} ${v}</span>`).join(''); };
+    c.show = (greet) => {
+      if (!c.faceEl.src) c.faceEl.src = speciesThumb(face);
+      hideFishToast();
+      c.refreshBal();
+      el.classList.add('open'); c.open = true;
+      c.body.scrollTop = 0;
+      c.focusCard(null);
+      c.sayNow(greet);
+    };
+    c.hide = () => { el.classList.remove('open'); c.open = false; };
+    el.querySelector('.ct-close').onclick = () => c.hide();
+    counters.push(c);
+    return c;
+  }
+  const pickLine = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
   // ── 🤖 Skip-7's Pearl Market ─────────────────────────────────────────────────
-  // The pearl catalog is a full-screen counter: Skip-7's portrait and speech
-  // bubble stay up top while the shelves of specimens scroll beneath, and he
-  // comments on whichever one is in front of you. Pearls buy exactly what is
-  // shown — never a random roll — and the pearl packs live down here too. In
-  // the iOS app the packs are real StoreKit purchases (src/3d/iap.js): names
-  // and prices come from the App Store and pearls are granted only after a
-  // verified transaction. The website has no store, so it just says so.
+  // Pearls buy exactly what is shown — never a random roll — and the pearl
+  // packs live down here too. In the iOS app the packs are real StoreKit
+  // purchases (src/3d/iap.js): names and prices come from the App Store and
+  // pearls are granted only after a verified transaction. The website has no
+  // store, so it just says so.
   const SKIP7 = {
     greet: ['Welcome.', 'Back again?', "I've acquired a few interesting specimens.",
       'Browse. I will wait. Waiting is most of what I do.'],
@@ -4190,135 +4315,56 @@ export function initReefScene3D(canvas) {
     restoreNone: 'Nothing new.',
     web: 'Pearls are sold in the app. Out here they come from packs and eggs.',
   };
-  const pickLine = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-  const counterEl = document.createElement('div');
-  counterEl.id = 'counter';
-  counterEl.innerHTML = '<div class="ct-top">'
-    + '<img class="ct-face" alt="Skip-7">'
-    + '<div class="ct-bubble"><span class="ct-who">Skip-7 · Pearl Market</span><span class="ct-say"></span></div>'
-    + '<div class="ct-side"><button class="ct-close">Close ✕</button><div class="ct-bal">💎 <span class="ct-pearls">0</span></div></div>'
-    + '</div><div class="ct-body"></div>';
-  document.body.appendChild(counterEl);
-  const ctFace = counterEl.querySelector('.ct-face');
-  const ctBubble = counterEl.querySelector('.ct-bubble');
-  const ctSay = counterEl.querySelector('.ct-say');
-  const ctPearls = counterEl.querySelector('.ct-pearls');
-  const ctBody = counterEl.querySelector('.ct-body');
-  let ctSayTimer = 0;
-  function say(text) {
-    if (ctSay.textContent === text) return;
-    clearTimeout(ctSayTimer);
-    ctBubble.classList.add('swap');
-    ctSayTimer = setTimeout(() => { ctSay.textContent = text; ctBubble.classList.remove('swap'); }, 160);
-  }
-  const ctItems = [];   // { card, spec, type, buy, img, say }
-  let ctFocus = null;
-  function focusCard(card) {
-    if (ctFocus === card) return;
-    ctFocus?.classList.remove('focus');
-    ctFocus = card;
-    card?.classList.add('focus');
-    if (card?.dataset.say) say(card.dataset.say);
-  }
-  function shelf(title, sub) {
-    const h = document.createElement('div');
-    h.className = 'ct-shelf';
-    h.innerHTML = `<span>${title}</span>` + (sub ? `<small>${sub}</small>` : '');
-    ctBody.appendChild(h);
-    return h;
-  }
-  function counterCard(spec, type, grid) {
-    const card = document.createElement('div');
-    card.className = 'ct-item';
-    card.dataset.say = SKIP7.lines[spec.id]
-      ?? `${spec.name}. ${TIER_LABEL[spec.tier] ?? ''}. Reasonably priced.`;
-    const img = document.createElement('img'); img.className = 'ct-tank'; img.alt = '';
-    const name = document.createElement('div'); name.className = 'ct-name'; name.textContent = spec.name;
-    const tier = document.createElement('div'); tier.className = 'ct-tier';
-    tier.textContent = `${type === 'fish' ? '🐟' : '🪸'} ${TIER_LABEL[spec.tier] ?? spec.tier}`;
-    tier.style.color = hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5);
-    const buy = document.createElement('button'); buy.className = 'ct-buy';
-    card.append(img, name, tier, buy);
-    card.onclick = () => focusCard(card);
-    buy.onclick = (e) => { e.stopPropagation(); focusCard(card); buyFromCounter(spec, type); };
-    grid.appendChild(card);
-    ctItems.push({ card, spec, type, buy, img });
-  }
+  const skipCounter = buildCounter({
+    id: 'counter-skip7', who: 'Skip-7 · Pearl Market',
+    face: { id: '_skip7', color: 0x9aa7b3, accentColor: 0x7fe8ff,
+      build: makeSkip7, focus: g => g.userData.head, dir: [0.35, 0.3, 1], zoom: 2.6 },
+    balances: () => [['💎', Math.floor(pearls)]],
+  });
+  const { say } = skipCounter;
+  const tierTag = (spec, type) => ({
+    tag: `${type === 'fish' ? '🐟' : '🪸'} ${TIER_LABEL[spec.tier] ?? spec.tier}`,
+    tagColor: hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5),
+  });
   {
-    const fishGrid = document.createElement('div'); fishGrid.className = 'ct-grid';
-    shelf('Specimens', 'so rare they can\'t be hatched');
-    ctBody.appendChild(fishGrid);
-    fishSpecs.filter(s => s.pearlCost && !s.eventId).sort(byUnlock)
-      .forEach(s => counterCard(s, 'fish', fishGrid));
-    const coralGrid = document.createElement('div'); coralGrid.className = 'ct-grid';
-    shelf('Corals', 'placed free once bought');
-    ctBody.appendChild(coralGrid);
-    coralSpecs.filter(s => s.pearlCost && !s.eventId).sort(byUnlock)
-      .forEach(s => counterCard(s, 'coral', coralGrid));
+    const fishShelf = skipCounter.shelf('Specimens', 'so rare they can\'t be hatched');
+    fishSpecs.filter(s => s.pearlCost && !s.eventId).sort(byUnlock).forEach(spec =>
+      skipCounter.card(fishShelf, { key: spec.id, img: null, name: spec.name, ...tierTag(spec, 'fish'),
+        say: SKIP7.lines[spec.id] ?? `${spec.name}. ${TIER_LABEL[spec.tier] ?? ''}. Reasonably priced.`,
+        buttons: [{ label: '', onClick: () => buyFromCounter(spec, 'fish') }] }).spec = spec);
+    const coralShelf = skipCounter.shelf('Corals', 'placed free once bought');
+    coralSpecs.filter(s => s.pearlCost && !s.eventId).sort(byUnlock).forEach(spec =>
+      skipCounter.card(coralShelf, { key: spec.id, img: null, name: spec.name, ...tierTag(spec, 'coral'),
+        say: SKIP7.lines[spec.id] ?? `${spec.name}. ${TIER_LABEL[spec.tier] ?? ''}. Reasonably priced.`,
+        buttons: [{ label: '', onClick: () => buyFromCounter(spec, 'coral') }] }).spec = spec);
   }
-  const packShelf = shelf('Pearls', 'support the reef');
-  packShelf.dataset.say = SKIP7.packs;
+  const packShelf = skipCounter.shelf('Pearls', 'support the reef', SKIP7.packs);
   const shopList = document.createElement('div');
   shopList.className = 'ct-packs';
   const shopNote = document.createElement('div');
   shopNote.className = 'ct-note';
-  ctBody.append(shopList, shopNote);
-  counterEl.querySelector('.ct-close').onclick = () => closeCounter();
-
-  // The bubble follows the shelf: whichever card sits nearest the upper third
-  // of the view is the one he's talking about.
-  let ctScrollRaf = 0;
-  ctBody.addEventListener('scroll', () => {
-    if (ctScrollRaf) return;
-    ctScrollRaf = requestAnimationFrame(() => {
-      ctScrollRaf = 0;
-      const top = ctBody.getBoundingClientRect().top;
-      const line = top + ctBody.clientHeight * 0.36;
-      let best = null, bestD = Infinity;
-      for (const it of ctItems) {
-        const r = it.card.getBoundingClientRect();
-        const d = Math.abs((r.top + r.height / 2) - line);
-        if (d < bestD) { bestD = d; best = it.card; }
-      }
-      const pr = packShelf.getBoundingClientRect();
-      const atEnd = ctBody.scrollTop + ctBody.clientHeight >= ctBody.scrollHeight - 4;
-      if (pr.top < line + 40 || (atEnd && ctBody.scrollTop > 0)) { focusCard(null); say(SKIP7.packs); return; }
-      if (best) focusCard(best);
-    });
-  }, { passive: true });
+  packShelf.grid.replaceWith(shopList);   // packs are rows, not cards
+  skipCounter.body.appendChild(shopNote);
 
   function refreshCounter() {
-    ctPearls.textContent = Math.floor(pearls);
-    for (const it of ctItems) {
-      const { spec, type } = it;
+    skipCounter.refreshBal();
+    for (const it of skipCounter.items) {
+      const { spec } = it;
+      if (!spec) continue;
+      const type = spec.layer ? 'fish' : 'coral';
       const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
       const avail = type === 'fish' ? fishAvailable(spec) : coralAvailable(spec);
       it.card.classList.toggle('locked', !avail);
-      it.buy.textContent = avail ? `💎 ${spec.pearlCost}` : `🔒 Lv ${need}`;
-      if (!it.img.src) it.img.src = speciesThumb(spec);
+      it.buttons[0].textContent = avail ? `💎 ${spec.pearlCost}` : `🔒 Lv ${need}`;
+      if (!it.pic.src) it.pic.src = speciesThumb(spec);
     }
   }
-  let counterOpen = false;
   function openCounter() {
-    if (!ctFace.src) {
-      ctFace.src = speciesThumb({ id: '_skip7', color: 0x9aa7b3, accentColor: 0x7fe8ff,
-        build: makeSkip7, focus: g => g.userData.head, dir: [0.35, 0.3, 1], zoom: 2.6 });
-    }
     refreshCounter();
-    hideFishToast();
-    counterEl.classList.add('open');
-    counterOpen = true;
-    ctBody.scrollTop = 0;
-    focusCard(null);
-    ctSay.textContent = pickLine(SKIP7.greet);
-    ctBubble.classList.remove('swap');
+    skipCounter.show(pickLine(SKIP7.greet));
     if (iapIsNative()) renderShopNative(); else renderShopWeb();
   }
-  function closeCounter() {
-    counterEl.classList.remove('open');
-    counterOpen = false;
-  }
+  const closeCounter = () => skipCounter.hide();
   function buyFromCounter(spec, type) {
     const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
     if (need > level) { say(SKIP7.locked(need)); return; }
@@ -4326,7 +4372,7 @@ export function initReefScene3D(canvas) {
     if (!avail) { say(SKIP7.zone(BIOMES[primaryBiome(spec)].shortName)); return; }
     if (pearls < spec.pearlCost) {
       say(SKIP7.shortage);
-      packShelf.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      packShelf.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
     pearls -= spec.pearlCost;
@@ -4354,7 +4400,7 @@ export function initReefScene3D(canvas) {
     pearls += n; save();      // the payout and its persistence come first, unconditionally
     try {
       refreshHud(); hudGain('pearls', n);
-      if (counterOpen) refreshCounter();
+      counters.forEach(c => { if (c.open) c.refreshBal(); });
       droneQueue.push(`💎 ${n} pearls added to the reef fund. Spend them wisely. Or not — I'm not your accountant.`);
     } catch (e) { /* cosmetic only */ }
   }
@@ -4526,7 +4572,7 @@ export function initReefScene3D(canvas) {
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       openModals.forEach(m => { m.style.display = 'none'; });
-      closeCounter();
+      counters.forEach(c => c.hide());
     }
   });
   const bar = (v, max, cls = '') =>
@@ -4714,32 +4760,9 @@ export function initReefScene3D(canvas) {
           + here.map(journalRow).join('')
         : '';
     }).join('');
-    let html = '<div class="m-sec">🔬 Research surveys — Bubbles finds new coral</div>';
-    if (survey) {
-      const bio = BIOMES[survey.b];
-      html += `<div class="m-row"><span>Bubbles is on a ${SURVEY_TIERS[survey.d ?? 0].name.toLowerCase()}`
-        + ` in ${bio.icon} ${bio.name}</span>`
-        + `<small>returns in <span id="survey-eta">${fmtMs(survey.at - Date.now())}</span></small></div>`;
-    } else {
-      for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
-        if (!zoneUnlocked(zid)) continue;
-        const bio = BIOMES[zid];
-        const left = discoverableCorals(zid).length;
-        const btns = SURVEY_TIERS.map((st, i) =>
-          `<button class="pack-open-btn" data-survey="${zid}" data-tier="${i}"`
-          + ` style="padding:3px 8px;font-size:11px"`
-          + `${left && polyps >= st.cost ? '' : ' disabled'}>${st.min}m · ${st.cost} 🪸</button>`).join('');
-        html += `<div class="m-row"><span>${bio.icon} <b>${bio.shortName}</b><br>`
-          + `<span style="font-size:10.5px;color:#9fc4dc">${left} species unrecorded</span></span>`
-          + `<span style="display:flex;gap:5px;flex:none;margin-left:auto">${btns}</span></div>`;
-      }
-      html += '<div class="m-sub">One survey at a time. 90% the find is from the surveyed'
-        + ' biome — longer expeditions and higher reef levels reach rarer species'
-        + ' (wild-abundance odds apply) — and 5% each it&rsquo;s a drifter from another biome.'
-        + ' Every find comes home as a free-placement voucher. New coral also arrives,'
-        + ' incredibly rarely, from foraging fish and from larvae settling on a reef held'
-        + ' in high harmony.</div>';
-    }
+    let html = '<div class="m-sec">🔬 Research surveys</div>'
+      + '<div class="m-row"><span>Bubbles finds new coral on expeditions — fund one at her nest.</span>'
+      + '<button class="pack-open-btn" data-nest>Nest &amp; Market</button></div>';
     const quizDone = quiz.date === EV_TODAY() && quiz.i >= 5;
     html += '<div class="m-sec">🧪 Field ID — real or fiction?</div>'
       + '<div class="m-row"><span>Which of your species truly exist?<br>'
@@ -5487,17 +5510,7 @@ export function initReefScene3D(canvas) {
   journal.body.addEventListener('click', (e) => {
     const qz = e.target.closest('button[data-quiz]');
     if (qz) { quizFeedback = null; fillQuiz(); quizModal.show(); return; }
-    const sv = e.target.closest('button[data-survey]');
-    if (sv && !sv.disabled) {
-      const zid = sv.dataset.survey;
-      const st = SURVEY_TIERS[Number(sv.dataset.tier) || 0];
-      if (survey || polyps < st.cost || !discoverableCorals(zid).length) return;
-      polyps -= st.cost;
-      survey = { b: zid, at: Date.now() + st.min * 60e3, d: Number(sv.dataset.tier) || 0, cost: st.cost };
-      droneQueue.push(`🔬 ${st.name} funded. Charting the ${BIOMES[zid].name} — back with something new.`);
-      refreshHud(); save(); fillJournal();
-      return;
-    }
+    if (e.target.closest('button[data-nest]')) { journal.ov.style.display = 'none'; openNest(); return; }
     const r = e.target.closest('[data-sp]');
     if (!r) return;
     const id = r.dataset.sp;
@@ -5720,85 +5733,198 @@ export function initReefScene3D(canvas) {
     if (cards) showPackReveal(cards);
   });
 
-  // 🥚 Fish Nest & Market — incubating eggs with live timers, plus the egg shop.
-  const nestModal = buildMenuModal('🥚 Fish Nest & Market',
-    'Fish hatch from eggs warmed in the nest on the rocky outcrop. Eggs keep'
-    + ' incubating while the reef is closed. All odds published.');
+  // 🥚 Bubbles' Nest & Market — a counter screen (see buildCounter) with three
+  // shelves: the eggs warming in the nest (live countdowns, pearl speed-ups),
+  // the egg market, and the research surveys Bubbles flies. Fish are never
+  // bought outright here: the Market sells rarity-by-rarity eggs that hatch
+  // after a real incubation time into a random fish of the egg's tier (odds
+  // shown on the card). The Mythic Egg is the one pearl egg, and it hatches
+  // exactly the species you choose — pearls buy a choice, never a roll.
+  const BUBBLES = {
+    greet: ["Hi! The nest is warm and I'm mostly awake.", 'Welcome to the nest. Mind the eggs.',
+      'Eggs, expeditions, and me. What more could a reef need?', 'Back so soon? The eggs missed you. I assume.'],
+    eggs: {
+      common: "A Common Egg. Don't let the name fool you — every reef starts here.",
+      uncommon: 'Uncommon. A little more colour, a little more waiting.',
+      rare: 'A Rare Egg. Six minutes of suspense. I count every one.',
+      superRare: 'Super Rare. Fifteen minutes. Worth it. Usually.',
+      epic: 'An Epic Egg. Half an hour of warmth for something with real presence.',
+      legendary: 'Legendary. Forty-five minutes. The big ones take their time.',
+      mythic: 'A Mythic Egg. You choose what hatches. No surprises — I checked.',
+    },
+    incubating: ['Warm. Warmer. Almost.', 'Shh. Something in there is dreaming.', 'It wobbles more as it gets close. So do I.'],
+    nestEmpty: 'The nest is empty. Pick an egg below and I\'ll keep it warm.',
+    rush: 'Impatient? Pearls make the clock run faster. Don\'t tell the eggs.',
+    market: 'Rarity by rarity. Within a tier, the common fish come up more — just like out there.',
+    surveys: "Send me out and I'll come back with coral you've never seen. Probably.",
+    biome: {
+      coral: 'The reef. Busy, bright, full of things to record.',
+      seagrass: 'The meadows. Quiet. I like quiet.',
+      deepTwilight: 'The deep. Dark and strange and wonderful. I am the light.',
+    },
+    away: (eta, name) => `I'm out there right now — well, most of me. Charting the ${name}. Back in ${eta}.`,
+    bought: ['Nestled in. Now we wait.', 'Warm and waiting.', 'In it goes. Don\'t tap the shell.'],
+    noBE: 'Not enough bubbles. The coral will make more — they always do.',
+    noPearls: (n) => `That one needs ${n} pearls. Skip-7 sells those, if you ask nicely.`,
+    full: 'Four eggs is all the nest holds. Even I have limits.',
+    noPool: 'Nothing of that rarity swims your waters yet. New biomes stock new eggs.',
+    pickOne: 'Choose which species first. It\'s your 50 pearls.',
+    rushed: 'And… hatched! Pearls well spent. Probably.',
+    funded: (name) => `On my way! Charting the ${name}. Back with something new.`,
+    nothingLeft: "Nothing left to find there. You've recorded it all. Show-off.",
+    noPolyps: 'Surveys run on polyps. Upgrade a coral or two and come back.',
+    busy: "One expedition at a time — I've only got the one propeller.",
+  };
+  const bubblesCounter = buildCounter({
+    id: 'counter-bubbles', who: 'Bubbles · Nest & Market',
+    face: { id: '_bubbles', color: 0x8ec5e8, accentColor: 0xffd27f,
+      build: makeDrone, dir: [0.7, 0.35, 1], zoom: 1.15 },
+    balances: () => [['🫧', Math.floor(be)], ['🪸', Math.floor(polyps)], ['💎', Math.floor(pearls)]],
+  });
+  const nestShelf = bubblesCounter.shelf('Fish Nest', `${NEST_CAP} slots · eggs keep warm while the reef is closed`, BUBBLES.nestEmpty);
+  const marketShelf = bubblesCounter.shelf('Fish Market', 'rarity-by-rarity eggs · all odds shown', BUBBLES.market);
+  const surveyShelf = bubblesCounter.shelf('Research Surveys', 'Bubbles finds new coral · paid in polyps', BUBBLES.surveys);
   const eggPicks = {};   // egg type → chosen species id (Mythic Egg)
+  let nestSig = '';
   function fillNest() {
     const now = Date.now();
-    let html = '<div class="m-sec">Incubating</div>';
-    if (!nestEggs.length) html += '<div class="m-sub">The nest is empty — pick an egg below.</div>';
-    nestEggs.map((egg, i) => ({ egg, i }))
-      .sort((a, b) => a.egg.at - b.egg.at)
-      .forEach(({ egg, i }) => {
+    // Nest shelf: rebuilt when the eggs change, otherwise ticked in place so a
+    // countdown never yanks the focus around.
+    const sig = nestEggs.map(e => `${e.t}@${e.at}`).join('|');
+    if (sig !== nestSig) {
+      nestSig = sig;
+      bubblesCounter.clearShelf(nestShelf);
+      nestShelf.el.querySelector('small').textContent = `${nestEggs.length}/${NEST_CAP} slots · eggs keep warm while the reef is closed`;
+      nestEggs.map((egg, i) => ({ egg, i })).sort((a, b) => a.egg.at - b.egg.at).forEach(({ egg, i }) => {
         const et = EGG_TYPES[egg.t] ?? EGG_TYPES.common;
-        const rc = eggRushCost(egg);
-        const rush = `⏩ ${rc.pearls} 💎`;
-        html += `<div class="m-row" style="border:none;padding-bottom:2px">`
-          + `<span class="dot" style="background:${hex(et.color)}"></span>`
-          + `<span>${et.name}</span><small>🐣 in ${fmtMs(egg.at - now)}</small>`
-          + `<button class="pack-open-btn" data-speed="${i}" style="margin-left:8px">${rush}</button>`
-          + '</div>'
-          + bar(et.ms - (egg.at - now), et.ms);
+        const prog = document.createElement('div'); prog.className = 'm-bar'; prog.innerHTML = '<span></span>';
+        const it = bubblesCounter.card(nestShelf, { key: `nest${i}`, color: et.color, name: et.name,
+          say: pickLine(BUBBLES.incubating), sub: '', extra: prog,
+          buttons: [{ label: '', onClick: () => { speedUpEgg(i); bubblesCounter.say(BUBBLES.rushed); fillNest(); } }] });
+        it.egg = egg; it.prog = prog.firstChild;
       });
-    html += '<div class="m-sub">Speed-up costs pearls — 1 💎 per 4 minutes remaining,'
-      + ' shrinking as the clock runs. Within a tier, odds follow real-ocean abundance'
-      + ' — chromis outnumber whale sharks out there, and in here too.</div>';
-    html += `<div class="m-sec">Market — fish eggs · ${nestEggs.length}/${NEST_CAP} nest slots used</div>`;
-    for (const [id, et] of Object.entries(EGG_TYPES)) {
+    }
+    for (const it of nestShelf.cards) {
+      const et = EGG_TYPES[it.egg.t] ?? EGG_TYPES.common;
+      const left = it.egg.at - now;
+      it.subEl.textContent = `🐣 in ${fmtMs(left)}`;
+      it.prog.style.width = `${clamp(((et.ms - left) / et.ms) * 100, 0, 100)}%`;
+      it.prog.className = left <= 0 ? 'full' : '';
+      it.buttons[0].textContent = `⏩ ${eggRushCost(it.egg).pearls} 💎`;
+    }
+    // Market shelf: built once, refreshed in place (pools change with levels).
+    const full = nestEggs.length >= NEST_CAP;
+    if (!marketShelf.cards.length) {
+      for (const [id, et] of Object.entries(EGG_TYPES)) {
+        let extra = null;
+        if (et.choose) {
+          extra = document.createElement('select'); extra.className = 'egg-pick';
+          extra.onchange = () => { eggPicks[id] = extra.value; };
+          extra.onclick = (e) => e.stopPropagation();
+        }
+        const it = bubblesCounter.card(marketShelf, { key: id, color: et.color, name: et.name,
+          tag: TIER_LABEL[et.tier] ?? et.tier, tagColor: hex(COLORS[`tier_${et.tier}`] ?? 0xb0bec5),
+          say: BUBBLES.eggs[id], sub: '', extra,
+          buttons: [{ label: '', onClick: () => {
+            if (!eggBuyable(id)) { bubblesCounter.say(BUBBLES.noPool); return; }
+            if (nestEggs.length >= NEST_CAP) { bubblesCounter.say(BUBBLES.full); return; }
+            if (et.be && be < et.be) { bubblesCounter.say(BUBBLES.noBE); return; }
+            if (et.pearls && pearls < et.pearls) { bubblesCounter.say(BUBBLES.noPearls(et.pearls)); return; }
+            const want = et.choose ? (eggPicks[id] ?? extra?.value) : undefined;
+            if (et.choose && !want) { bubblesCounter.say(BUBBLES.pickOne); return; }
+            const before = nestEggs.length;
+            buyEgg(id, want);
+            if (nestEggs.length > before) {
+              hudGain(et.be ? 'be' : 'pearls', -(et.be ?? et.pearls));
+              bubblesCounter.say(pickLine(BUBBLES.bought));
+            }
+            fillNest();
+          } }] });
+        it.et = et; it.pick = extra;
+      }
+    }
+    for (const it of marketShelf.cards) {
+      const { et, key: id } = it;
       const buyable = eggBuyable(id);
       const pool = packFishPool(et.tier);
       const odds = et.choose
         ? `hatches the ${TIER_LABEL[et.tier]} you choose — no roll (${pool.length} to pick from)`
         : `hatches 1 of ${pool.length} ${TIER_LABEL[et.tier]} fish, wild-abundance odds`;
-      const full = nestEggs.length >= NEST_CAP;
-      html += `<div class="m-row${buyable ? '' : ' locked'}">`
-        + `<span class="dot" style="background:${hex(et.color)}"></span>`
-        + `<span><b>${et.name}</b><br><span style="font-size:10.5px;color:#9fc4dc">`
-        + `${fmtMs(et.ms)} incubation · `
-        + (buyable ? odds : 'no species in your unlocked biomes yet — new biomes stock this egg')
-        + '</span>'
-        + (et.choose && buyable
-          ? `<br><select class="egg-pick" data-egg-pick="${id}" style="margin-top:4px">`
-            + pool.map(s => `<option value="${s.id}"${eggPicks[id] === s.id ? ' selected' : ''}>${s.name}</option>`).join('')
-            + '</select>'
-          : '')
-        + '</span>'
-        + `<button class="pack-open-btn" data-egg="${id}"`
-        + `${full || !buyable ? ' disabled' : ''}>`
-        + `${et.be ? `${et.be} 🫧` : `${et.pearls} 💎`}</button></div>`;
+      it.subEl.textContent = `${fmtMs(et.ms)} incubation · `
+        + (buyable ? odds : 'no species in your unlocked biomes yet — new biomes stock this egg');
+      it.card.classList.toggle('locked', !buyable);
+      it.buttons[0].textContent = et.be ? `🫧 ${et.be}` : `💎 ${et.pearls}`;
+      it.buttons[0].disabled = full || !buyable;
+      if (it.pick) {
+        const ids = pool.map(s => s.id).join(',');
+        if (it.pick.dataset.ids !== ids) {
+          it.pick.dataset.ids = ids;
+          it.pick.innerHTML = pool.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+          if (eggPicks[id] && pool.some(s => s.id === eggPicks[id])) it.pick.value = eggPicks[id];
+        }
+        it.pick.style.display = buyable ? '' : 'none';
+      }
     }
-    html += '<div class="m-sub" style="margin-top:8px">You can also tap the nest itself,'
-      + ' on the rocky outcrop south-east of the reef.</div>';
-    nestModal.body.innerHTML = html;
+    fillSurveys();
   }
-  // The modal re-renders every second for its countdowns; the chosen species
-  // lives here so that re-render can't silently snap the picker back to the
-  // first option (which would hatch the wrong fish for 50 💎).
-  nestModal.body.addEventListener('change', (e) => {
-    const sel = e.target.closest('select[data-egg-pick]');
-    if (sel) eggPicks[sel.dataset.eggPick] = sel.value;
-  });
-  nestModal.body.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-egg], button[data-speed]');
-    if (!b || b.disabled) return;
-    if (b.dataset.speed !== undefined) speedUpEgg(Number(b.dataset.speed));
-    else {
-      const pick = nestModal.body.querySelector(`select[data-egg-pick="${b.dataset.egg}"]`);
-      const want = eggPicks[b.dataset.egg];
-      const stillOffered = [...(pick?.options ?? [])].some(o => o.value === want);
-      buyEgg(b.dataset.egg, stillOffered ? want : pick?.value);
+  let surveySig = '';
+  function fillSurveys() {
+    const sig = survey ? `away:${survey.b}:${survey.at}` : 'home:' + ['coral', 'seagrass', 'deepTwilight'].filter(zoneUnlocked).join(',');
+    if (sig !== surveySig) {
+      surveySig = sig;
+      bubblesCounter.clearShelf(surveyShelf);
+      if (survey) {
+        const bio = BIOMES[survey.b];
+        const it = bubblesCounter.card(surveyShelf, { key: 'away', icon: bio.icon,
+          name: `${SURVEY_TIERS[survey.d ?? 0].name} · ${bio.shortName}`, sub: '',
+          say: BUBBLES.away(fmtMs(survey.at - Date.now()), bio.name) });
+        it.away = true;
+      } else {
+        for (const zid of ['coral', 'seagrass', 'deepTwilight']) {
+          if (!zoneUnlocked(zid)) continue;
+          const bio = BIOMES[zid];
+          const it = bubblesCounter.card(surveyShelf, { key: zid, icon: bio.icon,
+            name: bio.shortName, say: BUBBLES.biome[zid], sub: '',
+            buttons: SURVEY_TIERS.map((st, i) => ({ label: `${st.name} · ${st.min}m · ${st.cost} 🪸`, onClick: () => {
+              if (survey) { bubblesCounter.say(BUBBLES.busy); return; }
+              if (!discoverableCorals(zid).length) { bubblesCounter.say(BUBBLES.nothingLeft); return; }
+              if (polyps < st.cost) { bubblesCounter.say(BUBBLES.noPolyps); return; }
+              polyps -= st.cost;
+              hudGain('polyps', -st.cost);
+              survey = { b: zid, at: Date.now() + st.min * 60e3, d: i, cost: st.cost };
+              droneQueue.push(`🔬 ${st.name} funded. Charting the ${bio.name} — back with something new.`);
+              bubblesCounter.say(BUBBLES.funded(bio.name));
+              refreshHud(); save(); fillSurveys();
+            } })) });
+          it.zid = zid;
+        }
+        const note = document.createElement('div'); note.className = 'ct-note';
+        note.textContent = 'One survey at a time. 90% the find is from the surveyed biome — longer expeditions'
+          + ' and higher reef levels reach rarer species — and 5% each it’s a drifter from another biome.'
+          + ' Every find comes home as a free placement.';
+        surveyShelf.grid.insertAdjacentElement('afterend', note);
+        surveyShelf.note = note;
+      }
     }
+    for (const it of surveyShelf.cards) {
+      if (it.away) { it.subEl.textContent = `returns in ${fmtMs(survey.at - Date.now())}`; continue; }
+      const left = discoverableCorals(it.zid).length;
+      it.subEl.textContent = `${left} species unrecorded`;
+      it.buttons.forEach((b, i) => { b.disabled = !left || polyps < SURVEY_TIERS[i].cost; });
+    }
+    bubblesCounter.refreshBal();
+  }
+  function openNest() {
     fillNest();
-  });
+    bubblesCounter.show(pickLine(BUBBLES.greet));
+  }
 
   const menuEl = document.getElementById('menu3d');
   if (menuEl) {
     [['📖 Ocean Journal', journal, () => { tutNote('journal'); fillJournal(); }],
      ['🏆', achModal, fillAch],
      ['🎁', packModal, fillPack],
-     ['🥚', nestModal, fillNest],
+     ['🥚', { show: openNest }, () => {}],
      ['📅 Daily', daily, fillDaily],
      ['🎉 Event', eventModal, fillEvent],
      ['⚖ Advisor', advisor, fillAdvisor],
@@ -6268,7 +6394,7 @@ export function initReefScene3D(canvas) {
     skip7.lookAt(ZONES.coral.cx, y, ZONES.coral.cz);
   }
   scene.add(skip7);
-  if (window.__rb3d) window.__rb3d.skip7 = skip7;
+  if (window.__rb3d) Object.assign(window.__rb3d, { skip7, outcrop });
 
   // Speak positions hover over the home reef, where the camera usually looks.
   const SPEAK_POS = [
@@ -6687,7 +6813,7 @@ export function initReefScene3D(canvas) {
     // Tap Skip-7 or his counter to open the Pearl Market.
     if (castAll([skip7], true)) { openCounter(); return; }
     // Tap the outcrop — nest, market stall, or rocks — to open Nest & Market.
-    if (castAll([outcrop], true)) { fillNest(); nestModal.show(); return; }
+    if (castAll([outcrop], true)) { openNest(); return; }
     // Tap a station or placed coral for its upgrade menu — before placement.
     const stHit = castAll(stationGroups, true);
     if (stHit) {
@@ -6948,10 +7074,7 @@ export function initReefScene3D(canvas) {
           }
         }
       }
-      const eta = document.getElementById('survey-eta');
-      if (eta && survey) eta.textContent = fmtMs(survey.at - Date.now());
-      if (nestModal.ov.style.display === 'flex'
-        && !document.activeElement?.matches?.('select[data-egg-pick]')) fillNest();   // live countdowns
+      if (bubblesCounter.open) fillNest();   // live countdowns, ticked in place
       music.setNight(nightFactor);
     }
     // Eggs wobble harder as hatch time closes in.

@@ -282,16 +282,16 @@
       flex: none; margin-left: 4px; font-size: 11px; font-weight: 600; color: #7fd8ff;
       white-space: nowrap;
     }
-    /* 🤖 Skip-7's Pearl Market — a full-screen counter. The top band (his
-       portrait, speech bubble, pearl balance) stays put; the catalog scrolls
-       beneath it as shelves of glass tanks, and the bubble changes as each
-       specimen scrolls into view. Bubbles' Nest & Market reuse this styling. */
-    #counter {
+    /* Counter screens — Skip-7's Pearl Market and Bubbles' Nest & Market. The
+       top band (portrait, speech bubble, balances) stays put; the catalog
+       scrolls beneath it as shelves of glass tanks, and the bubble changes as
+       each card scrolls into view. */
+    .counter {
       position: fixed; inset: 0; z-index: 6; display: none; flex-direction: column;
       color: #eaf6ff; overscroll-behavior: contain;
       background: linear-gradient(180deg, #0a2a44 0%, #071e33 45%, #04141f 100%);
     }
-    #counter.open { display: flex; }
+    .counter.open { display: flex; }
     .ct-top {
       flex: none; position: relative; display: flex; align-items: flex-end; gap: 12px;
       padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 0 14px;
@@ -332,9 +332,21 @@
       padding: 6px 12px; border-radius: 9px; -webkit-tap-highlight-color: transparent;
     }
     .ct-bal {
-      font-size: 14px; font-weight: 700; color: #ffe9b0;
-      background: rgba(0,0,0,0.35); border-radius: 9px; padding: 5px 10px;
+      display: flex; gap: 10px; font-size: 14px; font-weight: 700; color: #ffe9b0;
+      background: rgba(0,0,0,0.35); border-radius: 9px; padding: 5px 10px; white-space: nowrap;
     }
+    .ct-disc { position: relative; display: grid; place-items: center; }
+    .ct-disc span {
+      position: absolute; width: 46px; height: 56px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+      box-shadow: inset -6px -8px 12px rgba(0,0,0,0.35), inset 4px 6px 10px rgba(255,255,255,0.35);
+    }
+    .ct-disc em { position: relative; font-style: normal; font-size: 30px; line-height: 1; }
+    .ct-disc.plain span { display: none; }
+    .ct-disc.plain em { font-size: 42px; }
+    .ct-sub { font-size: 10.5px; color: #9fc4dc; text-align: center; line-height: 1.3; }
+    .ct-item .m-bar { width: 100%; margin: 2px 0 0; }
+    .ct-item .egg-pick { max-width: 100%; margin-top: 2px; }
+    .ct-item .ct-buy + .ct-buy { margin-top: 0; }
     .ct-body {
       flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch;
       padding: 22px 14px calc(30px + env(safe-area-inset-bottom, 0px));
