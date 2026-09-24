@@ -287,6 +287,22 @@
       letter-spacing: 0.5px;
     }
     .sp-version-link:hover { color: #fff; text-decoration: underline; }
+    /* App Store badge — the standard black badge, drawn inline so it never
+       depends on an image request. Sits quietly under the play buttons. */
+    .app-store-badge {
+      display: inline-flex; align-items: center; gap: 9px;
+      margin-top: 22px; padding: 9px 16px 9px 13px;
+      background: #000; color: #fff; border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 10px; text-decoration: none; line-height: 1.05;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .app-store-badge:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,0,0,0.45); }
+    .app-store-badge svg { width: 24px; height: 24px; flex: none; }
+    .app-store-badge .asb-text { display: flex; flex-direction: column; text-align: left; }
+    .app-store-badge .asb-small { font-size: 10px; letter-spacing: 0.3px; opacity: 0.9; }
+    .app-store-badge .asb-big { font-size: 18px; font-weight: 600; letter-spacing: -0.2px; }
+    .app-store-note { display: block; margin-top: 8px; font-size: 12px; color: rgba(210,235,255,0.6); letter-spacing: 0.4px; }
 
     /* Persistent build-version badge (start page + in-game) */
     #version-badge {
@@ -749,7 +765,11 @@
         <button class="sp-btn" id="start-btn">Play Classic</button>
         <a class="sp-btn" id="play-3d-btn" href="/threed.html"
            style="display:inline-block;text-decoration:none;margin-top:14px;background:#0a3050;color:#cfe6f4;box-shadow:0 4px 32px rgba(0,60,120,0.5);">Play 3D ✨</a>
-        <a class="sp-version-link" id="sp-version-link" href="/mobile/">📱 Phone version</a>
+        <div><a class="app-store-badge" href="https://apps.apple.com/app/id6809200807" aria-label="Download Reef Bloom on the App Store">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.7c-.02-2.14 1.75-3.17 1.83-3.22-1-1.46-2.55-1.66-3.1-1.68-1.32-.13-2.58.78-3.25.78-.67 0-1.7-.76-2.8-.74-1.44.02-2.77.84-3.51 2.13-1.5 2.6-.38 6.45 1.08 8.56.71 1.03 1.56 2.19 2.67 2.15 1.07-.04 1.48-.7 2.78-.7 1.29 0 1.66.7 2.8.68 1.15-.02 1.88-1.05 2.58-2.09.81-1.2 1.15-2.36 1.17-2.42-.03-.01-2.24-.86-2.25-3.45zM14.24 6.4c.59-.72.99-1.71.88-2.7-.85.03-1.88.57-2.49 1.28-.55.63-1.03 1.65-.9 2.62.95.07 1.92-.48 2.51-1.2z"/></svg>
+          <span class="asb-text"><span class="asb-small">Download on the</span><span class="asb-big">App Store</span></span>
+        </a></div>
+        <a class="sp-version-link" id="sp-version-link" href="/mobile/" style="margin-top:12px">📱 Or play the phone version in your browser</a>
       </div>
       <div class="sp-scroll-hint">Scroll to learn more ↓</div>
     </div>
@@ -786,7 +806,7 @@
           <li><strong>Seasonal events</strong> — limited-time events with exclusive species, daily quests, and collectible clams</li>
           <li><strong>Three save slots</strong> — keep multiple reefs going at once, each with its own progress and biomes</li>
           <li><strong>No accounts required</strong> — your data stays in your browser via localStorage. Nothing is sent to any server</li>
-          <li><strong>Works on desktop and tablet</strong> — landscape-oriented design built with PixiJS for smooth, responsive gameplay</li>
+          <li><strong>Works everywhere</strong> — in the browser on desktop and tablet, or as a native app on iPad and iPhone from the App Store</li>
         </ul>
       </div>
 
@@ -794,6 +814,10 @@
 
       <div class="landing-section">
         <h2>What's New</h2>
+        <div class="update-card">
+          <div class="update-date">September 2026</div>
+          <p>Reef Bloom is on the App Store. The 3D reef is now a free iPad and iPhone app, rated 4+, with a fall festival — Golden Kelp Harvest — running through October 12. Seasonal events now return every year. <a href="/newsletter/issue-18.html" style="color:rgba(140,210,255,0.9);">Read the launch issue →</a></p>
+        </div>
         <div class="update-card">
           <div class="update-date">April 2026</div>
           <p>Seasonal events are here — limited-time events with exclusive species and event passes. Collect clams, complete daily quests, and unlock rare creatures before time runs out.</p>
@@ -815,6 +839,10 @@
         <button class="sp-btn" onclick="document.getElementById('start-btn').click()">Play Classic</button>
         <a class="sp-btn" href="/threed.html"
            style="display:inline-block;text-decoration:none;background:#0a3050;color:#cfe6f4;">Play 3D ✨</a>
+        <div style="width:100%"><a class="app-store-badge" href="https://apps.apple.com/app/id6809200807" aria-label="Download Reef Bloom on the App Store">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.7c-.02-2.14 1.75-3.17 1.83-3.22-1-1.46-2.55-1.66-3.1-1.68-1.32-.13-2.58.78-3.25.78-.67 0-1.7-.76-2.8-.74-1.44.02-2.77.84-3.51 2.13-1.5 2.6-.38 6.45 1.08 8.56.71 1.03 1.56 2.19 2.67 2.15 1.07-.04 1.48-.7 2.78-.7 1.29 0 1.66.7 2.8.68 1.15-.02 1.88-1.05 2.58-2.09.81-1.2 1.15-2.36 1.17-2.42-.03-.01-2.24-.86-2.25-3.45zM14.24 6.4c.59-.72.99-1.71.88-2.7-.85.03-1.88.57-2.49 1.28-.55.63-1.03 1.65-.9 2.62.95.07 1.92-.48 2.51-1.2z"/></svg>
+          <span class="asb-text"><span class="asb-small">Download on the</span><span class="asb-big">App Store</span></span>
+        </a></div>
       </div>
     </div>
 
