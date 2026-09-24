@@ -287,26 +287,36 @@
        scrolls beneath it as shelves of glass tanks, and the bubble changes as
        each card scrolls into view. */
     .counter {
+      --wood: #8d6240; --wood-dk: #5b3a26; --wood-lt: #b48457; --tag: #f4e7c8; --lamp: #ffd27f;
       position: fixed; inset: 0; z-index: 6; display: none; flex-direction: column;
       color: #eaf6ff; overscroll-behavior: contain;
-      background: linear-gradient(180deg, #0a2a44 0%, #071e33 45%, #04141f 100%);
+      /* the shop's back wall: vertical teak-dark planks under warm lamplight */
+      background:
+        radial-gradient(60% 40% at 25% 0%, rgba(255,210,127,0.22), transparent 70%),
+        radial-gradient(60% 40% at 75% 0%, rgba(255,210,127,0.22), transparent 70%),
+        repeating-linear-gradient(90deg, #163a52 0 68px, #12314a 68px 72px, #183e58 72px 140px, #10293e 140px 144px),
+        #12314a;
     }
     .counter.open { display: flex; }
+    /* The counter you stand at: the character behind a thick wooden countertop. */
     .ct-top {
       flex: none; position: relative; display: flex; align-items: flex-end; gap: 12px;
       padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 0 14px;
-      background: linear-gradient(180deg, rgba(4,18,30,0.96), rgba(8,40,62,0.92));
-      border-bottom: 3px solid #6b4630; box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      background: linear-gradient(180deg, rgba(3,14,24,0.92), rgba(9,38,58,0.78));
+      border-bottom: 4px solid var(--wood-dk); box-shadow: 0 8px 22px rgba(0,0,0,0.5);
     }
-    .ct-top::after {   /* the counter's wooden lip */
-      content: ""; position: absolute; left: 0; right: 0; bottom: -10px; height: 8px;
-      background: linear-gradient(180deg, #8d6240, #5b3a26); box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+    .ct-top::after {   /* the countertop: planked, with a front edge */
+      content: ""; position: absolute; left: 0; right: 0; bottom: -18px; height: 16px; z-index: 1;
+      background:
+        repeating-linear-gradient(90deg, transparent 0 118px, rgba(0,0,0,0.22) 118px 121px),
+        linear-gradient(180deg, var(--wood-lt), var(--wood) 45%, var(--wood-dk));
+      box-shadow: 0 4px 8px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25);
     }
     .ct-face {
-      width: 84px; height: 84px; flex: none; margin-bottom: 10px; border-radius: 16px;
+      width: 84px; height: 84px; flex: none; margin-bottom: 10px; border-radius: 14px;
       background: radial-gradient(circle at 40% 30%, #1a4d6c, #0a2438 78%);
-      border: 1px solid rgba(127,216,255,0.35); object-fit: cover;
-      box-shadow: 0 0 18px rgba(127,232,255,0.18);
+      border: 3px solid var(--wood-dk); object-fit: cover;
+      box-shadow: 0 0 18px rgba(255,210,127,0.18), 0 4px 10px rgba(0,0,0,0.4);
     }
     .ct-bubble {
       position: relative; flex: 1 1 auto; min-width: 0; margin-bottom: 18px;
@@ -322,8 +332,8 @@
     }
     .ct-bubble .ct-who {
       position: absolute; left: 12px; top: -9px; font-size: 9.5px; letter-spacing: 2px;
-      text-transform: uppercase; color: #7fd8ff; background: #071e33; padding: 0 6px;
-      border-radius: 6px;
+      text-transform: uppercase; color: #ffe9b0; background: var(--wood-dk); padding: 1px 7px;
+      border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
     }
     .ct-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-bottom: 14px; }
     .ct-close {
@@ -331,9 +341,83 @@
       background: rgba(0,0,0,0.35); border: 1px solid rgba(127,216,255,0.3);
       padding: 6px 12px; border-radius: 9px; -webkit-tap-highlight-color: transparent;
     }
-    .ct-bal {
+    .ct-bal {   /* the till: a little chalkboard of balances */
       display: flex; gap: 10px; font-size: 14px; font-weight: 700; color: #ffe9b0;
-      background: rgba(0,0,0,0.35); border-radius: 9px; padding: 5px 10px; white-space: nowrap;
+      background: #0b1d2b; border: 2px solid var(--wood-dk); border-radius: 6px; padding: 4px 10px;
+      white-space: nowrap; box-shadow: inset 0 0 12px rgba(0,0,0,0.6);
+    }
+    .ct-body {
+      flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative;
+      padding: 34px 18px 0;
+      scrollbar-width: thin; scrollbar-color: var(--wood-dk) transparent;
+    }
+    .ct-body::after {   /* the shop floor: horizontal boards, with a skirting shadow */
+      content: ""; display: block; height: 64px; margin: 28px -18px 0;
+      background:
+        repeating-linear-gradient(180deg, transparent 0 14px, rgba(0,0,0,0.28) 14px 16px),
+        repeating-linear-gradient(90deg, transparent 0 160px, rgba(0,0,0,0.18) 160px 163px),
+        linear-gradient(180deg, #6b4630, #4a2e1d);
+      box-shadow: inset 0 14px 18px rgba(0,0,0,0.5);
+    }
+    /* A hanging sign for each section: a wooden board on two cords. */
+    .ct-shelf {
+      position: relative; display: flex; align-items: baseline; gap: 10px; width: fit-content;
+      max-width: 100%; margin: 34px auto 26px; padding: 6px 18px;
+      background: linear-gradient(180deg, var(--wood-lt), var(--wood) 60%, var(--wood-dk));
+      border: 2px solid var(--wood-dk); border-radius: 6px;
+      box-shadow: 0 5px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.3);
+      font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #2b1a10; font-weight: 800;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.25);
+    }
+    .ct-shelf::before, .ct-shelf::after {
+      content: ""; position: absolute; top: -30px; width: 2px; height: 30px;
+      background: linear-gradient(#0a1c28, #c9a97a); opacity: 0.85;
+    }
+    .ct-shelf::before { left: 16px; }
+    .ct-shelf::after { right: 16px; }
+    .ct-shelf:first-child { margin-top: 6px; }
+    .ct-shelf small { letter-spacing: 0; text-transform: none; color: #4a2e1d; font-size: 11px; font-weight: 600; }
+    /* The shelves: every card carries the stretch of plank beneath it, sized
+       to overlap its neighbours, so each row of cards reads as one shelf and
+       rows can be any height. */
+    .ct-grid {
+      --plank: 16px;
+      position: relative; display: grid; align-items: end;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 30px 10px;
+      max-width: 760px; margin: 0 auto; padding: 0 8px var(--plank);
+    }
+    .ct-item::after {
+      content: ""; position: absolute; left: -9px; right: -9px; bottom: calc(-4px - var(--plank)); height: var(--plank);
+      z-index: -1; border-radius: 2px;
+      background: linear-gradient(180deg, var(--wood-lt), var(--wood) 40%, var(--wood-dk));
+      box-shadow: 0 6px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+    }
+    .ct-item:first-child::after { left: -4px; border-radius: 3px 2px 2px 3px; }
+    .ct-item:last-child::after { right: -4px; border-radius: 2px 3px 3px 2px; }
+    .ct-grid:empty { display: none; }
+    /* Cards are glass display cases in wooden frames, standing on the plank. */
+    .ct-item {
+      position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; gap: 5px;
+      padding: 10px 8px 9px; border-radius: 10px 10px 3px 3px; cursor: pointer;
+      background:
+        linear-gradient(180deg, rgba(150,220,255,0.16), rgba(60,140,190,0.10) 35%, rgba(6,28,46,0.72));
+      border: 3px solid var(--wood-dk); border-bottom-width: 4px;
+      box-shadow: inset 0 0 0 1px rgba(191,230,255,0.25), inset 0 18px 24px rgba(255,255,255,0.05),
+        0 6px 10px rgba(0,0,0,0.35);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ct-item.focus {
+      border-color: var(--wood-lt);
+      box-shadow: inset 0 0 0 1px rgba(255,233,176,0.5), 0 0 22px rgba(255,210,127,0.35), 0 6px 10px rgba(0,0,0,0.35);
+    }
+    .ct-item.locked { opacity: 0.55; }
+    .ct-tank {
+      width: 88px; height: 88px; border-radius: 8px; object-fit: cover; display: block;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.22), transparent 30%),
+        radial-gradient(circle at 45% 30%, rgba(120,210,240,0.35), rgba(10,36,56,0.9) 75%);
+      border: 2px solid rgba(191,230,255,0.4); box-shadow: inset 0 0 14px rgba(191,230,255,0.25);
     }
     .ct-disc { position: relative; display: grid; place-items: center; }
     .ct-disc span {
@@ -343,61 +427,57 @@
     .ct-disc em { position: relative; font-style: normal; font-size: 30px; line-height: 1; }
     .ct-disc.plain span { display: none; }
     .ct-disc.plain em { font-size: 42px; }
+    .ct-name { font-size: 13px; font-weight: 700; text-align: center; line-height: 1.2; }
+    .ct-tier { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; }
     .ct-sub { font-size: 10.5px; color: #9fc4dc; text-align: center; line-height: 1.3; }
     .ct-item .m-bar { width: 100%; margin: 2px 0 0; }
     .ct-item .egg-pick { max-width: 100%; margin-top: 2px; }
-    .ct-item .ct-buy + .ct-buy { margin-top: 0; }
-    .ct-body {
-      flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch;
-      padding: 22px 14px calc(30px + env(safe-area-inset-bottom, 0px));
-      scrollbar-width: thin; scrollbar-color: #2f6f92 transparent;
-    }
-    .ct-shelf {
-      display: flex; align-items: baseline; gap: 10px; margin: 16px 0 10px;
-      padding-bottom: 5px; border-bottom: 2px solid #6b4630;
-      font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #d9b48a;
-    }
-    .ct-shelf:first-child { margin-top: 0; }
-    .ct-shelf small { letter-spacing: 0; text-transform: none; color: #9fc4dc; font-size: 11px; }
-    .ct-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;
-      max-width: 760px; margin: 0 auto;
-    }
-    .ct-item {
-      position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px;
-      padding: 10px 8px 9px; border-radius: 14px; cursor: pointer;
-      background: linear-gradient(180deg, rgba(20,70,104,0.55), rgba(8,32,52,0.7));
-      border: 1px solid rgba(47,111,146,0.6); transition: border-color 0.15s ease, transform 0.15s ease;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .ct-item.focus { border-color: #7fd8ff; box-shadow: 0 0 0 1px rgba(127,216,255,0.35), 0 0 16px rgba(127,216,255,0.15); }
-    .ct-item.locked { opacity: 0.55; }
-    .ct-tank {
-      width: 88px; height: 88px; border-radius: 10px; object-fit: cover; display: block;
-      background: radial-gradient(circle at 45% 30%, rgba(120,210,240,0.35), rgba(10,36,56,0.9) 75%);
-      border: 2px solid rgba(191,230,255,0.45); box-shadow: inset 0 0 14px rgba(191,230,255,0.25);
-    }
-    .ct-name { font-size: 13px; font-weight: 700; text-align: center; line-height: 1.2; }
-    .ct-tier { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; }
+    /* Price tags: cream card stock on a string. */
     .ct-buy {
-      font: inherit; font-size: 13px; font-weight: 700; color: #0a2438; cursor: pointer;
-      background: #ffe9b0; border: none; border-radius: 9px; padding: 6px 14px; margin-top: 2px;
+      position: relative; font: inherit; font-size: 13px; font-weight: 700; color: #2b1a10; cursor: pointer;
+      background: var(--tag); border: 1px solid #c9b48a; border-radius: 4px 10px 10px 4px; padding: 6px 14px 6px 18px;
+      margin-top: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.35);
       -webkit-tap-highlight-color: transparent;
     }
-    .ct-buy:disabled { background: rgba(255,233,176,0.25); color: #9fc4dc; cursor: default; }
-    .ct-item.locked .ct-buy { background: rgba(0,0,0,0.3); color: #9fc4dc; }
-    .ct-packs { max-width: 420px; margin: 0 auto; }
-    .ct-packs .shop-pack { background: rgba(20,70,104,0.55); }
-    .ct-note { font-size: 12px; color: #9fc4dc; text-align: center; margin: 8px auto 0; max-width: 420px; }
-    .ct-note a { color: #7fd8ff; }
+    .ct-buy::before {   /* the punched hole */
+      content: ""; position: absolute; left: 6px; top: 50%; width: 6px; height: 6px; margin-top: -3px;
+      border-radius: 50%; background: #0b1d2b; box-shadow: inset 0 1px 1px rgba(0,0,0,0.6);
+    }
+    .ct-buy:disabled { background: rgba(244,231,200,0.28); color: #9fc4dc; border-color: transparent; cursor: default; box-shadow: none; }
+    .ct-item.locked .ct-buy { background: rgba(0,0,0,0.3); color: #9fc4dc; border-color: transparent; }
+    .ct-item .ct-buy + .ct-buy { margin-top: 0; }
+    /* Pearl packs: jars lined up on a shelf. */
+    .ct-packs { position: relative; max-width: 420px; margin: 0 auto; padding: 0 8px 18px; }
+    .ct-packs::after {
+      content: ""; position: absolute; left: -4px; right: -4px; bottom: 0; height: 16px;
+      background: linear-gradient(180deg, var(--wood-lt), var(--wood) 40%, var(--wood-dk));
+      border-radius: 3px; box-shadow: 0 6px 10px rgba(0,0,0,0.5), 0 -1px 0 rgba(255,255,255,0.25);
+    }
+    .ct-packs:empty { display: none; }
+    .ct-packs .shop-pack {
+      position: relative; z-index: 1; margin: 0 0 8px; border-radius: 10px 10px 3px 3px;
+      background: linear-gradient(180deg, rgba(150,220,255,0.16), rgba(6,28,46,0.72));
+      border: 3px solid var(--wood-dk); box-shadow: inset 0 0 0 1px rgba(191,230,255,0.25), 0 6px 10px rgba(0,0,0,0.35);
+      font-weight: 700;
+    }
+    .ct-packs .shop-pack span:last-child {
+      background: var(--tag); color: #2b1a10; border-radius: 4px 10px 10px 4px; padding: 2px 10px 2px 12px;
+      font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+    }
+    .ct-packs .shop-pack:hover { background: linear-gradient(180deg, rgba(150,220,255,0.26), rgba(6,28,46,0.72)); }
+    .ct-note { font-size: 12px; color: #cfe6f4; text-align: center; margin: 10px auto 0; max-width: 420px; }
+    .ct-note a { color: #ffe9b0; }
     .ct-link {
       display: block; margin: 10px auto 0; background: none; border: none; cursor: pointer;
-      font: inherit; font-size: 12px; color: #7fd8ff; text-decoration: underline;
+      font: inherit; font-size: 12px; color: #ffe9b0; text-decoration: underline;
     }
     @media (max-width: 600px) {
       .ct-face { width: 64px; height: 64px; }
       .ct-bubble { font-size: 13px; }
-      .ct-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+      .ct-body { padding: 30px 12px 0; }
+      .ct-body::after { margin: 24px -12px 0; height: 48px; }
+      .ct-shelf { margin: 30px auto 22px; padding: 5px 12px; font-size: 11px; letter-spacing: 2px; }
+      .ct-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px 8px; }
       .ct-tank { width: 76px; height: 76px; }
     }
     #version-badge-3d {
