@@ -30,6 +30,7 @@ import {
   PEARL_PACKS, isNative as iapIsNative, loadProducts as iapLoadProducts, purchase as iapPurchase,
   startTransactionListener as iapStartListener, takePendingPearls as iapTakePending,
   cachedProducts as iapCachedProducts, resetProducts as iapResetProducts,
+  restorePurchases as iapRestore,
 } from './iap.js';
 
 const TILE = 2;
@@ -1986,6 +1987,83 @@ function makeGull() {
 // ── Bubbles the drone — Classic's snarky reef observer, in 3D ─────────────────
 // Same silhouette language as the Pixi sprite: teal shell, pale face plate,
 // side fins, yellow sensor lens, cyan antenna bulb and thruster.
+// Skip-7 — the Pearl Market's curator. A boxy robot behind a wooden counter
+// with display tanks and a pearl tray, out on the reef's outskirts. He never
+// leaves the counter; his one arm gestures at the merchandise. Faces +z.
+function makeSkip7() {
+  const g = new THREE.Group();
+  const wood = new THREE.MeshStandardMaterial({ color: 0x8d6240, roughness: 0.85 });
+  const woodDark = new THREE.MeshStandardMaterial({ color: 0x6b4630, roughness: 0.9 });
+  const shell = new THREE.MeshStandardMaterial({ color: 0x9aa7b3, roughness: 0.4, metalness: 0.35 });
+  const shellDark = new THREE.MeshStandardMaterial({ color: 0x5f6b78, roughness: 0.45, metalness: 0.3 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0xbfe6ff, roughness: 0.1, transparent: true, opacity: 0.32 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x7fe8ff, emissive: 0x7fe8ff, emissiveIntensity: 0.9, roughness: 0.2 });
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0xffe9b0, emissive: 0xffd27f, emissiveIntensity: 0.6, roughness: 0.3 });
+  const pearlMat = new THREE.MeshStandardMaterial({ color: 0xfff6f0, roughness: 0.15, metalness: 0.05 });
+  // Counter: plank top on two posts, a front panel, a shelf lip.
+  const top = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.14, 1.1), wood);
+  top.position.set(0, 1.05, 0.55); g.add(top);
+  const front = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.9, 0.08), woodDark);
+  front.position.set(0, 0.55, 1.06); g.add(front);
+  for (const sx of [-1.45, 1.45]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.0, 0.16), woodDark);
+    post.position.set(sx, 0.5, 1.0); g.add(post);
+    const lampPost = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), shellDark);
+    lampPost.position.set(sx, 1.55, 0.2); g.add(lampPost);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), lampMat);
+    lamp.position.set(sx, 2.02, 0.2); g.add(lamp);
+  }
+  // Display tanks on the counter, each with a small glowing specimen.
+  const tanks = [];
+  [[-1.0, 0x40e0d0], [0.05, 0xff8a65], [1.0, 0xffd54f]].forEach(([x, col]) => {
+    const tank = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.38, 0.4), glass);
+    tank.position.set(x, 1.31, 0.62); g.add(tank);
+    const spec = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 7),
+      new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.5, roughness: 0.4 }));
+    spec.position.set(x, 1.28, 0.62); g.add(spec); tanks.push(spec);
+  });
+  // Pearl tray.
+  const tray = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.36), woodDark);
+  tray.position.set(-0.45, 1.15, 0.2); g.add(tray);
+  for (let i = 0; i < 5; i++) {
+    const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 7), pearlMat);
+    pearl.position.set(-0.65 + (i % 3) * 0.2, 1.22, 0.1 + Math.floor(i / 3) * 0.16); g.add(pearl);
+  }
+  // Skip-7 himself: body, dome head, eyes, antenna, two arms — behind the counter.
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.6), shell);
+  body.position.set(0, 1.0, -0.35); g.add(body);
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.28, 0.06), shellDark);
+  chest.position.set(0, 1.15, -0.04); g.add(chest);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.14, 8), shellDark);
+  neck.position.set(0, 1.56, -0.35); g.add(neck);
+  const head = new THREE.Group(); head.position.set(0, 1.62, -0.35); g.add(head);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), shell);
+  dome.scale.set(1, 0.85, 1); head.add(dome);
+  const jaw = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.3, 0.16, 16), shellDark);
+  jaw.position.y = -0.06; head.add(jaw);
+  for (const sx of [-0.12, 0.12]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), eyeMat);
+    eye.position.set(sx, 0.1, 0.3); head.add(eye);
+  }
+  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.28, 6), shellDark);
+  antenna.position.set(0.18, 0.4, 0); head.add(antenna);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 7), eyeMat);
+  tip.position.set(0.18, 0.56, 0); head.add(tip);
+  const arms = [];
+  for (const sx of [-1, 1]) {
+    const arm = new THREE.Group(); arm.position.set(sx * 0.52, 1.36, -0.3); g.add(arm);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.6, 8), shellDark);
+    upper.position.y = -0.3; arm.add(upper);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 7), shell);
+    hand.position.y = -0.62; arm.add(hand);
+    arm.rotation.x = -0.35; arm.rotation.z = sx * 0.15;
+    arms.push(arm);
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData = { head, arms, tanks, eyeMat, lampMat };
+  return g;
+}
+
 function makeDrone() {
   const g = new THREE.Group();
   const shell = new THREE.MeshStandardMaterial({ color: 0x5090b8, roughness: 0.35, metalness: 0.25 });
@@ -2082,6 +2160,7 @@ export function initReefScene3D(canvas) {
   controls.target.set(0, 1.5, 0);
   controls.enableDamping = true; controls.dampingFactor = 0.06;
   controls.maxPolarAngle = Math.PI * 0.49;
+  if (import.meta.env?.DEV) window.__rb3d = { camera, controls };   // dev-only camera hook for tests
   controls.minDistance = 7; controls.maxDistance = 90;
   // Movable focal point: right-drag (or two-finger drag) pans along the
   // seafloor, arrow keys nudge it. The target is clamped to the play field.
@@ -2688,7 +2767,8 @@ export function initReefScene3D(canvas) {
   // Pack and egg pools are level- AND biome-gated: they only roll species the
   // player could meet anyway — nothing above their level, nothing homed in a
   // locked zone. Ungated tier lists remain as a never-brick fallback for eggs.
-  const tierFish = (tier) => allFish().filter(s => s.tier === tier && !s.eventId);
+  // Pearl species never roll: "so rare it can't be hatched" — they're Skip-7's.
+  const tierFish = (tier) => allFish().filter(s => s.tier === tier && !s.eventId && !s.pearlCost);
   const fishAvailable = (s) =>
     (s.unlockLevel ?? 1) <= level && zoneUnlocked(primaryBiome(s));
   const coralAvailable = (s) =>
@@ -3865,6 +3945,7 @@ export function initReefScene3D(canvas) {
     || Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock) <= 1;
 
   const rows = [];   // { btn, need }  for lock refresh
+  const pearlRows = [];   // Skip-7's corals — shown only while a voucher is banked
   let clearSel = () => { rows.forEach(r => r.btn.classList.remove('sel')); };
 
   function label(text) {
@@ -3904,6 +3985,7 @@ export function initReefScene3D(canvas) {
     paletteEl.appendChild(btn);
   }
   function refreshLocks() {
+    if (pearlRows.length) refreshPearlRows();
     for (const r of rows) {
       const free = r.spec && vouchers[r.spec.id] > 0;
       r.btn.classList.toggle('locked', r.need > level && !free);
@@ -3985,9 +4067,36 @@ export function initReefScene3D(canvas) {
   {
     label('🐟 Fish Shop — discovered species · click the water');
     fishShopLabel = paletteEl.lastChild;
-    for (const s of fishSpecs.filter(s => !s.eventId)) {
+    for (const s of fishSpecs.filter(s => !s.eventId && !s.pearlCost)) {
       button(s, 'fish');
       fishShopRows.push({ id: s.id, btn: rows[rows.length - 1].btn });
+    }
+  }
+  // Skip-7's corals: bought at the Pearl Market as a free placement, so the
+  // rows only surface while a voucher is banked — then hide again once placed.
+  let pearlLabel = null;
+  {
+    label('🤖 Pearl Market finds · click a tile');
+    pearlLabel = paletteEl.lastChild;
+    for (const s of coralSpecs.filter(s => s.pearlCost && !s.eventId)) {
+      button(s, 'coral');
+      pearlRows.push({ id: s.id, btn: rows[rows.length - 1].btn });
+    }
+  }
+  function refreshPearlRows() {
+    let any = false;
+    for (const r of pearlRows) {
+      const own = vouchers[r.id] > 0;
+      r.btn.style.display = own ? '' : 'none';
+      any = any || own;
+    }
+    if (pearlLabel) pearlLabel.style.display = any ? '' : 'none';
+    // The last voucher just went down: fall back to the default coral rather
+    // than leave a species selected that can only be bought from Skip-7.
+    if (selected.type === 'coral' && selected.spec?.pearlCost && !(vouchers[selected.spec.id] > 0)) {
+      selected = { type: 'coral', spec: coralSpecs.find(s => !s.utility && !s.pearlCost) };
+      clearSel();
+      rows.find(r => r.spec === selected.spec)?.btn.classList.add('sel');
     }
   }
   // A species row surfaces the moment an egg or a pack first reveals it.
@@ -3999,11 +4108,6 @@ export function initReefScene3D(canvas) {
       any = any || own;
     }
     if (fishShopLabel) fishShopLabel.style.display = any ? '' : 'none';
-  }
-  const pearlC = coralSpecs.filter(s => s.pearlCost);
-  if (pearlC.length) {
-    label('Pearl species · 💎');
-    pearlC.forEach(s => button(s, 'coral'));
   }
   const utilC = coralSpecs.filter(s => s.utility);
   if (utilC.length) {
@@ -4046,34 +4150,211 @@ export function initReefScene3D(canvas) {
   onProgress = () => { refreshLocks(); refreshZoneLocks(); refreshExpMarkers(); refreshFishShop(); };
   onProgress();
 
-  // ── Pearl shop ───────────────────────────────────────────────────────────────
-  // In the iOS app the packs are real StoreKit purchases (src/3d/iap.js): names
+  // ── 🤖 Skip-7's Pearl Market ─────────────────────────────────────────────────
+  // The pearl catalog is a full-screen counter: Skip-7's portrait and speech
+  // bubble stay up top while the shelves of specimens scroll beneath, and he
+  // comments on whichever one is in front of you. Pearls buy exactly what is
+  // shown — never a random roll — and the pearl packs live down here too. In
+  // the iOS app the packs are real StoreKit purchases (src/3d/iap.js): names
   // and prices come from the App Store and pearls are granted only after a
-  // verified transaction. On the website there is no store, so the rows keep
-  // the original stub behaviour.
-  const shopOverlay = document.createElement('div');
-  shopOverlay.id = 'shop-overlay';
-  const panel = document.createElement('div');
-  panel.className = 'panel';
-  panel.innerHTML = '<div style="font-size:16px;font-weight:700;">💎 Pearl Shop</div>'
-    + '<div style="font-size:11px;color:#9fc4dc;margin:4px 0 12px;">'
-    + 'Support the reef — each pack grants pearls.</div>';
+  // verified transaction. The website has no store, so it just says so.
+  const SKIP7 = {
+    greet: ['Welcome.', 'Back again?', "I've acquired a few interesting specimens.",
+      'Browse. I will wait. Waiting is most of what I do.'],
+    lines: {
+      rainbowGoby: 'All those colours in one fish. Efficient.',
+      glowfinAngelfish: 'The fins glow. I did not do that. It came like that.',
+      neonSeahorse: 'Bright. Slow. Holds onto things. I relate.',
+      sunburstWrasse: 'Named for the sunrise. Sleeps through it.',
+      mantaRay: 'Graceful. Large. Surprisingly cooperative.',
+      giantSquid: "Giant. Squid. I really shouldn't have to sell this one.",
+      phantomLionfish: 'Mostly there. Sometimes not. Do not ask me where it goes.',
+      twilightWhaleShark: 'The biggest thing I stock. Eats the smallest things in the sea.',
+      table: 'Flat on top. Fish rest under it. A shelf, essentially. I respect a shelf.',
+      midnightTable: 'A table coral for the deep. Same shelf, less light.',
+      rainbowCoral: 'Every colour at once. Subtle, it is not.',
+      sunfire: 'It does not actually burn. I checked. Twice.',
+    },
+    packs: 'Need pearls? Conveniently, I sell those too.',
+    shortage: 'You appear to be experiencing a pearl shortage.',
+    locked: (n) => `Not yet. Come back at level ${n}. I'll be here. I'm always here.`,
+    zone: (name) => `That one needs a home in the ${name} first.`,
+    done: ['Transaction complete.', 'An excellent addition to your reef.', 'Pleasure doing business.'],
+    coralDone: 'Yours. Tap a tile and it will settle in.',
+    cancelled: 'Very well.',
+    pending: 'Awaiting approval. The pearls will find you.',
+    failed: 'The store declined. Not my department.',
+    slow: 'The store is slow today. Also not my department.',
+    restoreStart: "Let's see what you've already acquired...",
+    restoreFound: 'Found it.',
+    restoreNone: 'Nothing new.',
+    web: 'Pearls are sold in the app. Out here they come from packs and eggs.',
+  };
+  const pickLine = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  const counterEl = document.createElement('div');
+  counterEl.id = 'counter';
+  counterEl.innerHTML = '<div class="ct-top">'
+    + '<img class="ct-face" alt="Skip-7">'
+    + '<div class="ct-bubble"><span class="ct-who">Skip-7 · Pearl Market</span><span class="ct-say"></span></div>'
+    + '<div class="ct-side"><button class="ct-close">Close ✕</button><div class="ct-bal">💎 <span class="ct-pearls">0</span></div></div>'
+    + '</div><div class="ct-body"></div>';
+  document.body.appendChild(counterEl);
+  const ctFace = counterEl.querySelector('.ct-face');
+  const ctBubble = counterEl.querySelector('.ct-bubble');
+  const ctSay = counterEl.querySelector('.ct-say');
+  const ctPearls = counterEl.querySelector('.ct-pearls');
+  const ctBody = counterEl.querySelector('.ct-body');
+  let ctSayTimer = 0;
+  function say(text) {
+    if (ctSay.textContent === text) return;
+    clearTimeout(ctSayTimer);
+    ctBubble.classList.add('swap');
+    ctSayTimer = setTimeout(() => { ctSay.textContent = text; ctBubble.classList.remove('swap'); }, 160);
+  }
+  const ctItems = [];   // { card, spec, type, buy, img, say }
+  let ctFocus = null;
+  function focusCard(card) {
+    if (ctFocus === card) return;
+    ctFocus?.classList.remove('focus');
+    ctFocus = card;
+    card?.classList.add('focus');
+    if (card?.dataset.say) say(card.dataset.say);
+  }
+  function shelf(title, sub) {
+    const h = document.createElement('div');
+    h.className = 'ct-shelf';
+    h.innerHTML = `<span>${title}</span>` + (sub ? `<small>${sub}</small>` : '');
+    ctBody.appendChild(h);
+    return h;
+  }
+  function counterCard(spec, type, grid) {
+    const card = document.createElement('div');
+    card.className = 'ct-item';
+    card.dataset.say = SKIP7.lines[spec.id]
+      ?? `${spec.name}. ${TIER_LABEL[spec.tier] ?? ''}. Reasonably priced.`;
+    const img = document.createElement('img'); img.className = 'ct-tank'; img.alt = '';
+    const name = document.createElement('div'); name.className = 'ct-name'; name.textContent = spec.name;
+    const tier = document.createElement('div'); tier.className = 'ct-tier';
+    tier.textContent = `${type === 'fish' ? '🐟' : '🪸'} ${TIER_LABEL[spec.tier] ?? spec.tier}`;
+    tier.style.color = hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5);
+    const buy = document.createElement('button'); buy.className = 'ct-buy';
+    card.append(img, name, tier, buy);
+    card.onclick = () => focusCard(card);
+    buy.onclick = (e) => { e.stopPropagation(); focusCard(card); buyFromCounter(spec, type); };
+    grid.appendChild(card);
+    ctItems.push({ card, spec, type, buy, img });
+  }
+  {
+    const fishGrid = document.createElement('div'); fishGrid.className = 'ct-grid';
+    shelf('Specimens', 'so rare they can\'t be hatched');
+    ctBody.appendChild(fishGrid);
+    fishSpecs.filter(s => s.pearlCost && !s.eventId).sort(byUnlock)
+      .forEach(s => counterCard(s, 'fish', fishGrid));
+    const coralGrid = document.createElement('div'); coralGrid.className = 'ct-grid';
+    shelf('Corals', 'placed free once bought');
+    ctBody.appendChild(coralGrid);
+    coralSpecs.filter(s => s.pearlCost && !s.eventId).sort(byUnlock)
+      .forEach(s => counterCard(s, 'coral', coralGrid));
+  }
+  const packShelf = shelf('Pearls', 'support the reef');
+  packShelf.dataset.say = SKIP7.packs;
   const shopList = document.createElement('div');
+  shopList.className = 'ct-packs';
   const shopNote = document.createElement('div');
-  shopNote.style.cssText = 'font-size:11px;color:#9fc4dc;margin:6px 0 2px;min-height:14px;text-align:center;';
-  panel.append(shopList, shopNote);
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'shop-close'; closeBtn.textContent = 'Close';
-  closeBtn.onclick = () => { shopOverlay.style.display = 'none'; };
-  panel.appendChild(closeBtn);
-  shopOverlay.appendChild(panel);
-  shopOverlay.onclick = e => { if (e.target === shopOverlay) shopOverlay.style.display = 'none'; };
-  document.body.appendChild(shopOverlay);
+  shopNote.className = 'ct-note';
+  ctBody.append(shopList, shopNote);
+  counterEl.querySelector('.ct-close').onclick = () => closeCounter();
+
+  // The bubble follows the shelf: whichever card sits nearest the upper third
+  // of the view is the one he's talking about.
+  let ctScrollRaf = 0;
+  ctBody.addEventListener('scroll', () => {
+    if (ctScrollRaf) return;
+    ctScrollRaf = requestAnimationFrame(() => {
+      ctScrollRaf = 0;
+      const top = ctBody.getBoundingClientRect().top;
+      const line = top + ctBody.clientHeight * 0.36;
+      let best = null, bestD = Infinity;
+      for (const it of ctItems) {
+        const r = it.card.getBoundingClientRect();
+        const d = Math.abs((r.top + r.height / 2) - line);
+        if (d < bestD) { bestD = d; best = it.card; }
+      }
+      const pr = packShelf.getBoundingClientRect();
+      const atEnd = ctBody.scrollTop + ctBody.clientHeight >= ctBody.scrollHeight - 4;
+      if (pr.top < line + 40 || (atEnd && ctBody.scrollTop > 0)) { focusCard(null); say(SKIP7.packs); return; }
+      if (best) focusCard(best);
+    });
+  }, { passive: true });
+
+  function refreshCounter() {
+    ctPearls.textContent = Math.floor(pearls);
+    for (const it of ctItems) {
+      const { spec, type } = it;
+      const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+      const avail = type === 'fish' ? fishAvailable(spec) : coralAvailable(spec);
+      it.card.classList.toggle('locked', !avail);
+      it.buy.textContent = avail ? `💎 ${spec.pearlCost}` : `🔒 Lv ${need}`;
+      if (!it.img.src) it.img.src = speciesThumb(spec);
+    }
+  }
+  let counterOpen = false;
+  function openCounter() {
+    if (!ctFace.src) {
+      ctFace.src = speciesThumb({ id: '_skip7', color: 0x9aa7b3, accentColor: 0x7fe8ff,
+        build: makeSkip7, focus: g => g.userData.head, dir: [0.35, 0.3, 1], zoom: 2.6 });
+    }
+    refreshCounter();
+    hideFishToast();
+    counterEl.classList.add('open');
+    counterOpen = true;
+    ctBody.scrollTop = 0;
+    focusCard(null);
+    ctSay.textContent = pickLine(SKIP7.greet);
+    ctBubble.classList.remove('swap');
+    if (iapIsNative()) renderShopNative(); else renderShopWeb();
+  }
+  function closeCounter() {
+    counterEl.classList.remove('open');
+    counterOpen = false;
+  }
+  function buyFromCounter(spec, type) {
+    const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+    if (need > level) { say(SKIP7.locked(need)); return; }
+    const avail = type === 'fish' ? fishAvailable(spec) : coralAvailable(spec);
+    if (!avail) { say(SKIP7.zone(BIOMES[primaryBiome(spec)].shortName)); return; }
+    if (pearls < spec.pearlCost) {
+      say(SKIP7.shortage);
+      packShelf.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    pearls -= spec.pearlCost;
+    hudGain('pearls', -spec.pearlCost);
+    if (type === 'fish') {
+      packSpawnFish(spec);          // the specimen swims straight into its biome
+      say(pickLine(SKIP7.done));
+      refreshFishShop(); refreshProgress(); refreshHud(); save();
+      refreshCounter();
+      if (journal.ov.style.display === 'flex') fillJournal();
+    } else {
+      // Coral is banked as a free placement and handed to the palette; the
+      // counter closes so the reef is right there to tap.
+      vouchers[spec.id] = (vouchers[spec.id] ?? 0) + 1;
+      refreshLocks(); refreshHud(); save();
+      const row = rows.find(r => r.spec === spec && r.type === 'coral');
+      if (row) row.btn.onclick();
+      closeCounter();
+      flash(rateEl, `🎟 ${spec.name} — tap a tile to place it`, '#7fd8b0');
+      droneQueue.push(`🤖 Skip-7 says: ${SKIP7.coralDone}`);
+    }
+  }
 
   function grantPearls(n) {
     pearls += n; save();      // the payout and its persistence come first, unconditionally
     try {
       refreshHud(); hudGain('pearls', n);
+      if (counterOpen) refreshCounter();
       droneQueue.push(`💎 ${n} pearls added to the reef fund. Spend them wisely. Or not — I'm not your accountant.`);
     } catch (e) { /* cosmetic only */ }
   }
@@ -4088,7 +4369,7 @@ export function initReefScene3D(canvas) {
   let shopBusy = false;
   function renderShopWeb() {
     shopList.innerHTML = '';
-    PEARL_PACKS.forEach(p => shopRow(`💎 ${p.pearls} pearls`, p.price, () => { grantPearls(p.pearls); }));
+    shopNote.innerHTML = `${SKIP7.web}<br><a href="https://apps.apple.com/app/id6809200807" target="_blank" rel="noopener">Reef Bloom on the App Store</a>`;
   }
   // Native shop: the rows appear at once with the pearl counts, prices fill in
   // when StoreKit answers. The first product fetch after launch can take
@@ -4109,10 +4390,12 @@ export function initReefScene3D(canvas) {
         // Not every non-success is a failure: an approval can be pending, and an
         // interrupted purchase (new terms, payment update) finishes later — in
         // both cases the pearls arrive through the transaction listener.
-        if (e?.cancelled) { /* the player backed out — say nothing */ }
+        if (e?.cancelled) { say(SKIP7.cancelled); }
         else if (e?.pending) {
+          say(SKIP7.pending);
           shopNote.textContent = 'Waiting for approval. Your pearls will arrive as soon as the purchase is approved.';
         } else {
+          say(SKIP7.failed);
           shopNote.textContent = 'The App Store couldn\'t finish that purchase'
             + (e?.reason ? ` (${e.reason})` : '') + '. If it completes later, your pearls are added automatically.';
         }
@@ -4121,15 +4404,30 @@ export function initReefScene3D(canvas) {
       shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = false; });
       if (paid !== null) {
         if (paid > 0) grantPearls(paid);   // 0: the update stream already paid it out
-        shopOverlay.style.display = 'none';
+        say(pickLine(SKIP7.done));
       }
     };
     row.title = p.title ?? '';
   }
+  function restoreLink() {
+    const b = document.createElement('button');
+    b.className = 'ct-link'; b.textContent = 'Restore purchases';
+    b.onclick = async () => {
+      if (shopBusy) return;
+      say(SKIP7.restoreStart);
+      const before = pearls;
+      try { await iapRestore(); } catch (e) { /* the listener still hears late transactions */ }
+      setTimeout(() => say(pearls > before ? SKIP7.restoreFound : SKIP7.restoreNone), 1200);
+    };
+    shopNote.insertAdjacentElement('afterend', b);
+    return b;
+  }
+  let restoreBtn = null;
   async function renderShopNative() {
     const seq = ++shopOpenSeq;
     shopList.innerHTML = '';
-    const rows = new Map();
+    if (!restoreBtn) restoreBtn = restoreLink();
+    const rowsById = new Map();
     // Fast path: StoreKit's last answer is remembered, so real prices are on
     // screen and tappable the instant the shop opens; a fresh fetch then
     // updates them in place without any waiting state.
@@ -4139,14 +4437,14 @@ export function initReefScene3D(canvas) {
       remembered.forEach(p => {
         const row = shopRow(`💎 ${p.pearls} pearls`, p.priceString, () => {});
         wireShopRow(row, p);
-        rows.set(p.id, row);
+        rowsById.set(p.id, row);
       });
-      if (shopBusy) rows.forEach(r => { r.disabled = true; });
+      if (shopBusy) rowsById.forEach(r => { r.disabled = true; });
       iapLoadProducts().then(fresh => {
         if (seq !== shopOpenSeq || shopBusy) return;
-        if (fresh.some(p => !rows.has(p.id)) || fresh.length !== rows.size) { renderShopNative(); return; }
+        if (fresh.some(p => !rowsById.has(p.id)) || fresh.length !== rowsById.size) { renderShopNative(); return; }
         for (const p of fresh) {
-          rows.get(p.id).innerHTML = `<span>💎 ${p.pearls} pearls</span><span>${p.priceString}</span>`;
+          rowsById.get(p.id).innerHTML = `<span>💎 ${p.pearls} pearls</span><span>${p.priceString}</span>`;
         }
       }).catch(() => { /* remembered prices stay; buying still goes through StoreKit */ });
       return;
@@ -4155,7 +4453,7 @@ export function initReefScene3D(canvas) {
     PEARL_PACKS.forEach(p => {
       const row = shopRow(`💎 ${p.pearls} pearls`, '…', () => {});
       row.disabled = true;
-      rows.set(p.id, row);
+      rowsById.set(p.id, row);
     });
     shopNote.textContent = 'Fetching prices from the App Store…';
     let products = null, failure = null;
@@ -4171,6 +4469,7 @@ export function initReefScene3D(canvas) {
       // show the store's own reason so a screenshot is enough to diagnose it.
       const slow = failure?.message === 'timeout';
       const why = !slow && failure?.message ? ` (${String(failure.message).slice(0, 120)})` : '';
+      say(SKIP7.slow);
       shopNote.textContent = slow ? 'The App Store is slow to answer. ' : `Couldn't reach the App Store${why}. `;
       shopNote.insertAdjacentHTML('beforeend',
         '<button class="m-tab" data-shop-retry style="margin-left:6px">Try again</button>');
@@ -4181,7 +4480,7 @@ export function initReefScene3D(canvas) {
     shopNote.textContent = '';
     // Fill prices into the rows that exist; drop any pack the store didn't return.
     const byId = new Map(products.map(p => [p.id, p]));
-    for (const [id, row] of rows) {
+    for (const [id, row] of rowsById) {
       const p = byId.get(id);
       if (!p) { row.remove(); continue; }
       row.innerHTML = `<span>💎 ${p.pearls} pearls</span><span>${p.priceString}</span>`;
@@ -4200,10 +4499,7 @@ export function initReefScene3D(canvas) {
     if (owed > 0) grantPearls(owed);
     iapStartListener((n) => grantPearls(n));
   }, 0);
-  document.getElementById('shop-btn')?.addEventListener('click', () => {
-    shopOverlay.style.display = 'flex';
-    if (iapIsNative()) renderShopNative(); else renderShopWeb();
-  });
+  document.getElementById('shop-btn')?.addEventListener('click', () => openCounter());
 
   // ── Menus (Journal / Harmony Advisor / Progress — Classic's menus in DOM) ─────
   const openModals = [];
@@ -4230,7 +4526,7 @@ export function initReefScene3D(canvas) {
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       openModals.forEach(m => { m.style.display = 'none'; });
-      shopOverlay.style.display = 'none';
+      closeCounter();
     }
   });
   const bar = (v, max, cls = '') =>
@@ -4306,17 +4602,21 @@ export function initReefScene3D(canvas) {
           buf: new Uint8Array(n * n * 4), big, small, n };
       }
       const { rt, sc, cam, buf, big, small, n } = thumbRig;
-      g = spec.layer ? makeFish(spec) : makeCoral(spec);
-      if (!spec.layer) g.scale.setScalar(1);   // corals spawn at 0.01 to grow in
+      // A "spec" can also be a portrait request — { id, build, focus?, dir?, zoom? }
+      // — used for Skip-7's face on the Pearl Market counter.
+      g = spec.build ? spec.build() : spec.layer ? makeFish(spec) : makeCoral(spec);
+      if (!spec.layer && !spec.build) g.scale.setScalar(1);   // corals spawn at 0.01 to grow in
       sc.add(g);
-      const box = new THREE.Box3().setFromObject(g);
+      g.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(spec.focus ? spec.focus(g) : g);
       const c = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z) || 1;
-      const dist = (maxDim / 2) / Math.tan((cam.fov * Math.PI) / 360) * 1.2;
-      const dir = spec.layer
-        ? new THREE.Vector3(1, 0.35, 0.55)     // fish: 3/4 side profile
-        : new THREE.Vector3(1, 0.6, 1);        // coral: from above the shoulder
+      const dist = (maxDim / 2) / Math.tan((cam.fov * Math.PI) / 360) * (spec.zoom ?? 1.2);
+      const dir = spec.dir ? new THREE.Vector3(...spec.dir)
+        : spec.layer
+          ? new THREE.Vector3(1, 0.35, 0.55)     // fish: 3/4 side profile
+          : new THREE.Vector3(1, 0.6, 1);        // coral: from above the shoulder
       cam.position.copy(c).addScaledVector(dir.normalize(), dist);
       cam.lookAt(c);
       renderer.setRenderTarget(rt);
@@ -5113,7 +5413,8 @@ export function initReefScene3D(canvas) {
         if (!found) html += row('How to record', '🌱 a seedling find — surveys, foragers, packs, harmony');
       } else {
         const { n, unit } = priceOf(spec, kind);
-        html += row(kind === 'fish' ? 'Fish Shop (once discovered)' : 'Cost', `${n} ${unit}`);
+        if (spec.pearlCost) html += row('Pearl Market', `${n} ${unit} · tap 🤖 Skip-7`);
+        else html += row(kind === 'fish' ? 'Fish Shop (once discovered)' : 'Cost', `${n} ${unit}`);
       }
       html += row('In the wild', spec.wildNote ?? abundanceText(wildWeight(spec)));
     } else {
@@ -5849,7 +6150,7 @@ export function initReefScene3D(canvas) {
     // north–south position so the grove still reads as a grove. Unowned plots
     // keep their scenery; it's only in the way once there are tiles under it.
     const PLOT_PAD = 0.9;                         // keep clear of the tile edge too
-    const KEEP_OUT = [[15, 24, 5.5], [46, -16, 4]];   // the outcrop; the vent
+    const KEEP_OUT = [[15, 24, 5.5], [46, -16, 4], [17, -25, 4.5]];   // the outcrop; the vent; Skip-7's counter
     const plotRect = (zn, p) => {
       const half = (zn.grid * TILE) / 2;
       return {
@@ -5958,6 +6259,16 @@ export function initReefScene3D(canvas) {
   refreshNestEggs();
   drone.position.copy(DOCK_POS);
   scene.add(drone);
+  // Skip-7's counter stands on the outskirts north of the home reef, turned to
+  // face it; tapping anything of his opens the Pearl Market.
+  const skip7 = makeSkip7();
+  {
+    const y = terrainHeight(17, -25);
+    skip7.position.set(17, y, -25);
+    skip7.lookAt(ZONES.coral.cx, y, ZONES.coral.cz);
+  }
+  scene.add(skip7);
+  if (window.__rb3d) window.__rb3d.skip7 = skip7;
 
   // Speak positions hover over the home reef, where the camera usually looks.
   const SPEAK_POS = [
@@ -6172,6 +6483,16 @@ export function initReefScene3D(canvas) {
     drone.rotation.z = Math.sin(t * 1.1) * 0.05;
     drone.userData.prop.rotation.z += dt * (moving ? 22 : 7);
     drone.userData.eyeMat.emissiveIntensity = 0.35 + nf * 1.1;   // headlight at night
+    {   // Skip-7 idles: a slow look around, a blink, arms that fidget, lamps up after dark.
+      const u = skip7.userData;
+      u.head.rotation.y = Math.sin(t * 0.45) * 0.4 + Math.sin(t * 1.9) * 0.04;
+      u.head.rotation.x = Math.sin(t * 0.8) * 0.05;
+      u.arms[0].rotation.x = -0.35 + Math.sin(t * 1.3) * 0.08;
+      u.arms[1].rotation.x = -0.35 + Math.cos(t * 1.1) * 0.08;
+      u.eyeMat.emissiveIntensity = (t % 4.7) < 0.12 ? 0.1 : 0.9;
+      u.lampMat.emissiveIntensity = 0.25 + nf * 1.2;
+      u.tanks.forEach((m, i) => { m.position.y = 1.28 + Math.sin(t * 1.5 + i * 2) * 0.02; });
+    }
     drone.userData.glowMat.emissiveIntensity = 0.8 + nf * 0.8;
     // Project the speech bubble to screen space above the drone.
     if (droneState === 'speaking') {
@@ -6225,8 +6546,9 @@ export function initReefScene3D(canvas) {
       return false;
     }
     if (spec.pearlCost) {
-      if (pearls < spec.pearlCost) { flash(rateEl, 'not enough 💎'); return false; }
-      pearls -= spec.pearlCost;
+      // Pearl species are sold only at Skip-7's counter, as a placement voucher.
+      flash(rateEl, '💎 sold at the Pearl Market — tap Skip-7');
+      return false;
     } else if (spec.polypCost) {
       if (polyps < spec.polypCost) { flash(rateEl, 'not enough 🪸'); return false; }
       polyps -= spec.polypCost;
@@ -6362,6 +6684,8 @@ export function initReefScene3D(canvas) {
       }
     }
 
+    // Tap Skip-7 or his counter to open the Pearl Market.
+    if (castAll([skip7], true)) { openCounter(); return; }
     // Tap the outcrop — nest, market stall, or rocks — to open Nest & Market.
     if (castAll([outcrop], true)) { fillNest(); nestModal.show(); return; }
     // Tap a station or placed coral for its upgrade menu — before placement.

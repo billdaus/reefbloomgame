@@ -124,6 +124,18 @@ export function takePendingPearls() {
   return n;
 }
 
+/**
+ * Asks StoreKit to replay unfinished transactions. Pearl packs are consumables,
+ * so there is nothing to "restore" in the App Store sense — but an interrupted
+ * or Ask-to-Buy purchase that finished elsewhere arrives through the
+ * transaction listener when this runs. No-op on the website.
+ */
+export async function restorePurchases() {
+  if (!isNative()) return;
+  const { np } = await plugin();
+  await np.restorePurchases();
+}
+
 const PURCHASE_TIMEOUT_MS = 180000;   // the sheet can sit open a long while (passwords, Ask to Buy)
 
 let listening = false, grantHandler = null;
