@@ -86,6 +86,8 @@
       padding: 8px 16px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     }
     .greet b { color: var(--accent); font-weight: 600; }
+    /* A memorial line: plain words in understated yellow, no icon, no name. */
+    .greet.memorial { color: #f2d15c; border-color: rgba(242,209,92,0.45); font-weight: 600; letter-spacing: 0.3px; text-align: center; }
 
     .dive {
       display: inline-flex; align-items: center; gap: 10px; text-decoration: none;
@@ -279,7 +281,35 @@
         'Quiet water tonight. Perfect for a survey.'
       ];
       var doy = Math.floor((now - new Date(new Date().getFullYear(), 0, 0)) / 864e5);
-      document.getElementById('greet').innerHTML = '🤿 <b>Bubbles:</b> ' + LINES[doy % LINES.length];
+      // ── Calendar-aware lines ───────────────────────────────────────────────
+      // Month-specific pools take precedence over the time-of-day pools;
+      // fixed dates take precedence over everything. All recur every year.
+      var today = new Date();
+      var mon = today.getMonth() + 1, day = today.getDate();
+      var SEASONAL = {
+        2: [ 'February. Nothing is scheduled. The reef finds that restful.',
+             'Short days, slow growth. The corals are saving up for spring.',
+             'The water is cold and clear. Best visibility of the year.' ],
+        3: [ 'March. The kelp is stretching. Something is coming in April.',
+             'First warm current of the year. The chromis noticed before I did.',
+             'Spring cleaning at the nest. I found three old egg shells and a crab.' ],
+        9: [ 'September. Back to school. The fish are forming lines. Badly.',
+             'New pencils, new notebooks, same reef. Welcome back.',
+             'Homework tip: the Ocean Journal counts as reading.',
+             'The parrotfish has a new backpack. It is a sponge.' ],
+      };
+      var FIXED = {
+        '11-10': { text: 'Remember the Fitz', memorial: true },
+      };
+      var greet = document.getElementById('greet');
+      var fixed = FIXED[mon + '-' + day];
+      if (fixed) {
+        greet.textContent = fixed.text;
+        if (fixed.memorial) greet.classList.add('memorial');
+      } else {
+        var pool = SEASONAL[mon] || LINES;
+        greet.innerHTML = '🤿 <b>Bubbles:</b> ' + pool[doy % pool.length];
+      }
 
       // Footer: game build, App Store version (kept in step by scripts/bump-version.mjs), device.
       var APP_VERSION = '1.1.0';

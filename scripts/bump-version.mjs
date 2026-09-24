@@ -6,6 +6,8 @@
 // Pick the bump by what the release CONTAINS, not by how many uploads it took:
 // if a build adds any feature or content, it is a minor bump. Re-uploading the
 // same release (a fix found in TestFlight before it ships) is `build`.
+// BETAS on the road to the next minor take PATCH numbers (1.1.1, 1.1.2, … are
+// the 1.2.0 betas); the minor bump is reserved for the release itself.
 //
 // Bump the iOS app version in one go:
 //   npm run version:bump            → patch  (1.0.0 → 1.0.1), build +1
