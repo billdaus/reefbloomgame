@@ -417,6 +417,11 @@
     // Boot-failure beacon: with no console on iPad, a silent blank page is
     // undebuggable — surface any script error or failed asset load on screen.
     window.addEventListener('error', function (e) {
+      // Only OUR files matter here. Third-party scripts (analytics, ads) are
+      // routinely blocked by ad blockers and privacy settings, and a blocked
+      // tracker is not a boot failure — the game runs without them.
+      var src = e.target && (e.target.src || e.target.href);
+      if (src && !String(src).startsWith(location.origin) && !String(src).startsWith('/')) return;
       var el = document.getElementById('boot-error');
       if (!el) {
         el = document.createElement('div');
