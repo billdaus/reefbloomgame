@@ -3152,7 +3152,6 @@ export function initReefScene3D(canvas) {
   // timestamps, so growth continues while the reef is closed). Scale carries
   // the size; regrown geometry carries the density. Utility corals and decor
   // are structures, not organisms — they place full grown.
-  let bioLightCount = 0;   // placed biolum corals holding a real PointLight
   const STAGE_MS = [60e3, 150e3, 300e3, 600e3, 900e3];   // stage s -> s+1
   const STAGE_NAMES = ['Hatchling', 'Sprout', 'Juvenile', 'Colony', 'Mature', 'Full grown'];
   const stageScale = (s) => [0.22, 0.4, 0.55, 0.7, 0.85, 1][clamp(s, 0, 5)];
@@ -3425,23 +3424,17 @@ export function initReefScene3D(canvas) {
     group.userData.entry = entry;
     group.userData.levelScale = spec.decor ? 1 : stageScale(lvl);
     if (BIOLUM_SPECIES.has(spec.id)) {
-      // Halo on every biolum coral; a real PointLight on the first few, so
-      // placing many can't blow the light budget. The lantern family are the
-      // reef's designated lamps: bigger halos, brighter, longer throw.
+      // Halo on every biolum coral; real light is dealt out from a fixed
+      // pool so placing many can't blow the budget. The lantern family are
+      // the reef's designated lamps: bigger halos, brighter, longer throw.
       const lamp = LANTERN_CORALS.has(spec.id);
       group.userData.lampBoost = lamp ? 1.7 : 1;
       const halo = makeHalo(spec.accentColor ?? spec.color, lamp ? 5.2 : 3.6);
       halo.position.y = 0.7;
       group.add(halo);
       group.userData.bioHalo = halo;
-      if (bioLightCount < 8) {
-        const pl = new THREE.PointLight(spec.accentColor ?? spec.color, 0, lamp ? 11 : 7, 1.8);
-        pl.position.y = 0.9;
-        pl.userData.keep = true;
-        group.add(pl);
-        group.userData.bioLight = pl;
-        bioLightCount++;
-      }
+      // Real light comes from the shared pool (see bioPool): every frame the
+      // nearest glowing things to where you're looking get a PointLight.
     }
     scene.add(group); corals.push(group);
     placedCorals.push(entry);
@@ -3779,7 +3772,6 @@ export function initReefScene3D(canvas) {
       : Math.floor((CORAL_COST[spec.tier] ?? 0) / 2);
     be = Math.min(be + refund, beMax);
     for (const f of group.userData.homed ?? []) { f.home = null; f.bed = null; }
-    if (group.userData.bioLight) bioLightCount--;   // free a light slot
     if (spec.shelter) {
       const si = shelters.indexOf(group); if (si >= 0) shelters.splice(si, 1);
     }
@@ -7044,6 +7036,67 @@ export function initReefScene3D(canvas) {
     depthWrite: false, sizeAttenuation: true, blending: THREE.AdditiveBlending }));
   plankton.visible = false;
   scene.add(plankton);
+  // ── Bioluminescent light pool ───────────────────────────────────────────────
+  // Glowing coral, fish and sparks cast REAL light on what's around them: a
+  // fixed pool of PointLights (a constant count, so shaders never recompile)
+  // is dealt out a few times a second to the brightest sources nearest the
+  // camera's focus, and follows them every frame. Everything else keeps its
+  // halo. Lanterns throw furthest; Bioluminescence Night turns it all up.
+  const BIO_POOL_N = 8;
+  const bioPool = [];
+  for (let i = 0; i < BIO_POOL_N; i++) {
+    const pl = new THREE.PointLight(0xffffff, 0, 12, 1.7);
+    pl.userData.keep = true;
+    scene.add(pl);
+    bioPool.push({ pl, src: null });
+  }
+  let bioDealAt = 0;
+  const _bioTmp = new THREE.Vector3();
+  function tickBioLights(t, dt, nf, dk) {
+    if (nf < 0.04) { for (const s of bioPool) { s.pl.intensity = 0; s.src = null; } return; }
+    if (t > bioDealAt) {
+      bioDealAt = t + 0.35;
+      const focus = controls.target;
+      const cands = [];
+      for (const g of corals) {
+        if (!g.userData.bioHalo || g.userData.grow < 0.3) continue;
+        const d = g.position.distanceTo(focus);
+        cands.push({ obj: g, y: 0.9, color: g.userData.spec?.accentColor ?? g.userData.spec?.color ?? 0x7fd8ff,
+          power: (g.userData.lampBoost ?? 1) * 4.2, range: LANTERN_CORALS.has(g.userData.spec?.id) ? 15 : 10, score: d });
+      }
+      for (const f of fishes) {
+        if (!f.g.userData.bioHalo) continue;
+        const spec = FISH_SPECIES[f.id] ?? LOCAL_SPECS[f.id];
+        cands.push({ obj: f.g, y: 0.15, color: spec?.accentColor ?? spec?.color ?? 0x7fd8ff,
+          power: f.g.userData.big ? 3.4 : 2.2, range: f.g.userData.big ? 12 : 8, score: f.g.position.distanceTo(focus) + 2 });
+      }
+      for (const sp of glowSparks) cands.push({ obj: sp.m, y: 0, color: 0x9fe8ff, power: 2.0, range: 7, score: sp.m.position.distanceTo(focus) });
+      cands.sort((a, b) => a.score - b.score);
+      const want = cands.slice(0, BIO_POOL_N);
+      // Keep lights already on a chosen source; hand freed lights to newcomers.
+      const kept = new Set();
+      for (const s of bioPool) {
+        const still = s.src && want.find(w => w.obj === s.src.obj);
+        if (still) { s.src = still; kept.add(still); } else s.src = null;
+      }
+      for (const w of want) {
+        if (kept.has(w)) continue;
+        const free = bioPool.find(s => !s.src);
+        if (!free) break;
+        free.src = w; free.pl.color.setHex(w.color); free.pl.distance = w.range; free.pl.intensity = 0;
+      }
+    }
+    const boost = 1 + dk * 0.8;
+    for (const s of bioPool) {
+      const src = s.src;
+      if (!src || !src.obj.parent) { s.pl.intensity += (0 - s.pl.intensity) * Math.min(1, dt * 6); continue; }
+      src.obj.getWorldPosition(_bioTmp);
+      s.pl.position.set(_bioTmp.x, _bioTmp.y + src.y, _bioTmp.z);
+      const fl = src.obj.userData.bioFlicker ?? (0.9 + Math.sin(t * 1.7 + (src.obj.id % 7)) * 0.1);
+      const target = nf * src.power * fl * boost;
+      s.pl.intensity += (target - s.pl.intensity) * Math.min(1, dt * 5);
+    }
+  }
   const glowSparks = [];   // the tappable ones: { m, born, life, vx, vy, vz }
   const glowSparkMat = new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.95 });
   const glowSparkGeo = new THREE.SphereGeometry(0.12, 8, 6);
@@ -7286,7 +7339,7 @@ export function initReefScene3D(canvas) {
         const boost = g.userData.lampBoost ?? 1;
         const fl = 0.85 + Math.sin(t * 1.3 + g.userData.seed) * 0.15;
         g.userData.bioHalo.material.opacity = nf * 0.5 * fl * Math.min(boost, 1.3) * (1 + dk * 0.6);
-        if (g.userData.bioLight) g.userData.bioLight.intensity = nf * 2.4 * fl * boost * (1 + dk * 0.7);
+        g.userData.bioFlicker = fl;
       }
     }
     // Schools: refresh each shoal's shared waypoint and flock averages once,
@@ -7573,6 +7626,7 @@ export function initReefScene3D(canvas) {
         f.g.userData.bioHalo.material.opacity = nf * 0.45 * (0.85 + Math.sin(t * 1.7 + f.phase) * 0.15) * (1 + dk * 0.7);
       }
     }
+    tickBioLights(t, dt, nf, dk);
     for (const w of weeds) w.rotation.z = Math.sin(t * 0.9 + w.userData.seed) * 0.12;
     for (const o of orbs) {
       o.material.emissiveIntensity = 0.75 + nf * 0.5 + Math.sin(t * 1.6 + o.userData.seed) * 0.35;
