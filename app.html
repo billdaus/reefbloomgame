@@ -124,6 +124,11 @@
     .reefs[hidden] { display: none; }
 
     footer { font-size: 12px; letter-spacing: 1px; color: rgba(255,255,255,0.5); }
+    .acct {
+      font: inherit; font-size: 13px; color: rgba(255,255,255,0.75); cursor: pointer;
+      background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px;
+      padding: 7px 14px; -webkit-tap-highlight-color: transparent;
+    }
 
     /* Short viewports (phones sideways): tighten the hero so the reefs stay on screen. */
     @media (max-height: 560px) {
@@ -177,6 +182,7 @@
     <section class="reefs" id="reefs" aria-label="Your reefs"></section>
 
     <footer id="ver">Reef Bloom</footer>
+    <button class="acct" id="acct-btn" hidden>👤 Account</button>
   </main>
 
   <script>
@@ -355,6 +361,16 @@
     // StoreKit can deliver a finished purchase while only this Home screen is
     // open; bank its pearls so the next reef to load collects them.
     import { startTransactionListener, loadProducts } from './src/3d/iap.js';
+    import { openAccountSheet, accountsEnabled } from './src/accountSheet.js';
+    import { initCloudSave } from './src/cloudsave.js';
+    // 👤 Free accounts: the Home screen offers sign-in and pulls cloud reefs
+    // down before a dive. Hidden until aws-config.js is filled in.
+    if (accountsEnabled()) {
+      const b = document.getElementById('acct-btn');
+      b.hidden = false;
+      b.onclick = () => openAccountSheet();
+      initCloudSave();
+    }
     startTransactionListener();
     // Warm StoreKit's product cache so the reef's Pearl Shop opens with prices.
     setTimeout(() => { loadProducts().catch(() => {}); }, 800);

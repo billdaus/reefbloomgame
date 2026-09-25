@@ -41,6 +41,10 @@ Resources:
       ClientName: reef-bloom-web
       UserPoolId: !Ref UserPool
       GenerateSecret: false
+      # The in-app account sheet signs in over the JSON API (no redirect), so
+      # the password flow is on; the hosted UI stays available as a fallback.
+      ExplicitAuthFlows: [ALLOW_USER_PASSWORD_AUTH, ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
+      PreventUserExistenceErrors: LEGACY
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthFlows: [code]
       AllowedOAuthScopes: [openid, email]
@@ -102,6 +106,7 @@ Resources:
                 Action:
                   - dynamodb:GetItem
                   - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
                 Resource: !GetAtt SaveTable.Arn
                 Condition:
                   ForAllValues:StringEquals:

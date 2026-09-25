@@ -1,29 +1,26 @@
 import { awsConfig } from './aws-config.js';
 
 /**
- * auth.js — optional sign-in via the Cognito Hosted UI (email/password,
- * sign-up and verification included), using the OAuth2 authorization-code
- * flow with PKCE. No SDK is needed for auth itself — it's two fetches.
+ * auth.js — free Reef Bloom accounts on a Cognito User Pool, talked to
+ * directly over its JSON API (no SDK, no redirect): sign up with email +
+ * password, confirm with the emailed code, sign in, reset a forgotten
+ * password, delete the account. The same code runs on the website, inside
+ * the iOS app's WebView, and on the Home screen — anywhere fetch() works.
  *
- * Everything degrades gracefully: if aws-config.js exports null (or we're
- * inside the Capacitor native shell, where redirect auth needs native
- * plumbing), isAuthAvailable() is false and nothing here runs.
- *
- * Tokens live in localStorage; cloudsave.js exchanges the id token for
- * temporary AWS credentials via the Cognito Identity Pool.
+ * Everything degrades gracefully: while aws-config.js exports null,
+ * isAuthAvailable() is false, no account UI is offered and nothing here
+ * runs. Tokens live in localStorage; cloudsave.js exchanges the id token
+ * for temporary AWS credentials via the Cognito Identity Pool.
  */
 
 const TOKEN_KEY = 'reef-bloom-auth';
-const PKCE_KEY  = 'reef-bloom-pkce';
-
-const _isNativeShell = typeof window !== 'undefined' && !!window.Capacitor;
 
 let _user  = null;    // { email, sub }
 let _ready = null;
 const _listeners = new Set();
 
 export function isAuthAvailable() {
-  return !!awsConfig && !_isNativeShell;
+  return !!awsConfig;
 }
 
 export function currentUser() {
@@ -37,153 +34,173 @@ export function onAuthChange(cb) {
   return () => _listeners.delete(cb);
 }
 
-/**
- * Initialize auth: complete a Hosted-UI redirect if one is in flight,
- * otherwise restore (and refresh) stored tokens. Safe no-op when unavailable.
- */
+/** Restore (and refresh) stored tokens. Safe no-op when unavailable. */
 export async function initAuth() {
   if (!isAuthAvailable()) return null;
   if (_ready) return _ready;
-
   _ready = (async () => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      const code   = params.get('code');
-      const pkce   = _readJson(sessionStorage, PKCE_KEY);
-
-      if (code && pkce?.verifier) {
-        sessionStorage.removeItem(PKCE_KEY);
-        const tokens = await _tokenRequest({
-          grant_type:    'authorization_code',
-          code,
-          redirect_uri:  pkce.redirectUri,
-          code_verifier: pkce.verifier,
-        });
-        _storeTokens(tokens);
-        // Strip ?code=... from the address bar
-        const url = new URL(window.location.href);
-        url.searchParams.delete('code');
-        url.searchParams.delete('state');
-        history.replaceState(null, '', url.pathname + url.search + url.hash);
+      const stored = _readTokens();
+      if (stored?.refreshToken) {
+        if (Date.now() < (stored.expiresAt ?? 0) - 60_000) _setUser(stored);
+        else await _refresh(stored);
       }
-
-      await _loadStoredUser();
     } catch (e) {
-      console.warn('[auth] init failed', e);
-      _user = null;
+      console.warn('[auth] restore failed', e);
+      _clear();
     }
-    _listeners.forEach(cb => cb(_user));
+    _emit();
     return _user;
   })();
-
   return _ready;
 }
 
-/** Redirect to the Cognito Hosted UI sign-in page (PKCE). */
-export async function signIn() {
-  if (!isAuthAvailable()) throw new Error('auth unavailable');
+// ── Account actions ──────────────────────────────────────────────────────────
+// Each rejects with an Error whose .code is Cognito's exception name
+// (UserNotConfirmedException, NotAuthorizedException, UsernameExistsException,
+// CodeMismatchException, InvalidPasswordException …) and whose .message is
+// Cognito's own wording, so the sheet can say something useful.
 
-  const verifier  = _randomString(64);
-  const challenge = _base64url(await crypto.subtle.digest(
-    'SHA-256', new TextEncoder().encode(verifier)));
-  const redirectUri = window.location.origin + window.location.pathname;
-
-  sessionStorage.setItem(PKCE_KEY, JSON.stringify({ verifier, redirectUri }));
-
-  const q = new URLSearchParams({
-    client_id:             awsConfig.userPoolClientId,
-    response_type:         'code',
-    scope:                 'openid email',
-    redirect_uri:          redirectUri,
-    code_challenge_method: 'S256',
-    code_challenge:        challenge,
+/** Sign in with email + password. Resolves to the user. */
+export async function signIn(email, password) {
+  const r = await _idp('InitiateAuth', {
+    AuthFlow: 'USER_PASSWORD_AUTH',
+    ClientId: awsConfig.userPoolClientId,
+    AuthParameters: { USERNAME: email.trim(), PASSWORD: password },
   });
-  window.location.assign(`${awsConfig.cognitoDomain}/oauth2/authorize?${q}`);
+  if (!r.AuthenticationResult) throw Object.assign(new Error('Sign-in needs another step.'), { code: r.ChallengeName ?? 'Challenge' });
+  _storeAuth(r.AuthenticationResult, r.AuthenticationResult.RefreshToken);
+  _emit();
+  return _user;
 }
 
-/** Clear local tokens and end the Hosted UI session. */
+/** Create an account. Resolves to true if a confirmation code was emailed. */
+export async function signUp(email, password) {
+  const r = await _idp('SignUp', {
+    ClientId: awsConfig.userPoolClientId,
+    Username: email.trim(),
+    Password: password,
+    UserAttributes: [{ Name: 'email', Value: email.trim() }],
+  });
+  return !r.UserConfirmed;
+}
+
+export async function confirmSignUp(email, code) {
+  await _idp('ConfirmSignUp', {
+    ClientId: awsConfig.userPoolClientId, Username: email.trim(), ConfirmationCode: code.trim(),
+  });
+}
+
+export async function resendCode(email) {
+  await _idp('ResendConfirmationCode', { ClientId: awsConfig.userPoolClientId, Username: email.trim() });
+}
+
+export async function forgotPassword(email) {
+  await _idp('ForgotPassword', { ClientId: awsConfig.userPoolClientId, Username: email.trim() });
+}
+
+export async function confirmForgotPassword(email, code, newPassword) {
+  await _idp('ConfirmForgotPassword', {
+    ClientId: awsConfig.userPoolClientId, Username: email.trim(),
+    ConfirmationCode: code.trim(), Password: newPassword,
+  });
+}
+
 export async function signOutUser() {
-  localStorage.removeItem(TOKEN_KEY);
-  _user = null;
-  _listeners.forEach(cb => cb(null));
-  const q = new URLSearchParams({
-    client_id:  awsConfig.userPoolClientId,
-    logout_uri: window.location.origin + window.location.pathname,
-  });
-  window.location.assign(`${awsConfig.cognitoDomain}/logout?${q}`);
+  const t = _readTokens();
+  _clear();
+  _emit();
+  if (t?.accessToken) {
+    try { await _idp('GlobalSignOut', { AccessToken: t.accessToken }); } catch { /* already out */ }
+  }
 }
 
-/** Valid id token for the identity-pool exchange (refreshes if expired). */
+/** Permanently deletes the account (App Store rule 5.1.1(v)). Cloud saves go with it. */
+export async function deleteAccount() {
+  const token = await getAccessToken();
+  if (!token) throw new Error('not signed in');
+  await _idp('DeleteUser', { AccessToken: token });
+  _clear();
+  _emit();
+}
+
 export async function getIdToken() {
-  const stored = _readJson(localStorage, TOKEN_KEY);
-  if (!stored) return null;
-  if (Date.now() < stored.expiresAt - 60_000) return stored.idToken;
-  return _refresh(stored);
+  const t = await _freshTokens();
+  return t?.idToken ?? null;
+}
+
+export async function getAccessToken() {
+  const t = await _freshTokens();
+  return t?.accessToken ?? null;
 }
 
 // ── Internal ─────────────────────────────────────────────────────────────────
 
-async function _loadStoredUser() {
-  const idToken = await getIdToken();
-  if (!idToken) { _user = null; return; }
-  const claims = _decodeJwt(idToken);
-  _user = claims ? { email: claims.email, sub: claims.sub } : null;
+async function _idp(op, body) {
+  const res = await fetch(`https://cognito-idp.${awsConfig.region}.amazonaws.com/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': `AWSCognitoIdentityProviderService.${op}` },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
+  if (!res.ok) {
+    const code = String(data.__type ?? data.code ?? 'Error').split('#').pop();
+    throw Object.assign(new Error(data.message ?? data.Message ?? `${op} failed (${res.status})`), { code });
+  }
+  return data;
+}
+
+async function _freshTokens() {
+  const t = _readTokens();
+  if (!t?.refreshToken) return null;
+  if (Date.now() < (t.expiresAt ?? 0) - 60_000) return t;
+  try { return await _refresh(t); } catch (e) { _clear(); _emit(); return null; }
 }
 
 async function _refresh(stored) {
-  if (!stored.refreshToken) { localStorage.removeItem(TOKEN_KEY); return null; }
-  try {
-    const tokens = await _tokenRequest({
-      grant_type:    'refresh_token',
-      refresh_token: stored.refreshToken,
-    });
-    tokens.refresh_token ??= stored.refreshToken;  // not re-issued on refresh
-    _storeTokens(tokens);
-    return tokens.id_token;
-  } catch (e) {
-    console.warn('[auth] refresh failed', e);
-    localStorage.removeItem(TOKEN_KEY);
-    return null;
-  }
-}
-
-async function _tokenRequest(params) {
-  const res = await fetch(`${awsConfig.cognitoDomain}/oauth2/token`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ client_id: awsConfig.userPoolClientId, ...params }),
+  const r = await _idp('InitiateAuth', {
+    AuthFlow: 'REFRESH_TOKEN_AUTH',
+    ClientId: awsConfig.userPoolClientId,
+    AuthParameters: { REFRESH_TOKEN: stored.refreshToken },
   });
-  if (!res.ok) throw new Error(`token endpoint ${res.status}`);
-  return res.json();
+  return _storeAuth(r.AuthenticationResult, stored.refreshToken);
 }
 
-function _storeTokens(t) {
-  localStorage.setItem(TOKEN_KEY, JSON.stringify({
-    idToken:      t.id_token,
-    refreshToken: t.refresh_token ?? null,
-    expiresAt:    Date.now() + (t.expires_in ?? 3600) * 1000,
-  }));
+function _storeAuth(result, refreshToken) {
+  const t = {
+    idToken:      result.IdToken,
+    accessToken:  result.AccessToken,
+    refreshToken: refreshToken,
+    expiresAt:    Date.now() + (result.ExpiresIn ?? 3600) * 1000,
+  };
+  try { localStorage.setItem(TOKEN_KEY, JSON.stringify(t)); } catch { /* storage off */ }
+  _setUser(t);
+  return t;
 }
 
-function _decodeJwt(jwt) {
+function _setUser(t) {
+  const claims = _decode(t.idToken);
+  _user = claims ? { email: claims.email ?? null, sub: claims.sub ?? null } : null;
+}
+
+function _readTokens() {
+  try { return JSON.parse(localStorage.getItem(TOKEN_KEY)); } catch { return null; }
+}
+
+function _clear() {
+  _user = null;
+  try { localStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
+}
+
+function _emit() {
+  for (const cb of _listeners) { try { cb(_user); } catch (e) { console.warn('[auth] listener', e); } }
+}
+
+function _decode(jwt) {
   try {
-    const payload = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(payload));
-  } catch {
-    return null;
-  }
-}
-
-function _readJson(store, key) {
-  try { return JSON.parse(store.getItem(key)); } catch { return null; }
-}
-
-function _randomString(bytes) {
-  const buf = crypto.getRandomValues(new Uint8Array(bytes));
-  return _base64url(buf);
-}
-
-function _base64url(buf) {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const b64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(decodeURIComponent(atob(b64).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')));
+  } catch { return null; }
 }

@@ -3,7 +3,8 @@ import { ReefScene }   from './scenes/ReefScene.js';
 import { SCREEN_W, SCREEN_H, IS_PORTRAIT, GAME_VERSION } from './constants.js';
 import { setCurrentSlot, setCurrentBiome, getSlotPreview, clearSlot, clearBiome, getBiomePreview,
          getProfile, defaultProfile } from './save.js';
-import { isAuthAvailable, onAuthChange, signIn, signOutUser, initAuth } from './auth.js';
+import { isAuthAvailable, onAuthChange } from './auth.js';
+import { openAccountSheet } from './accountSheet.js';
 import { initCloudSave, onCloudSynced } from './cloudsave.js';
 import { state } from './state.js';
 
@@ -124,25 +125,13 @@ function initAuthUI(rebuildCards) {
   const render = user => {
     row.innerHTML = '';
     if (user) {
-      row.appendChild(el('span', 'slp-auth-status',
-        `☁️ Reefs synced — ${user.displayName ?? user.email ?? 'signed in'}`));
-      const out = el('button', 'slp-auth-signout', 'Sign out');
-      out.addEventListener('click', async () => {
-        await signOutUser();
-      });
-      row.appendChild(out);
+      row.appendChild(el('span', 'slp-auth-status', `☁️ Reefs synced — ${user.email ?? 'signed in'}`));
+      const acct = el('button', 'slp-auth-signout', 'Account');
+      acct.addEventListener('click', () => openAccountSheet('account'));
+      row.appendChild(acct);
     } else {
       const btn = el('button', 'slp-auth-btn', '☁️ Sign in to sync your reefs');
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        btn.textContent = 'Signing in…';
-        try {
-          await signIn();
-        } catch (e) {
-          console.warn('[auth] sign-in failed', e);
-          render(null);
-        }
-      });
+      btn.addEventListener('click', () => openAccountSheet());
       row.appendChild(btn);
     }
   };

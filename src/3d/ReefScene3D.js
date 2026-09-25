@@ -26,6 +26,8 @@ import {
 } from '../constants.js';
 import { LINES as BUBBLES_LINES } from '../entities/bubblesLines.js';
 import { createReefMusic } from './music.js';
+import { initCloudSave, cloudMarkWritten, onCloudSynced } from '../cloudsave.js';
+import { openAccountSheet, accountsEnabled, onAccountSignedIn } from '../accountSheet.js';
 import {
   PEARL_PACKS, isNative as iapIsNative, loadProducts as iapLoadProducts, purchase as iapPurchase,
   startTransactionListener as iapStartListener, takePendingPearls as iapTakePending,
@@ -3838,6 +3840,7 @@ export function initReefScene3D(canvas) {
   function save() {
     try {
       localStorage.setItem(slotKey(slot), JSON.stringify({
+        savedAt: Date.now(),   // cloud sync: newest save wins per slot
         be, polyps, pearls, harmony, level, timeOfDay,
         corals: placedCorals, fish: placedFish, seen: [...seen], exp: expansions,
         eggs: [...eggsClaimed], stations: placedStations,
@@ -3847,6 +3850,7 @@ export function initReefScene3D(canvas) {
         nest: nestEggs, starterEggs: starterEggsGiven,
         starterPack: starterPackGiven, survey, coralDisc: true, quiz,
         dailyPack: dailyPackDate, tut: tutDone, tutp: tutPaid }));
+      cloudMarkWritten(slotKey(slot));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
   function load() {
@@ -4919,6 +4923,7 @@ export function initReefScene3D(canvas) {
         clr.onclick = () => {
           if (confirm(`Erase the reef in slot ${s}? This can't be undone.`)) {
             localStorage.removeItem(slotKey(s));
+            cloudMarkWritten(slotKey(s), true);
             fillSlots();
           }
         };
@@ -5981,6 +5986,25 @@ export function initReefScene3D(canvas) {
     });
     packBtn = menuEl.children[2];
     refreshPackBtn();
+    // 👤 Account — free Reef Bloom accounts keep every slot in the cloud.
+    if (accountsEnabled()) {
+      const acctBtn = document.createElement('button');
+      acctBtn.className = 'menu-btn';
+      acctBtn.textContent = '👤';
+      acctBtn.title = 'Account & cloud sync';
+      acctBtn.onclick = () => openAccountSheet();
+      menuEl.appendChild(acctBtn);
+      initCloudSave();
+      // A pull that replaced THIS reef's slot (signing in on a second device)
+      // reloads so the cloud copy is what's on screen; other slots just sync.
+      onCloudSynced((changed) => {
+        if (changed.includes(slotKey(slot))) {
+          flash(rateEl, '☁️ cloud reef loaded — reloading', '#7fd8ff');
+          setTimeout(() => location.reload(), 900);
+        }
+      });
+      onAccountSignedIn(() => save());   // stamp + push the live reef right away
+    }
     // 🎵 Ambient music — procedural, starts on first gesture, preference saved.
     const musicBtn = document.createElement('button');
     musicBtn.className = 'menu-btn';
