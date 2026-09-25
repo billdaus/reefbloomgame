@@ -61,7 +61,7 @@ function zoneAt(x) {
 // field = coral-only; 'both' = coral + seagrass; arrays list biomes explicitly.
 // Lantern corals are the exception: they are lamps first and corals second,
 // and a lamp belongs anywhere it's dark — they place in every biome (3D only).
-const LANTERN_CORALS = new Set(['lanternCoral', 'wispCoral', 'phantomPolyp']);
+const LANTERN_CORALS = new Set(['lanternCoral', 'wispCoral', 'phantomPolyp', 'lumenCoral']);
 function matchesBiome(spec, biomeId) {
   if (LANTERN_CORALS.has(spec.id)) return true;
   const b = spec.biome;
@@ -94,17 +94,20 @@ function roamProfile(spec) {
 }
 
 // Bottom-dwellers that aren't fish at all — an arthropod, echinoderms, a
-// gastropod, a shrimp. They crawl the seafloor instead of swimming the column.
+// gastropod, a shrimp — plus the fish that perch and forage on the seafloor
+// rather than swimming the column.
 const BENTHIC_SPECIES = new Set([
   'horseshoeCrab', 'sandDollar', 'conch', 'seaUrchin', 'cleanerShrimp',
   'hermitCrab', 'flamingoTongue',
   'sculpin', 'ochreStar', 'chiton', 'tidepoolCrab',
+  'blenny', 'hawkfish', 'goatfish', 'frogfish', 'scorpionfish',
 ]);
 // How high each benthic body's origin sits above the sand (× its base scale).
 const BENTHIC_LIFT = {
   horseshoeCrab: 0.16, sandDollar: 0.06, conch: 0.22, seaUrchin: 0.28, cleanerShrimp: 0.18,
   hermitCrab: 0.22, flamingoTongue: 0.14,
   sculpin: 0.16, ochreStar: 0.08, chiton: 0.12, tidepoolCrab: 0.16,
+  blenny: 0.12, hawkfish: 0.16, goatfish: 0.2, frogfish: 0.16, scorpionfish: 0.16,
 };
 
 // Species-specific roaming styles: cruising altitude above the floor, pitch
@@ -126,7 +129,7 @@ const ROAM_STYLE = {
 const SCHOOL_SPECIES = new Set([
   'blueChromis', 'chromis', 'damselfish', 'cardinalfish',
   'pajamaCardinalfish', 'banggaiCardinalfish', 'zebrafish',
-  'mullet', 'sergeantMajor',
+  'mullet', 'sergeantMajor', 'anthias', 'yellowChromis',
 ]);
 
 // Classic's day/night: 4-minute day, timeOfDay 0→1 (midnight 0, sunrise 0.25,
@@ -395,10 +398,11 @@ function coralTexture(spec, variant = 0) {
 // accent color; everyone else gets counter-shading plus a lateral stripe.
 const FISH_BANDED = new Set([
   'clownfish', 'zebraGoby', 'zebrafish', 'banggaiCardinalfish', 'pajamaCardinalfish',
-  'harlequinTuskfish', 'butterflyfish', 'moorishIdol', 'seaUrchin', 'clownTriggerfish']);
+  'harlequinTuskfish', 'butterflyfish', 'moorishIdol', 'seaUrchin', 'clownTriggerfish',
+  'emperorAngelfish', 'raccoonButterflyfish', 'copperbandButterflyfish']);
 const FISH_SPOTTED = new Set([
   'spottedEagleRay', 'pufferfish', 'mandarinfish', 'rainbowGoby', 'twilightWhaleShark',
-  'flashlightFish', 'giantSquid']);
+  'flashlightFish', 'giantSquid', 'spottedDrum', 'whaleShark', 'porcupinePuffer']);
 const fishTexCache = new Map();
 function fishTexture(spec, variant = 0) {
   const key = `${spec.id}:${variant}`;
@@ -532,11 +536,11 @@ function shapeOf(spec) {
   if (['seaweed', 'seagrass', 'redSeagrass'].includes(id)) return 'grass';
   if (id === 'kelp' || id === 'amberKelp') return 'kelp';
   if (id === 'mangroveSapling') return 'sapling';
-  if (['abyssalFan', 'lagoonFan', 'sunsetFan'].includes(id)) return 'fan';
+  if (['abyssalFan', 'lagoonFan', 'sunsetFan', 'russetFan'].includes(id)) return 'fan';
   if (id === 'barnacles') return 'barnacles';
   if (id === 'anemoneHome') return 'anemone';
   if (['wispCoral', 'phantomPolyp'].includes(id)) return 'wisp';
-  if (id === 'lanternCoral') return 'lantern';
+  if (id === 'lanternCoral' || id === 'lumenCoral') return 'lantern';
   if (['essenceVault', 'grandReservoir'].includes(id)) return 'clam';
   if (id === 'reefCave') return 'cave';
   return spec.tall ? 'branch' : 'brain';
@@ -1796,17 +1800,19 @@ const FISH_BODY = {
 };
 
 function fishBodyOf(id) {
-  if (['seahorse', 'neonSeahorse', 'twilightSeahorse', 'moonSeahorse', 'goldenSeahorse'].includes(id)) return 'seahorse';
+  if (['seahorse', 'neonSeahorse', 'twilightSeahorse', 'moonSeahorse', 'goldenSeahorse',
+    'leafySeaDragon', 'weedySeaDragon'].includes(id)) return 'seahorse';
   if (id === 'seaTurtle') return 'turtle';
-  if (['shark', 'frilledShark', 'twilightWhaleShark', 'lemonShark'].includes(id)) return 'shark';
+  if (['shark', 'frilledShark', 'twilightWhaleShark', 'lemonShark', 'blacktipReefShark',
+    'whaleShark'].includes(id)) return 'shark';
   if (['morayEel', 'giantMoray', 'blueRibbonEel', 'glowEel', 'gulperEel',
     'oarfish', 'ribbonfish'].includes(id)) return 'eel';
   if (['octopus', 'giantSquid', 'rubyOctopus'].includes(id)) return 'octopus';
-  if (id === 'dolphin') return 'dolphin';
+  if (id === 'dolphin' || id === 'spinnerDolphin') return 'dolphin';
   if (id === 'cuttlefish') return 'cuttlefish';
   if (['manatee', 'dugong'].includes(id)) return 'sirenian';
   if (id === 'seaOtter') return 'otter';
-  if (id === 'pufferfish') return 'puffer';
+  if (['pufferfish', 'boxfish', 'porcupinePuffer'].includes(id)) return 'puffer';
   if (['spottedEagleRay', 'mantaRay', 'abyssalRay', 'stingray'].includes(id)) return 'ray';
   if (id === 'nautilus') return 'nautilus';
   if (id === 'horseshoeCrab') return 'horseshoe';
@@ -2686,13 +2692,6 @@ export function initReefScene3D(canvas) {
   // Injected at runtime into this page's FISH_SPECIES instance — the shared
   // catalog file is untouched and Classic never sees them.
   Object.assign(FISH_SPECIES, {
-    clownTriggerfish: {
-      id: 'clownTriggerfish', name: 'Clown Triggerfish', scientific: 'Balistoides conspicillum',
-      tier: 'epic', layer: 'A', color: 0x263238, accentColor: 0xffca28,
-      size: 20, speed: 0.95, unlockLevel: 1, biome: 'coral',
-      lore: 'Polka-dot belly, painted lips, and a temper. Real clown triggerfish '
-        + 'guard their nests so fiercely that divers give them a wide, respectful lane.',
-    },
     sailfinTang: {
       id: 'sailfinTang', name: 'Sailfin Tang', scientific: 'Zebrasoma veliferum',
       tier: 'epic', layer: 'A', color: 0x8d6e63, accentColor: 0xffe082,
@@ -2784,33 +2783,41 @@ export function initReefScene3D(canvas) {
   // and one-of-a-kind creatures are weighted down. Unlisted species weigh 1.
   const WILD_ABUNDANCE = {
     // superabundant schoolers & tidepool life
-    lanternfish: 3, blueChromis: 2.5, chromis: 2.5, damselfish: 2.5, hermitCrab: 2.5,
-    barnacles: 2.5, sergeantMajor: 2.2, mullet: 2.2, tidepoolCrab: 2.2, seaweed: 2.2,
+    lanternfish: 3, anthias: 3, blueChromis: 2.5, chromis: 2.5, damselfish: 2.5, hermitCrab: 2.5,
+    barnacles: 2.5, blenny: 2.5, sergeantMajor: 2.2, mullet: 2.2, tidepoolCrab: 2.2, seaweed: 2.2,
     seaLettuce: 2.2, hatchetfish: 2, cardinalfish: 2, sandDollar: 2, corallineAlgae: 2,
+    squirrelfish: 2, goatfish: 2,
     cleanerShrimp: 1.8, neonGoby: 1.8, sculpin: 1.8, seagrass: 1.8, gooseneckBarnacles: 1.8,
     // common reef citizens
     clownfish: 1.6, zebraGoby: 1.6, ochreStar: 1.6, fireCoral: 1.6, redSeagrass: 1.6,
     tidepoolAnemone: 1.6, kelp: 1.6, royalGramma: 1.5, ghostGoby: 1.5, glowCleanerGoby: 1.5,
     tropicBlenny: 1.5, zebrafish: 1.5, phantomLionfish: 1.5,   // lionfish: famously overabundant
+    lionfish: 1.5, dottyback: 1.5, hawkfish: 1.4,
     starter: 1.5, yellowTang: 1.4, blueTang: 1.4, firefish: 1.4, cleanerWrasse: 1.4,
     pajamaCardinalfish: 1.4, chiton: 1.4, brain: 1.4, toadstool: 1.4,
     parrotfish: 1.3, opaleye: 1.3, rabbitfish: 1.3, rainbowGoby: 1.3, shrimpGoby: 1.3,
     deepBlenny: 1.3, flamingoTongue: 1.3, finger: 1.3, sunCoral: 1.3,
+    foxfaceRabbitfish: 1.3, powderBrownTang: 1.2, filefish: 1.2,
     butterflyfish: 1.2, pipefish: 1.2, dragonfish: 1.2, viperfish: 1.2, flashlightFish: 1.2,
+    raccoonButterflyfish: 1.2, longnoseButterflyfish: 1.2, copperbandButterflyfish: 1.2,
     seaUrchin: 1.2, lettuce: 1.2, lagoonFan: 1.2, mangroveSapling: 1.2,
     // sparser out there
     octopus: 1.1, cuttlefish: 1.1, rubyOctopus: 1.1, pufferfish: 1.1, bonefish: 1.1,
+    bicolorAngelfish: 1.1, boxfish: 1.0, porcupinePuffer: 1.0, emperorSnapper: 0.9,
     flameAngelfish: 0.9, glowfinAngelfish: 0.9, stingray: 0.9, horseshoeCrab: 0.9,
     midnightTable: 0.9, giantMoray: 0.8, harlequinTuskfish: 0.8, fangtooth: 0.8,
     conch: 0.8, star: 0.8, phantomPolyp: 0.8, wispCoral: 0.8,
+    emperorAngelfish: 0.8, spottedDrum: 0.8, scorpionfish: 0.8, longfinBatfish: 0.8,
+    giantTrevally: 0.8,
     mandarinfish: 0.7, blueRibbonEel: 0.7, anglerfish: 0.7,
     clownTriggerfish: 0.8, sailfinTang: 1.3, bumpheadParrotfish: 0.5, coelacanth: 0.2,
     barreleye: 0.6, ribbonfish: 0.6, gulperEel: 0.6, nautilus: 0.6, dolphin: 0.6,
-    abyssalRay: 0.6, rainbowCoral: 0.6, sunfire: 0.6,
+    abyssalRay: 0.6, rainbowCoral: 0.6, sunfire: 0.6, blacktipReefShark: 0.6,
     // threatened & endangered in the real ocean
     seahorse: 0.5, neonSeahorse: 0.5, twilightSeahorse: 0.5, shark: 0.5, lemonShark: 0.5,
+    frogfish: 0.5,
     spottedEagleRay: 0.5, staghorn: 0.5, banggaiCardinalfish: 0.4, frilledShark: 0.4,
-    seaOtter: 0.4, elkhorn: 0.4, manatee: 0.35, seaTurtle: 0.35, oarfish: 0.35,
+    seaOtter: 0.4, elkhorn: 0.4, whaleShark: 0.4, manatee: 0.35, seaTurtle: 0.35, oarfish: 0.35,
     napoleonWrasse: 0.3, mantaRay: 0.3, dugong: 0.3, giantSquid: 0.3,
     twilightWhaleShark: 0.3, pillar: 0.3,
     // one of a kind
@@ -3275,12 +3282,19 @@ export function initReefScene3D(canvas) {
     'hermitCrab', 'bonefish', 'flamingoTongue', 'stingray', 'lemonShark', 'sculpin',
     'ochreStar', 'tidepoolCrab', 'chiton', 'opaleye', 'rubyOctopus', 'seaOtter',
     'clownTriggerfish', 'sailfinTang', 'bumpheadParrotfish', 'coelacanth', 'opah',
+    'anthias', 'squirrelfish', 'blenny', 'hawkfish', 'dottyback', 'filefish', 'goatfish',
+    'boxfish', 'raccoonButterflyfish', 'longnoseButterflyfish', 'bicolorAngelfish',
+    'powderBrownTang', 'foxfaceRabbitfish', 'porcupinePuffer', 'copperbandButterflyfish',
+    'spottedDrum', 'lionfish', 'emperorSnapper', 'emperorAngelfish', 'frogfish',
+    'scorpionfish', 'longfinBatfish', 'giantTrevally', 'blacktipReefShark', 'whaleShark',
+    'yellowChromis',
     // corals & flora
     'staghorn', 'finger', 'brain', 'lettuce', 'star', 'bubble', 'candycane',
     'toadstool', 'elkhorn', 'pillar', 'table', 'barnacles', 'redSeagrass', 'seaweed',
     'seagrass', 'kelp', 'sunCoral', 'lagoonFan', 'fireCoral', 'mangroveSapling',
     'tidepoolAnemone', 'gooseneckBarnacles', 'seaLettuce', 'corallineAlgae',
     'anemoneHome', 'goldenTree',
+      'leafySeaDragon', 'weedySeaDragon', 'molaMola', 'spinnerDolphin',
   ]);
   const isRealSpecies = (id) => REAL_SPECIES.has(id);
 
@@ -3986,6 +4000,7 @@ export function initReefScene3D(canvas) {
   }
   function refreshLocks() {
     if (pearlRows.length) refreshPearlRows();
+    if (exclRows.length) refreshExclRows();
     for (const r of rows) {
       const free = r.spec && vouchers[r.spec.id] > 0;
       r.btn.classList.toggle('locked', r.need > level && !free);
@@ -4120,14 +4135,13 @@ export function initReefScene3D(canvas) {
   const exclRows = [];
   let exclLabel = null;
   {
-    const exclSpecs = [
-      ...Object.values(CORAL_SPECIES).filter(s => s.eventId && s.color != null)
-        .map(s => [s, 'coral']),
-      ...Object.values(FISH_SPECIES).filter(s => s.eventId && s.color != null && s.layer)
-        .map(s => [s, 'fish']),
-    ];
+    // Events 2.0: event coral is bought at the Event Shop as a free placement,
+    // so its row shows only while a voucher is banked; event fish swim in
+    // straight from the shop and never appear here.
+    const exclSpecs = Object.values(CORAL_SPECIES).filter(s => s.eventId && s.color != null)
+      .map(s => [s, 'coral']);
     if (exclSpecs.length) {
-      label('Event exclusives · 🎉');
+      label('🎉 Event Shop finds · click a tile');
       exclLabel = paletteEl.lastChild;
       for (const [s, type] of exclSpecs) {
         button(s, type);
@@ -4138,7 +4152,7 @@ export function initReefScene3D(canvas) {
   function refreshExclRows() {
     let any = false;
     for (const r of exclRows) {
-      const own = exclOwned.has(r.id);
+      const own = vouchers[r.id] > 0;
       r.btn.style.display = own ? '' : 'none';
       any = any || own;
     }
@@ -4361,7 +4375,7 @@ export function initReefScene3D(canvas) {
   }
   function openCounter() {
     refreshCounter();
-    skipCounter.show(pickLine(SKIP7.greet));
+    skipCounter.show(bioNight() ? pickLine(['Business improves when everything glows.', 'The night shift is prettier.', ...SKIP7.greet]) : pickLine(SKIP7.greet));
     if (iapIsNative()) renderShopNative(); else renderShopWeb();
   }
   const closeCounter = () => skipCounter.hide();
@@ -4999,15 +5013,17 @@ export function initReefScene3D(canvas) {
 
   // ── Seasonal events — Classic's quest sets, tokens, and pass tiers, in 3D ────
   // Progress is per-slot and saved; exclusive unlocks persist forever.
-  const EV_TODAY = () => new Date().toISOString().slice(0, 10);
+  // Dev builds can pin the calendar (localStorage rb3d_today = 'YYYY-MM-DD') to test any event.
+  const EV_TODAY = () => (import.meta.env?.DEV && localStorage.getItem('rb3d_today')) || new Date().toISOString().slice(0, 10);
   function ev3Init() {
     // Events recur yearly; `live` is this year's occurrence with a per-year id,
     // so last year's finished run doesn't mark this year's as already done.
     const live = liveEvent(EV_TODAY());
     if (live && (!ev3 || ev3.id !== live.id)) {
-      ev3 = { id: live.id, setIdx: 0, tokens: 0, prog: {},
+      ev3 = { id: live.id, setIdx: 0, tokens: 0, earned: 0, prog: {},
         setsClaimed: [], tiersClaimed: [], rewardClaimed: false };
     }
+    if (ev3 && ev3.earned == null) ev3.earned = ev3.tokens;   // saves from before Events 2.0
   }
   const ev3Def = () => eventById(ev3?.id);
   const ev3Live = () => {
@@ -5040,29 +5056,31 @@ export function initReefScene3D(canvas) {
     return !!set && set.challenges.every((c, i) => (ev3.prog[i] ?? 0) >= c.target);
   };
   function ev3GrantTiers() {
+    // Milestones pay out on tokens EARNED; species tiers (`shopOnly`) are
+    // Classic's direct unlocks — in 3D those live in the Event Shop instead.
     const def = ev3Def();
     if (!def?.pass) return;
     def.pass.tiers.forEach((tier, i) => {
-      if (ev3.tiersClaimed.includes(i) || ev3.tokens < tier.threshold) return;
+      if (tier.shopOnly || tier.reward?.exclusive) return;
+      if (ev3.tiersClaimed.includes(i) || (ev3.earned ?? ev3.tokens) < tier.threshold) return;
       ev3.tiersClaimed.push(i);
       if (tier.reward.be) be = Math.min(be + tier.reward.be, beMax);
       if (tier.reward.pearls) pearls += tier.reward.pearls;
-      if (tier.reward.exclusive) {
-        // 3D mints a Season Pack instead of unlocking the named species: the
-        // pack guarantees one of this event's exclusives you don't own yet.
-        // (Classic keeps direct unlocks — the shared schedule is untouched.)
-        seasonPacks.push(def.id);
-        refreshPackBtn();
-        droneQueue.push('Pass tier reached: a Season Pack is waiting in 🎁 Packs.');
-      }
+      droneQueue.push(`🎟 Milestone: ${tier.label} for reaching ${tier.threshold} tokens earned.`);
     });
+  }
+  // Tokens come in two counts: `earned` over the whole event (unlocks shop
+  // listings and milestones) and `tokens`, the spendable balance.
+  function ev3Earn(n) {
+    ev3.tokens += n;
+    ev3.earned = (ev3.earned ?? 0) + n;
+    ev3GrantTiers();
   }
   function ev3ClaimSet() {
     if (!ev3 || !ev3SetComplete() || ev3.setsClaimed.includes(ev3.setIdx)) return;
     const def = ev3Def();
-    ev3.tokens += def.questSets[ev3.setIdx].tokenReward ?? 0;
     ev3.setsClaimed.push(ev3.setIdx);
-    ev3GrantTiers();
+    ev3Earn(def.questSets[ev3.setIdx].tokenReward ?? 0);
     if (ev3.setIdx + 1 < def.questSets.length) {
       ev3.setIdx++;
       ev3.prog = {};
@@ -5070,42 +5088,34 @@ export function initReefScene3D(canvas) {
     }
     refreshHud(); save();
   }
-  // Event shop: pearls buy this event's exclusives outright, plus two themed
-  // bundles. Each item can be bought once per event.
-  function ev3ShopItems(def) {
-    // Exclusives only — pearls buy a specific species outright. No currency
-    // bundles: 🫧 and 🪸 fund random things (packs, eggs, surveys), and the
-    // 4+ age rating depends on real money never reaching a roll.
-    const items = [];
-    (def.pass?.tiers ?? []).forEach((t) => {
-      if (t.reward?.exclusive) {
-        items.push({
-          key: `excl:${t.reward.exclusive}`,
-          label: t.label, pearls: 45 + items.length * 5,
-          reward: { exclusive: t.reward.exclusive },
-        });
-      }
-    });
-    return items;
-  }
-  function ev3Buy(i) {
+  // Event Shop — the event's exclusives, bought with event tokens only, each
+  // listing locked until enough tokens have been EARNED. Bought fish swim in
+  // at once; bought coral is banked as a free placement. An exclusive stays
+  // event-bound: recording it fills the Journal but never the normal market,
+  // and every return of the event is a fresh chance to buy more.
+  const ev3ShopItems = (def) => (def.shop ?? []).map(it => ({
+    ...it, spec: CORAL_SPECIES[it.exclusive] ?? FISH_SPECIES[it.exclusive] ?? null,
+  })).filter(it => it.spec);
+  const ev3Unlocked = (it) => (ev3?.earned ?? ev3?.tokens ?? 0) >= it.unlockAt;
+  function ev3Buy(it) {
     const def = ev3Def();
-    if (!ev3 || !def || !ev3Live()) return;
-    ev3.shopBought ??= [];
-    const item = ev3ShopItems(def)[i];
-    if (item && ev3.shopBought.includes(item.key)) return;
-    if (!item || pearls < item.pearls) { flash(rateEl, `need ${item?.pearls ?? '?'} 💎`); return; }
-    if (item.reward.exclusive && exclOwned.has(item.reward.exclusive)) return;
-    pearls -= item.pearls;
-    ev3.shopBought.push(item.key);
-    if (item.reward.be) be = Math.min(be + item.reward.be, beMax);
-    if (item.reward.polyps) polyps = Math.min(polyps + item.reward.polyps, POLYP_MAX);
-    if (item.reward.exclusive) {
-      exclOwned.add(item.reward.exclusive);
-      refreshExclRows();
-      droneQueue.push(`Purchased from the event shop: ${item.label}. Money well spent. Probably.`);
+    if (!ev3 || !def || !ev3Live() || !it?.spec) return false;
+    if (!ev3Unlocked(it)) { flash(rateEl, `🔒 unlocks at ${it.unlockAt} 🎟 earned`); return false; }
+    if (ev3.tokens < it.cost) { flash(rateEl, `need ${it.cost} 🎟`); return false; }
+    ev3.tokens -= it.cost;
+    exclOwned.add(it.spec.id);
+    if (it.spec.layer) {
+      packSpawnFish(it.spec);
+      droneQueue.push(`🎉 ${it.spec.name} joins the reef — a ${def.name} exclusive.`);
+    } else {
+      vouchers[it.spec.id] = (vouchers[it.spec.id] ?? 0) + 1;
+      seen.add(it.spec.id);
+      refreshLocks();
+      rows.find(r => r.spec === it.spec && r.type === 'coral')?.btn.onclick();   // selected, ready to place
+      flash(rateEl, `🎟 ${it.spec.name} — tap a tile to place it`, '#7fd8b0');
     }
-    refreshHud(); save();
+    refreshExclRows(); refreshProgress(); refreshHud(); save();
+    return true;
   }
 
   // ── Daily quests — Classic's date-seeded trio, in 3D ─────────────────────────
@@ -5163,7 +5173,7 @@ export function initReefScene3D(canvas) {
     if (dq.reward.be) be = Math.min(be + dq.reward.be, beMax);
     if (dq.reward.pearls) pearls += dq.reward.pearls;
     // Classic parity: each daily claim feeds one bonus event token.
-    if (ev3 && ev3Live()) { ev3.tokens += 1; ev3GrantTiers(); }
+    if (ev3 && ev3Live()) ev3Earn(1);
     flash(rateEl, `+${dq.reward.be} 🫧${dq.reward.pearls ? ` +${dq.reward.pearls} 💎` : ''}`, '#7fd8b0');
     refreshHud(); save();
   }
@@ -5279,79 +5289,110 @@ export function initReefScene3D(canvas) {
   }, CLEANING_ASSIGN_INTERVAL);
 
   // 🎉 Events — the seasonal quest sets and pass, mirroring Classic's modal.
-  const eventModal = buildMenuModal('🎉 Event');
+  // 🎉 The event, as a counter run by Bubbles: quest sets, milestones and the
+  // Event Shop on shelves. Off-season it shows what's next.
+  const EVENT_LINES = {
+    greet: (def) => [`${def.icon} ${def.name}! ${def.description}`, `Welcome to ${def.name}. Quests earn tokens; tokens buy the specials.`],
+    idle: (next, when) => next ? `Nothing on right now. ${next.icon} ${next.name} starts ${when}. I'm already excited. Quietly.` : 'No events on the calendar. Enjoy the quiet.',
+    quests: 'Finish a set, claim the tokens. The next set is harder. That\'s how ladders work.',
+    milestones: 'Every token you earn counts here, even the ones you\'ve spent.',
+    shop: 'Event specials. Tokens only — and each one unlocks once you\'ve earned enough. No shortcuts, not even pearls.',
+    claimed: (n) => [`+${n} tokens. Nicely done.`, `${n} tokens, banked. Onward.`],
+    locked: (n) => `Not yet — that one opens at ${n} tokens earned.`,
+    short: (n) => `You need ${n} tokens for that. Quests, dailies. I believe in you, mostly.`,
+    bought: ['Yours. Event-only, remember — nobody else sells these.', 'Sold! A rare one for the Journal.'],
+    reward: 'All sets done. Take the bow and the bonus.',
+    done: 'Event complete — see you at the next one. 🌊',
+  };
+  const eventCounter = buildCounter({
+    id: 'counter-event', who: 'Bubbles · Events',
+    face: { id: '_bubbles', color: 0x8ec5e8, accentColor: 0xffd27f, build: makeDrone, dir: [0.7, 0.35, 1], zoom: 1.15 },
+    balances: () => ev3 && ev3Live() ? [['🎟', ev3.tokens], ['earned', ev3.earned ?? ev3.tokens]] : [],
+  });
+  const evQuestShelf = eventCounter.shelf('Quests', '…', EVENT_LINES.quests);
+  const evMileShelf = eventCounter.shelf('Milestones', 'on tokens earned', EVENT_LINES.milestones);
+  const evShopShelf = eventCounter.shelf('Event Shop', 'tokens only · unlock by earning', EVENT_LINES.shop);
+  let evSig = '';
   function fillEvent() {
     ev3Init(); ev3Snapshot();
     const def = ev3Def();
-    if (!def || !ev3Live()) {
+    const live = !!def && ev3Live();
+    eventCounter.el.querySelector('.ct-who').textContent = live ? `Bubbles · ${def.icon} ${def.name}` : 'Bubbles · Events';
+    const sig = live ? `${def.id}:${ev3.setIdx}:${ev3.setsClaimed.length}:${ev3.tiersClaimed.length}:${ev3.tokens}:${ev3.earned}:${ev3.rewardClaimed}:${JSON.stringify(ev3.prog)}:${[...exclOwned].length}` : 'off';
+    if (sig === evSig) { eventCounter.refreshBal(); return; }
+    evSig = sig;
+    [evQuestShelf, evMileShelf, evShopShelf].forEach(s => eventCounter.clearShelf(s));
+    evQuestShelf.note?.remove(); evQuestShelf.note = null;
+    if (!live) {
       const next = nextEvent(EV_TODAY());
-      const when = next ? new Date(next.startDate + 'T12:00:00')
-        .toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '';
-      eventModal.body.innerHTML = '<div class="m-sub">No event is running right now.'
-        + ' Events come round every year.</div>'
-        + (next ? `<div class="m-sec">Next up</div>`
-          + `<div class="m-row"><span>${next.icon} <b>${next.name}</b><br>`
-          + `<span style="font-size:10.5px;color:#9fc4dc">${next.description}</span></span>`
-          + `<small>starts ${when}</small></div>` : '');
+      const when = next ? new Date(next.startDate + 'T12:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : '';
+      evQuestShelf.el.querySelector('span').textContent = 'Off season';
+      evQuestShelf.el.querySelector('small').textContent = 'events come round every year';
+      evMileShelf.el.style.display = 'none'; evShopShelf.el.style.display = 'none';
+      if (next) eventCounter.card(evQuestShelf, { key: 'next', icon: next.icon, name: next.name, sub: `${next.description}<br><b>starts ${when}</b>`, say: EVENT_LINES.idle(next, when) });
+      eventCounter.refreshBal();
       return;
     }
-    const days = eventDaysRemaining(def.endDate);
-    const set = def.questSets[ev3.setIdx];
-    const allSetsDone = ev3.setsClaimed.length >= def.questSets.length;
-    let html = `<div class="m-sub">${def.icon} <b>${def.name}</b> · ${days} day${days === 1 ? '' : 's'} left</div>`
-      + `<div class="m-sub">${def.description}</div>`
-      + `<div class="m-row"><span>Tokens</span><small>🎟 ${ev3.tokens}</small></div>`;
-    if (!allSetsDone && set) {
-      html += `<div class="m-sec">Quest set ${ev3.setIdx + 1}/${def.questSets.length} — ${set.label}</div>`;
-      set.challenges.forEach((c, i) => {
-        const p = Math.floor(ev3.prog[i] ?? 0);
-        html += `<div class="m-row"><span>${p >= c.target ? '✅' : '▫️'} ${c.label}</span>`
-          + `<small>${Math.min(p, c.target)} / ${c.target}</small></div>`;
-      });
+    evMileShelf.el.style.display = ''; evShopShelf.el.style.display = '';
+    const days = Math.max(0, Math.round((new Date(def.endDate + 'T00:00:00') - new Date(EV_TODAY() + 'T00:00:00')) / 864e5));
+    evQuestShelf.el.querySelector('span').textContent = 'Quests';
+    evQuestShelf.el.querySelector('small').textContent = `${days} day${days === 1 ? '' : 's'} left · set ${Math.min(ev3.setIdx + 1, def.questSets.length)} of ${def.questSets.length}`;
+    def.questSets.forEach((set, si) => {
+      const claimed = ev3.setsClaimed.includes(si);
+      const current = si === ev3.setIdx && !claimed;
+      const future = si > ev3.setIdx;
+      const lines = set.challenges.map((c, i) => {
+        const p = current ? Math.floor(ev3.prog[i] ?? 0) : claimed ? c.target : 0;
+        return `${p >= c.target ? '✅' : '▫️'} ${c.label} <b>${Math.min(p, c.target)}/${c.target}</b>`;
+      }).join('<br>');
+      const it = eventCounter.card(evQuestShelf, { key: `set${si}`, icon: claimed ? '✅' : future ? '🔒' : '🎯', name: set.label,
+        tag: `+${set.tokenReward} 🎟`, tagColor: '#ffe9b0', sub: lines,
+        say: claimed ? `${set.label}: done and dusted.` : future ? `${set.label} opens after the set before it.` : EVENT_LINES.quests,
+        buttons: current ? [{ label: `Claim +${set.tokenReward} 🎟`, disabled: !ev3SetComplete(), onClick: () => {
+          const n = set.tokenReward; ev3ClaimSet(); eventCounter.say(pickLine(EVENT_LINES.claimed(n))); fillEvent();
+        } }] : [] });
+      if (future) it.card.classList.add('locked');
+    });
+    const allDone = ev3.setsClaimed.length >= def.questSets.length;
+    if (allDone) {
+      eventCounter.card(evQuestShelf, { key: 'reward', icon: '🏆', name: 'Event reward',
+        sub: ev3.rewardClaimed ? EVENT_LINES.done : `+${def.reward?.be ?? 0} 🫧 · +${def.reward?.pearls ?? 0} 💎`,
+        say: ev3.rewardClaimed ? EVENT_LINES.done : EVENT_LINES.reward,
+        buttons: ev3.rewardClaimed ? [] : [{ label: 'Claim reward', onClick: () => { ev3ClaimReward(); fillEvent(); } }] });
     }
-    html += `<div class="m-sec">Event pass</div>`;
-    def.pass.tiers.forEach((tier, i) => {
+    (def.pass?.tiers ?? []).forEach((tier, i) => {
+      if (tier.shopOnly || tier.reward?.exclusive) return;
       const got = ev3.tiersClaimed.includes(i);
-      html += `<div class="m-row${got ? '' : ' locked'}"><span>${got ? '✅' : '🔒'} ${tier.label}</span>`
-        + `<small>${tier.threshold} 🎟</small></div>`;
+      const it = eventCounter.card(evMileShelf, { key: `tier${i}`, icon: got ? '✅' : '🎁', name: tier.label,
+        sub: got ? 'claimed' : `at ${tier.threshold} 🎟 earned`, say: EVENT_LINES.milestones });
+      if (!got) it.card.classList.add('locked');
     });
-    eventModal.body.innerHTML = html;
-    // Event shop — limited stock, pearls only, gone when the tide goes out.
-    ev3.shopBought ??= [];
-    eventModal.body.insertAdjacentHTML('beforeend',
-      '<div class="m-sec">Event shop · 💎 · one of each</div>');
-    ev3ShopItems(def).forEach((item, i) => {
-      const owned = item.reward.exclusive && exclOwned.has(item.reward.exclusive);
-      const bought = ev3.shopBought.includes(item.key) || owned;
-      const btn = document.createElement('button');
-      btn.className = 'shop-pack';
-      btn.innerHTML = bought
-        ? `<span>✅ ${item.label}</span><span>sold</span>`
-        : `<span>${item.label}</span><span>${item.pearls} 💎</span>`;
-      btn.disabled = bought || pearls < item.pearls;
-      btn.style.opacity = btn.disabled ? 0.45 : 1;
-      btn.onclick = () => { ev3Buy(i); fillEvent(); };
-      eventModal.body.append(btn);
+    ev3ShopItems(def).forEach((item) => {
+      const { spec } = item;
+      const unlocked = ev3Unlocked(item);
+      const owned = [...placedFish, ...placedCorals].filter(r => r.id === spec.id).length + (vouchers[spec.id] ?? 0);
+      const it = eventCounter.card(evShopShelf, { key: `shop:${spec.id}`, img: speciesThumb(spec), name: spec.name,
+        ...tierTag(spec, spec.layer ? 'fish' : 'coral'),
+        sub: (unlocked ? `${item.cost} 🎟 each` : `🔒 Unlocks at ${item.unlockAt} 🎟 earned<br>Once unlocked: ${item.cost} 🎟`)
+          + (owned ? `<br>✓ ${owned} on your reef` : ''),
+        say: unlocked ? `${spec.name}. ${item.cost} tokens, as many as you like while the event runs.` : EVENT_LINES.locked(item.unlockAt),
+        buttons: [{ label: unlocked ? `🎟 ${item.cost}` : `🔒 ${item.unlockAt} earned`, onClick: () => {
+          if (!ev3Unlocked(item)) { eventCounter.say(EVENT_LINES.locked(item.unlockAt)); return; }
+          if (ev3.tokens < item.cost) { eventCounter.say(EVENT_LINES.short(item.cost)); return; }
+          if (ev3Buy(item)) { eventCounter.say(pickLine(EVENT_LINES.bought)); if (!spec.layer) eventCounter.hide(); }
+          fillEvent();
+        } }] });
+      if (!unlocked) it.card.classList.add('locked');
     });
-    if (!allSetsDone && set) {
-      const claim = document.createElement('button');
-      claim.className = 'shop-pack';
-      claim.innerHTML = `<span>Claim "${set.label}"</span><span>+${set.tokenReward} 🎟</span>`;
-      claim.disabled = !ev3SetComplete();
-      claim.style.opacity = claim.disabled ? 0.45 : 1;
-      claim.onclick = () => { ev3ClaimSet(); fillEvent(); };
-      eventModal.body.append(claim);
-    } else if (!ev3.rewardClaimed) {
-      const grand = document.createElement('button');
-      grand.className = 'shop-pack';
-      grand.innerHTML = `<span>🏆 Claim event reward</span>`
-        + `<span>+${def.reward?.be ?? 0} 🫧 +${def.reward?.pearls ?? 0} 💎</span>`;
-      grand.onclick = () => { ev3ClaimReward(); fillEvent(); };
-      eventModal.body.append(grand);
-    } else {
-      eventModal.body.insertAdjacentHTML('beforeend',
-        '<div class="m-sub">Event complete — see you at the next one. 🌊</div>');
-    }
+    eventCounter.refreshBal();
+  }
+  function openEvent() {
+    evSig = '';
+    fillEvent();
+    const def = ev3Def();
+    const next = nextEvent(EV_TODAY());
+    const when = next ? new Date(next.startDate + 'T12:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : '';
+    eventCounter.show(def && ev3Live() ? pickLine(EVENT_LINES.greet(def)) : EVENT_LINES.idle(next, when));
   }
 
   // 📅 Daily quests — three date-seeded challenges, fresh every day.
@@ -5441,7 +5482,10 @@ export function initReefScene3D(canvas) {
       }
       html += row('In the wild', spec.wildNote ?? abundanceText(wildWeight(spec)));
     } else {
-      html += row('Origin', '🎉 event exclusive');
+      const evd = eventById(spec.eventId);
+      const item = evd?.shop?.find(i => i.exclusive === spec.id);
+      html += row('Origin', evd ? `${evd.icon} ${evd.name} exclusive` : '🎉 event exclusive');
+      if (item) html += row('Event Shop', `unlocks at ${item.unlockAt} 🎟 earned · ${item.cost} 🎟 each, during the event`);
     }
     const traits = [];
     if (BIOLUM_SPECIES.has(spec.id)) traits.push('✨ lights the water after dark');
@@ -5926,7 +5970,7 @@ export function initReefScene3D(canvas) {
      ['🎁', packModal, fillPack],
      ['🥚', { show: openNest }, () => {}],
      ['📅 Daily', daily, fillDaily],
-     ['🎉 Event', eventModal, fillEvent],
+     ['🎉 Event', { show: openEvent }, () => {}],
      ['⚖ Advisor', advisor, fillAdvisor],
      ['⭐ Progress', progress, fillProgress]].forEach(([text, modal, fill]) => {
       const b = document.createElement('button');
@@ -6616,7 +6660,9 @@ export function initReefScene3D(canvas) {
       u.arms[0].rotation.x = -0.35 + Math.sin(t * 1.3) * 0.08;
       u.arms[1].rotation.x = -0.35 + Math.cos(t * 1.1) * 0.08;
       u.eyeMat.emissiveIntensity = (t % 4.7) < 0.12 ? 0.1 : 0.9;
-      u.lampMat.emissiveIntensity = 0.25 + nf * 1.2;
+      const bio = nf * bioNight();   // Bioluminescence Night: his lamps go blue
+      u.lampMat.emissiveIntensity = 0.25 + nf * 1.2 + bio * 0.8;
+      u.lampMat.emissive.setHex(bio > 0.5 ? 0x62c8ff : 0xffd27f);
       u.tanks.forEach((m, i) => { m.position.y = 1.28 + Math.sin(t * 1.5 + i * 2) * 0.02; });
     }
     drone.userData.glowMat.emissiveIntensity = 0.8 + nf * 0.8;
@@ -6674,6 +6720,10 @@ export function initReefScene3D(canvas) {
     if (spec.pearlCost) {
       // Pearl species are sold only at Skip-7's counter, as a placement voucher.
       flash(rateEl, '💎 sold at the Pearl Market — tap Skip-7');
+      return false;
+    } else if (spec.eventId) {
+      // Event exclusives come only from their event's shop, one voucher a time.
+      flash(rateEl, '🎉 sold at the Event Shop, during its event');
       return false;
     } else if (spec.polypCost) {
       if (polyps < spec.polypCost) { flash(rateEl, 'not enough 🪸'); return false; }
@@ -6771,6 +6821,11 @@ export function initReefScene3D(canvas) {
       return false;
     };
 
+    // A glowing spark (Bioluminescence Night) pops for a bubble of energy.
+    if (glowSparks.length) {
+      const sp = castAll(glowSparks.map(s => s.m), true);
+      if (sp) { const i = glowSparks.findIndex(s => s.m === sp || s.m === sp.parent); if (i >= 0) { popSpark(i); return; } }
+    }
     // Poking Bubbles takes priority — it has sensors, and feelings.
     if (castOne(drone)) {
       if (droneState === 'napping') droneWake(true);
@@ -6941,6 +6996,79 @@ export function initReefScene3D(canvas) {
     map: bubbleSprite, color: 0xcfeeff, size: 0.32, transparent: true,
     opacity: 0.8, depthWrite: false, sizeAttenuation: true }));
   scene.add(bubbles);
+  // ── ✨ Bioluminescence Night ────────────────────────────────────────────────
+  // For the two winter months the nights are the show: the water goes deep
+  // indigo and much darker, every glowing thing burns brighter, countless blue
+  // plankton drift through the reef, and now and then a brighter spark floats
+  // by — tap it for a pop and a bubble of energy. `bioNight` is 1 while the
+  // event runs (daytime is unchanged; everything scales with nf).
+  const bioNight = () => (liveEvent(EV_TODAY())?.baseId === 'bioluminescence_night' ? 1 : 0);
+  const PLANKTON_N = 700;
+  const plGeo = new THREE.BufferGeometry();
+  const plArr = new Float32Array(PLANKTON_N * 3);
+  const plData = [];
+  const prng = mulberry32(4242);
+  for (let i = 0; i < PLANKTON_N; i++) {
+    const x = (prng() - 0.5) * 110, z = (prng() - 0.5) * 50;
+    const y = terrainHeight(x, z) + 0.4 + prng() * 7;
+    plArr[i * 3] = x; plArr[i * 3 + 1] = y; plArr[i * 3 + 2] = z;
+    plData.push({ x, y, z, a: prng() * 6.28, w: 0.3 + prng() * 0.6, r: 0.3 + prng() * 0.9 });
+  }
+  plGeo.setAttribute('position', new THREE.BufferAttribute(plArr, 3));
+  const plankton = new THREE.Points(plGeo, new THREE.PointsMaterial({
+    map: bubbleSprite, color: 0x62c8ff, size: 0.16, transparent: true, opacity: 0,
+    depthWrite: false, sizeAttenuation: true, blending: THREE.AdditiveBlending }));
+  plankton.visible = false;
+  scene.add(plankton);
+  const glowSparks = [];   // the tappable ones: { m, born, life, vx, vy, vz }
+  const glowSparkMat = new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.95 });
+  const glowSparkGeo = new THREE.SphereGeometry(0.12, 8, 6);
+  let sparkNext = 0;
+  function spawnSpark(t) {
+    const m = new THREE.Mesh(glowSparkGeo, glowSparkMat);
+    const halo = makeHalo(0x62c8ff, 2.2); halo.material.opacity = 0.7; m.add(halo);
+    // Starts near where the camera looks, drifting across the view.
+    const c = controls.target;
+    m.position.set(c.x + (Math.random() - 0.5) * 16, c.y + 1 + Math.random() * 3, c.z + (Math.random() - 0.5) * 12);
+    scene.add(m);
+    glowSparks.push({ m, born: t, life: 14 + Math.random() * 8, vx: (Math.random() - 0.5) * 0.6, vy: 0.08, vz: (Math.random() - 0.5) * 0.6 });
+  }
+  function popSpark(i) {
+    const s = glowSparks[i];
+    scene.remove(s.m); s.m.children[0]?.material.dispose();
+    glowSparks.splice(i, 1);
+    be = Math.min(be + 1, beMax);
+    hudGain('be', 1);
+    flash(rateEl, '✨ pop! +1 🫧', '#9fe8ff');
+    if (ev3 && ev3Live()) ev3Record('earn_be', 1);
+  }
+  function tickBioNight(t, dt, nf) {
+    const bn = bioNight();
+    const glow = nf * bn;
+    plankton.visible = glow > 0.02;
+    if (plankton.visible) {
+      plankton.material.opacity = glow * 0.85;
+      const pos = plankton.geometry.attributes.position;
+      for (let i = 0; i < PLANKTON_N; i++) {
+        const d = plData[i];
+        pos.setXYZ(i, d.x + Math.sin(t * d.w + d.a) * d.r, d.y + Math.sin(t * d.w * 0.7 + d.a * 2) * 0.3, d.z + Math.cos(t * d.w + d.a) * d.r);
+      }
+      pos.needsUpdate = true;
+    }
+    if (bn && nf > 0.6) {
+      if (t > sparkNext) { spawnSpark(t); sparkNext = t + 25 + Math.random() * 35; }
+    }
+    for (let i = glowSparks.length - 1; i >= 0; i--) {
+      const s = glowSparks[i];
+      const age = t - s.born;
+      if (age > s.life || nf < 0.3) { scene.remove(s.m); glowSparks.splice(i, 1); continue; }
+      s.m.position.x += s.vx * dt; s.m.position.y += (s.vy + Math.sin(t * 2 + s.born) * 0.15) * dt; s.m.position.z += s.vz * dt;
+      const fade = Math.min(1, age / 1.5, (s.life - age) / 1.5);
+      s.m.scale.setScalar(0.8 + Math.sin(t * 5 + s.born) * 0.2);
+      s.m.children[0].material.opacity = 0.7 * fade;
+    }
+    return bn;
+  }
 
   // Food pellets — dropped in feed mode, they sink and get mobbed.
   const PELLET_N = 24;
@@ -7006,6 +7134,7 @@ export function initReefScene3D(canvas) {
   const clock = new THREE.Clock();
   const SUN_DAY = new THREE.Color(0xeaf6ff), SUN_NIGHT = new THREE.Color(0x8fb3e8);
   const FOG_DAY = new THREE.Color(0x11486a), FOG_NIGHT = new THREE.Color(0x071726);
+  const FOG_BIO = new THREE.Color(0x040a1c);   // Bioluminescence Night: deep indigo
   let running = true;
   let lastSlow = 0;
   // Adaptive resolution. Pixel count is the one cost that scales with nothing
@@ -7099,12 +7228,15 @@ export function initReefScene3D(canvas) {
     nightFactor += (nTarget - nightFactor) * Math.min(1, dt / 0.6);
     const nf = nightFactor;
     if (!sawNight && nf > 0.9) { sawNight = true; checkAch(); }
-    sun.intensity = 1.7 - nf * 1.35;
+    // Bioluminescence Night: the dark goes deeper and the glow goes brighter.
+    const bn = tickBioNight(t, dt, nf);
+    const dk = nf * bn;
+    sun.intensity = 1.7 - nf * 1.35 - dk * 0.25;
     sun.color.copy(SUN_DAY).lerp(SUN_NIGHT, nf);
-    hemi.intensity = 1.05 - nf * 0.65;
-    fill.intensity = 0.5 - nf * 0.25;
-    scene.backgroundIntensity = 1 - nf * 0.72;
-    scene.fog.color.copy(FOG_DAY).lerp(FOG_NIGHT, nf);
+    hemi.intensity = 1.05 - nf * 0.65 - dk * 0.28;
+    fill.intensity = 0.5 - nf * 0.25 - dk * 0.15;
+    scene.backgroundIntensity = 1 - nf * 0.72 - dk * 0.2;
+    scene.fog.color.copy(FOG_DAY).lerp(FOG_NIGHT, nf).lerp(FOG_BIO, dk);
     // The blue water haze belongs to the water: once the camera climbs out,
     // the air clears and the beach reads in true colors at any distance.
     const wantClear = clamp((camera.position.y - SURFACE_Y) / 3, 0, 1);
@@ -7123,14 +7255,14 @@ export function initReefScene3D(canvas) {
       }
       g.rotation.z = Math.sin(t * 0.8 + g.userData.seed) * 0.04;
       if (g.userData.glowMats) {
-        for (const m of g.userData.glowMats) m.emissiveIntensity = 0.5 + nf * 0.85;
+        for (const m of g.userData.glowMats) m.emissiveIntensity = 0.5 + nf * 0.85 + dk * 0.9;
       }
       if (g.userData.bioHalo) {
         // Biolums pour light into the water after dark; lanterns pour harder.
         const boost = g.userData.lampBoost ?? 1;
         const fl = 0.85 + Math.sin(t * 1.3 + g.userData.seed) * 0.15;
-        g.userData.bioHalo.material.opacity = nf * 0.5 * fl * Math.min(boost, 1.3);
-        if (g.userData.bioLight) g.userData.bioLight.intensity = nf * 2.4 * fl * boost;
+        g.userData.bioHalo.material.opacity = nf * 0.5 * fl * Math.min(boost, 1.3) * (1 + dk * 0.6);
+        if (g.userData.bioLight) g.userData.bioLight.intensity = nf * 2.4 * fl * boost * (1 + dk * 0.7);
       }
     }
     // Schools: refresh each shoal's shared waypoint and flock averages once,
@@ -7412,9 +7544,9 @@ export function initReefScene3D(canvas) {
         const target = ud.baseScale * (f.home ? 0.8 : 1) * puff;
         f.g.scale.setScalar(f.g.scale.x + (target - f.g.scale.x) * Math.min(1, dt * (puff > 1 ? 8 : 2)));
       }
-      if (f.g.userData.glowMat) f.g.userData.glowMat.emissiveIntensity = nf * 0.9;
+      if (f.g.userData.glowMat) f.g.userData.glowMat.emissiveIntensity = nf * 0.9 + dk * 0.8;
       if (f.g.userData.bioHalo) {
-        f.g.userData.bioHalo.material.opacity = nf * 0.45 * (0.85 + Math.sin(t * 1.7 + f.phase) * 0.15);
+        f.g.userData.bioHalo.material.opacity = nf * 0.45 * (0.85 + Math.sin(t * 1.7 + f.phase) * 0.15) * (1 + dk * 0.7);
       }
     }
     for (const w of weeds) w.rotation.z = Math.sin(t * 0.9 + w.userData.seed) * 0.12;

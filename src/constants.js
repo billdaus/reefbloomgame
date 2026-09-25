@@ -40,7 +40,7 @@ export const FISH_COST = {
 // (the inverse of normal fish). Mostly crevice-dwelling nocturnal hunters.
 export const DAY_HIDER_SPECIES = new Set([
   'morayEel', 'giantMoray', 'blueRibbonEel', 'octopus', 'anglerfish', 'flashlightFish',
-  'rubyOctopus',
+  'rubyOctopus', 'squirrelfish',
 ]);
 
 // Bioluminescent species (fish + coral) — emit a soft glow at night.
@@ -50,7 +50,7 @@ export const BIOLUM_SPECIES = new Set([
   'dragonfish', 'viperfish', 'barreleye', 'twilightLantern', 'glowfinAngelfish', 'abyssalRay',
   'twilightWhaleShark',
   // coral
-  'auroraCoral', 'lanternCoral', 'orchidCoral', 'twilightBrain', 'phantomPolyp', 'wispCoral',
+  'auroraCoral', 'lanternCoral', 'orchidCoral', 'twilightBrain', 'phantomPolyp', 'wispCoral', 'lumenCoral',
 ]);
 
 // Starting resources
@@ -373,7 +373,7 @@ export const CORAL_SPECIES = {
   auroraCoral: {
     id: 'auroraCoral', name: 'Aurora Coral', scientific: 'Euphyllia lux',
     tier: TIER.LEGENDARY, tall: true, color: 0x76ff03, unlockLevel: 1,
-    eventId: 'bioluminescence_2026',
+    eventId: 'bioluminescence_night_2026',
   },
   tideCoral: {
     id: 'tideCoral', name: 'Moontide Coral', scientific: 'Lobophyllia lunaris',
@@ -383,12 +383,12 @@ export const CORAL_SPECIES = {
   frondCoral: {
     id: 'frondCoral', name: 'Verdant Frond', scientific: 'Pavona renovata',
     tier: TIER.LEGENDARY, tall: true, color: 0x2bbf6a, unlockLevel: 1,
-    eventId: 'reef_renewal_2026',
+    eventId: 'sea_dragon_days_2026', biome: ['coral', 'seagrass'],
   },
   orchidCoral: {
     id: 'orchidCoral', name: 'Twilight Orchid', scientific: 'Dendronephthya noctis',
     tier: TIER.LEGENDARY, tall: true, color: 0x9c64ff, unlockLevel: 1,
-    eventId: 'twilight_festival_2026',
+    eventId: 'bioluminescence_night_2026', biome: ['coral', 'deepTwilight'],
   },
   amberKelp: {
     id: 'amberKelp', name: 'Amber Kelp', scientific: 'Macrocystis aurantia',
@@ -399,6 +399,16 @@ export const CORAL_SPECIES = {
     id: 'sunsetFan', name: 'Sunset Fan', scientific: 'Gorgonia crepuscula',
     tier: TIER.LEGENDARY, tall: true, color: 0xff8a50, accentColor: 0xffd180, unlockLevel: 1,
     eventId: 'shoreline_summer_2026', biome: ['coral', 'seagrass', 'deepTwilight'],
+  },
+  lumenCoral: {
+    id: 'lumenCoral', name: 'Lumen Coral', scientific: 'Lucerna abyssi',
+    tier: TIER.LEGENDARY, tall: false, color: 0x1de9b6, accentColor: 0x64ffda, unlockLevel: 1,
+    eventId: 'bioluminescence_night_2026', biome: ['coral', 'deepTwilight'],
+  },
+  russetFan: {
+    id: 'russetFan', name: 'Russet Sea Fan', scientific: 'Gorgonia autumnalis',
+    tier: TIER.LEGENDARY, tall: true, color: 0xc0552b, accentColor: 0xf4a261, unlockLevel: 1,
+    eventId: 'autumn_current_2026', biome: ['coral', 'seagrass'],
   },
 };
 
@@ -415,6 +425,21 @@ export const FISH_SPECIES = {
     tier: TIER.COMMON, layer: 'A', color: 0x4caf50, accentColor: 0xb5e7b5,
     size: 12, speed: 1.8, unlockLevel: 1,
   },
+  anthias: {
+    id: 'anthias', name: 'Anthias', scientific: 'Pseudanthias squamipinnis',
+    tier: TIER.COMMON, layer: 'A', color: 0xff7043, accentColor: 0xffca28,
+    size: 12, speed: 1.5, unlockLevel: 1,
+  },
+  blenny: {
+    id: 'blenny', name: 'Blenny', scientific: 'Ecsenius spp.',
+    tier: TIER.COMMON, layer: 'A', color: 0x8d6e63, accentColor: 0xffb74d,
+    size: 9, speed: 0.8, unlockLevel: 2,
+  },
+  squirrelfish: {
+    id: 'squirrelfish', name: 'Squirrelfish', scientific: 'Sargocentron spp.',
+    tier: TIER.COMMON, layer: 'A', color: 0xe53935, accentColor: 0xffffff,
+    size: 16, speed: 0.9, unlockLevel: 3, nocturnal: true,
+  },
   // ── Uncommon ────────────────────────────────────────────────────────────────
   zebraGoby: {
     id: 'zebraGoby', name: 'Zebra Goby', scientific: '',
@@ -425,6 +450,26 @@ export const FISH_SPECIES = {
     id: 'cardinalfish', name: 'Cardinalfish', scientific: '',
     tier: TIER.UNCOMMON, layer: 'A', color: 0xef9a9a, accentColor: 0xb71c1c,
     size: 13, speed: 1.2, unlockLevel: 2,
+  },
+  hawkfish: {
+    id: 'hawkfish', name: 'Hawkfish', scientific: 'Cirrhitidae spp.',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0xef5350, accentColor: 0xfff3e0,
+    size: 11, speed: 0.6, unlockLevel: 2,
+  },
+  dottyback: {
+    id: 'dottyback', name: 'Dottyback', scientific: 'Pseudochromis spp.',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0x7b1fa2, accentColor: 0xff9800,
+    size: 10, speed: 1.3, unlockLevel: 3,
+  },
+  filefish: {
+    id: 'filefish', name: 'Filefish', scientific: 'Monacanthidae spp.',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0x4db6ac, accentColor: 0xff9800,
+    size: 14, speed: 0.7, unlockLevel: 4,
+  },
+  boxfish: {
+    id: 'boxfish', name: 'Boxfish', scientific: 'Ostracion cubicus',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0xffeb3b, accentColor: 0x212121,
+    size: 14, speed: 0.6, unlockLevel: 5,
   },
   // ── Rare ────────────────────────────────────────────────────────────────────
   clownfish: {
@@ -447,6 +492,46 @@ export const FISH_SPECIES = {
     tier: TIER.RARE, layer: 'B', color: 0xd84315, accentColor: 0xff8a65,
     size: 20, speed: 0.7, unlockLevel: 4, nocturnal: true,
   },
+  raccoonButterflyfish: {
+    id: 'raccoonButterflyfish', name: 'Raccoon Butterflyfish', scientific: 'Chaetodon lunula',
+    tier: TIER.RARE, layer: 'A', color: 0xffca28, accentColor: 0x212121,
+    size: 16, speed: 1.0, unlockLevel: 4,
+  },
+  longnoseButterflyfish: {
+    id: 'longnoseButterflyfish', name: 'Longnose Butterflyfish', scientific: 'Forcipiger flavissimus',
+    tier: TIER.RARE, layer: 'A', color: 0xffeb3b, accentColor: 0x212121,
+    size: 16, speed: 1.0, unlockLevel: 5,
+  },
+  bicolorAngelfish: {
+    id: 'bicolorAngelfish', name: 'Bicolor Angelfish', scientific: 'Centropyge bicolor',
+    tier: TIER.RARE, layer: 'A', color: 0xffeb3b, accentColor: 0x1a237e,
+    size: 14, speed: 1.1, unlockLevel: 5,
+  },
+  powderBrownTang: {
+    id: 'powderBrownTang', name: 'Powder Brown Tang', scientific: 'Acanthurus japonicus',
+    tier: TIER.RARE, layer: 'B', color: 0x795548, accentColor: 0xffffff,
+    size: 18, speed: 1.1, unlockLevel: 6,
+  },
+  foxfaceRabbitfish: {
+    id: 'foxfaceRabbitfish', name: 'Foxface Rabbitfish', scientific: 'Siganus vulpinus',
+    tier: TIER.RARE, layer: 'A', color: 0xffc107, accentColor: 0x212121,
+    size: 20, speed: 1.0, unlockLevel: 6, biome: ['coral', 'seagrass'],
+  },
+  porcupinePuffer: {
+    id: 'porcupinePuffer', name: 'Porcupine Puffer', scientific: 'Diodon holocanthus',
+    tier: TIER.RARE, layer: 'A', color: 0xd7b98a, accentColor: 0x5d4037,
+    size: 20, speed: 0.6, unlockLevel: 7,
+  },
+  copperbandButterflyfish: {
+    id: 'copperbandButterflyfish', name: 'Copperband Butterflyfish', scientific: 'Chelmon rostratus',
+    tier: TIER.RARE, layer: 'A', color: 0xfafafa, accentColor: 0xff8f00,
+    size: 16, speed: 1.0, unlockLevel: 7,
+  },
+  spottedDrum: {
+    id: 'spottedDrum', name: 'Spotted Drum', scientific: 'Equetus punctatus',
+    tier: TIER.RARE, layer: 'A', color: 0xfafafa, accentColor: 0x212121,
+    size: 15, speed: 0.7, unlockLevel: 8,
+  },
   // ── Super Rare ───────────────────────────────────────────────────────────────
   moorishIdol: {
     id: 'moorishIdol', name: 'Moorish Idol', scientific: 'Zanclus cornutus',
@@ -468,6 +553,33 @@ export const FISH_SPECIES = {
     tier: TIER.SUPER_RARE, layer: 'A', color: 0xffb74d, accentColor: 0xff8f00,
     size: 14, speed: 0.4, unlockLevel: 5,
   },
+  lionfish: {
+    id: 'lionfish', name: 'Lionfish', scientific: 'Pterois volitans',
+    tier: TIER.SUPER_RARE, layer: 'B', color: 0xb71c1c, accentColor: 0xfafafa,
+    size: 21, speed: 0.5, unlockLevel: 6,
+  },
+  clownTriggerfish: {
+    id: 'clownTriggerfish', name: 'Clown Triggerfish', scientific: 'Balistoides conspicillum',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0x263238, accentColor: 0xffca28,
+    size: 20, speed: 0.95, unlockLevel: 7,
+    lore: 'Polka-dot belly, painted lips, and a temper. Real clown triggerfish '
+      + 'guard their nests so fiercely that divers give them a wide, respectful lane.',
+  },
+  emperorSnapper: {
+    id: 'emperorSnapper', name: 'Emperor Snapper', scientific: 'Lutjanus sebae',
+    tier: TIER.SUPER_RARE, layer: 'B', color: 0xfafafa, accentColor: 0xc62828,
+    size: 26, speed: 0.9, unlockLevel: 8,
+  },
+  emperorAngelfish: {
+    id: 'emperorAngelfish', name: 'Emperor Angelfish', scientific: 'Pomacanthus imperator',
+    tier: TIER.SUPER_RARE, layer: 'B', color: 0x1e88e5, accentColor: 0xffeb3b,
+    size: 21, speed: 0.9, unlockLevel: 9,
+  },
+  frogfish: {
+    id: 'frogfish', name: 'Frogfish', scientific: 'Antennarius spp.',
+    tier: TIER.SUPER_RARE, layer: 'A', color: 0xff8f00, accentColor: 0xffcc80,
+    size: 14, speed: 0.15, unlockLevel: 10,
+  },
   // ── Epic ────────────────────────────────────────────────────────────────────
   cuttlefish: {
     id: 'cuttlefish', name: 'Cuttlefish', scientific: 'Sepia spp.',
@@ -479,15 +591,40 @@ export const FISH_SPECIES = {
     tier: TIER.EPIC, layer: 'B', color: 0xa1887f, accentColor: 0x5d4037,
     size: 30, speed: 0.7, unlockLevel: 7, nocturnal: true,
   },
+  scorpionfish: {
+    id: 'scorpionfish', name: 'Scorpionfish', scientific: 'Scorpaenopsis spp.',
+    tier: TIER.EPIC, layer: 'A', color: 0x8d6e63, accentColor: 0xd84315,
+    size: 18, speed: 0.3, unlockLevel: 8, nocturnal: true,
+  },
+  longfinBatfish: {
+    id: 'longfinBatfish', name: 'Longfin Batfish', scientific: 'Platax teira',
+    tier: TIER.EPIC, layer: 'B', color: 0xb0bec5, accentColor: 0x263238,
+    size: 24, speed: 0.9, unlockLevel: 9,
+  },
+  giantTrevally: {
+    id: 'giantTrevally', name: 'Giant Trevally', scientific: 'Caranx ignobilis',
+    tier: TIER.EPIC, layer: 'B', color: 0x90a4ae, accentColor: 0xcfd8dc,
+    size: 32, speed: 1.5, unlockLevel: 11, biome: ['coral', 'seagrass'],
+  },
+  blacktipReefShark: {
+    id: 'blacktipReefShark', name: 'Blacktip Reef Shark', scientific: 'Carcharhinus melanopterus',
+    tier: TIER.EPIC, layer: 'B', color: 0x8d9ea0, accentColor: 0x263238,
+    size: 36, speed: 1.3, unlockLevel: 12,
+  },
   // ── Legendary ────────────────────────────────────────────────────────────────
   dolphin: {
     id: 'dolphin', name: 'Dolphin', scientific: 'Tursiops truncatus',
     tier: TIER.LEGENDARY, layer: 'B', color: 0x78909c, accentColor: 0xcfd8dc,
     size: 36, speed: 1.6, unlockLevel: 10,
   },
+  whaleShark: {
+    id: 'whaleShark', name: 'Whale Shark', scientific: 'Rhincodon typus',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x455a64, accentColor: 0xeceff1,
+    size: 46, speed: 0.5, unlockLevel: 13, biome: ['coral', 'seagrass'],
+  },
   // ── Mythic ───────────────────────────────────────────────────────────────────
   shark: {
-    id: 'shark', name: 'Reef Shark', scientific: 'Carcharhinus amblyrhynchos',
+    id: 'shark', name: 'Grey Reef Shark', scientific: 'Carcharhinus amblyrhynchos',
     tier: TIER.MYTHIC, layer: 'B', color: 0x546e7a, accentColor: 0xeceff1,
     size: 40, speed: 1.3, unlockLevel: 12,
   },
@@ -568,6 +705,11 @@ export const FISH_SPECIES = {
     tier: TIER.RARE, layer: 'A', color: 0x6d4c41, accentColor: 0xa1887f,
     size: 18, speed: 0.3, unlockLevel: 3, biome: 'seagrass',
   },
+  goatfish: {
+    id: 'goatfish', name: 'Goatfish', scientific: 'Mullidae spp.',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0xffee58, accentColor: 0xffffff,
+    size: 17, speed: 0.9, unlockLevel: 4, biome: 'seagrass',
+  },
   // ── Seagrass Basin — Grazers ─────────────────────────────────────────────────
   pipefish: {
     id: 'pipefish', name: 'Pipefish', scientific: 'Syngnathus spp.',
@@ -641,6 +783,12 @@ export const FISH_SPECIES = {
     size: 26, speed: 0.7, unlockLevel: 11, biome: 'both',
   },
   // ── Pearl (premium) ──────────────────────────────────────────────────────────
+  yellowChromis: {
+    id: 'yellowChromis', name: 'Yellow Chromis', scientific: 'Chromis analis',
+    tier: TIER.COMMON, layer: 'A', color: 0xffee58, accentColor: 0xfff9c4,
+    size: 11, speed: 1.7, unlockLevel: 1,
+    pearlCost: 10,
+  },
   rainbowGoby: {
     id: 'rainbowGoby', name: 'Rainbow Goby', scientific: '',
     tier: TIER.SUPER_RARE, layer: 'A', color: 0x69f0ae, accentColor: 0xff6d00,
@@ -732,13 +880,13 @@ export const FISH_SPECIES = {
     id: 'moonSeahorse', name: 'Moon Seahorse', scientific: 'Hippocampus phosphoreus',
     tier: TIER.RARE, layer: 'A', color: 0xd0d8f8, accentColor: 0x40c4ff,
     size: 15, speed: 0.3, unlockLevel: 1, biome: 'deepTwilight',
-    eventId: 'bioluminescence_2026',
+    eventId: 'bioluminescence_night_2026',
   },
   glowEel: {
     id: 'glowEel', name: 'Glow Eel', scientific: 'Gymnothorax bioluminescens',
     tier: TIER.UNCOMMON, layer: 'A', color: 0x0d1a0d, accentColor: 0x76ff03,
     size: 20, speed: 1.1, unlockLevel: 1, biome: 'deepTwilight',
-    eventId: 'bioluminescence_2026',
+    eventId: 'bioluminescence_night_2026',
   },
   anglerfish: {
     id: 'anglerfish', name: 'Anglerfish', scientific: 'Melanocetus johnsonii',
@@ -896,6 +1044,30 @@ export const FISH_SPECIES = {
     tier: TIER.LEGENDARY, layer: 'A', color: 0xffc933, accentColor: 0xfff3c0,
     size: 15, speed: 0.4, unlockLevel: 1,
     eventId: 'shoreline_summer_2026', biome: ['coral', 'seagrass', 'deepTwilight'],
+  },
+  leafySeaDragon: {
+    id: 'leafySeaDragon', name: 'Leafy Sea Dragon', scientific: 'Phycodurus eques',
+    tier: TIER.LEGENDARY, layer: 'A', color: 0x9ccc65, accentColor: 0xffee58,
+    size: 17, speed: 0.3, unlockLevel: 1, biome: 'seagrass',
+    eventId: 'sea_dragon_days_2026',
+  },
+  weedySeaDragon: {
+    id: 'weedySeaDragon', name: 'Weedy Sea Dragon', scientific: 'Phyllopteryx taeniolatus',
+    tier: TIER.LEGENDARY, layer: 'A', color: 0xe65100, accentColor: 0x40c4ff,
+    size: 18, speed: 0.35, unlockLevel: 1, biome: 'seagrass',
+    eventId: 'sea_dragon_days_2026',
+  },
+  molaMola: {
+    id: 'molaMola', name: 'Mola mola', scientific: 'Mola mola',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x90a4ae, accentColor: 0xcfd8dc,
+    size: 44, speed: 0.4, unlockLevel: 1, biome: 'deepTwilight',
+    eventId: 'autumn_current_2026',
+  },
+  spinnerDolphin: {
+    id: 'spinnerDolphin', name: 'Spinner Dolphin', scientific: 'Stenella longirostris',
+    tier: TIER.LEGENDARY, layer: 'B', color: 0x546e7a, accentColor: 0xeceff1,
+    size: 36, speed: 1.3, unlockLevel: 1, biome: 'seagrass',
+    eventId: 'autumn_current_2026',
   },
 
   // ── Gavin ────────────────────────────────────────────────────────────────

@@ -4,9 +4,50 @@ import { BE_MAX } from '../constants.js';
 // ── Event schedule ─────────────────────────────────────────────────────────────
 // Entries recur EVERY YEAR on the month and day given (see "Yearly recurrence"
 // below) — the year in startDate/endDate is only when the event was authored.
-// Each event now has progressive quest sets. Earlier sets are gentle; later sets
-// demand more. Claiming a set grants tokens. Tokens unlock pass tiers.
-// Daily quests still contribute 1 bonus token each via recordQuestClaimed().
+// Events 2.0 (calendar 2.0, Sep 2026): each event runs progressive quest
+// sets that pay event tokens; daily quests add one token each while an event
+// runs (recordQuestClaimed); tokens EARNED unlock the pass milestones and the
+// Event Shop listings, and tokens are SPENT in the shop on the event's
+// exclusive species — which stay event-bound: recording one puts it in the
+// Journal but never in the normal market. The 3D edition drives the shop;
+// Classic still unlocks exclusives straight from pass tiers.
+
+// ── Quest sets ────────────────────────────────────────────────────────────────
+// Every event runs a ladder of quest sets, gentle first and demanding later;
+// the ladder's length scales with the event (a five-day tide gets three sets,
+// the two-month winter event eight). Set i pays 2 + i tokens. Challenges are
+// generated from one escalating template so the whole calendar stays balanced.
+function _sets(labels) {
+  return labels.map((label, i) => {
+    const be = Math.round((200 * (i + 1) * Math.pow(1.35, i)) / 50) * 50;
+    const pool = [
+      { type: 'place_coral',   label: `Place ${3 + 3 * i} coral`,            target: 3 + 3 * i },
+      { type: 'have_fish',     label: `Have ${3 + 2 * i} fish alive`,        target: 3 + 2 * i },
+      { type: 'earn_be',       label: `Earn ${be.toLocaleString()} 🫧`,      target: be },
+      { type: 'reach_harmony', label: `Reach ${Math.min(85, 30 + 10 * i)} Harmony`, target: Math.min(85, 30 + 10 * i) },
+      { type: 'hatch_fish',    label: `Hatch ${2 + 2 * i} fish`,             target: 2 + 2 * i },
+    ];
+    // Two challenges for the first two sets, three after; rotate the picks.
+    const n = i < 2 ? 2 : 3;
+    const picks = [];
+    for (let k = 0; k < n; k++) picks.push(pool[(i + k * 2) % pool.length]);
+    return { label, tokenReward: 2 + i, challenges: picks };
+  });
+}
+// Event Shop: exclusives are BOUGHT with event tokens, and each listing stays
+// locked until the player has EARNED `unlockAt` tokens over the event — the
+// threshold earns the right to buy, not the item. Prices and thresholds scale
+// with the event's length (tokens ≈ quest-set tokens + one per daily quest).
+const _shop = (...items) => items.map(([exclusive, unlockAt, cost]) => ({ exclusive, unlockAt, cost }));
+// Milestones the pass pays out on tokens earned (currency only; the species
+// live in the shop). Classic still unlocks exclusives from tiers, so the shop
+// items are mirrored there as `exclusive` tiers at their unlock threshold.
+function _pass(milestones, shop) {
+  const tiers = milestones.map(([threshold, reward, label]) => ({ threshold, reward, label }));
+  for (const it of shop) tiers.push({ threshold: it.unlockAt, reward: { exclusive: it.exclusive }, label: it.label ?? it.exclusive, shopOnly: true });
+  tiers.sort((a, b) => a.threshold - b.threshold);
+  return { tiers };
+}
 
 export const EVENT_SCHEDULE = [
   {
@@ -14,100 +55,28 @@ export const EVENT_SCHEDULE = [
     name:        'Coral Bloom Festival',
     icon:        '🌸',
     theme:       0xff8fab,
-    startDate:   '2026-04-11',
-    endDate:     '2026-04-17',
+    startDate:   '2026-04-01',
+    endDate:     '2026-04-30',
     description: 'The reef awakens in full bloom! Grow your coral and find harmony.',
     reward: { be: 300, pearls: 75 },
-    questSets: [
-      { label: 'First Bloom', tokenReward: 2, challenges: [
-        { type: 'place_coral',   label: 'Place 5 coral',    target: 5  },
-        { type: 'reach_harmony', label: 'Reach 30 Harmony', target: 30 },
-      ]},
-      { label: 'Full Bloom', tokenReward: 3, challenges: [
-        { type: 'place_coral', label: 'Place 10 coral',     target: 10 },
-        { type: 'have_fish',   label: 'Have 6 fish alive',  target: 6  },
-      ]},
-      { label: 'Festival', tokenReward: 4, challenges: [
-        { type: 'reach_harmony', label: 'Reach 60 Harmony',  target: 60 },
-        { type: 'have_fish',     label: 'Have 10 fish alive', target: 10 },
-        { type: 'place_coral',   label: 'Place 15 coral',     target: 15 },
-      ]},
-    ],
-    pass: {
-      tiers: [
-        { threshold: 1, reward: { be: 100 },              label: '100 🫧'          },
-        { threshold: 3, reward: { pearls: 20 },           label: '20 💎'           },
-        { threshold: 5, reward: { exclusive: 'blossomCoral' },  label: '🌸 Blossom Coral'  },
-        { threshold: 7, reward: { exclusive: 'sakuraAnthias' }, label: '🐟 Sakura Anthias' },
-      ],
-    },
-  },
-  {
-    id:          'bioluminescence_2026',
-    name:        'Bioluminescence Bloom',
-    icon:        '✨',
-    theme:       0x40c4ff,
-    startDate:   '2026-04-20',
-    endDate:     '2026-04-26',
-    description: 'Ghostly lights drift through the abyss — coax the glow back to the reef.',
-    reward: { be: 250, pearls: 80 },
-    questSets: [
-      { label: 'Soft Glow', tokenReward: 2, challenges: [
-        { type: 'place_coral', label: 'Place 3 coral',    target: 3 },
-        { type: 'have_fish',   label: 'Have 3 fish alive', target: 3 },
-      ]},
-      { label: 'Deep Drift', tokenReward: 3, challenges: [
-        { type: 'hatch_fish', label: 'Hatch 6 fish',  target: 6   },
-        { type: 'earn_be',    label: 'Earn 400 🫧',    target: 400 },
-      ]},
-      { label: 'Radiant Bloom', tokenReward: 4, challenges: [
-        { type: 'reach_harmony', label: 'Reach 60 Harmony', target: 60   },
-        { type: 'place_coral',   label: 'Place 10 coral',   target: 10   },
-        { type: 'earn_be',       label: 'Earn 1,000 🫧',     target: 1000 },
-      ]},
-    ],
-    pass: {
-      tiers: [
-        { threshold: 1, reward: { be: 50 },                       label: '50 🫧'           },
-        { threshold: 3, reward: { pearls: 20 },                   label: '20 💎'           },
-        { threshold: 5, reward: { exclusive: 'auroraCoral' },     label: '✨ Aurora Coral' },
-        { threshold: 8, reward: { exclusive: 'glowEel' },         label: '⚡ Glow Eel'      },
-      ],
-    },
+    questSets: _sets(['First Bud', 'Petals', 'Full Bloom', 'Festival', 'Blossom Rain', 'Everbloom']),
+    shop: _shop(['blossomCoral', 8, 8], ['sakuraAnthias', 20, 14]),
+    pass: _pass([[3, { be: 100 }, '100 🫧'], [12, { pearls: 15 }, '15 💎'], [30, { be: 300 }, '300 🫧'], [45, { pearls: 25 }, '25 💎']],
+      _shop(['blossomCoral', 8, 8], ['sakuraAnthias', 20, 14])),
   },
   {
     id:          'moonfish_migration_2026',
     name:        'Moonfish Migration',
-    icon:        '🐟',
+    icon:        '🌙',
     theme:       0x64b5f6,
     startDate:   '2026-05-01',
     endDate:     '2026-05-07',
     description: 'Schools of rare fish pass through — fill your reef with life!',
     reward: { be: 250, pearls: 50 },
-    questSets: [
-      { label: 'First Arrival', tokenReward: 2, challenges: [
-        { type: 'hatch_fish', label: 'Hatch 4 fish',  target: 4   },
-        { type: 'earn_be',    label: 'Earn 300 🫧',    target: 300 },
-      ]},
-      { label: 'Schooling', tokenReward: 3, challenges: [
-        { type: 'hatch_fish',  label: 'Hatch 8 fish',          target: 8   },
-        { type: 'earn_be',     label: 'Earn 700 🫧',            target: 700 },
-        { type: 'idle_streak', label: 'Trigger idle bonus 2×', target: 2   },
-      ]},
-      { label: 'Full Migration', tokenReward: 4, challenges: [
-        { type: 'hatch_fish',  label: 'Hatch 12 fish',          target: 12   },
-        { type: 'earn_be',     label: 'Earn 1,500 🫧',           target: 1500 },
-        { type: 'idle_streak', label: 'Trigger idle bonus 5×',  target: 5    },
-      ]},
-    ],
-    pass: {
-      tiers: [
-        { threshold: 1, reward: { be: 75 },               label: '75 🫧'   },
-        { threshold: 3, reward: { pearls: 15 },           label: '15 💎'   },
-        { threshold: 5, reward: { exclusive: 'tideCoral' }, label: '🌊 Moontide Coral' },
-        { threshold: 7, reward: { exclusive: 'opah' },    label: '🐟 Opah' },
-      ],
-    },
+    questSets: _sets(['First Arrival', 'Schooling', 'Silver Tide', 'Full Migration']),
+    shop: _shop(['tideCoral', 5, 5], ['opah', 12, 7]),
+    pass: _pass([[2, { be: 75 }, '75 🫧'], [8, { pearls: 15 }, '15 💎'], [16, { be: 200 }, '200 🫧']],
+      _shop(['tideCoral', 5, 5], ['opah', 12, 7])),
   },
   {
     id:          'pearl_tide_2026',
@@ -118,161 +87,80 @@ export const EVENT_SCHEDULE = [
     endDate:     '2026-06-05',
     description: 'A rare tidal surge brings pearls to the surface. Seize the bounty!',
     reward: { be: 200, pearls: 100 },
-    questSets: [
-      { label: 'First Swell', tokenReward: 2, challenges: [
-        { type: 'place_coral', label: 'Place 4 coral', target: 4   },
-        { type: 'earn_be',     label: 'Earn 500 🫧',   target: 500 },
-      ]},
-      { label: 'Rising Tide', tokenReward: 3, challenges: [
-        { type: 'place_coral',   label: 'Place 8 coral',    target: 8  },
-        { type: 'reach_harmony', label: 'Reach 50 Harmony', target: 50 },
-      ]},
-      { label: 'High Tide', tokenReward: 4, challenges: [
-        { type: 'place_coral',   label: 'Place 12 coral',   target: 12   },
-        { type: 'reach_harmony', label: 'Reach 80 Harmony', target: 80   },
-        { type: 'earn_be',       label: 'Earn 2,500 🫧',     target: 2500 },
-      ]},
-    ],
-    pass: {
-      tiers: [
-        { threshold: 1, reward: { be: 75 },                          label: '75 🫧'            },
-        { threshold: 3, reward: { pearls: 30 },                      label: '30 💎'            },
-        { threshold: 5, reward: { exclusive: 'pearlOrganPipe' },     label: '💎 Pearl Organ Pipe' },
-        { threshold: 7, reward: { exclusive: 'pearlfish' },          label: '🐟 Pearlfish'     },
-      ],
-    },
-  },
-  {
-    id:          'reef_renewal_2026',
-    name:        'Reef Renewal',
-    icon:        '🌊',
-    theme:       0x26c6da,
-    startDate:   '2026-06-18',
-    endDate:     '2026-06-24',
-    description: 'A fresh current sweeps the reef — rebuild, restock, and let it flourish anew.',
-    reward: { be: 300, pearls: 80 },
-    questSets: [
-      { label: 'New Growth', tokenReward: 2, challenges: [
-        { type: 'place_coral',   label: 'Place 8 coral',     target: 8  },
-        { type: 'reach_harmony', label: 'Reach 40 Harmony',  target: 40 },
-      ]},
-      { label: 'Flourishing', tokenReward: 3, challenges: [
-        { type: 'have_fish',  label: 'Have 8 fish alive',    target: 8   },
-        { type: 'earn_be',    label: 'Earn 400 Bubble Essence', target: 400 },
-      ]},
-      { label: 'Renewed Reef', tokenReward: 4, challenges: [
-        { type: 'reach_harmony', label: 'Reach 75 Harmony',   target: 75 },
-        { type: 'place_coral',   label: 'Place 16 coral',     target: 16 },
-      ]},
-    ],
-    pass: {
-      tiers: [
-        { threshold: 1, reward: { be: 100 },                    label: '100 🫧'          },
-        { threshold: 3, reward: { pearls: 25 },                 label: '25 💎'           },
-        { threshold: 5, reward: { exclusive: 'frondCoral' },    label: '🌿 Verdant Frond' },
-        { threshold: 7, reward: { exclusive: 'moonSeahorse' },  label: '🌙 Moon Seahorse' },
-      ],
-    },
+    questSets: _sets(['First Swell', 'Rising Tide', 'High Tide']),
+    shop: _shop(['pearlOrganPipe', 4, 4], ['pearlfish', 9, 6]),
+    pass: _pass([[2, { be: 75 }, '75 🫧'], [6, { pearls: 30 }, '30 💎'], [12, { pearls: 20 }, '20 💎']],
+      _shop(['pearlOrganPipe', 4, 4], ['pearlfish', 9, 6])),
   },
   {
     id:          'shoreline_summer_2026',
     name:        'Shoreline Summer',
     icon:        '🏖️',
     theme:       0xffd54f,
-    startDate:   '2026-07-06',
-    endDate:     '2026-07-16',
+    startDate:   '2026-06-15',
+    endDate:     '2026-07-31',
     description: 'The tide pulls back and the shore comes alive — build the reef beneath the summer sun.',
-    reward: { be: 300, pearls: 80 },
-    questSets: [
-      { label: 'Low Tide', tokenReward: 2, challenges: [
-        { type: 'place_coral', label: 'Place 4 coral',     target: 4 },
-        { type: 'have_fish',   label: 'Have 4 fish alive', target: 4 },
-      ]},
-      { label: 'High Sun', tokenReward: 3, challenges: [
-        { type: 'hatch_fish',    label: 'Hatch 6 fish',      target: 6   },
-        { type: 'reach_harmony', label: 'Reach 55 Harmony',  target: 55  },
-        { type: 'earn_be',       label: 'Earn 500 🫧',        target: 500 },
-      ]},
-      { label: 'Golden Hour', tokenReward: 4, challenges: [
-        { type: 'place_coral', label: 'Place 12 coral',      target: 12   },
-        { type: 'have_fish',   label: 'Have 10 fish alive',  target: 10   },
-        { type: 'earn_be',     label: 'Earn 1,200 🫧',        target: 1200 },
-      ]},
-    ],
-    pass: {
-      tiers: [
-        { threshold: 1, reward: { be: 100 },                     label: '100 🫧'            },
-        { threshold: 3, reward: { pearls: 25 },                  label: '25 💎'             },
-        { threshold: 5, reward: { exclusive: 'sunsetFan' },      label: '🌅 Sunset Fan'     },
-        { threshold: 8, reward: { exclusive: 'goldenSeahorse' }, label: '🌟 Golden Seahorse' },
-      ],
-    },
+    reward: { be: 400, pearls: 100 },
+    questSets: _sets(['Low Tide', 'Sandbar', 'High Sun', 'Golden Hour', 'Heatwave', 'Sea Breeze', 'Endless Summer']),
+    shop: _shop(['sunsetFan', 10, 10], ['goldenSeahorse', 25, 18]),
+    pass: _pass([[4, { be: 100 }, '100 🫧'], [15, { pearls: 20 }, '20 💎'], [40, { be: 400 }, '400 🫧'], [60, { pearls: 30 }, '30 💎']],
+      _shop(['sunsetFan', 10, 10], ['goldenSeahorse', 25, 18])),
+  },
+  {
+    id:          'sea_dragon_days_2026',
+    name:        'Sea Dragon Days',
+    icon:        '🐉',
+    theme:       0x66bb6a,
+    startDate:   '2026-08-16',
+    endDate:     '2026-08-22',
+    description: 'Leafy and weedy sea dragons drift into the seagrass, dressed as the fronds they hide among.',
+    reward: { be: 250, pearls: 60 },
+    questSets: _sets(['Kelp Shadows', 'Drifting Fronds', 'Camouflage', 'Dragon Dance', 'Leafy Legend']),
+    shop: _shop(['frondCoral', 5, 5], ['leafySeaDragon', 12, 8], ['weedySeaDragon', 18, 9]),
+    pass: _pass([[2, { be: 75 }, '75 🫧'], [8, { pearls: 15 }, '15 💎'], [22, { be: 250 }, '250 🫧']],
+      _shop(['frondCoral', 5, 5], ['leafySeaDragon', 12, 8], ['weedySeaDragon', 18, 9])),
   },
   {
     id:          'golden_kelp_2026',
     name:        'Golden Kelp Harvest',
     icon:        '🍂',
     theme:       0xd99a2b,
-    startDate:   '2026-09-22',
-    endDate:     '2026-10-12',
+    startDate:   '2026-10-01',
+    endDate:     '2026-10-31',
     description: 'Autumn light turns the kelp forest gold — gather the season\'s bounty before the first storms roll in.',
     reward: { be: 300, pearls: 75 },
-    questSets: [
-      { label: 'First Leaves', tokenReward: 2, challenges: [
-        { type: 'place_coral', label: 'Place 4 coral',     target: 4 },
-        { type: 'have_fish',   label: 'Have 5 fish alive', target: 5 },
-      ]},
-      { label: 'Golden Canopy', tokenReward: 3, challenges: [
-        { type: 'hatch_fish',    label: 'Hatch 6 fish',     target: 6   },
-        { type: 'reach_harmony', label: 'Reach 55 Harmony', target: 55  },
-        { type: 'earn_be',       label: 'Earn 600 🫧',       target: 600 },
-      ]},
-      { label: 'Harvest Moon', tokenReward: 4, challenges: [
-        { type: 'place_coral', label: 'Place 12 coral',     target: 12   },
-        { type: 'have_fish',   label: 'Have 12 fish alive', target: 12   },
-        { type: 'earn_be',     label: 'Earn 1,500 🫧',       target: 1500 },
-      ]},
-    ],
-    pass: {
-      tiers: [
-        { threshold: 1, reward: { be: 100 },                  label: '100 🫧'       },
-        { threshold: 3, reward: { pearls: 20 },               label: '20 💎'        },
-        { threshold: 5, reward: { exclusive: 'amberKelp' },   label: '🍂 Amber Kelp' },
-        { threshold: 8, reward: { exclusive: 'garibaldi' },   label: '🧡 Garibaldi'  },
-      ],
-    },
+    questSets: _sets(['First Leaves', 'Golden Canopy', 'Harvest Moon', 'Amber Light', 'Kelp Crown', 'Last Storm']),
+    shop: _shop(['amberKelp', 8, 8], ['garibaldi', 20, 14]),
+    pass: _pass([[3, { be: 100 }, '100 🫧'], [12, { pearls: 15 }, '15 💎'], [30, { be: 300 }, '300 🫧'], [45, { pearls: 25 }, '25 💎']],
+      _shop(['amberKelp', 8, 8], ['garibaldi', 20, 14])),
   },
   {
-    id:          'twilight_festival_2026',
-    name:        'Twilight Festival',
-    icon:        '🌌',
-    theme:       0x7c4dff,
-    startDate:   '2026-06-26',
-    endDate:     '2026-07-02',
-    description: 'The deep lights up for its yearly festival — coax the glow and gather the crowd.',
-    reward: { be: 280, pearls: 90 },
-    questSets: [
-      { label: 'First Glow', tokenReward: 2, challenges: [
-        { type: 'place_coral', label: 'Place 6 coral',      target: 6  },
-        { type: 'have_fish',   label: 'Have 5 fish alive',  target: 5  },
-      ]},
-      { label: 'Deep Revelry', tokenReward: 3, challenges: [
-        { type: 'reach_harmony', label: 'Reach 55 Harmony', target: 55 },
-        { type: 'earn_be',       label: 'Earn 500 Bubble Essence', target: 500 },
-      ]},
-      { label: 'Festival Peak', tokenReward: 4, challenges: [
-        { type: 'have_fish',   label: 'Have 12 fish alive', target: 12 },
-        { type: 'place_coral', label: 'Place 18 coral',     target: 18 },
-      ]},
-    ],
-    pass: {
-      tiers: [
-        { threshold: 1, reward: { be: 75 },                  label: '75 🫧'        },
-        { threshold: 3, reward: { pearls: 20 },              label: '20 💎'        },
-        { threshold: 5, reward: { exclusive: 'orchidCoral' }, label: '🪻 Twilight Orchid' },
-        { threshold: 8, reward: { exclusive: 'twilightLantern' }, label: '🏮 Twilight Lanternfish' },
-      ],
-    },
+    id:          'autumn_current_2026',
+    name:        'Autumn Current',
+    icon:        '🍁',
+    theme:       0xe0653a,
+    startDate:   '2026-11-01',
+    endDate:     '2026-11-14',
+    description: 'A cold current sweeps the coast and brings the open-ocean wanderers close to shore.',
+    reward: { be: 300, pearls: 60 },
+    questSets: _sets(['First Chill', 'Turning Tide', 'Drift Lines', 'Deep Pull', 'Current\'s End']),
+    shop: _shop(['russetFan', 6, 6], ['molaMola', 14, 9], ['spinnerDolphin', 22, 10]),
+    pass: _pass([[3, { be: 100 }, '100 🫧'], [10, { pearls: 15 }, '15 💎'], [28, { be: 250 }, '250 🫧']],
+      _shop(['russetFan', 6, 6], ['molaMola', 14, 9], ['spinnerDolphin', 22, 10])),
+  },
+  {
+    id:          'bioluminescence_night_2026',
+    name:        'Bioluminescence Night',
+    icon:        '✨',
+    theme:       0x40c4ff,
+    startDate:   '2026-12-01',
+    endDate:     '2027-01-31',
+    description: 'For two months the nights turn deep and the reef lights itself — glowing coral, drifting plankton, and the creatures that shine after dark.',
+    reward: { be: 500, pearls: 120 },
+    questSets: _sets(['First Glow', 'Blue Drift', 'Lantern Hour', 'Moonless', 'Glowing Shoals', 'Aurora', 'Deep Radiance', 'Night Eternal']),
+    shop: _shop(['auroraCoral', 10, 8], ['orchidCoral', 18, 10], ['lumenCoral', 28, 12], ['moonSeahorse', 40, 16], ['glowEel', 55, 20]),
+    pass: _pass([[5, { be: 100 }, '100 🫧'], [20, { pearls: 20 }, '20 💎'], [45, { be: 400 }, '400 🫧'], [70, { pearls: 30 }, '30 💎'], [90, { be: 600 }, '600 🫧']],
+      _shop(['auroraCoral', 10, 8], ['orchidCoral', 18, 10], ['lumenCoral', 28, 12], ['moonSeahorse', 40, 16], ['glowEel', 55, 20])),
   },
 ];
 
