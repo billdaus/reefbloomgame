@@ -1161,6 +1161,38 @@ function bodyHalfWidthAt(body, y, z) {
   return best || nearestX;
 }
 
+// Top (or, with sign −1, bottom) of the body at a given z, in the group's
+// units — so a fin's base can hug the curve of the back or belly.
+function bodyEdgeAt(body, z, sign = 1) {
+  const pos = body.geometry.attributes.position, sc = body.scale;
+  let best = 0, nearest = Infinity, nearestY = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const vx = Math.abs(pos.getX(i) * sc.x), vy = pos.getY(i) * sc.y * sign, vz = pos.getZ(i) * sc.z;
+    const dz = Math.abs(vz - z);
+    if (dz < 0.05 && vx < 0.05) best = Math.max(best, vy);
+    if (dz < nearest) { nearest = dz; nearestY = vy; }
+  }
+  return best || nearestY;
+}
+// A fin whose base follows the body from z0 back to z1 (a body-length span),
+// rising to `height(u)` above the edge at u = 0 … 1 along that span. Returns
+// a mesh already positioned; sign −1 hangs it from the belly instead.
+function huggingFin(body, mat, z0, z1, height, sign = 1, inset = 0.02) {
+  const N = 12, len = z0 - z1;
+  const pts = [];
+  for (let k = 0; k <= N; k++) {
+    const x = (k / N) * len;
+    pts.push([x, sign * (bodyEdgeAt(body, z0 - x, sign) - inset)]);
+  }
+  for (let k = N; k >= 0; k--) {
+    const u = k / N, x = u * len;
+    pts.push([x, sign * (bodyEdgeAt(body, z0 - x, sign) - inset + height(u))]);
+  }
+  const fin = finMesh(pts, mat);
+  fin.position.set(0, 0, z0);
+  return fin;
+}
+
 // ── Species body builders — each returns { tail?, tailAxis?, animate? } ───────
 const FISH_BODY = {
   generic(g, { bodyMat, finMat, rnd }) {
@@ -1218,11 +1250,12 @@ const FISH_BODY = {
     fishEyes(g, 0.1, 0.12, 0.34, 0.85);
     const snout = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.2, 8), bodyMat);
     snout.rotation.x = Math.PI / 2; snout.position.set(0, -0.02, 0.58); g.add(snout);
-    const H = sail ? 0.4 : 0.26;
-    const dorsal = finMesh([[0, 0], [0.12, H, 0.4, H * 1.05], [0.8, H * 0.7, 0.98, 0.02], [0, 0]], finM);
-    dorsal.position.set(0, (sail ? 0.3 : 0.24), 0.42); g.add(dorsal);
-    const anal = finMesh([[0, 0], [0.16, H * 0.85, 0.42, H * 0.9], [0.8, H * 0.6, 0.94, 0.02], [0, 0]], finM);
-    anal.scale.y = -1; anal.position.set(0, -(sail ? 0.3 : 0.24), 0.36); g.add(anal);
+    // Dorsal and anal fins hug the back and belly from behind the head to
+    // the tail base, tallest a third of the way back (the Zebrasoma sail).
+    const H = sail ? 0.4 : 0.24;
+    const profile = (u) => H * Math.pow(Math.sin(Math.PI * Math.min(1, u * 1.12)), 0.55) * (u < 0.2 ? 0.6 + 2 * u : 1);
+    const dorsal = huggingFin(body, finM, 0.4, -0.5, profile, 1); g.add(dorsal);
+    const anal = huggingFin(body, finM, 0.3, -0.5, (u) => profile(u) * 0.85, -1); g.add(anal);
     for (const sd of [-1, 1]) {
       const pec = finMesh([[0, 0], [0.16, 0.06, 0.24, -0.04], [0.16, -0.1, 0.02, -0.04], [0, 0]], finM, sd > 0 ? 1.2 : 1.94);
       pec.position.set(sd * 0.11, -0.02, 0.24); g.add(pec);
