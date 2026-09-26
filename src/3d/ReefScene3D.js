@@ -367,34 +367,57 @@ const FISH_PAINT = {
   yellowTang(ctx, w, h, { band }) {
     ctx.fillStyle = '#ffffff'; band(0.86, 0.92, 0.42, 0.58);        // the scalpel
   },
-  blueTang(ctx, w, h, { band }) {
-    // The black "palette": a stroke along the upper flank that hooks down
-    // behind the pectoral, leaving a blue oval — and a yellow tail.
-    ctx.fillStyle = '#0d1b2a';
-    band(0.1, 0.85, 0.12, 0.3); band(0.62, 0.85, 0.3, 0.7); band(0.32, 0.4, 0.3, 0.62);
-    ctx.fillStyle = '#ffeb3b'; band(0.9, 1, 0, 1);
+  blueTang(ctx, w, h, { flank }) {
+    // The black "palette": a smooth stroke along the upper flank that
+    // sweeps down behind the head and hooks back under, leaving the blue
+    // oval — then a yellow tail.
+    flank((X, Y) => {
+      ctx.fillStyle = '#0d1b2a';
+      ctx.beginPath();
+      ctx.moveTo(X(0.12), Y(0.16));
+      ctx.quadraticCurveTo(X(0.5), Y(0.02), X(0.86), Y(0.2));
+      ctx.quadraticCurveTo(X(0.9), Y(0.55), X(0.7), Y(0.72));
+      ctx.quadraticCurveTo(X(0.62), Y(0.78), X(0.56), Y(0.6));
+      ctx.quadraticCurveTo(X(0.7), Y(0.5), X(0.66), Y(0.3));    // the inner edge of the hook
+      ctx.quadraticCurveTo(X(0.5), Y(0.24), X(0.3), Y(0.34));
+      ctx.quadraticCurveTo(X(0.22), Y(0.5), X(0.34), Y(0.7));
+      ctx.quadraticCurveTo(X(0.26), Y(0.76), X(0.2), Y(0.6));
+      ctx.quadraticCurveTo(X(0.1), Y(0.4), X(0.12), Y(0.16));
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffeb3b'; ctx.fillRect(X(0.9), Y(0), X(1) - X(0.9), Y(1) - Y(0));
+    });
   },
-  powderBrownTang(ctx, w, h, { band }) {
-    ctx.fillStyle = '#eceff1'; band(0.02, 0.2, 0.42, 0.75);        // white cheek
-    ctx.fillStyle = '#ffd54f'; band(0.2, 0.86, 0.08, 0.16);         // yellow band under the dorsal
-    ctx.fillStyle = '#ffffff'; band(0.0, 0.05, 0.5, 0.62);          // white lips
+  powderBrownTang(ctx, w, h, { flank, spot }) {
+    flank((X, Y) => {
+      ctx.fillStyle = '#eceff1';                                    // white cheek, below the eye
+      ctx.beginPath(); ctx.ellipse(X(0.1), Y(0.6), Math.abs(X(0.1) - X(0)), Y(0.78) - Y(0.6), 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffd54f';                                    // yellow band along the dorsal base
+      ctx.beginPath(); ctx.moveTo(X(0.22), Y(0.1)); ctx.quadraticCurveTo(X(0.55), Y(0.04), X(0.86), Y(0.1));
+      ctx.lineTo(X(0.86), Y(0.17)); ctx.quadraticCurveTo(X(0.55), Y(0.12), X(0.22), Y(0.17)); ctx.closePath(); ctx.fill();
+    });
+    ctx.fillStyle = '#ffffff'; spot(0.02, 0.55, 0.02, 0.07);        // white lips
   },
-  damselfish(ctx, w, h) { /* plain electric blue — the counter-shade is all it needs */ },
-  cardinalfish(ctx, w, h, { band }) {
-    ctx.fillStyle = 'rgba(183,28,28,0.5)';
-    for (let k = 0; k < 4; k++) band(0.05, 0.95, 0.18 + k * 0.17, 0.2 + k * 0.17);   // faint red lines
+  damselfish() { /* plain electric blue — the counter-shade is all it needs */ },
+  cardinalfish(ctx, w, h, { flank }) {
+    flank((X, Y) => {
+      ctx.strokeStyle = 'rgba(183,28,28,0.45)'; ctx.lineWidth = 1.2;
+      for (let k = 0; k < 4; k++) {                                   // faint lines along the flank
+        ctx.beginPath(); ctx.moveTo(X(0.06), Y(0.24 + k * 0.16));
+        ctx.quadraticCurveTo(X(0.5), Y(0.2 + k * 0.16), X(0.94), Y(0.26 + k * 0.16)); ctx.stroke();
+      }
+    });
   },
-  pajamaCardinalfish(ctx, w, h, { band, rnd }) {
+  pajamaCardinalfish(ctx, w, h, { band, spot, rnd }) {
     ctx.fillStyle = '#c0ca33'; band(0, 0.36, 0, 1);                   // olive-yellow head
     ctx.fillStyle = '#1a1a1a'; band(0.36, 0.5, 0, 1);                 // the black belt
-    ctx.fillStyle = '#ef5350';                                        // red spots on the rear
-    for (let k = 0; k < 24; k++) { const p = 0.52 + rnd() * 0.46, y = rnd(); band(p, p + 0.03, y, y + 0.07); }
+    ctx.fillStyle = '#ef5350';                                        // round red spots on the silver rear
+    for (let k = 0; k < 22; k++) spot(0.54 + rnd() * 0.42, 0.1 + rnd() * 0.8, 0.018, 0.045);
   },
-  banggaiCardinalfish(ctx, w, h, { band, rnd }) {
+  banggaiCardinalfish(ctx, w, h, { band, spot, rnd }) {
     ctx.fillStyle = '#111111';
-    band(0.2, 0.26, 0, 1); band(0.46, 0.52, 0, 1); band(0.72, 0.78, 0, 1);   // three bars
-    ctx.fillStyle = '#ffffff';
-    for (let k = 0; k < 18; k++) { const p = 0.28 + rnd() * 0.68, y = rnd(); band(p, p + 0.02, y, y + 0.05); }
+    band(0.2, 0.25, 0, 1); band(0.47, 0.52, 0, 1); band(0.73, 0.78, 0, 1);   // three bars
+    ctx.fillStyle = '#ffffff';                                        // white flecks between them
+    for (let k = 0; k < 16; k++) spot(0.27 + rnd() * 0.68, 0.1 + rnd() * 0.8, 0.012, 0.03);
   },
 };
 const fishTexCache = new Map();
@@ -428,8 +451,24 @@ function fishTexture(spec, variant = 0) {
     else if (b <= 0) rect(1 + a, 1 + b);
     else { rect(0, b); rect(1 + a, 1); }
   };
+  // flank(fn): fn(X, Y) draws in body space — X(p) for p = 0 nose … 1 tail,
+  // Y(q) for q = 0 back … 1 belly — and is run for the right flank, then
+  // mirrored for the left (twice, so the wrap past x = 0 lands too).
+  const flank = (fn) => {
+    const Y = (q) => q * h;
+    fn((p) => (0.25 + 0.5 * p) * w, Y);
+    for (const off of [0, w]) {
+      ctx.save(); ctx.translate(off, 0);
+      fn((p) => (0.25 - 0.5 * p) * w, Y);
+      ctx.restore();
+    }
+  };
+  // spot(p, q, rp, rq): an ellipse on both flanks, radii in body fractions.
+  const spot = (p, q, rp, rq) => flank((X, Y) => {
+    ctx.beginPath(); ctx.ellipse(X(p), Y(q), Math.abs(X(p + rp) - X(p)), rq * h, 0, 0, 7); ctx.fill();
+  });
   if (FISH_PAINT[spec.id]) {
-    FISH_PAINT[spec.id](ctx, w, h, { band, rnd, base, acc });
+    FISH_PAINT[spec.id](ctx, w, h, { band, flank, spot, rnd, base, acc });
   } else if (FISH_BANDED.has(spec.id)) {
     const bands = 3 + (hashId(spec.id) % 2);
     for (let i = 0; i < bands; i++) {
@@ -1169,7 +1208,7 @@ const FISH_BODY = {
     const sail = spec.id === 'yellowTang';
     const finM = new THREE.MeshStandardMaterial({
       color: new THREE.Color(spec.color).multiplyScalar(spec.id === 'powderBrownTang' ? 0.55 : 0.92),
-      roughness: 0.4, side: THREE.DoubleSide });
+      roughness: 0.4, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
     const tailM = spec.id === 'blueTang' ? new THREE.MeshStandardMaterial({ color: 0xffeb3b, roughness: 0.4, side: THREE.DoubleSide })
       : spec.id === 'powderBrownTang' ? new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.4, side: THREE.DoubleSide })
       : finM;
@@ -1228,8 +1267,8 @@ const FISH_BODY = {
     const banggai = spec.id === 'banggaiCardinalfish';
     const pajama = spec.id === 'pajamaCardinalfish';
     const finM = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(banggai ? 0x263238 : spec.accentColor ?? spec.color), roughness: 0.4,
-      side: THREE.DoubleSide, transparent: true, opacity: banggai ? 0.9 : 0.8 });
+      color: new THREE.Color(banggai ? 0x37474f : spec.accentColor ?? spec.color), roughness: 0.45,
+      side: THREE.DoubleSide, transparent: true, opacity: banggai ? 0.6 : 0.62 });
     const body = fusiformBody(bodyMat, 0.66, 0.3);
     body.scale.set(0.24, pajama ? 0.5 : 0.42, pajama ? 0.9 : 1.02);
     g.add(body);
