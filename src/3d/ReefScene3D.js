@@ -46,6 +46,10 @@ const TICK_SEC = TICK_MS / 1000;        // BE/polyp tick cadence in seconds
 // taking twice as long to grow, and a steeper ladder past level 5. Fish
 // (swimming, egg timers) are untouched.
 const PACE_BE = 0.5, PACE_POLYP = 0.6, PACE_GROW = 2;
+// Classic level → 3D level: 1 stays 1, then every step is two (2→3, 3→5 … 15→29).
+const stretchLevel = (l) => (l <= 1 ? 1 : 2 * l - 1);
+const unlockOf = (spec) => stretchLevel(spec?.unlockLevel ?? 1);
+
 const SAVE_KEY_BASE = 'reefbloom_3d_save_v1';
 const SLOT_KEY = 'reefbloom_3d_slot';
 const slotKey = (s) => `${SAVE_KEY_BASE}_s${s}`;
@@ -54,9 +58,9 @@ const slotKey = (s) => `${SAVE_KEY_BASE}_s${s}`;
 // basin sits on a deep shelf east of the reef, the seagrass flats a touch
 // shallower to the west. Zone membership for free water (fish) is by x band.
 const ZONES = {
-  seagrass:     { id: 'seagrass',     cx: -32, cz: 0, grid: 10, floorY: 0.5,  unlock: SEAGRASS_UNLOCK_LEVEL },
+  seagrass:     { id: 'seagrass',     cx: -32, cz: 0, grid: 10, floorY: 0.5,  unlock: stretchLevel(SEAGRASS_UNLOCK_LEVEL) },
   coral:        { id: 'coral',        cx: 0,   cz: 0, grid: 10, floorY: -0.1, unlock: 1 },
-  deepTwilight: { id: 'deepTwilight', cx: 32,  cz: 0, grid: 10, floorY: -4.5, unlock: DEEP_TWILIGHT_UNLOCK_LEVEL },
+  deepTwilight: { id: 'deepTwilight', cx: 32,  cz: 0, grid: 10, floorY: -4.5, unlock: stretchLevel(DEEP_TWILIGHT_UNLOCK_LEVEL) },
 };
 function zoneAt(x) {
   if (x < -16) return ZONES.seagrass;
@@ -143,16 +147,19 @@ const SCHOOL_SPECIES = new Set([
 // noon 0.5, sunset 0.75); night factor eases toward clamp(-elevation·1.6, 0, 1).
 const DAY_MS = 240000;
 
-// Milestone requirements to REACH each level [coralCount, fishCount, harmony],
-// mirroring Classic's LevelSystem. Index === level being reached (1 = start).
-const MAX_LEVEL = 15;
+// Milestone requirements to REACH each level [coralCount, fishCount, harmony].
+// Index === level being reached (1 = start). Thirty levels: Classic's 15-step
+// ladder stretched to twice the length, so every species and zone unlocks at
+// stretchLevel(its Classic level) — see unlockOf().
+const MAX_LEVEL = 30;
 const LEVEL_REQS = [
   null, null,
-  [3, 0, 0], [6, 2, 0], [12, 4, 60], [20, 8, 75], [28, 12, 78], [36, 16, 80],
-  [46, 20, 82], [56, 25, 85], [66, 30, 87], [78, 35, 89], [90, 40, 91],
-  [102, 46, 93], [115, 52, 95], [125, 60, 98],
+  [2, 0, 0], [3, 0, 0], [4, 1, 0], [6, 2, 0], [9, 3, 0], [12, 4, 60], [16, 6, 68],
+  [20, 8, 75], [24, 10, 76], [28, 12, 78], [32, 14, 79], [36, 16, 80], [41, 18, 81],
+  [46, 20, 82], [51, 22, 84], [56, 25, 85], [61, 28, 86], [66, 30, 87], [72, 32, 88],
+  [78, 35, 89], [84, 38, 90], [90, 40, 91], [96, 43, 92], [102, 46, 93], [108, 49, 94],
+  [115, 52, 95], [120, 56, 96], [126, 60, 98], [132, 64, 98],
 ];
-
 // Polyps FROM level L → L+1 (Classic CoralUpgrade.upgradeCost = 4 * L).
 const upgradeCost = (level) => 4 * level;
 
@@ -2941,13 +2948,14 @@ export function initReefScene3D(canvas) {
   // Event passes mint Season Packs that guarantee one of that event's
   // exclusives.
   const PACK_TIERS = ['common', 'uncommon', 'rare', 'superRare', 'epic', 'legendary', 'mythic'];
-  const MYTHIC_PACK_LEVEL = 12;   // level-ups from here mint the unbuyable pack
-  // Free-track mint: 2–3 common, 4–5 uncommon, 6–7 rare, 8–9 s.rare, 10 epic,
-  // 11 legendary, 12+ mythic — every tier is reachable without spending.
+  const MYTHIC_PACK_LEVEL = 23;   // level-ups from here mint the unbuyable pack
+  // Free-track mint over the 30-level ladder: 2–5 common, 6–9 uncommon, 10–13
+  // rare, 14–17 s.rare, 18–20 epic, 21–22 legendary, 23+ mythic — every tier
+  // is reachable without spending.
   const packTierForLevel = (l) =>
     l >= MYTHIC_PACK_LEVEL ? 'mythic'
-      : l === 11 ? 'legendary'
-      : PACK_TIERS[clamp(Math.floor((l - 2) / 2), 0, 4)];
+      : l >= 21 ? 'legendary'
+      : PACK_TIERS[clamp(Math.floor((l - 2) / 4), 0, 4)];
   // Purchase channels — Bubble Energy only, mythic deliberately absent. Pearls
   // (the real-money currency) never buy a random roll, and Bubble Energy can't
   // be bought with pearls anywhere, so packs are not loot boxes under Apple's
@@ -2982,9 +2990,9 @@ export function initReefScene3D(canvas) {
   // Pearl species never roll: "so rare it can't be hatched" — they're Skip-7's.
   const tierFish = (tier) => allFish().filter(s => s.tier === tier && !s.eventId && !s.pearlCost);
   const fishAvailable = (s) =>
-    (s.unlockLevel ?? 1) <= level && zoneUnlocked(primaryBiome(s));
+    unlockOf(s) <= level && zoneUnlocked(primaryBiome(s));
   const coralAvailable = (s) =>
-    (s.unlockLevel ?? 1) <= level
+    unlockOf(s) <= level
     && Object.keys(ZONES).some(z => zoneUnlocked(z) && matchesBiome(s, z));
   const packFishPool = (tier) => tierFish(tier).filter(fishAvailable);
   const packCoralPool = (tier) =>
@@ -3416,7 +3424,7 @@ export function initReefScene3D(canvas) {
   // Tier bias: base < 1 favors common tiers, > 1 favors rare ones. Search
   // depth and level push the base up; wild-abundance odds still apply.
   function surveyPick(pool, d) {
-    const base = 0.55 + 0.25 * d + level * 0.015;
+    const base = 0.55 + 0.25 * d + level * 0.0075;
     const ws = pool.map(s =>
       wildWeight(s) * Math.pow(base, Math.max(0, PACK_TIERS.indexOf(s.tier))));
     let total = 0;
@@ -4045,7 +4053,7 @@ export function initReefScene3D(canvas) {
         corals: placedCorals, fish: placedFish, seen: [...seen], exp: expansions,
         eggs: [...eggsClaimed], stations: placedStations,
         ev3, excl: [...exclOwned], dq,
-        ach: [...achUnlocked], sawNight,
+        ach: [...achUnlocked], sawNight, lv30: true,
         packs, vouchers, seasonPacks,
         nest: nestEggs, starterEggs: starterEggsGiven,
         starterPack: starterPackGiven, survey, coralDisc: true, quiz,
@@ -4160,7 +4168,7 @@ export function initReefScene3D(canvas) {
     type === 'coral' && !spec.utility && !spec.polypCost && !spec.eventId;
   const coralKnown = (spec) =>
     seen.has(spec.id)
-    || Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock) <= 1;
+    || Math.max(unlockOf(spec), ZONES[primaryBiome(spec)].unlock) <= 1;
 
   const rows = [];   // { btn, need }  for lock refresh
   const pearlRows = [];   // Skip-7's corals — shown only while a voucher is banked
@@ -4175,7 +4183,7 @@ export function initReefScene3D(canvas) {
   }
   function button(spec, type) {
     const { n, unit } = priceOf(spec, type);
-    const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+    const need = Math.max(unlockOf(spec), ZONES[primaryBiome(spec)].unlock);
     // Species reachable in more than one biome show all their biome icons.
     const zones = Object.keys(ZONES).filter(id => matchesBiome(spec, id));
     const badge = zones.length > 1 ? ` ${zones.map(id => BIOMES[id].icon).join('')}` : '';
@@ -4570,7 +4578,7 @@ export function initReefScene3D(canvas) {
       const { spec } = it;
       if (!spec) continue;
       const type = spec.layer ? 'fish' : 'coral';
-      const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+      const need = Math.max(unlockOf(spec), ZONES[primaryBiome(spec)].unlock);
       const avail = type === 'fish' ? fishAvailable(spec) : coralAvailable(spec);
       it.card.classList.toggle('locked', !avail);
       it.buttons[0].textContent = avail ? `💎 ${spec.pearlCost}` : `🔒 Lv ${need}`;
@@ -4584,7 +4592,7 @@ export function initReefScene3D(canvas) {
   }
   const closeCounter = () => skipCounter.hide();
   function buyFromCounter(spec, type) {
-    const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+    const need = Math.max(unlockOf(spec), ZONES[primaryBiome(spec)].unlock);
     if (need > level) { say(SKIP7.locked(need)); return; }
     const avail = type === 'fish' ? fishAvailable(spec) : coralAvailable(spec);
     if (!avail) { say(SKIP7.zone(BIOMES[primaryBiome(spec)].shortName)); return; }
@@ -4961,7 +4969,7 @@ export function initReefScene3D(canvas) {
   // once the species has been recorded, biome icons and a tier badge.
   function journalRow(spec) {
     const found = seen.has(spec.id);
-    const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+    const need = Math.max(unlockOf(spec), ZONES[primaryBiome(spec)].unlock);
     const tierCol = hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5);
     const badge = `<span style="font-size:9px;letter-spacing:1px;color:${tierCol};`
       + `border:1px solid ${tierCol};border-radius:4px;padding:1px 4px">`
@@ -5065,7 +5073,7 @@ export function initReefScene3D(canvas) {
     if (level >= ZONES.deepTwilight.unlock && !placedCorals.some(e => e.b === 'deepTwilight')) {
       tips.push('The 🌌 Deep Twilight shelf is unlocked and empty — bioluminescent species await.');
     }
-    if (placedFish.length >= 3 && !placedStations.length && level >= STATION_SPEC.unlockLevel) {
+    if (placedFish.length >= 3 && !placedStations.length && level >= unlockOf(STATION_SPEC)) {
       tips.push('Your fish have nowhere to get cleaned — place a Cleaning Station (utility section) and staff it with a cleaner fish.');
     }
     if (placedStations.length && !placedFish.some(f => FISH_SPECIES[f.id]?.cleaner)) {
@@ -5661,7 +5669,7 @@ export function initReefScene3D(canvas) {
       : 'One of a kind';
   function fillSpecies(spec, kind) {
     const found = seen.has(spec.id);
-    const need = Math.max(spec.unlockLevel ?? 1, ZONES[primaryBiome(spec)].unlock);
+    const need = Math.max(unlockOf(spec), ZONES[primaryBiome(spec)].unlock);
     const tierCol = hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5);
     speciesModal.ov.querySelector('.m-title').textContent = found ? spec.name : '???';
     speciesModal.ov.querySelector('.m-sub')?.remove();
@@ -6254,6 +6262,9 @@ export function initReefScene3D(canvas) {
     pearls = saved.pearls ?? START_PEARLS;
     harmony = saved.harmony ?? START_HARMONY;
     level = saved.level ?? START_LEVEL;
+    // Saves from the 15-level ladder: carry the level across so nothing that
+    // was unlocked locks again (old 12 → 23, the same species and zones).
+    if (!saved.lv30 && saved.level != null) level = stretchLevel(level);
     timeOfDay = saved.timeOfDay ?? 0.3;
     // Rebuild bought expansions before restoring corals that may sit on them.
     Object.entries(saved.exp ?? {}).forEach(([zid, keys]) =>
@@ -6307,7 +6318,7 @@ export function initReefScene3D(canvas) {
       // recorded — veterans lose nothing to the new gate.
       for (const s of [...allCorals(), GOLDEN_SPEC]) {
         if (s.utility || s.pearlCost || s.eventId) continue;
-        const need = Math.max(s.unlockLevel ?? 1, ZONES[primaryBiome(s)].unlock);
+        const need = Math.max(unlockOf(s), ZONES[primaryBiome(s)].unlock);
         if (need <= level) seen.add(s.id);
       }
     }
