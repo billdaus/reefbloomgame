@@ -1143,6 +1143,41 @@ const FISH_BODY = {
     tail.add(caudal);
     return { tail };
   },
+  // Ocean sunfish: a tall, flattened disc with no tail — the body ends in a
+  // wavy clavus — and one huge dorsal and anal fin it sculls with.
+  mola(g, { bodyMat, spec, rnd }) {
+    const finM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.color).multiplyScalar(0.85), roughness: 0.4,
+      side: THREE.DoubleSide });
+    const body = fusiformBody(bodyMat, 0.25, 0.45);        // barely pinched: a disc
+    body.scale.set(0.26, 1.05, 1.1 * (0.95 + rnd() * 0.1));
+    g.add(body);
+    fishEyes(g, 0.1, 0.12, 0.42, 0.8);
+    const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 6, 12), pupilMat);
+    mouth.position.set(0, -0.02, 0.54); g.add(mouth);
+    // The fins sit on the rear half of the disc and reach about a body-height.
+    const finPts = [[0, 0], [-0.08, 0.5, 0.02, 0.62], [0.22, 0.46, 0.3, 0], [0, 0]];
+    const dorsal = finMesh(finPts, finM);
+    dorsal.position.set(0, 0.42, -0.16); g.add(dorsal);
+    const anal = finMesh(finPts, finM);
+    anal.scale.y = -1; anal.position.set(0, -0.42, -0.16); g.add(anal);
+    // Clavus: the scalloped rear edge where a tail would be.
+    const clavus = finMesh([
+      [0, 0.44], [0.16, 0.36, 0.1, 0.22], [0.2, 0.1, 0.1, 0], [0.2, -0.1, 0.1, -0.22],
+      [0.16, -0.36, 0, -0.44], [0, 0.44]], finM);
+    clavus.position.set(0, 0, -0.48); g.add(clavus);
+    for (const sd of [-1, 1]) {
+      const pec = finMesh([[0, 0], [0.16, 0.04, 0.22, -0.06], [0.14, -0.1, 0.02, -0.04], [0, 0]],
+        finM, sd > 0 ? 1.2 : 1.94);
+      pec.position.set(sd * 0.12, 0.02, 0.12); g.add(pec);
+    }
+    const animate = (t, phase) => {
+      dorsal.rotation.z = Math.sin(t * 2.4 + phase) * 0.22;       // opposed sculling
+      anal.rotation.z = -Math.sin(t * 2.4 + phase) * 0.22;
+      g.rotation.z = Math.sin(t * 0.6 + phase) * 0.08;            // lolling, as they do
+    };
+    return { animate };
+  },
   dolphin(g, { bodyMat, spec, rnd }) {
     const finM = new THREE.MeshStandardMaterial({
       color: new THREE.Color(spec.color).multiplyScalar(0.9), roughness: 0.35,
@@ -1765,6 +1800,7 @@ function fishBodyOf(id) {
     'oarfish', 'ribbonfish'].includes(id)) return 'eel';
   if (['octopus', 'giantSquid', 'rubyOctopus'].includes(id)) return 'octopus';
   if (id === 'dolphin' || id === 'spinnerDolphin') return 'dolphin';
+  if (id === 'molaMola') return 'mola';
   if (id === 'cuttlefish') return 'cuttlefish';
   if (['manatee', 'dugong'].includes(id)) return 'sirenian';
   if (id === 'seaOtter') return 'otter';
@@ -4582,8 +4618,29 @@ export function initReefScene3D(canvas) {
     ctx.beginPath(); ctx.arc(48, 48, 40, 0, Math.PI * 2); ctx.fill();
     return cv.toDataURL();
   }
+  // A large one-off portrait (dev/marketing: window.__rb3d.portrait(id, px)) —
+  // same rig as the thumbnails, its own render target, not cached.
+  function speciesPortrait(spec, px = 512) {
+    const saved = thumbRig, savedCache = thumbCache.get(spec.id);
+    thumbRig = null;                 // force a fresh rig at the requested size
+    THUMB_PX_OVERRIDE = px;
+    try {
+      thumbCache.delete(spec.id);
+      const url = speciesThumb(spec);
+      thumbCache.delete(spec.id);
+      return url;
+    } finally {
+      THUMB_PX_OVERRIDE = 0;
+      thumbRig?.rt.dispose();
+      thumbRig = saved;
+      if (savedCache) thumbCache.set(spec.id, savedCache);
+    }
+  }
+  let THUMB_PX_OVERRIDE = 0;
+  if (window.__rb3d) window.__rb3d.portrait = (id, px) => speciesPortrait(CORAL_SPECIES[id] ?? FISH_SPECIES[id] ?? LOCAL_SPECS[id], px);
   function speciesThumb(spec) {
     if (thumbCache.has(spec.id)) return thumbCache.get(spec.id);
+    const PX = THUMB_PX_OVERRIDE || THUMB_PX;
     let g = null;
     const prevTarget = renderer.getRenderTarget();
     const prevColor = renderer.getClearColor(new THREE.Color());
@@ -4591,7 +4648,7 @@ export function initReefScene3D(canvas) {
     try {
       if (renderer.getContext().isContextLost()) throw new Error('context lost');
       if (!thumbRig) {
-        const n = THUMB_PX * THUMB_SS;
+        const n = PX * THUMB_SS;
         const rt = new THREE.WebGLRenderTarget(n, n);
         rt.texture.colorSpace = THREE.SRGBColorSpace;
         const sc = new THREE.Scene();
@@ -4601,7 +4658,7 @@ export function initReefScene3D(canvas) {
         const fill = new THREE.DirectionalLight(0x7fb8d4, 0.5);
         fill.position.set(-3, 1, -2); sc.add(fill);
         const big = document.createElement('canvas'); big.width = big.height = n;
-        const small = document.createElement('canvas'); small.width = small.height = THUMB_PX;
+        const small = document.createElement('canvas'); small.width = small.height = PX;
         thumbRig = { rt, sc, cam: new THREE.PerspectiveCamera(30, 1, 0.05, 100),
           buf: new Uint8Array(n * n * 4), big, small, n };
       }
@@ -4636,9 +4693,9 @@ export function initReefScene3D(canvas) {
       }
       bctx.putImageData(img, 0, 0);
       const sctx = small.getContext('2d');
-      sctx.clearRect(0, 0, THUMB_PX, THUMB_PX);
+      sctx.clearRect(0, 0, PX, PX);
       sctx.imageSmoothingQuality = 'high';
-      sctx.drawImage(big, 0, 0, THUMB_PX, THUMB_PX);
+      sctx.drawImage(big, 0, 0, PX, PX);
       const url = small.toDataURL();
       thumbCache.set(spec.id, url);
       return url;
