@@ -256,52 +256,6 @@ function causticTexture(size = 256) {
 // ── Species-specific textures ─────────────────────────────────────────────────
 // Every species gets its own procedural skin, styled by its shape family and
 // painted in its own colors. Cached per species — instances share one texture.
-// Soft radial glow used by bioluminescent species to light their surroundings.
-// Built from raw pixels, not a canvas gradient, and with the glow in RGB rather
-// than alpha. The old version was a white radial gradient fading out through
-// the ALPHA channel — and on Apple devices CoreGraphics dithers canvas gradients
-// with per-channel noise while the canvas stores premultiplied alpha. Out at the
-// faint rim, where alpha is 2–3 of 255, a one-step difference between channels
-// un-premultiplies into magenta or green; tinted by a lantern's warm colour and
-// added over the sand, that was a scatter of little red and green splotches
-// around every lamp (invisible on desktop Chrome, which doesn't dither). Here
-// R = G = B for every texel, so there is nothing for chroma noise to be, and the
-// values are sRGB-encoded so the dim outer glow gets fine steps instead of bands.
-let _haloTex = null;
-function haloTexture() {
-  if (_haloTex) return _haloTex;
-  const N = 128, data = new Uint8Array(N * N * 4);
-  const lerp = (a, b, k) => a + (b - a) * k;
-  const enc = (v) => (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      const r = Math.hypot(x - 63.5, y - 63.5) / 62;      // 0 at the core, 1 at the rim
-      const glow = r >= 1 ? 0
-        : r <= 0.065 ? 0.9
-        : r < 0.4 ? lerp(0.9, 0.28, (r - 0.065) / 0.335)
-        : lerp(0.28, 0, (r - 0.4) / 0.6);
-      const v = Math.round(255 * enc(glow));
-      const i = (y * N + x) * 4;
-      data[i] = data[i + 1] = data[i + 2] = v; data[i + 3] = 255;
-    }
-  }
-  _haloTex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
-  _haloTex.colorSpace = THREE.SRGBColorSpace;
-  _haloTex.magFilter = THREE.LinearFilter;
-  _haloTex.minFilter = THREE.LinearMipmapLinearFilter;
-  _haloTex.generateMipmaps = true;
-  _haloTex.needsUpdate = true;
-  return _haloTex;
-}
-function makeHalo(color, size) {
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: haloTexture(), color, transparent: true, opacity: 0,
-    blending: THREE.AdditiveBlending, depthWrite: false }));
-  halo.scale.set(size, size, 1);
-  halo.userData.keep = true;   // survives coral regrowth (clearCoralGroup)
-  return halo;
-}
-
 function hashId(id) {
   let h = 0;
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -1857,12 +1811,9 @@ function makeFish(spec) {
   g.userData.pecs = pecs ?? null;
   g.userData.baseScale = g.scale.x;
   g.userData.glowMat = biolum ? bodyMat : null;
-  if (biolum) {
-    // Biolums light the water around them after dark (halo fades in with nf).
-    const halo = makeHalo(spec.accentColor ?? spec.color, 4.5);
-    g.add(halo);
-    g.userData.bioHalo = halo;
-  }
+  // Biolums cast real light after dark — a PointLight from the shared pool
+  // (bioPool) follows them; the body itself glows through its emissive map.
+  g.userData.bio = biolum;
   g.userData.hider = DAY_HIDER_SPECIES.has(spec.id);
   return g;
 }
@@ -3424,17 +3375,14 @@ export function initReefScene3D(canvas) {
     group.userData.entry = entry;
     group.userData.levelScale = spec.decor ? 1 : stageScale(lvl);
     if (BIOLUM_SPECIES.has(spec.id)) {
-      // Halo on every biolum coral; real light is dealt out from a fixed
-      // pool so placing many can't blow the budget. The lantern family are
-      // the reef's designated lamps: bigger halos, brighter, longer throw.
+      // Real light is dealt out from a fixed pool so placing many can't
+      // blow the budget. The lantern family are the reef's designated
+      // lamps: brighter, longer throw.
       const lamp = LANTERN_CORALS.has(spec.id);
       group.userData.lampBoost = lamp ? 1.7 : 1;
-      const halo = makeHalo(spec.accentColor ?? spec.color, lamp ? 5.2 : 3.6);
-      halo.position.y = 0.7;
-      group.add(halo);
-      group.userData.bioHalo = halo;
-      // Real light comes from the shared pool (see bioPool): every frame the
-      // nearest glowing things to where you're looking get a PointLight.
+      group.userData.bio = true;
+      // Real light comes from the shared pool (see bioPool): the nearest
+      // glowing things to where you're looking each carry a PointLight.
     }
     scene.add(group); corals.push(group);
     placedCorals.push(entry);
@@ -7042,7 +6990,9 @@ export function initReefScene3D(canvas) {
   // is dealt out a few times a second to the brightest sources nearest the
   // camera's focus, and follows them every frame. Everything else keeps its
   // halo. Lanterns throw furthest; Bioluminescence Night turns it all up.
-  const BIO_POOL_N = 8;
+  // Pool size is the real cost knob: every light is shaded on every lit
+  // fragment. Phones and tablets get fewer; desktops light the whole reef.
+  const BIO_POOL_N = (navigator.maxTouchPoints > 1 || /iPhone|iPad|Android/i.test(navigator.userAgent)) ? 10 : 16;
   const bioPool = [];
   for (let i = 0; i < BIO_POOL_N; i++) {
     const pl = new THREE.PointLight(0xffffff, 0, 12, 1.7);
@@ -7059,18 +7009,18 @@ export function initReefScene3D(canvas) {
       const focus = controls.target;
       const cands = [];
       for (const g of corals) {
-        if (!g.userData.bioHalo || g.userData.grow < 0.3) continue;
+        if (!g.userData.bio || g.userData.grow < 0.3) continue;
         const d = g.position.distanceTo(focus);
         cands.push({ obj: g, y: 0.9, color: g.userData.spec?.accentColor ?? g.userData.spec?.color ?? 0x7fd8ff,
-          power: (g.userData.lampBoost ?? 1) * 4.2, range: LANTERN_CORALS.has(g.userData.spec?.id) ? 15 : 10, score: d });
+          power: (g.userData.lampBoost ?? 1) * 5.5, range: LANTERN_CORALS.has(g.userData.spec?.id) ? 16 : 11, score: d });
       }
       for (const f of fishes) {
-        if (!f.g.userData.bioHalo) continue;
+        if (!f.g.userData.bio) continue;
         const spec = FISH_SPECIES[f.id] ?? LOCAL_SPECS[f.id];
         cands.push({ obj: f.g, y: 0.15, color: spec?.accentColor ?? spec?.color ?? 0x7fd8ff,
-          power: f.g.userData.big ? 3.4 : 2.2, range: f.g.userData.big ? 12 : 8, score: f.g.position.distanceTo(focus) + 2 });
+          power: f.g.userData.big ? 4.5 : 3.0, range: f.g.userData.big ? 13 : 9, score: f.g.position.distanceTo(focus) + 2 });
       }
-      for (const sp of glowSparks) cands.push({ obj: sp.m, y: 0, color: 0x9fe8ff, power: 2.0, range: 7, score: sp.m.position.distanceTo(focus) });
+      for (const sp of glowSparks) cands.push({ obj: sp.m, y: 0, color: 0x9fe8ff, power: 2.6, range: 8, score: sp.m.position.distanceTo(focus) });
       cands.sort((a, b) => a.score - b.score);
       const want = cands.slice(0, BIO_POOL_N);
       // Keep lights already on a chosen source; hand freed lights to newcomers.
@@ -7099,11 +7049,10 @@ export function initReefScene3D(canvas) {
   }
   const glowSparks = [];   // the tappable ones: { m, born, life, vx, vy, vz }
   const glowSparkMat = new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.95 });
-  const glowSparkGeo = new THREE.SphereGeometry(0.12, 8, 6);
+  const glowSparkGeo = new THREE.SphereGeometry(0.16, 8, 6);
   let sparkNext = 0;
   function spawnSpark(t) {
     const m = new THREE.Mesh(glowSparkGeo, glowSparkMat);
-    const halo = makeHalo(0x62c8ff, 2.2); halo.material.opacity = 0.7; m.add(halo);
     // Starts near where the camera looks, drifting across the view.
     const c = controls.target;
     m.position.set(c.x + (Math.random() - 0.5) * 16, c.y + 1 + Math.random() * 3, c.z + (Math.random() - 0.5) * 12);
@@ -7112,7 +7061,7 @@ export function initReefScene3D(canvas) {
   }
   function popSpark(i) {
     const s = glowSparks[i];
-    scene.remove(s.m); s.m.children[0]?.material.dispose();
+    scene.remove(s.m);
     glowSparks.splice(i, 1);
     be = Math.min(be + 1, beMax);
     hudGain('be', 1);
@@ -7141,8 +7090,7 @@ export function initReefScene3D(canvas) {
       if (age > s.life || nf < 0.3) { scene.remove(s.m); glowSparks.splice(i, 1); continue; }
       s.m.position.x += s.vx * dt; s.m.position.y += (s.vy + Math.sin(t * 2 + s.born) * 0.15) * dt; s.m.position.z += s.vz * dt;
       const fade = Math.min(1, age / 1.5, (s.life - age) / 1.5);
-      s.m.scale.setScalar(0.8 + Math.sin(t * 5 + s.born) * 0.2);
-      s.m.children[0].material.opacity = 0.7 * fade;
+      s.m.scale.setScalar((0.8 + Math.sin(t * 5 + s.born) * 0.2) * (0.3 + 0.7 * fade));
     }
     return bn;
   }
@@ -7334,13 +7282,7 @@ export function initReefScene3D(canvas) {
       if (g.userData.glowMats) {
         for (const m of g.userData.glowMats) m.emissiveIntensity = 0.5 + nf * 0.85 + dk * 0.9;
       }
-      if (g.userData.bioHalo) {
-        // Biolums pour light into the water after dark; lanterns pour harder.
-        const boost = g.userData.lampBoost ?? 1;
-        const fl = 0.85 + Math.sin(t * 1.3 + g.userData.seed) * 0.15;
-        g.userData.bioHalo.material.opacity = nf * 0.5 * fl * Math.min(boost, 1.3) * (1 + dk * 0.6);
-        g.userData.bioFlicker = fl;
-      }
+      if (g.userData.bio) g.userData.bioFlicker = 0.85 + Math.sin(t * 1.3 + g.userData.seed) * 0.15;
     }
     // Schools: refresh each shoal's shared waypoint and flock averages once,
     // then members steer with boids forces in the fish loop below.
@@ -7621,10 +7563,7 @@ export function initReefScene3D(canvas) {
         const target = ud.baseScale * (f.home ? 0.8 : 1) * puff;
         f.g.scale.setScalar(f.g.scale.x + (target - f.g.scale.x) * Math.min(1, dt * (puff > 1 ? 8 : 2)));
       }
-      if (f.g.userData.glowMat) f.g.userData.glowMat.emissiveIntensity = nf * 0.9 + dk * 0.8;
-      if (f.g.userData.bioHalo) {
-        f.g.userData.bioHalo.material.opacity = nf * 0.45 * (0.85 + Math.sin(t * 1.7 + f.phase) * 0.15) * (1 + dk * 0.7);
-      }
+      if (f.g.userData.glowMat) f.g.userData.glowMat.emissiveIntensity = nf * 1.1 + dk * 0.9;
     }
     tickBioLights(t, dt, nf, dk);
     for (const w of weeds) w.rotation.z = Math.sin(t * 0.9 + w.userData.seed) * 0.12;
