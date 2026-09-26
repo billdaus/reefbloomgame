@@ -1196,8 +1196,9 @@ const FISH_BODY = {
     tail.add(caudal);
     return { tail };
   },
-  // Damselfish and chromis: small, deep-bodied ovals with a single long
-  // dorsal, a squared-off snout and a cleanly forked tail.
+  // Damselfish: a small, deep-bodied oval with a single long dorsal, a
+  // squared-off snout and a cleanly forked tail. (The chromis keep the
+  // generic body — by request.)
   damsel(g, { bodyMat, spec, rnd }) {
     const finM = new THREE.MeshStandardMaterial({
       color: new THREE.Color(spec.accentColor ?? spec.color), roughness: 0.4,
@@ -1945,7 +1946,7 @@ function fishBodyOf(id) {
   if (id === 'dolphin' || id === 'spinnerDolphin') return 'dolphin';
   if (id === 'molaMola') return 'mola';
   if (['yellowTang', 'blueTang', 'powderBrownTang'].includes(id)) return 'tang';
-  if (['damselfish', 'chromis', 'blueChromis', 'yellowChromis'].includes(id)) return 'damsel';
+  if (id === 'damselfish') return 'damsel';
   if (['cardinalfish', 'pajamaCardinalfish', 'banggaiCardinalfish'].includes(id)) return 'cardinal';
   if (id === 'cuttlefish') return 'cuttlefish';
   if (['manatee', 'dugong'].includes(id)) return 'sirenian';
