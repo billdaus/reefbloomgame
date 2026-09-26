@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module'; import { mkdirSync } from 'node:fs';
 const sharp = createRequire(new URL('../../package.json', import.meta.url))('sharp');
 const S = process.argv[2], OUT = process.argv[3]; mkdirSync(OUT, { recursive: true });
-const SET = [['day-reef', 'Grow a living coral reef'], ['night-reef', 'Watch it glow after dark'], ['day-journal', 'Record 130 species, real and imagined'], ['day-species', 'Learn the science behind every fish'], ['day-packs', 'Earn packs with every level']];
+const SET = [['day-reef', 'Grow a living coral reef'], ['night-reef', 'Watch it glow after dark'], ['day-journal', 'Record 160+ species, real and imagined'], ['day-species', 'Learn the science behind every fish'], ['day-packs', 'Earn packs with every level']];
 for (const dev of [{ id: 'iphone65', w: 1284, h: 2778, fs: 66, band: 300 }, { id: 'ipad13', w: 2732, h: 2048, fs: 84, band: 260, bottom: true }]) {
   let n = 1;
   for (const [name, text] of SET) {
