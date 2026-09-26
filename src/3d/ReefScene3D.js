@@ -41,6 +41,11 @@ const CLEAN_DURATION_MS = 8000;   // how long a client sits at a station (3D pac
 const STATION_SPEC = DECOR_SPECIES.cleaningStation;
 const VENT_PERIOD = 5.2;
 const TICK_SEC = TICK_MS / 1000;        // BE/polyp tick cadence in seconds
+// Pace of the reef's PROGRESSION — the economy and growth, not the animals.
+// 3D runs slower than Classic: half the bubble income, polyps at 60%, coral
+// taking twice as long to grow, and a steeper ladder past level 5. Fish
+// (swimming, egg timers) are untouched.
+const PACE_BE = 0.5, PACE_POLYP = 0.6, PACE_GROW = 2;
 const SAVE_KEY_BASE = 'reefbloom_3d_save_v1';
 const SLOT_KEY = 'reefbloom_3d_slot';
 const slotKey = (s) => `${SAVE_KEY_BASE}_s${s}`;
@@ -143,9 +148,9 @@ const DAY_MS = 240000;
 const MAX_LEVEL = 15;
 const LEVEL_REQS = [
   null, null,
-  [3, 0, 0], [6, 2, 0], [12, 4, 60], [18, 7, 75], [24, 10, 78], [30, 13, 80],
-  [38, 17, 82], [46, 21, 85], [55, 25, 87], [64, 29, 89], [74, 34, 91],
-  [84, 39, 93], [95, 45, 95], [100, 50, 98],
+  [3, 0, 0], [6, 2, 0], [12, 4, 60], [20, 8, 75], [28, 12, 78], [36, 16, 80],
+  [46, 20, 82], [56, 25, 85], [66, 30, 87], [78, 35, 89], [90, 40, 91],
+  [102, 46, 93], [115, 52, 95], [125, 60, 98],
 ];
 
 // Polyps FROM level L → L+1 (Classic CoralUpgrade.upgradeCost = 4 * L).
@@ -3358,7 +3363,7 @@ export function initReefScene3D(canvas) {
   // timestamps, so growth continues while the reef is closed). Scale carries
   // the size; regrown geometry carries the density. Utility corals and decor
   // are structures, not organisms — they place full grown.
-  const STAGE_MS = [60e3, 150e3, 300e3, 600e3, 900e3];   // stage s -> s+1
+  const STAGE_MS = [60e3, 150e3, 300e3, 600e3, 900e3].map(ms => ms * PACE_GROW);   // stage s -> s+1 (2m · 5m · 10m · 20m · 30m)
   const STAGE_NAMES = ['Hatchling', 'Sprout', 'Juvenile', 'Colony', 'Mature', 'Full grown'];
   const stageScale = (s) => [0.22, 0.4, 0.55, 0.7, 0.85, 1][clamp(s, 0, 5)];
   const stageOutput = (s) => s === 0 ? 0 : (s / 5) * (1 + (s - 1) * POLYP_BE_BONUS);
@@ -3785,8 +3790,8 @@ export function initReefScene3D(canvas) {
       polypPerTick += POLYP_PER_CORAL_TICK * e.level;
       storage += spec.storage ?? 0;
     }
-    incomePerSec = bePerTick / TICK_SEC;
-    polypPerSec = polypPerTick / TICK_SEC;
+    incomePerSec = (bePerTick / TICK_SEC) * PACE_BE;
+    polypPerSec = (polypPerTick / TICK_SEC) * PACE_POLYP;
     beMax = BE_MAX + storage;
   }
 
@@ -5685,7 +5690,7 @@ export function initReefScene3D(canvas) {
         : spec.layer === 'B' ? 'Open water — big swimmers' : 'Reef shelter — small fish');
     } else if (!spec.utility) {
       html += row('Income (full grown)',
-        `+${((BE_PER_TICK[spec.tier] ?? 1) * stageOutput(CORAL_MAX_LEVEL) / TICK_SEC).toFixed(1)}/s 🫧`);
+        `+${((BE_PER_TICK[spec.tier] ?? 1) * stageOutput(CORAL_MAX_LEVEL) / TICK_SEC * PACE_BE).toFixed(2)}/s 🫧`);
       html += row('Growth', `hatchling → full grown in ${fmtMs(GROWTH_TOTAL_MS)}`);
     }
     if (spec.shelter) html += row('Shelter', `sleeps ${spec.homeCap ?? 6} fish overnight`);
