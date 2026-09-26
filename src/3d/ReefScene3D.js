@@ -353,12 +353,50 @@ function coralTexture(spec, variant = 0) {
 // Fish skins: iconic banded/spotted species get their real markings in their
 // accent color; everyone else gets counter-shading plus a lateral stripe.
 const FISH_BANDED = new Set([
-  'clownfish', 'zebraGoby', 'zebrafish', 'banggaiCardinalfish', 'pajamaCardinalfish',
+  'clownfish', 'zebraGoby', 'zebrafish',
   'harlequinTuskfish', 'butterflyfish', 'moorishIdol', 'seaUrchin', 'clownTriggerfish',
   'emperorAngelfish', 'raccoonButterflyfish', 'copperbandButterflyfish']);
 const FISH_SPOTTED = new Set([
   'spottedEagleRay', 'pufferfish', 'mandarinfish', 'rainbowGoby', 'twilightWhaleShark',
   'flashlightFish', 'giantSquid', 'spottedDrum', 'whaleShark', 'porcupinePuffer']);
+// Species with a specific real-world livery get painted by hand. Texture x
+// runs around the body: 0 = left flank middle, 0.25 = nose, 0.5 = right
+// flank middle, 0.75 = tail; y runs back (0) to belly (h). `band(p0, p1)`
+// fills the same stretch along the body on both flanks, p = 0 nose … 1 tail.
+const FISH_PAINT = {
+  yellowTang(ctx, w, h, { band }) {
+    ctx.fillStyle = '#ffffff'; band(0.86, 0.92, 0.42, 0.58);        // the scalpel
+  },
+  blueTang(ctx, w, h, { band }) {
+    // The black "palette": a stroke along the upper flank that hooks down
+    // behind the pectoral, leaving a blue oval — and a yellow tail.
+    ctx.fillStyle = '#0d1b2a';
+    band(0.1, 0.85, 0.12, 0.3); band(0.62, 0.85, 0.3, 0.7); band(0.32, 0.4, 0.3, 0.62);
+    ctx.fillStyle = '#ffeb3b'; band(0.9, 1, 0, 1);
+  },
+  powderBrownTang(ctx, w, h, { band }) {
+    ctx.fillStyle = '#eceff1'; band(0.02, 0.2, 0.42, 0.75);        // white cheek
+    ctx.fillStyle = '#ffd54f'; band(0.2, 0.86, 0.08, 0.16);         // yellow band under the dorsal
+    ctx.fillStyle = '#ffffff'; band(0.0, 0.05, 0.5, 0.62);          // white lips
+  },
+  damselfish(ctx, w, h) { /* plain electric blue — the counter-shade is all it needs */ },
+  cardinalfish(ctx, w, h, { band }) {
+    ctx.fillStyle = 'rgba(183,28,28,0.5)';
+    for (let k = 0; k < 4; k++) band(0.05, 0.95, 0.18 + k * 0.17, 0.2 + k * 0.17);   // faint red lines
+  },
+  pajamaCardinalfish(ctx, w, h, { band, rnd }) {
+    ctx.fillStyle = '#c0ca33'; band(0, 0.36, 0, 1);                   // olive-yellow head
+    ctx.fillStyle = '#1a1a1a'; band(0.36, 0.5, 0, 1);                 // the black belt
+    ctx.fillStyle = '#ef5350';                                        // red spots on the rear
+    for (let k = 0; k < 24; k++) { const p = 0.52 + rnd() * 0.46, y = rnd(); band(p, p + 0.03, y, y + 0.07); }
+  },
+  banggaiCardinalfish(ctx, w, h, { band, rnd }) {
+    ctx.fillStyle = '#111111';
+    band(0.2, 0.26, 0, 1); band(0.46, 0.52, 0, 1); band(0.72, 0.78, 0, 1);   // three bars
+    ctx.fillStyle = '#ffffff';
+    for (let k = 0; k < 18; k++) { const p = 0.28 + rnd() * 0.68, y = rnd(); band(p, p + 0.02, y, y + 0.05); }
+  },
+};
 const fishTexCache = new Map();
 function fishTexture(spec, variant = 0) {
   const key = `${spec.id}:${variant}`;
@@ -381,7 +419,18 @@ function fishTexture(spec, variant = 0) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = css(acc);
-  if (FISH_BANDED.has(spec.id)) {
+  const band = (p0, p1, y0 = 0, y1 = 1) => {
+    // right flank: x = 0.25 + 0.5p; left flank mirrors it back through x = 0.25 (wrapping)
+    ctx.fillRect((0.25 + 0.5 * p0) * w, y0 * h, (p1 - p0) * 0.5 * w, (y1 - y0) * h);
+    const a = 0.25 - 0.5 * p1, b = 0.25 - 0.5 * p0;   // may dip below 0 → wraps to the right edge
+    const rect = (x0, x1) => { if (x1 > x0) ctx.fillRect(x0 * w, y0 * h, (x1 - x0) * w, (y1 - y0) * h); };
+    if (a >= 0) rect(a, b);
+    else if (b <= 0) rect(1 + a, 1 + b);
+    else { rect(0, b); rect(1 + a, 1); }
+  };
+  if (FISH_PAINT[spec.id]) {
+    FISH_PAINT[spec.id](ctx, w, h, { band, rnd, base, acc });
+  } else if (FISH_BANDED.has(spec.id)) {
     const bands = 3 + (hashId(spec.id) % 2);
     for (let i = 0; i < bands; i++) {
       const x = ((i + 0.3 + rnd() * 0.4) / bands) * w;
@@ -1111,6 +1160,100 @@ const FISH_BODY = {
     g.add(anal);
     return { tail, pecs };
   },
+  // Surgeonfish (tangs): a tall, laterally flattened oval with a small pointed
+  // snout, long low dorsal and anal fins running most of the body, a truncate
+  // tail, and the "scalpel" — a pale spine at the tail base. Zebrasoma (the
+  // Yellow Tang) is taller with sail-like fins; Acanthurus (Blue, Powder
+  // Brown) is more oval. Blue Tang carries its yellow tail.
+  tang(g, { bodyMat, spec, rnd }) {
+    const sail = spec.id === 'yellowTang';
+    const finM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.color).multiplyScalar(spec.id === 'powderBrownTang' ? 0.55 : 0.92),
+      roughness: 0.4, side: THREE.DoubleSide });
+    const tailM = spec.id === 'blueTang' ? new THREE.MeshStandardMaterial({ color: 0xffeb3b, roughness: 0.4, side: THREE.DoubleSide })
+      : spec.id === 'powderBrownTang' ? new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.4, side: THREE.DoubleSide })
+      : finM;
+    const body = fusiformBody(bodyMat, 0.62, 0.5);
+    body.scale.set(0.2, sail ? 0.74 : 0.6, 1.08 * (0.95 + rnd() * 0.1));
+    g.add(body);
+    fishEyes(g, 0.1, 0.12, 0.34, 0.85);
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.2, 8), bodyMat);
+    snout.rotation.x = Math.PI / 2; snout.position.set(0, -0.02, 0.58); g.add(snout);
+    const H = sail ? 0.4 : 0.26;
+    const dorsal = finMesh([[0, 0], [0.12, H, 0.4, H * 1.05], [0.8, H * 0.7, 0.98, 0.02], [0, 0]], finM);
+    dorsal.position.set(0, (sail ? 0.3 : 0.24), 0.42); g.add(dorsal);
+    const anal = finMesh([[0, 0], [0.16, H * 0.85, 0.42, H * 0.9], [0.8, H * 0.6, 0.94, 0.02], [0, 0]], finM);
+    anal.scale.y = -1; anal.position.set(0, -(sail ? 0.3 : 0.24), 0.36); g.add(anal);
+    for (const sd of [-1, 1]) {
+      const pec = finMesh([[0, 0], [0.16, 0.06, 0.24, -0.04], [0.16, -0.1, 0.02, -0.04], [0, 0]], finM, sd > 0 ? 1.2 : 1.94);
+      pec.position.set(sd * 0.11, -0.02, 0.24); g.add(pec);
+      const scalpel = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.03, 0.09), scleraMat);
+      scalpel.position.set(sd * 0.1, 0.0, -0.44); g.add(scalpel);
+    }
+    const tail = new THREE.Group();
+    tail.position.z = -0.56; g.add(tail);
+    const caudal = finMesh([[0, 0.08], [0.18, 0.2, 0.3, 0.26], [0.22, 0.04, 0.22, -0.04], [0.3, -0.26, 0.18, -0.2], [0, -0.08]], tailM);
+    tail.add(caudal);
+    return { tail };
+  },
+  // Damselfish and chromis: small, deep-bodied ovals with a single long
+  // dorsal, a squared-off snout and a cleanly forked tail.
+  damsel(g, { bodyMat, spec, rnd }) {
+    const finM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.accentColor ?? spec.color), roughness: 0.4,
+      side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+    const body = fusiformBody(bodyMat, 0.7, 0.32);
+    body.scale.set(0.24, 0.5 * (0.95 + rnd() * 0.12), 0.98);
+    g.add(body);
+    fishEyes(g, 0.1, 0.1, 0.32, 0.9);
+    const dorsal = finMesh([[0, 0], [0.1, 0.22, 0.34, 0.24], [0.62, 0.22, 0.78, 0.02], [0, 0]], finM);
+    dorsal.position.set(0, 0.2, 0.36); g.add(dorsal);
+    const anal = finMesh([[0, 0], [0.1, 0.14, 0.3, 0.16], [0.42, 0.12, 0.5, 0.02], [0, 0]], finM);
+    anal.scale.y = -1; anal.position.set(0, -0.18, 0.08); g.add(anal);
+    for (const sd of [-1, 1]) {
+      const pec = finMesh([[0, 0], [0.14, 0.05, 0.2, -0.04], [0.12, -0.09, 0.02, -0.03], [0, 0]], finM, sd > 0 ? 1.2 : 1.94);
+      pec.position.set(sd * 0.12, -0.03, 0.2); g.add(pec);
+    }
+    const tail = new THREE.Group();
+    tail.position.z = -0.46; g.add(tail);
+    const caudal = finMesh([[0, 0.06], [0.22, 0.14, 0.4, 0.34], [0.14, 0.02, 0.14, -0.02], [0.4, -0.34, 0.22, -0.14], [0, -0.06]], finM);
+    tail.add(caudal);
+    return { tail };
+  },
+  // Cardinalfish: big eyes for a nocturnal life, TWO separate dorsal fins,
+  // a rounded tail. The Banggai trails long, tapering fins and a deeply
+  // forked tail; the Pajama is short and round.
+  cardinal(g, { bodyMat, spec, rnd }) {
+    const banggai = spec.id === 'banggaiCardinalfish';
+    const pajama = spec.id === 'pajamaCardinalfish';
+    const finM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(banggai ? 0x263238 : spec.accentColor ?? spec.color), roughness: 0.4,
+      side: THREE.DoubleSide, transparent: true, opacity: banggai ? 0.9 : 0.8 });
+    const body = fusiformBody(bodyMat, 0.66, 0.3);
+    body.scale.set(0.24, pajama ? 0.5 : 0.42, pajama ? 0.9 : 1.02);
+    g.add(body);
+    fishEyes(g, 0.1, 0.1, 0.3, 1.35);
+    const L = banggai ? 2.2 : 1;
+    const d1 = finMesh([[0, 0], [0.04, 0.22 * L, 0.1, 0.26 * L], [0.16, 0.08, 0.2, 0], [0, 0]], finM);
+    d1.position.set(0, 0.2, 0.22); g.add(d1);
+    const d2 = finMesh([[0, 0], [0.04, 0.18 * L, 0.12, 0.22 * L], [0.24, 0.06, 0.28, 0], [0, 0]], finM);
+    d2.position.set(0, 0.18, -0.08); g.add(d2);
+    const anal = finMesh([[0, 0], [0.04, 0.16 * L, 0.12, 0.2 * L], [0.24, 0.06, 0.28, 0], [0, 0]], finM);
+    anal.scale.y = -1; anal.position.set(0, -0.17, -0.08); g.add(anal);
+    for (const sd of [-1, 1]) {
+      const pelvic = finMesh([[0, 0], [0.04, 0.12 * L, 0.08, 0.14 * L], [0.14, 0.04, 0.16, 0], [0, 0]], finM);
+      pelvic.scale.y = -1; pelvic.position.set(sd * 0.05, -0.16, 0.2); g.add(pelvic);
+      const pec = finMesh([[0, 0], [0.12, 0.05, 0.18, -0.03], [0.1, -0.08, 0.02, -0.03], [0, 0]], finM, sd > 0 ? 1.2 : 1.94);
+      pec.position.set(sd * 0.12, -0.02, 0.2); g.add(pec);
+    }
+    const tail = new THREE.Group();
+    tail.position.z = -0.5; g.add(tail);
+    const caudal = banggai
+      ? finMesh([[0, 0.05], [0.3, 0.2, 0.62, 0.42], [0.16, 0.02, 0.16, -0.02], [0.62, -0.42, 0.3, -0.2], [0, -0.05]], finM)
+      : finMesh([[0, 0.06], [0.16, 0.18, 0.26, 0.14], [0.3, 0, 0.26, -0.14], [0.16, -0.18, 0, -0.06]], finM);
+    tail.add(caudal);
+    return { tail };
+  },
   shark(g, { bodyMat, spec, rnd }) {
     // Long, slim, pointed; fins are body-colored, tail heterocercal.
     const finM = new THREE.MeshStandardMaterial({
@@ -1801,6 +1944,9 @@ function fishBodyOf(id) {
   if (['octopus', 'giantSquid', 'rubyOctopus'].includes(id)) return 'octopus';
   if (id === 'dolphin' || id === 'spinnerDolphin') return 'dolphin';
   if (id === 'molaMola') return 'mola';
+  if (['yellowTang', 'blueTang', 'powderBrownTang'].includes(id)) return 'tang';
+  if (['damselfish', 'chromis', 'blueChromis', 'yellowChromis'].includes(id)) return 'damsel';
+  if (['cardinalfish', 'pajamaCardinalfish', 'banggaiCardinalfish'].includes(id)) return 'cardinal';
   if (id === 'cuttlefish') return 'cuttlefish';
   if (['manatee', 'dugong'].includes(id)) return 'sirenian';
   if (id === 'seaOtter') return 'otter';
