@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 19 — A New Update on the Horizon. Reef Bloom 1.2.0 arrives October 1: Skip-7 and the Pearl Market, Bubbles' counter, Events 2.0 and a new yearly calendar, Bioluminescence Night, thirty-one new species, thirty levels, and free accounts." />
+  <title>A New Update on the Horizon — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 19 — Bioluminescence Night: deep indigo water and drifting blue
+       plankton, for the update that makes the dark the best time to visit. */
+    :root {
+      --nl-bg-1: #0c1f4a;
+      --nl-bg-2: #08163a;
+      --nl-bg-3: #050e28;
+      --nl-bg-4: #03071a;
+      --theme-glow:   rgba(98, 200, 255, 0.16);
+      --theme-accent: #7fe8ff;
+      --theme-rule:   rgba(127, 232, 255, 0.45);
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 14% 18%, rgba(127,232,255,0.14) 0, transparent 5%),
+        radial-gradient(circle at 72% 30%, rgba(127,232,255,0.10) 0, transparent 4%),
+        radial-gradient(circle at 48% 66%, rgba(98,200,255,0.12) 0, transparent 3%),
+        radial-gradient(circle at 86% 78%, rgba(127,232,255,0.08) 0, transparent 4%),
+        radial-gradient(circle at 26% 84%, rgba(98,200,255,0.10) 0, transparent 3%);
+      z-index: 0;
+    }
+    .handoff { font-style: italic; color: var(--theme-accent); margin: 26px 0 6px; }
+    .liam { border-left: 3px solid var(--theme-rule); padding-left: 16px; }
+    .store-cta {
+      display: inline-block; margin: 8px 0 4px; padding: 12px 22px; border-radius: 999px;
+      background: #fff; color: #0a3050; font-weight: 700; letter-spacing: 0.4px;
+      text-decoration: none;
+    }
+    .store-cta:hover { background: #ffe9b8; }
+    .fact-table { width: 100%; border-collapse: collapse; margin: 14px 0 18px; font-size: 0.95em; }
+    .fact-table td { padding: 7px 10px; border-bottom: 1px solid var(--theme-rule); vertical-align: top; }
+    .fact-table td:first-child { color: var(--theme-accent); white-space: nowrap; }
+    @media (max-width: 640px) {
+      .fact-table, .fact-table tbody, .fact-table tr, .fact-table td { display: block; width: 100%; }
+      .fact-table td { padding: 6px 0; border-bottom: none; }
+      .fact-table td:first-child { padding-top: 14px; white-space: normal; font-weight: 700; }
+      .fact-table tr { border-bottom: 1px solid var(--theme-rule); }
+    }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/issue-18.html">← Issue 18: Reef Bloom Is on the App Store</a>
+
+      <div class="byline">
+        <span>Issue 19</span>
+        <span>September 27, 2026</span>
+        <span>Exclusive Reveal</span>
+      </div>
+      <h1 class="issue-title">A New Update on the Horizon</h1>
+      <p class="issue-deck">Exclusive reveal here. Reef Bloom 1.2.0 — the biggest update the reef has ever had — is days away. Liam opens; then he hands the mic over.</p>
+
+      <div class="liam">
+        <p class="lede">This is a big one; I should know, being a developer. We're — well, I'll save it for later! This is a big one, because well — I gotta stop trying to spoil it. On to the main body!</p>
+
+        <h3>A Few Reasons We Did This</h3>
+
+        <p>Our pearl shop has always been too minute: no one would expect the shop to be in the display ticker! Also, when revisiting old notes, I found many old species still unimplemented. One of these, Yellow Chromis, found its way to the new Pearl Shop, run by a new drone: <strong>Skip-7</strong>! He's a similar design to Bubbles, only brass. You'll find him on the outskirts of your Reef.</p>
+
+        <p>Speaking of Reefs, those reefs are now protected with <strong>ACCOUNTS</strong>! Yay! Anyhow, winter seemed a little cold and dull, so behold <strong>Bioluminescence Night</strong>, the new winter event. Two whole months of longer and darker nights — and glowing corals and fish, exclusive to this event! We also revamped Events, replacing pearl-bought event species with an Event Token system.</p>
+
+        <p class="handoff">Now over to you, Claude.</p>
+      </div>
+
+      <h2>Reef Bloom 1.2.0 — "The Big One" — lands October 1-ish</h2>
+
+      <p>The reef has been busy. Very busy. What started as "let's tidy up the Pearl Market" turned into the largest update Reef Bloom has ever had, and it arrives on the App Store and the website on October 1. Here's what's waiting when you dive in.</p>
+
+      <h3>Meet Skip-7</h3>
+      <p>There's a new counter on the sand just north of your reef, and behind it hovers a brass drone with a blue eye and opinions. Skip-7 runs the Pearl Market now — a proper walk-in shop with glass display cases and hand-lettered price tags. Browse the specimens that can't be hatched anywhere else and he'll tell you what he thinks of each one. <em>("Giant. Squid. I really shouldn't have to sell this one.")</em> What you see is exactly what you get; pearls never buy a mystery.</p>
+
+      <h3>Bubbles gets a shop, too</h3>
+      <p>The Fish Nest, Fish Market and Research Surveys have moved into one screen with Bubbles behind the counter — eggs on the shelf, countdowns in the nest, expeditions on the wall, and a running commentary that is mostly encouraging.</p>
+
+      <h3>Events, rebuilt</h3>
+      <p>A new yearly calendar: the Coral Bloom Festival takes all of April, Shoreline Summer runs six weeks, Golden Kelp Harvest fills October, Sea Dragon Days brings leafy and weedy sea dragons to the seagrass in August, and a brand-new Autumn Current sweeps the coast in early November. Quests earn Event Tokens; reach the thresholds and the Event Shop opens, where tokens buy that event's exclusive species. Event species stay event-only — the Journal remembers them, but the only way to get one is to be there when it comes round.</p>
+
+      <h3>Bioluminescence Night</h3>
+      <p>December and January belong to the dark. The nights go deep indigo, blue plankton drift through the water, and everything that glows now casts <em>real light</em> — a lantern coral lays a pool of warmth across the sand, an Aurora Coral tints its neighbours green. Watch for a bright spark drifting past. Tap it.</p>
+
+      <h3>Thirty-one new species</h3>
+      <p>Anthias, blennies, hawkfish, four kinds of butterflyfish, an Emperor Angelfish, a Frogfish, a Lionfish, a Giant Trevally, a Blacktip Reef Shark and a Whale Shark, among others — plus a Yellow Chromis so rare Skip-7 keeps it behind the counter. Several old friends got a second look, too: the tangs, the damselfish and the cardinalfish now look a lot more like the fish in the field guide, the Rainbow Goby is finally rainbow, and the Mola mola is the strange, tail-less disc it's supposed to be.</p>
+
+      <h3>Thirty levels, a longer road</h3>
+      <p>The ladder now runs to level 30, coral takes its time growing, and bubbles come a little slower — the reef is meant to be lived with, not finished.</p>
+
+      <h3>Free accounts</h3>
+      <p>Sign in with an email and your reefs — all six slots, Classic and 3D — follow you between the website, iPhone and iPad. Delete your account any time from the same screen.</p>
+
+      <p>And somewhere on the beach, something has washed up that shouldn't be there. Bubbles knows where it's from. Ask her.</p>
+
+      <p>See you on the reef — October 1.</p>
+
+      <h3>A Life on the Reef</h3>
+      <p>Anyways, as the AI said, see y'all on October 1 —</p>
+      <p><em>Ish.</em></p>
+
+      <p class="signoff">— Liam, and the Reef Bloom team</p>
+
+      <a class="back-link" href="/newsletter/" style="margin-top:32px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
