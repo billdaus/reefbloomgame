@@ -2749,9 +2749,78 @@ export function initReefScene3D(canvas) {
     duck.position.y = 10.5;                 // floats near the surface
     duck.userData.floatBase = SURFACE_Y + 0.05;   // rides the swells
     eggs.duckRef = duck;
+
+    // A Coast Guard channel buoy — number 2 — washed up in the surf at the
+    // foot of the beach, rusted, on its side, tower leaning up the sand and
+    // its mooring chain trailing back into the water. It is from New Jersey.
+    const buoy = new THREE.Group();
+    const redM = new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.7, metalness: 0.25 });
+    const rustM = new THREE.MeshStandardMaterial({ color: 0x7a3b28, roughness: 0.95, metalness: 0.2 });
+    const rust2 = new THREE.MeshStandardMaterial({ color: 0x4e3326, roughness: 1, metalness: 0.15 });
+    const chainM = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.8, metalness: 0.5 });
+    const hull = new THREE.Group();
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 0.95, 2.2, 18), rustM);
+    barrel.position.y = 1.1; hull.add(barrel);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(1.08, 1.08, 0.5, 18), rust2);
+    band.position.y = 0.55; hull.add(band);
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.05, 0.35, 18), redM);
+    collar.position.y = 2.32; hull.add(collar);
+    const deck = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 1.15, 0.3, 18), rustM);
+    deck.position.y = 2.6; hull.add(deck);
+    // The lattice tower: four legs tapering to a daymark box, with cross-braces.
+    const tower = new THREE.Group(); tower.position.y = 2.7;
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 3.2, 0.07), redM);
+      leg.position.set(sx * 0.42, 1.6, sz * 0.42);
+      leg.rotation.z = -sx * 0.09; leg.rotation.x = sz * 0.09;
+      tower.add(leg);
+    }
+    for (let k = 0; k < 4; k++) {
+      const y = 0.5 + k * 0.8, w = 0.84 - k * 0.14;
+      for (const [rx, rz, rot] of [[0, w / 2, 0], [0, -w / 2, 0], [w / 2, 0, Math.PI / 2], [-w / 2, 0, Math.PI / 2]]) {
+        const brace = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, 0.05), redM);
+        brace.position.set(rx, y, rz); brace.rotation.y = rot; tower.add(brace);
+        const diag = new THREE.Mesh(new THREE.BoxGeometry(w * 1.25, 0.035, 0.035), redM);
+        diag.position.set(rx, y + 0.4, rz); diag.rotation.y = rot; diag.rotation.z = 0.6; tower.add(diag);
+      }
+    }
+    const daymark = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.0, 0.6), redM);
+    daymark.position.y = 3.6; tower.add(daymark);
+    // The "2" — a pale plate on the daymark's face.
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.02), scleraMat);
+    plate.position.set(0, 3.6, 0.31); tower.add(plate);
+    const two = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.015), redM);
+    two.position.set(0, 3.76, 0.325); tower.add(two);
+    const two2 = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.015), redM);
+    two2.position.set(0, 3.6, 0.325); tower.add(two2);
+    const two3 = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.015), redM);
+    two3.position.set(0, 3.44, 0.325); tower.add(two3);
+    const twoA = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.015), redM);
+    twoA.position.set(0.055, 3.68, 0.325); tower.add(twoA);
+    const twoB = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.015), redM);
+    twoB.position.set(-0.055, 3.52, 0.325); tower.add(twoB);
+    hull.add(tower);
+    // On its side in the surf: hull half-buried, tower leaning up the beach.
+    hull.rotation.z = -0.95; hull.rotation.x = 0.25;
+    hull.position.y = 0.35;
+    buoy.add(hull);
+    // Mooring chain, trailing seaward along the sand.
+    for (let k = 0; k < 9; k++) {
+      const link = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 6, 10), chainM);
+      link.position.set(1.0 + k * 0.42, 0.08 + Math.sin(k * 1.3) * 0.03, -0.6 + k * 0.28);
+      link.rotation.y = k * 1.57; link.rotation.x = 0.4;
+      buoy.add(link);
+    }
+    buoy.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    addEgg('buoy', buoy, -61.5, 6);   // the water's edge — the surf breaks around it
   }
   const EGG_LINES = {
     chest: ['The chest is empty now. The barnacles saw nothing.'],
+    buoy: ['Coast Guard buoy, number 2. It is from New Jersey. Drifted all the way here after a nor\'easter. Don\'t ask me how — I\'m a drone, not a tide chart.',
+      'That marked a channel off the Jersey Shore. Now it marks the spot where I stopped asking questions.',
+      'Washed up from New Jersey. There is probably still sand from Wildwood in the chain.',
+      'Somewhere off Cape May there is a channel with no buoy. Sorry, New Jersey.',
+      'Red, number 2 — "red right returning." It returned. Just not to New Jersey.'],
     wreck: ['Old wreck. Pre-dates my logs, which means officially it is not my fault.',
       'I ran the numbers: 100% of ships down here made poor choices.'],
     gavin: ['That is Gavin. He was here before the reef. Show some respect.',
