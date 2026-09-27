@@ -410,6 +410,17 @@ const FISH_PAINT = {
     ctx.fillStyle = '#ffffff'; spot(0.02, 0.55, 0.02, 0.07);        // white lips
   },
   damselfish() { /* plain electric blue — the counter-shade is all it needs */ },
+  rainbowGoby(ctx, w, h, { band }) {
+    // Actually rainbow: the whole body, nose to tail, walks the hue wheel.
+    const N = 14;
+    for (let k = 0; k < N; k++) {
+      ctx.fillStyle = `hsl(${Math.round((k / N) * 330)}, 90%, 52%)`;
+      band(k / N, (k + 1) / N + 0.004, 0, 1);
+    }
+    const grad = ctx.createLinearGradient(0, 0, 0, h);   // keep the counter-shade
+    grad.addColorStop(0, 'rgba(0,0,0,0.35)'); grad.addColorStop(0.45, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+  },
   cardinalfish(ctx, w, h, { flank }) {
     flank((X, Y) => {
       ctx.strokeStyle = 'rgba(183,28,28,0.45)'; ctx.lineWidth = 1.2;
@@ -1073,6 +1084,20 @@ function buildCoralInto(g, spec, seedBase, lvl = 1) {
   inner.scale.set(0.82 + rnd() * 0.36, 0.78 + rnd() * 0.5, 0.82 + rnd() * 0.36);
   g.add(inner);
   (BODY[shapeOf(spec)] || BODY.brain)(inner, { mat, tipMat, lvl }, rnd, spec);
+  if (spec.id === 'rainbowCoral') {
+    // Actually rainbow: each arm gets its own hue around the wheel, tips a
+    // paler tint of the same — the species skin stays for the relief only.
+    const arms = inner.children.filter(o => o.isGroup);
+    arms.forEach((arm, i) => {
+      const hue = (i / arms.length + rnd() * 0.04) % 1;
+      const c = new THREE.Color().setHSL(hue, 0.85, 0.5);
+      const armMat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.75, bumpMap: tex, bumpScale: 0.03,
+        emissive: c, emissiveIntensity: 0.08 });
+      const armTip = new THREE.MeshStandardMaterial({ color: c.clone().lerp(new THREE.Color(0xffffff), 0.45), roughness: 0.6,
+        emissive: c, emissiveIntensity: 0.12 });
+      arm.traverse(o => { if (o.isMesh) o.material = o.material === tipMat ? armTip : armMat; });
+    });
+  }
   mergeByMaterial(g);
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   g.rotation.y = rnd() * Math.PI * 2;
@@ -2220,10 +2245,8 @@ function makeSkip7() {
   const g = new THREE.Group();
   const wood = new THREE.MeshStandardMaterial({ color: 0x8d6240, roughness: 0.85 });
   const woodDark = new THREE.MeshStandardMaterial({ color: 0x6b4630, roughness: 0.9 });
-  const shell = new THREE.MeshStandardMaterial({ color: 0x9aa7b3, roughness: 0.4, metalness: 0.35 });
-  const shellDark = new THREE.MeshStandardMaterial({ color: 0x5f6b78, roughness: 0.45, metalness: 0.3 });
+  const shellDark = new THREE.MeshStandardMaterial({ color: 0x6b5233, roughness: 0.45, metalness: 0.3 });
   const glass = new THREE.MeshStandardMaterial({ color: 0xbfe6ff, roughness: 0.1, transparent: true, opacity: 0.32 });
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x7fe8ff, emissive: 0x7fe8ff, emissiveIntensity: 0.9, roughness: 0.2 });
   const lampMat = new THREE.MeshStandardMaterial({ color: 0xffe9b0, emissive: 0xffd27f, emissiveIntensity: 0.6, roughness: 0.3 });
   const pearlMat = new THREE.MeshStandardMaterial({ color: 0xfff6f0, roughness: 0.15, metalness: 0.05 });
   // Counter: plank top on two posts, a front panel, a shelf lip.
@@ -2255,50 +2278,34 @@ function makeSkip7() {
     const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 7), pearlMat);
     pearl.position.set(-0.65 + (i % 3) * 0.2, 1.22, 0.1 + Math.floor(i / 3) * 0.16); g.add(pearl);
   }
-  // Skip-7 himself: body, dome head, eyes, antenna, two arms — behind the counter.
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.6), shell);
-  body.position.set(0, 1.0, -0.35); g.add(body);
-  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.28, 0.06), shellDark);
-  chest.position.set(0, 1.15, -0.04); g.add(chest);
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.14, 8), shellDark);
-  neck.position.set(0, 1.56, -0.35); g.add(neck);
-  const head = new THREE.Group(); head.position.set(0, 1.62, -0.35); g.add(head);
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), shell);
-  dome.scale.set(1, 0.85, 1); head.add(dome);
-  const jaw = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.3, 0.16, 16), shellDark);
-  jaw.position.y = -0.06; head.add(jaw);
-  for (const sx of [-0.12, 0.12]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), eyeMat);
-    eye.position.set(sx, 0.1, 0.3); head.add(eye);
-  }
-  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.28, 6), shellDark);
-  antenna.position.set(0.18, 0.4, 0); head.add(antenna);
-  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 7), eyeMat);
-  tip.position.set(0.18, 0.56, 0); head.add(tip);
-  const arms = [];
-  for (const sx of [-1, 1]) {
-    const arm = new THREE.Group(); arm.position.set(sx * 0.52, 1.36, -0.3); g.add(arm);
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.6, 8), shellDark);
-    upper.position.y = -0.3; arm.add(upper);
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 7), shell);
-    hand.position.y = -0.62; arm.add(hand);
-    arm.rotation.x = -0.35; arm.rotation.z = sx * 0.15;
-    arms.push(arm);
-  }
+  // Skip-7 himself: the same make of drone as Bubbles, in brass, hovering
+  // behind the counter with his nose to the customer.
+  const bot = makeDrone(DRONE_PALETTES.skip7);
+  bot.position.set(0, 1.55, -0.45);
+  g.add(bot);
+  // A curator's touch: a little brass visor over the eye.
+  const visor = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.025, 6, 14, Math.PI), shellDark);
+  visor.position.set(0, 0.16, 0.5); visor.rotation.x = -0.35; bot.add(visor);
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  g.userData = { head, arms, tanks, eyeMat, lampMat };
+  g.userData = { bot, tanks, eyeMat: bot.userData.eyeMat, lampMat };
   return g;
 }
 
-function makeDrone() {
+// Bubbles' body. A palette makes another drone of the same make — Skip-7 is
+// one, in brass with a cool blue eye.
+const DRONE_PALETTES = {
+  bubbles: { shell: 0x5090b8, plate: 0x80b4d8, fin: 0x3a6a8a, eye: 0xffd740, glow: 0x40c8ff },
+  skip7:   { shell: 0x9a7b4f, plate: 0xc9a86a, fin: 0x6b5233, eye: 0x7fe8ff, glow: 0x62c8ff },
+};
+function makeDrone(palette = DRONE_PALETTES.bubbles) {
   const g = new THREE.Group();
-  const shell = new THREE.MeshStandardMaterial({ color: 0x5090b8, roughness: 0.35, metalness: 0.25 });
-  const plate = new THREE.MeshStandardMaterial({ color: 0x80b4d8, roughness: 0.3, metalness: 0.2 });
-  const finM = new THREE.MeshStandardMaterial({ color: 0x3a6a8a, roughness: 0.5 });
+  const shell = new THREE.MeshStandardMaterial({ color: palette.shell, roughness: 0.35, metalness: 0.25 });
+  const plate = new THREE.MeshStandardMaterial({ color: palette.plate, roughness: 0.3, metalness: 0.2 });
+  const finM = new THREE.MeshStandardMaterial({ color: palette.fin, roughness: 0.5 });
   const eyeMat = new THREE.MeshStandardMaterial({
-    color: 0xffd740, emissive: 0xffd740, emissiveIntensity: 0.35, roughness: 0.25 });
+    color: palette.eye, emissive: palette.eye, emissiveIntensity: 0.35, roughness: 0.25 });
   const glowMat = new THREE.MeshStandardMaterial({
-    color: 0x40c8ff, emissive: 0x40c8ff, emissiveIntensity: 0.8, roughness: 0.3 });
+    color: palette.glow, emissive: palette.glow, emissiveIntensity: 0.8, roughness: 0.3 });
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.5, 6, 14), shell);
   body.rotation.x = Math.PI / 2; g.add(body);                  // nose points +z
   const face = new THREE.Mesh(new THREE.SphereGeometry(0.28, 14, 12), plate);
@@ -4613,7 +4620,7 @@ export function initReefScene3D(canvas) {
   const skipCounter = buildCounter({
     id: 'counter-skip7', who: 'Skip-7 · Pearl Market',
     face: { id: '_skip7', color: 0x9aa7b3, accentColor: 0x7fe8ff,
-      build: makeSkip7, focus: g => g.userData.head, dir: [0.35, 0.3, 1], zoom: 2.6 },
+      build: makeSkip7, focus: g => g.userData.bot, dir: [0.5, 0.3, 1], zoom: 1.3 },
     balances: () => [['💎', Math.floor(pearls)]],
   });
   const { say } = skipCounter;
@@ -6980,11 +6987,11 @@ export function initReefScene3D(canvas) {
     drone.userData.eyeMat.emissiveIntensity = 0.35 + nf * 1.1;   // headlight at night
     {   // Skip-7 idles: a slow look around, a blink, arms that fidget, lamps up after dark.
       const u = skip7.userData;
-      u.head.rotation.y = Math.sin(t * 0.45) * 0.4 + Math.sin(t * 1.9) * 0.04;
-      u.head.rotation.x = Math.sin(t * 0.8) * 0.05;
-      u.arms[0].rotation.x = -0.35 + Math.sin(t * 1.3) * 0.08;
-      u.arms[1].rotation.x = -0.35 + Math.cos(t * 1.1) * 0.08;
-      u.eyeMat.emissiveIntensity = (t % 4.7) < 0.12 ? 0.1 : 0.9;
+      u.bot.position.y = 1.55 + Math.sin(t * 1.4) * 0.06;            // hovering behind the counter
+      u.bot.rotation.y = Math.sin(t * 0.45) * 0.4 + Math.sin(t * 1.9) * 0.04;   // a slow look around
+      u.bot.rotation.x = Math.sin(t * 0.8) * 0.05;
+      u.bot.userData.prop.rotation.z += dt * 6;                       // idling prop
+      u.eyeMat.emissiveIntensity = (t % 4.7) < 0.12 ? 0.05 : 0.5;    // blink
       const bio = nf * bioNight();   // Bioluminescence Night: his lamps go blue
       u.lampMat.emissiveIntensity = 0.25 + nf * 1.2 + bio * 0.8;
       u.lampMat.emissive.setHex(bio > 0.5 ? 0x62c8ff : 0xffd27f);
