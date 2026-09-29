@@ -5966,7 +5966,7 @@ export function initReefScene3D(canvas) {
         actions += `<button class="pack-open-btn" data-pack-buy="${tier}"`
           + `${stocked ? '' : ' disabled'}>Buy ${priceTag}</button>`;
       } else if (!n) {
-        actions = '<small>never sold — Lv 12+ level-ups only</small>';
+        actions = `<small>never sold — Lv ${MYTHIC_PACK_LEVEL}+ level-ups only</small>`;
       }
       html += `<div class="m-row${(n || priceTag) && stocked ? '' : ' locked'}">`
         + `<span><b>${TIER_LABEL[tier]}</b>${n ? ` ×${n}` : ''}<br>`
