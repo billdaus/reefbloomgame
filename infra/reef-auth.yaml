@@ -14,6 +14,18 @@ Parameters:
     Type: String
     Default: reef-bloom
     Description: Cognito hosted-UI domain prefix (must be globally unique per region)
+  SesIdentityArn:
+    Type: String
+    Default: ''
+    Description: >-
+      SES identity ARN for the domain that sends verification codes and password
+      resets (from reef-ops.yaml). Empty = Cognito's built-in mailer (50/day).
+  SenderAddress:
+    Type: String
+    Default: Reef Bloom <noreply@reefbloomgame.com>
+
+Conditions:
+  UseSes: !Not [!Equals [!Ref SesIdentityArn, '']]
 
 Resources:
   UserPool:
@@ -22,6 +34,15 @@ Resources:
       UserPoolName: reef-bloom-users
       UsernameAttributes: [email]
       AutoVerifiedAttributes: [email]
+      DeletionProtection: ACTIVE          # a stray stack delete can't take every account with it
+      AccountRecoverySetting:
+        RecoveryMechanisms: [{ Name: verified_email, Priority: 1 }]
+      EmailConfiguration: !If
+        - UseSes
+        - EmailSendingAccount: DEVELOPER
+          SourceArn: !Ref SesIdentityArn
+          From: !Ref SenderAddress
+        - !Ref AWS::NoValue
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -74,6 +95,9 @@ Resources:
     Properties:
       TableName: reef-bloom-saves
       BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      PointInTimeRecoverySpecification:   # players' reefs are the one thing we can't regenerate
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: pk
           AttributeType: S

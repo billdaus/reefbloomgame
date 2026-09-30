@@ -32,7 +32,7 @@ sign-in UI appears and no AWS code loads — the game behaves exactly as before.
 
 ## Status
 
-Deployed Sep 24 2026 (stack `reef-bloom-auth`, us-east-1); `src/aws-config.js` holds the outputs. Sign-in is the in-app account sheet (`src/accountSheet.js`) over Cognito's JSON API — email + password, emailed confirmation code, password reset, account deletion — and it works on the website, in the iOS app and on the Home screen. Cloud sync covers Classic's three slots (`s0–s2`) and the 3D edition's three (`t0–t2`). Cognito's default email sender is capped at 50 emails/day; move to SES before a big launch.
+Deployed Sep 24 2026 (stack `reef-bloom-auth`, us-east-1); `src/aws-config.js` holds the outputs. Sign-in is the in-app account sheet (`src/accountSheet.js`) over Cognito's JSON API — email + password, emailed confirmation code, password reset, account deletion — and it works on the website, in the iOS app and on the Home screen. Cloud sync covers Classic's three slots (`s0–s2`) and the 3D edition's three (`t0–t2`). Verification and reset codes are sent through Amazon SES from `noreply@reefbloomgame.com` (domain verified with DKIM in Route 53 by `infra/reef-ops.yaml`); the saves table has point-in-time recovery and both it and the user pool are deletion-protected.
 
 ## Enable it (one command + one paste)
 
@@ -82,3 +82,18 @@ Deployed Sep 24 2026 (stack `reef-bloom-auth`, us-east-1); `src/aws-config.js` h
   can replace the amazoncognito.com one if wanted.
 - Allowed sign-in redirect URLs are baked into the template: the production
   site (root and /mobile/) and localhost:5173 for development.
+
+## Operations (infra/reef-ops.yaml, stack `reef-bloom-ops`)
+
+Least-privilege access for the humans and pipelines that touch the account:
+
+- **`reefbloom-admin`** (IAM user, group `ReefBloomAdmins`, policy `ReefBloomAdmin`): the reef-bloom-* stacks, Cognito (player support: look up / reset / delete an account on request), the saves table, SES, the site bucket and its CloudFront invalidations, DNS for reefbloomgame.com, read-only monitoring and billing. Destructive calls (delete a stack, the table, the user pool, a player) are denied unless the session has MFA. No access key is created by the stack — make one in the IAM console for whoever holds the role, and enable MFA on the user.
+- **`reefbloom-github-deploy`** keeps its S3-only policy; the stack adds the one CloudFront invalidation the workflow makes.
+- **Budget**: `reef-bloom-monthly`, $10, emails at 80% forecast and 100% actual.
+- **Email**: SES identity for reefbloomgame.com (DKIM + custom MAIL FROM `mail.reefbloomgame.com`), consumed by reef-auth.yaml's `SesIdentityArn` parameter.
+
+```bash
+aws cloudformation deploy --template-file infra/reef-ops.yaml --stack-name reef-bloom-ops \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides HostedZoneId=<zone id> AlertEmail=<you>
+```

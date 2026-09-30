@@ -1,0 +1,225 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Reef Bloom operations — least-privilege IAM for the people and pipelines that
+  touch the account, transactional email from the game's own domain, and a
+  spending alert. Companion to reef-auth.yaml (the player-facing backend).
+
+Parameters:
+  Domain:
+    Type: String
+    Default: reefbloomgame.com
+    Description: The domain verification codes and password resets are sent from
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+    Description: Route 53 zone for Domain (the SES DKIM records are written here)
+  AlertEmail:
+    Type: String
+    Description: Where the monthly budget alert goes
+  MonthlyBudgetUsd:
+    Type: Number
+    Default: 10
+  SiteBucket:
+    Type: String
+    Default: reefbloomgame.com
+  CloudFrontDistributionId:
+    Type: String
+    Default: E2XG5CFSQCHI9M
+  AuthStackName:
+    Type: String
+    Default: reef-bloom-auth
+    Description: The stack whose resources the admin may manage
+
+Resources:
+  # ── Email: send from the game's own domain ────────────────────────────────
+  # Cognito's built-in mailer stops at 50 messages a day. This verifies the
+  # domain in SES (DKIM, written straight into Route 53) so reef-auth.yaml can
+  # point the user pool at noreply@<Domain> with SES's real limits.
+  SenderIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref Domain
+      DkimAttributes:
+        SigningEnabled: true
+      MailFromAttributes:
+        MailFromDomain: !Sub 'mail.${Domain}'
+        BehaviorOnMxFailure: USE_DEFAULT_VALUE
+
+  DkimRecord1:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !GetAtt SenderIdentity.DkimDNSTokenName1
+      Type: CNAME
+      TTL: 1800
+      ResourceRecords: [!GetAtt SenderIdentity.DkimDNSTokenValue1]
+  DkimRecord2:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !GetAtt SenderIdentity.DkimDNSTokenName2
+      Type: CNAME
+      TTL: 1800
+      ResourceRecords: [!GetAtt SenderIdentity.DkimDNSTokenValue2]
+  DkimRecord3:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !GetAtt SenderIdentity.DkimDNSTokenName3
+      Type: CNAME
+      TTL: 1800
+      ResourceRecords: [!GetAtt SenderIdentity.DkimDNSTokenValue3]
+  MailFromMx:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub 'mail.${Domain}'
+      Type: MX
+      TTL: 1800
+      ResourceRecords: [!Sub '10 feedback-smtp.${AWS::Region}.amazonses.com']
+  MailFromSpf:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub 'mail.${Domain}'
+      Type: TXT
+      TTL: 1800
+      ResourceRecords: ['"v=spf1 include:amazonses.com ~all"']
+
+  # ── The Reef Bloom admin: one person, one job ─────────────────────────────
+  # Can run the reef-bloom-* stacks, support players (look up / reset /
+  # delete an account on request), read the saves table, publish the site
+  # and see the mail and bills — and nothing else in the account. Anything
+  # that destroys data (a stack, the table, the user pool, a player)
+  # additionally needs MFA on the session.
+  ReefBloomAdminPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: ReefBloomAdmin
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ReefStacks
+            Effect: Allow
+            Action: cloudformation:*
+            Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/reef-bloom-*/*'
+          - Sid: ReadAnyStackList
+            Effect: Allow
+            Action: [cloudformation:ListStacks, cloudformation:ValidateTemplate, cloudformation:GetTemplateSummary]
+            Resource: '*'
+          - Sid: StackResourcesCognito
+            Effect: Allow
+            Action: [cognito-idp:*, cognito-identity:*]
+            Resource: '*'
+          - Sid: StackResourcesData
+            Effect: Allow
+            Action: [dynamodb:*]
+            Resource:
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/reef-bloom-*'
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/reef-bloom-*/*'
+          - Sid: StackResourcesIamRoles
+            Effect: Allow
+            Action: [iam:GetRole, iam:CreateRole, iam:DeleteRole, iam:UpdateRole, iam:PassRole, iam:PutRolePolicy, iam:DeleteRolePolicy, iam:GetRolePolicy, iam:AttachRolePolicy, iam:DetachRolePolicy, iam:TagRole, iam:UntagRole, iam:UpdateAssumeRolePolicy]
+            Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/reef-bloom-*'
+          - Sid: Mail
+            Effect: Allow
+            Action: [ses:*]
+            Resource: '*'
+          - Sid: Dns
+            Effect: Allow
+            Action: [route53:GetHostedZone, route53:ListResourceRecordSets, route53:ChangeResourceRecordSets, route53:GetChange]
+            Resource:
+              - !Sub 'arn:aws:route53:::hostedzone/${HostedZoneId}'
+              - 'arn:aws:route53:::change/*'
+          - Sid: DnsList
+            Effect: Allow
+            Action: route53:ListHostedZones
+            Resource: '*'
+          - Sid: Site
+            Effect: Allow
+            Action: [s3:ListBucket, s3:GetObject, s3:PutObject, s3:DeleteObject, s3:GetBucketLocation]
+            Resource:
+              - !Sub 'arn:aws:s3:::${SiteBucket}'
+              - !Sub 'arn:aws:s3:::${SiteBucket}/*'
+          - Sid: SiteCache
+            Effect: Allow
+            Action: [cloudfront:CreateInvalidation, cloudfront:GetInvalidation, cloudfront:ListInvalidations, cloudfront:GetDistribution]
+            Resource: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistributionId}'
+          - Sid: Observe
+            Effect: Allow
+            Action: [cloudwatch:Get*, cloudwatch:List*, cloudwatch:Describe*, logs:Describe*, logs:Get*, logs:FilterLogEvents, budgets:ViewBudget, ce:GetCostAndUsage, sts:GetCallerIdentity]
+            Resource: '*'
+          - Sid: SelfService
+            Effect: Allow
+            Action: [iam:GetUser, iam:ChangePassword, iam:GetAccessKeyLastUsed, iam:ListAccessKeys, iam:CreateAccessKey, iam:DeleteAccessKey, iam:UpdateAccessKey, iam:ListMFADevices, iam:EnableMFADevice, iam:DeactivateMFADevice, iam:ResyncMFADevice, iam:CreateVirtualMFADevice, iam:DeleteVirtualMFADevice]
+            Resource:
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:user/${!aws:username}'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:mfa/${!aws:username}'
+          - Sid: DestructiveNeedsMfa
+            Effect: Deny
+            Action:
+              - cloudformation:DeleteStack
+              - dynamodb:DeleteTable
+              - cognito-idp:DeleteUserPool
+              - cognito-idp:AdminDeleteUser
+              - cognito-idp:DeleteUserPoolClient
+              - cognito-identity:DeleteIdentityPool
+              - s3:DeleteBucket
+              - ses:DeleteEmailIdentity
+            Resource: '*'
+            Condition:
+              BoolIfExists: { 'aws:MultiFactorAuthPresent': 'false' }
+
+  ReefBloomAdmins:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: ReefBloomAdmins
+      ManagedPolicyArns: [!Ref ReefBloomAdminPolicy]
+
+  ReefBloomAdminUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: reefbloom-admin
+      Groups: [!Ref ReefBloomAdmins]
+      Tags: [{ Key: project, Value: reef-bloom }]
+    # No access key here on purpose: create it in the console (or with the CLI)
+    # so the secret is only ever shown to the person who will hold it.
+
+  # ── The deploy pipeline: publish the site, flush the cache, nothing else ──
+  # The GitHub Actions user already holds a scoped S3 policy; this adds the
+  # one CloudFront call the workflow makes.
+  DeployInvalidation:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: reefbloom-cloudfront-invalidate
+      Users: [reefbloom-github-deploy]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: cloudfront:CreateInvalidation
+            Resource: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistributionId}'
+
+  # ── Spending alert ─────────────────────────────────────────────────────────
+  # A monthly budget for the whole account: an email at 80% forecast and at
+  # 100% actual. Reef Bloom's backend should cost cents; this catches the
+  # surprise, whatever causes it.
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: reef-bloom-monthly
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit: { Amount: !Ref MonthlyBudgetUsd, Unit: USD }
+      NotificationsWithSubscribers:
+        - Notification: { NotificationType: FORECASTED, ComparisonOperator: GREATER_THAN, Threshold: 80, ThresholdType: PERCENTAGE }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
+        - Notification: { NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 100, ThresholdType: PERCENTAGE }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
+
+Outputs:
+  SenderIdentityArn:
+    Value: !Sub 'arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/${Domain}'
+    Description: Pass to reef-auth.yaml as SesIdentityArn once the domain shows Verified
+  AdminUser:
+    Value: !Ref ReefBloomAdminUser
