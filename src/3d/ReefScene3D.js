@@ -3072,7 +3072,11 @@ export function initReefScene3D(canvas) {
     && Object.keys(ZONES).some(z => zoneUnlocked(z) && matchesBiome(s, z));
   const packFishPool = (tier) => tierFish(tier).filter(fishAvailable);
   const packCoralPool = (tier) =>
-    allCorals().filter(s => s.tier === tier && !s.eventId && !s.utility && coralAvailable(s));
+    allCorals().filter(s => s.tier === tier && !s.eventId && !s.utility && !s.pearlCost && coralAvailable(s));
+  // Legendary and Mythic coral are all Skip-7's, so those packs can never deal
+  // a coral card — they deal a second riches card in its place.
+  const packHasCoral = (tier) =>
+    allCorals().some(s => s.tier === tier && !s.utility && !s.pearlCost);
 
   // ── Wild-abundance odds ──────────────────────────────────────────────────────
   // Within a tier, species roll roughly as often as the real ocean serves
@@ -3130,9 +3134,15 @@ export function initReefScene3D(canvas) {
   }
   // Weekly featured fish — a fixed, disclosed 25% slice of the fish roll in
   // packs of its tier. Deterministic per calendar week; nothing to save.
+  // A pearl species' week passes to the next fish in line — pearl fish never roll.
   function featuredFish() {
     const pool = allFish().filter(s => !s.eventId && s.tier !== 'common');
-    return pool.length ? pool[Math.floor(Date.now() / 604800000) % pool.length] : null;
+    const week = Math.floor(Date.now() / 604800000);
+    for (let i = 0; i < pool.length; i++) {
+      const s = pool[(week + i) % pool.length];
+      if (!s.pearlCost) return s;
+    }
+    return null;
   }
   const packCount = () =>
     Object.values(packs).reduce((n, c) => n + c, 0) + seasonPacks.length
@@ -3174,7 +3184,10 @@ export function initReefScene3D(canvas) {
     } else {
       const amt = rollRange(R.be); be = Math.min(be + amt, beMax);
       cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`,
-        sub: `No ${lbl} coral is within your reach yet — consolation riches`, gain: { be: amt } });
+        sub: packHasCoral(tier)
+          ? `No ${lbl} coral is within your reach yet — consolation riches`
+          : `${lbl} coral is sold only at Skip-7's Pearl Market — riches instead`,
+        gain: { be: amt } });
     }
     // Card 3 — the guaranteed fish (featured takes a fixed 25% slice of its
     // tier, but only once the featured fish itself is within the gate).
@@ -5972,7 +5985,9 @@ export function initReefScene3D(canvas) {
         + `<span><b>${TIER_LABEL[tier]}</b>${n ? ` ×${n}` : ''}<br>`
         + `<span style="font-size:10.5px;color:#9fc4dc">`
         + `60%: ${R.be[0]}–${R.be[1]} 🫧 / 40%: ${R.pearls[0]}–${R.pearls[1]} 💎`
-        + ` · a free ${TIER_LABEL[tier]} coral 🎟 · `
+        + (packHasCoral(tier)
+          ? ` · a free ${TIER_LABEL[tier]} coral 🎟 · `
+          : ` · another ${R.be[0]}–${R.be[1]} 🫧 (${TIER_LABEL[tier]} coral is Skip-7's) · `)
         + (stocked
           ? `guaranteed fish (${fp.length} species, wild-abundance odds)`
           : 'no fish in your unlocked waters yet — levels and biomes stock this pack')
@@ -6046,8 +6061,9 @@ export function initReefScene3D(canvas) {
       + (short
         ? `<div class="pc-after">You have ${have} ${cur} — ${cost - have} ${cur} short.</div>`
         : `<div class="pc-after">You have ${have} ${cur} → <b>${have - cost} ${cur}</b> after.</div>`)
-      + `<div class="m-sub" style="margin-top:8px">It opens right away: riches, a free ${lbl}`
-      + ` coral 🎟, and a guaranteed ${lbl} fish.</div>`
+      + '<div class="m-sub" style="margin-top:8px">It opens right away: riches, '
+      + (packHasCoral(tier) ? `a free ${lbl} coral 🎟` : 'more riches')
+      + `, and a guaranteed ${lbl} fish.</div>`
       + '<label class="pc-auto"><input type="checkbox" data-pack-autoconfirm> Don\'t ask again</label>'
       + '<div class="pc-actions">'
       + `<button class="pack-open-btn" data-pack-confirm="${tier}"${short ? ' disabled' : ''}>`
@@ -7219,9 +7235,12 @@ export function initReefScene3D(canvas) {
       const t = ray.intersectObjects(tiles, false)[0]?.object;
       if (t?.userData.napped) { flash(rateEl, 'Bubbles is napping there 💤'); return; }
       if (!t || t.userData.occupied) return;
-      if (!zoneCheck(selected.spec, t.userData.biome)) return;
-      if (!charge(selected.spec, CORAL_COST)) return;
-      addCoral(selected.spec, t);
+      // Hold the spec: spending the last Pearl Market voucher resets the
+      // selection to the default coral before the placement happens.
+      const { spec } = selected;
+      if (!zoneCheck(spec, t.userData.biome)) return;
+      if (!charge(spec, CORAL_COST)) return;
+      addCoral(spec, t);
       if (placedCorals.length === 1) droneTrigger('firstCoral');
       ev3Record('place_coral'); dqRecord('place_coral');
       recomputeRates(); refreshProgress(); refreshHud(); save();
