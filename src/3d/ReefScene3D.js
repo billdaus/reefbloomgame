@@ -1650,35 +1650,176 @@ const FISH_BODY = {
     }
     return {};
   },
-  seahorse(g, { bodyMat, finMat, rnd }) {
-    // Upright S-curve: crowned head, tube snout, belly, curled tail.
-    const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0.52, 0.02), new THREE.Vector3(0, 0.38, 0.12),
-      new THREE.Vector3(0, 0.16, 0.1), new THREE.Vector3(0, -0.05, -0.02),
-      new THREE.Vector3(0, -0.24, -0.08), new THREE.Vector3(0, -0.36, 0.0),
-      new THREE.Vector3(0, -0.34, 0.12), new THREE.Vector3(0, -0.24, 0.14),
-      new THREE.Vector3(0, -0.2, 0.05),
-    ]);
-    for (let i = 0; i <= 16; i++) {
-      const k = i / 16;
-      const p = curve.getPoint(k);
-      const r = 0.1 * (1 - k * 0.8) + 0.015;
-      const bead = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 7), bodyMat);
-      bead.position.copy(p);
-      bead.scale.z = 1.4;
-      g.add(bead);
+  seahorse(g, { bodyMat, finMat, spec, rnd }) {
+    // Built the way a real one is: a jointed spine of bony ring plates
+    // (angular in section, knobbed top and bottom, deeper than it is wide),
+    // a horse-like head set at a right angle on the neck with a long tube
+    // snout and a coronet, one small dorsal fin that blurs along the back
+    // — the whole engine of the animal — twin pectorals behind the cheeks,
+    // and a prehensile tail that spirals forward and keeps on flexing.
+    // No caudal fin; seahorses don't have one. The sea dragons share the
+    // rig with a trailing tail and leafy lobes instead of a curl.
+    const dragon = /SeaDragon$/.test(spec.id);
+    const plateM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.accentColor ?? spec.color).multiplyScalar(0.8),
+      roughness: 0.75, flatShading: true });
+    // Spine joints, neck downward: [segment length, radius, bend about x
+    // relative to the parent]. Positive bend turns the next segment back
+    // (−z), negative turns it forward — the trunk leans back a touch and
+    // the tail curls forward under the belly, tightening toward the tip.
+    const TRUNK = [
+      [0.07, 0.062, -0.34], [0.075, 0.078, -0.1], [0.08, 0.092, 0.04], [0.08, 0.1, 0.1],
+      [0.08, 0.1, 0.13], [0.08, 0.093, 0.14], [0.075, 0.082, 0.13], [0.07, 0.068, 0.1],
+      [0.065, 0.056, 0.07]];
+    // The tail coils forward into a flat spiral — a turn and three-quarters,
+    // each segment shorter and the bend tighter than the last, so the coil
+    // winds inward and never crosses itself. Dragons trail theirs straight.
+    const TAIL = [], NT = dragon ? 14 : 22;
+    for (let i = 0; i < NT; i++) {
+      const k = i / (NT - 1);
+      TAIL.push(dragon
+        ? [0.07 * (1 - k * 0.55), 0.048 * (1 - k * 0.78) + 0.004, -0.07]
+        : [0.066 * (1 - k) ** 1.1 + 0.012, 0.046 * (1 - k) ** 1.3 + 0.004, -(0.4 + k * 0.5)]);
     }
-    const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.04, 0.2, 6), bodyMat);
-    snout.rotation.x = Math.PI / 2 - 0.35;
-    snout.position.set(0, 0.5, 0.16); g.add(snout);
-    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.1, 5), bodyMat);
-    crown.position.set(0, 0.64, 0.0); g.add(crown);
-    fishEyes(g, 0.06, 0.54, 0.08, 0.7);
-    const dorsal = finMesh([[0, 0], [0.06, 0.16, 0.2, 0.1], [0.16, -0.02, 0, 0]], finMat);
-    dorsal.position.set(0, 0.12, -0.02);
-    dorsal.rotation.z = -0.4;
-    g.add(dorsal);
-    return {};
+    // The trunk never bends, so its plates bake into two merged meshes (one
+    // per material); only the tail is a live chain of joints. `at(i, obj)`
+    // hangs an attachment off joint i either way.
+    const joints = [];                 // tail joints (groups); null for trunk
+    const mats = [];                   // every joint's frame, relative to g
+    const skin = [], plate = [];       // baked trunk geometry
+    const M = new THREE.Matrix4(), step = new THREE.Matrix4();
+    let parent = null, prevLen = 0;
+    const bake = (list, geo, pos, rot, scl, frame) => {
+      const local = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), scl);
+      list.push(geo.applyMatrix4(local.premultiply(frame)));
+    };
+    [...TRUNK, ...TAIL].forEach(([len, r, bend], i) => {
+      const trunk = i < TRUNK.length;
+      step.makeTranslation(0, -prevLen, 0).multiply(new THREE.Matrix4().makeRotationX(bend));
+      M.multiply(step);
+      mats.push(M.clone());
+      let j = null;
+      if (!trunk) {
+        j = new THREE.Group();
+        j.userData.base = bend;
+        if (parent) { j.position.y = -prevLen; j.rotation.x = bend; parent.add(j); }
+        else { M.decompose(j.position, j.quaternion, j.scale); g.add(j); }   // first tail joint
+        parent = j;
+      }
+      // A 7-sided barrel per segment — the plates read as facets, not scales.
+      // The belly swells forward of the spine; the back stays straighter.
+      const belly = trunk ? r * 0.55 * Math.sin((i / (TRUNK.length - 1)) * Math.PI) : 0;
+      const scl = new THREE.Vector3(trunk ? 0.78 : 0.9, 1, trunk ? 1.22 : 1);   // keel-deep trunk
+      const segGeo = new THREE.CylinderGeometry(r * 0.94, r, len * 1.08, 7);
+      const ringGeo = new THREE.TorusGeometry(r * 1.02, r * 0.17, 4, 7);   // the bony ring at the joint
+      const knobs = (trunk ? [-1, 1] : i < TRUNK.length + 8 ? [-1] : []).map(s => [
+        new THREE.ConeGeometry(r * 0.16, r * 0.45, 4),
+        new THREE.Vector3(0, 0, belly + s * r * (trunk ? 1.22 : 1.0)),
+        new THREE.Euler(s > 0 ? Math.PI / 2 : -Math.PI / 2, 0, 0)]);
+      if (trunk) {
+        bake(skin, segGeo, new THREE.Vector3(0, -len / 2, belly), new THREE.Euler(), scl, M);
+        bake(plate, ringGeo, new THREE.Vector3(0, 0, belly), new THREE.Euler(Math.PI / 2, 0, 0), scl, M);
+        for (const [geo, pos, rot] of knobs) bake(plate, geo, pos, rot, new THREE.Vector3(1, 1, 1), M);
+      } else {
+        const seg = new THREE.Mesh(segGeo, bodyMat);
+        seg.position.set(0, -len / 2, belly); seg.scale.copy(scl); j.add(seg);
+        const ring = new THREE.Mesh(ringGeo, plateM);
+        ring.rotation.x = Math.PI / 2; ring.scale.copy(scl); j.add(ring);
+        for (const [geo, pos, rot] of knobs) {
+          const knob = new THREE.Mesh(geo, plateM);
+          knob.position.copy(pos); knob.rotation.copy(rot); j.add(knob);
+        }
+      }
+      joints.push(j);
+      prevLen = len;
+    });
+    for (const [list, mat] of [[skin, bodyMat], [plate, plateM]]) {
+      const merged = mergeGeometries(list, false);
+      list.forEach(q => q.dispose());
+      g.add(new THREE.Mesh(merged, mat));
+    }
+    const at = (i, obj) => {
+      if (joints[i]) joints[i].add(obj);
+      else { obj.applyMatrix4(mats[i]); g.add(obj); }
+    };
+    // Head: a horse's profile set across the neck, snout forward and a
+    // little down, cheek spines, coronet on the crown.
+    const head = new THREE.Group();
+    head.position.set(0, 0.03, 0.01);
+    g.add(head);
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 10), bodyMat);
+    skull.scale.set(0.8, 0.9, 1.25); skull.position.set(0, 0.05, 0.03); head.add(skull);
+    const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), bodyMat);
+    jaw.scale.set(0.75, 0.7, 1.1); jaw.position.set(0, -0.01, 0.07); head.add(jaw);
+    const snL = dragon ? 0.3 : 0.21;
+    const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.034, snL, 7), bodyMat);
+    snout.rotation.x = Math.PI / 2 + 0.3;
+    snout.position.set(0, -0.005, 0.08 + snL * 0.48); head.add(snout);
+    const lip = new THREE.Mesh(new THREE.SphereGeometry(0.019, 8, 6), plateM);
+    lip.position.copy(snout.position).add(new THREE.Vector3(0, 1, 0)
+      .applyEuler(snout.rotation).multiplyScalar(snL * 0.5));   // the snout's far end
+    head.add(lip);
+    for (const s of [-1, 1]) {
+      const cheek = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.06, 4), plateM);
+      cheek.position.set(s * 0.06, -0.02, 0.0);
+      cheek.rotation.set(0.6, 0, s * -1.1); head.add(cheek);
+    }
+    const coronet = new THREE.Group();
+    coronet.position.set(0, 0.12, -0.02); head.add(coronet);
+    const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.035, 5), plateM);
+    coronet.add(crownBase);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const pt = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.045, 4), plateM);
+      pt.position.set(Math.cos(a) * 0.028, 0.03, Math.sin(a) * 0.028);
+      pt.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
+      coronet.add(pt);
+    }
+    fishEyes(head, 0.05, 0.055, 0.075, 0.55);
+    // Dorsal fin on the back of the trunk — base runs down the spine, the
+    // fan sweeps backward; it beats so fast in life it reads as a shimmer.
+    const dorsal = finMesh([[0, 0], [0.07, 0.0, 0.1, -0.06], [0.1, -0.15, 0.02, -0.22], [0, -0.22], [0, 0]], finMat);
+    dorsal.position.set(0, -0.01, -0.12);
+    at(4, dorsal);
+    // Pectorals: small fans just behind the cheeks, sculling constantly.
+    const pecs = [];
+    for (const s of [-1, 1]) {
+      const pec = finMesh([[0, 0], [0.07, 0.03, 0.1, -0.02], [0.08, -0.07, 0, -0.06], [0, 0]], finMat, 0);
+      pec.position.set(s * 0.06, -0.03, -0.01);
+      pec.rotation.y = s * 1.15; pec.userData.baseYaw = pec.rotation.y;
+      g.add(pec); pecs.push(pec);
+    }
+    // Sea dragons wear leaf-like lobes along the spine and the head.
+    if (dragon) {
+      const leafM = new THREE.MeshStandardMaterial({
+        color: spec.accentColor ?? spec.color, roughness: 0.5,
+        side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
+      const where = [[-1, 0, 0.1, -0.05, 1], [1, 0.02, 0, 0.09, -1], [2, 0, 0, -0.1, 1],
+        [5, 0, 0, 0.1, -1], [6, 0, 0, -0.09, 1], [10, 0, 0, 0.05, -1], [12, 0, 0, -0.04, 1]];
+      for (const [host, x, y, z, side] of where) {
+        for (const s of [-1, 1]) {
+          const leaf = finMesh([[0, 0], [0.09, 0.07, 0.17, 0.02], [0.2, -0.05, 0.09, -0.07], [0, 0]], leafM, 0);
+          leaf.position.set(x + s * 0.02, y, z);
+          leaf.rotation.set(side * 0.9 + rnd() * 0.3, s * 0.6, 0);
+          leaf.scale.setScalar(0.8 + rnd() * 0.5);
+          if (host < 0) head.add(leaf); else at(host, leaf);
+        }
+      }
+    }
+    const tailJoints = joints.slice(TRUNK.length);   // the live chain
+    const animate = (t, phase) => {
+      dorsal.rotation.y = Math.sin(t * 26 + phase) * 0.32;              // the dorsal shimmer
+      pecs[0].rotation.y = pecs[0].userData.baseYaw + Math.sin(t * 15 + phase) * 0.3;
+      pecs[1].rotation.y = pecs[1].userData.baseYaw - Math.sin(t * 15 + phase + 0.4) * 0.3;
+      head.rotation.x = Math.sin(t * 0.9 + phase) * 0.05;               // slow nod
+      // The tail keeps feeling for a hold: a curl that tightens and eases.
+      const flex = Math.sin(t * 1.2 + phase) * (dragon ? 0.02 : 0.035);
+      tailJoints.forEach((j, i) => {
+        j.rotation.x = j.userData.base + flex * (0.3 + i / tailJoints.length)
+          + Math.sin(t * 1.9 + phase - i * 0.5) * 0.015;
+      });
+    };
+    return { animate };
   },
   turtle(g, { bodyMat, spec, rnd }) {
     const skinM = new THREE.MeshStandardMaterial({
@@ -4958,7 +5099,8 @@ export function initReefScene3D(canvas) {
     }
   }
   let THUMB_PX_OVERRIDE = 0;
-  if (window.__rb3d) window.__rb3d.portrait = (id, px) => speciesPortrait(CORAL_SPECIES[id] ?? FISH_SPECIES[id] ?? LOCAL_SPECS[id], px);
+  if (window.__rb3d) window.__rb3d.portrait = (id, px, dir) =>
+    speciesPortrait({ ...(CORAL_SPECIES[id] ?? FISH_SPECIES[id] ?? LOCAL_SPECS[id]), ...(dir ? { dir } : {}) }, px);
   function speciesThumb(spec) {
     if (thumbCache.has(spec.id)) return thumbCache.get(spec.id);
     const PX = THUMB_PX_OVERRIDE || THUMB_PX;
