@@ -410,6 +410,37 @@ const FISH_PAINT = {
     ctx.fillStyle = '#ffffff'; spot(0.02, 0.55, 0.02, 0.07);        // white lips
   },
   damselfish() { /* plain electric blue — the counter-shade is all it needs */ },
+  whaleShark(ctx, w, h, { flank, acc }) {
+    // The checkerboard: pale lines rule the dark back into rows and columns
+    // with a spot in every cell, densest over the back, thinning down the
+    // flank to a plain pale belly. No two are alike, but the plan is fixed.
+    const pale = `rgba(${Math.round(acc.r * 255)},${Math.round(acc.g * 255)},${Math.round(acc.b * 255)},`;
+    flank((X, Y) => {
+      ctx.fillStyle = pale + '0.9)';
+      ctx.fillRect(X(0), Y(0.7), X(1) - X(0), Y(1) - Y(0.7));          // the belly
+      ctx.strokeStyle = pale + '0.28)'; ctx.lineWidth = 0.7;
+      for (let r = 0; r < 5; r++) {                                      // row lines
+        const q = 0.06 + r * 0.14;
+        ctx.beginPath(); ctx.moveTo(X(0.1), Y(q)); ctx.lineTo(X(0.96), Y(q)); ctx.stroke();
+      }
+      for (let c = 0; c < 12; c++) {                                     // column lines
+        const p = 0.14 + c * 0.072;
+        ctx.beginPath(); ctx.moveTo(X(p), Y(0.02)); ctx.lineTo(X(p), Y(0.66)); ctx.stroke();
+      }
+      for (let r = 0; r < 5; r++) {                                      // a spot per cell
+        const q = 0.13 + r * 0.14;
+        ctx.fillStyle = pale + (r < 3 ? '0.95)' : '0.6)');
+        for (let c = 0; c < 12; c++) {
+          const p = 0.176 + c * 0.072;
+          ctx.beginPath(); ctx.ellipse(X(p), Y(q), Math.abs(X(p + 0.013) - X(p)), 0.045 * h, 0, 0, 7); ctx.fill();
+        }
+      }
+      ctx.fillStyle = pale + '0.9)';                                     // pale spots on the head too
+      for (const [p, q] of [[0.06, 0.1], [0.1, 0.3], [0.05, 0.45], [0.11, 0.55]]) {
+        ctx.beginPath(); ctx.ellipse(X(p), Y(q), Math.abs(X(p + 0.009) - X(p)), 0.03 * h, 0, 0, 7); ctx.fill();
+      }
+    });
+  },
   rainbowGoby(ctx, w, h, { band }) {
     // Actually rainbow: the whole body, nose to tail, walks the hue wheel.
     const N = 14;
@@ -444,11 +475,14 @@ const FISH_PAINT = {
   },
 };
 const fishTexCache = new Map();
+FISH_PAINT.whaleShark.px = [512, 128];   // a long body stretches the map; the spots need the pixels
+FISH_PAINT.twilightWhaleShark = FISH_PAINT.whaleShark;
+
 function fishTexture(spec, variant = 0) {
   const key = `${spec.id}:${variant}`;
   let t = fishTexCache.get(key);
   if (t) return t;
-  const w = 128, h = 64;
+  const [w, h] = FISH_PAINT[spec.id]?.px ?? [128, 64];   // a livery can ask for more pixels
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');
@@ -1396,6 +1430,87 @@ const FISH_BODY = {
     tail.add(caudal);
     return { tail };
   },
+  whaleShark(g, { bodyMat, spec, rnd }) {
+    // The biggest fish there is, and nothing like the reef sharks: a broad,
+    // flat-topped head with the mouth right across the front (not slung
+    // underneath), tiny eyes at its corners, three long ridges down each
+    // flank, the first dorsal set well back, five tall gill slits and a
+    // great crescent tail. A filter feeder, built to cruise mouth-open.
+    const finM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.color).multiplyScalar(0.92), roughness: 0.45,
+      side: THREE.DoubleSide });
+    const ridgeM = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.color).multiplyScalar(1.25), roughness: 0.55 });
+    const body = fusiformBody(bodyMat, 0.72, 0.04);
+    {
+      // Flatten the top of the head, square the snout off wide and blunt.
+      const pos = body.geometry.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        const u = v.z / 0.5, f = smoothstep(0.15, 1, u);
+        if (v.y > 0) v.y *= 1 - 0.42 * f;
+        v.x *= 1 + 0.3 * f;
+        v.z -= 0.5 * 0.22 * smoothstep(0.6, 1, u) * u;   // pull the pole in: a blunt front
+        pos.setXYZ(i, v.x, v.y, v.z);
+      }
+      body.geometry.computeVertexNormals();
+    }
+    body.scale.set(0.36, 0.34, 1.75 * (0.95 + rnd() * 0.1));
+    g.add(body);
+    const zNose = 0.5 * 0.78 * body.scale.z;
+    // The mouth: a wide dark slit straight across the front of the head.
+    const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.1, 20), pupilMat);
+    mouth.scale.set(2.4, 0.28, 1); mouth.position.set(0, -0.03, zNose + 0.004); g.add(mouth);
+    const ex = bodyHalfWidthAt(body, -0.02, zNose - 0.08);
+    fishEyes(g, ex - 0.01, -0.01, zNose - 0.08, 0.4);
+    // Ridges: three keels down each flank plus one along the back, each a
+    // tube laid over the body's own surface.
+    const ridge = (yAt, side) => {
+      const pts = [];
+      for (let z = 0.5; z >= -0.78; z -= 0.08) {
+        const y = yAt(z);
+        const x = side ? (bodyHalfWidthAt(body, y, z) - 0.004) * side : 0;
+        pts.push(new THREE.Vector3(x, side ? y : bodyEdgeAt(body, z) - 0.004, z));
+      }
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, 0.011, 5, false), ridgeM);
+      tube.userData.noShadow = true; g.add(tube);
+    };
+    for (const s of [-1, 1]) {
+      ridge(z => 0.11 - Math.max(0, z - 0.1) * 0.08, s);
+      ridge(z => 0.03 - Math.max(0, z - 0.1) * 0.06, s);
+      ridge(z => -0.05, s);
+      // Five tall gill slits behind the head.
+      for (let k = 0; k < 5; k++) {
+        const z = 0.3 - k * 0.055;
+        const slit = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.17, 0.012), pupilMat);
+        slit.position.set(s * (bodyHalfWidthAt(body, 0, z) - 0.002), -0.01, z);
+        slit.rotation.z = s * 0.1; slit.userData.noShadow = true; g.add(slit);
+      }
+      // Pectorals: long, broad and set low; small pelvics further back.
+      const pec = finMesh([[0, 0], [0.4, 0.02, 0.62, -0.18], [0.36, -0.22, 0.08, -0.08], [0, 0]],
+        finM, s > 0 ? 1.3 : 1.84);
+      pec.position.set(s * 0.19, -0.1, 0.22); g.add(pec);
+      const pelvic = finMesh([[0, 0], [0.16, 0.0, 0.24, -0.08], [0.14, -0.1, 0.03, -0.04], [0, 0]],
+        finM, s > 0 ? 1.3 : 1.84);
+      pelvic.position.set(s * 0.13, -0.11, -0.3); g.add(pelvic);
+    }
+    ridge(z => 0, 0);
+    const dorsal = finMesh([[0, 0], [0.06, 0.3, 0.26, 0.3], [0.32, 0.14, 0.42, 0], [0, 0]], finM);
+    dorsal.position.set(0, bodyEdgeAt(body, -0.12) - 0.02, -0.12); g.add(dorsal);
+    const dorsal2 = finMesh([[0, 0], [0.03, 0.1, 0.11, 0.1], [0.14, 0.03, 0.17, 0], [0, 0]], finM);
+    dorsal2.position.set(0, bodyEdgeAt(body, -0.6) - 0.01, -0.6); g.add(dorsal2);
+    const anal = finMesh([[0, 0], [0.03, -0.09, 0.1, -0.09], [0.13, -0.03, 0.16, 0], [0, 0]], finM);
+    anal.position.set(0, -bodyEdgeAt(body, -0.58, -1) + 0.01, -0.58); g.add(anal);
+    // The crescent tail on a slim keeled peduncle: a tall upper lobe and a
+    // well-developed lower one — the half-moon of a cruising giant.
+    const tail = new THREE.Group();
+    tail.position.z = -0.8; g.add(tail);
+    const caudal = finMesh([
+      [-0.06, 0.05], [0.2, 0.18, 0.28, 0.46], [0.3, 0.34, 0.18, 0.07], [0.16, 0],
+      [0.18, -0.07], [0.28, -0.2, 0.24, -0.3], [0.18, -0.14, -0.06, -0.05]], finM);
+    tail.add(caudal);
+    return { tail };
+  },
   // Ocean sunfish: a tall, flattened disc with no tail — the body ends in a
   // wavy clavus — and one huge dorsal and anal fin it sculls with.
   mola(g, { bodyMat, spec, rnd }) {
@@ -2188,8 +2303,8 @@ function fishBodyOf(id) {
   if (['seahorse', 'neonSeahorse', 'twilightSeahorse', 'moonSeahorse', 'goldenSeahorse',
     'leafySeaDragon', 'weedySeaDragon'].includes(id)) return 'seahorse';
   if (id === 'seaTurtle') return 'turtle';
-  if (['shark', 'frilledShark', 'twilightWhaleShark', 'lemonShark', 'blacktipReefShark',
-    'whaleShark'].includes(id)) return 'shark';
+  if (id === 'whaleShark' || id === 'twilightWhaleShark') return 'whaleShark';
+  if (['shark', 'frilledShark', 'lemonShark', 'blacktipReefShark'].includes(id)) return 'shark';
   if (['morayEel', 'giantMoray', 'blueRibbonEel', 'glowEel', 'gulperEel',
     'oarfish', 'ribbonfish'].includes(id)) return 'eel';
   if (['octopus', 'giantSquid', 'rubyOctopus'].includes(id)) return 'octopus';
