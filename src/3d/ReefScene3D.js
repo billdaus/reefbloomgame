@@ -1091,6 +1091,36 @@ function mergeByMaterial(root) {
   empties.forEach(o => o.parent?.remove(o));
 }
 
+// A tube along a curve whose radius is a function of distance along it —
+// TubeGeometry can't taper, and every stem and branch does. Same winding
+// and frame convention as TubeGeometry so the normals face out.
+function taperedTube(curve, radiusAt, segs = 8, radial = 6) {
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], nrm = [], uv = [], idx = [];
+  const P = new THREE.Vector3(), N = new THREE.Vector3();
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs, r = radiusAt(t);
+    curve.getPointAt(t, P);
+    for (let j = 0; j <= radial; j++) {
+      const a = (j / radial) * Math.PI * 2, sa = Math.sin(a), ca = -Math.cos(a);
+      N.copy(frames.normals[i]).multiplyScalar(ca).addScaledVector(frames.binormals[i], sa);
+      pos.push(P.x + N.x * r, P.y + N.y * r, P.z + N.z * r);
+      nrm.push(N.x, N.y, N.z);
+      uv.push(j / radial, t);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+    const a = i * (radial + 1) + j, b = a + radial + 1;
+    idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  return g;
+}
+
 function buildCoralInto(g, spec, seedBase, lvl = 1) {
   const rnd = mulberry32(seedBase);
   // Slightly desaturated, rough, and barely emissive — real corals aren't neon;
@@ -3917,38 +3947,155 @@ export function initReefScene3D(canvas) {
       refreshLocks();
     }
   }
-  function makeGoldenTree() {
-    const g = new THREE.Group();
-    const seedBase = 7777 + coralCounter++ * 7919;
+  // The Golden Tree, built like the real Laurinque elenya: a stout stem bowed
+  // by the current rises from dark rock and forks again and again into a
+  // rounded crown. Every outer branchlet is sleeved in polyps — that fuzz IS
+  // the gold; the stem beneath is amber-brown. Growth stages regrow the same
+  // individual with another order of branching (a sapling forks once; the
+  // full tree five times), and brittle stars gather at the foot of big ones,
+  // as in the papers. One mesh per material once baked.
+  const GOLD_ROCK_RX = 0.42, GOLD_ROCK_RY = 0.17, GOLD_ROCK_RZ = 0.38;
+  function buildGoldenTreeInto(g, seedBase, lvl = 1) {
     const rnd = mulberry32(seedBase);
-    g.userData = { grow: 0, buildSeed: seedBase };
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.85 });
-    const goldMat = new THREE.MeshStandardMaterial({
-      color: 0xffd54f, roughness: 0.35, emissive: 0xffb300, emissiveIntensity: 0.4 });
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.13, 1.1, 7), trunkMat);
-    trunk.position.y = 0.55;
-    g.add(trunk);
-    const tufts = 5 + Math.floor(rnd() * 3);
-    for (let i = 0; i < tufts; i++) {
-      const a = rnd() * Math.PI * 2, r = 0.14 + rnd() * 0.3, h = 0.95 + rnd() * 0.5;
-      const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.5, 5), trunkMat);
-      branch.position.set(Math.cos(a) * r * 0.6, h - 0.25, Math.sin(a) * r * 0.6);
-      branch.rotation.z = Math.cos(a) * 0.7;
-      branch.rotation.x = -Math.sin(a) * 0.7;
-      g.add(branch);
-      const tuft = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16 + rnd() * 0.12, 0), goldMat);
-      tuft.position.set(Math.cos(a) * r, h, Math.sin(a) * r);
-      g.add(tuft);
+    const barkMat = new THREE.MeshStandardMaterial({
+      color: 0x8a5a26, roughness: 0.8, bumpMap: bumpTex, bumpScale: 0.02,
+      emissive: 0x3a2004, emissiveIntensity: 0.15 });
+    const twigMat = new THREE.MeshStandardMaterial({
+      color: 0xdcab3c, roughness: 0.55, emissive: 0x7a4e0a, emissiveIntensity: 0.3 });
+    const polypMat = new THREE.MeshStandardMaterial({
+      color: 0xffd54f, roughness: 0.4, emissive: 0xffb300, emissiveIntensity: 0.4 });
+    const starMat = new THREE.MeshStandardMaterial({ color: 0x4a2a24, roughness: 0.9 });
+    // The foot: a knob of dark rock, smooth enough that the stars can follow it.
+    const rock = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6), coralRock);
+    rock.scale.set(GOLD_ROCK_RX, GOLD_ROCK_RY, GOLD_ROCK_RZ);
+    rock.position.y = 0.05; rock.rotation.y = rnd() * Math.PI; g.add(rock);
+    const rockY = (x, z) => {
+      const q = Math.min(1, (x * x) / (GOLD_ROCK_RX * GOLD_ROCK_RX) + (z * z) / (GOLD_ROCK_RZ * GOLD_ROCK_RZ));
+      return 0.05 + GOLD_ROCK_RY * Math.sqrt(1 - q);
+    };
+    // Colonies grow a touch flattened across the current, like most sea
+    // fans and trees — the crown reads as a fan from one side, a tree from
+    // the other.
+    const inner = new THREE.Group();
+    inner.scale.set(0.78, 1, 1); inner.rotation.y = rnd() * Math.PI; g.add(inner);
+    const orders = Math.min(5, 1 + lvl);
+    const UP = new THREE.Vector3(0, 1, 0), XA = new THREE.Vector3(1, 0, 0), ZP = new THREE.Vector3(0, 0, 1);
+    const polyps = [], proto = new THREE.TetrahedronGeometry(0.0125, 0).scale(1, 1, 1.4);
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3();
+    const P = new THREE.Vector3(), T = new THREE.Vector3(), N = new THREE.Vector3(), B = new THREE.Vector3(), O = new THREE.Vector3();
+    function limb(p0, dir, len, r0, depth) {
+      // A gentle bow pulled upward: branches reach for the current, not the
+      // floor, so the crown rounds off on top.
+      const lift = depth === 0 ? 0.06 : 0.22;
+      const bend = new THREE.Vector3(rnd() - 0.5, 0, rnd() - 0.5).multiplyScalar(0.2 * len);
+      const pts = [];
+      for (let k = 0; k <= 3; k++) {
+        const t = k / 3;
+        pts.push(p0.clone().addScaledVector(dir, len * t).addScaledVector(bend, Math.sin(Math.PI * t))
+          .addScaledVector(UP, lift * len * t * t));
+      }
+      const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5);
+      const last = depth === orders;
+      const r1 = r0 * (last ? 0.45 : 0.66);
+      const flare = depth === 0 ? r0 * 1.1 : 0;   // the stem spreads into a holdfast
+      const geo = taperedTube(curve, t => r0 + (r1 - r0) * t + flare * Math.pow(1 - t, 4),
+        depth === 0 ? 10 : depth < 2 ? 5 : 4, depth < 2 ? 8 : 3);
+      inner.add(new THREE.Mesh(geo, depth < 2 ? barkMat : twigMat));
+      const end = curve.getPointAt(1), tan = curve.getTangentAt(1);
+      // Polyps sleeve the two outermost orders: a few per station, each cup
+      // standing off the branch and leaning a little toward its tip.
+      if (depth >= orders - 1) {
+        const stations = Math.max(2, Math.round(len / 0.04)), per = 2;
+        for (let s = 0; s <= stations; s++) {
+          const t = s / stations;
+          curve.getPointAt(t, P); curve.getTangentAt(t, T);
+          N.crossVectors(T, Math.abs(T.y) < 0.9 ? UP : XA).normalize(); B.crossVectors(T, N);
+          const rr = r0 + (r1 - r0) * t;
+          for (let q = 0; q < per; q++) {
+            const a = rnd() * Math.PI * 2;
+            O.copy(N).multiplyScalar(Math.cos(a)).addScaledVector(B, Math.sin(a));
+            const pos = P.clone().addScaledVector(O, rr + 0.002);
+            O.addScaledVector(T, 0.4).normalize();
+            Q.setFromUnitVectors(ZP, O);
+            const sc = 0.75 + rnd() * 0.5;
+            M.compose(pos, Q, S.set(sc, sc, sc));
+            polyps.push(proto.clone().applyMatrix4(M));
+          }
+        }
+        if (last) {   // a terminal polyp caps every tip
+          Q.setFromUnitVectors(ZP, tan);
+          M.compose(end, Q, S.set(1.2, 1.2, 1.2));
+          polyps.push(proto.clone().applyMatrix4(M));
+        }
+      }
+      if (last) return;
+      // The fork: two (now and then three) daughters fan out from the tip,
+      // each turned a different way round the parent's axis.
+      const n = depth >= 1 && rnd() < (depth >= 2 ? 0.18 : 0.1) + lvl * 0.04 ? 3 : 2;
+      const az0 = rnd() * Math.PI * 2;
+      const perp = new THREE.Vector3().crossVectors(tan, Math.abs(tan.y) < 0.9 ? UP : XA).normalize();
+      for (let i = 0; i < n; i++) {
+        const az = az0 + (i / n) * Math.PI * 2 + (rnd() - 0.5) * 0.8;
+        const spread = (depth === 0 ? 0.5 : 0.4) + rnd() * 0.3;
+        const d = tan.clone().applyAxisAngle(perp.clone().applyAxisAngle(tan, az), spread).normalize();
+        limb(end, d, len * (0.62 + rnd() * 0.14), r1, depth + 1);
+      }
+      // A side limb low on the stem once the colony is past a sapling.
+      if (depth === 0 && lvl >= 2) {
+        const t = 0.45 + rnd() * 0.2;
+        curve.getPointAt(t, P); curve.getTangentAt(t, T);
+        const sideAz = rnd() * Math.PI * 2;
+        const d = T.clone().applyAxisAngle(perp.clone().applyAxisAngle(T, sideAz), 0.9 + rnd() * 0.3).normalize();
+        limb(P.clone(), d, len * 0.55, r0 * 0.5, 1);
+      }
     }
-    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), goldMat);
-    crown.position.y = 1.35;
-    g.add(crown);
+    const stemDir = new THREE.Vector3((rnd() - 0.5) * 0.2, 1, (rnd() - 0.5) * 0.2).normalize();
+    limb(new THREE.Vector3(0, 0.08, 0), stemDir, 0.38 + lvl * 0.015, 0.034 + lvl * 0.005, 0);
+    if (polyps.length) {
+      const merged = mergeGeometries(polyps, false);
+      polyps.forEach(x => x.dispose());
+      inner.add(new THREE.Mesh(merged, polypMat));
+    }
+    proto.dispose();
+    // Brittle stars at the foot of the bigger trees: a small disc and five
+    // thin, kinked arms draped over the rock.
+    const stars = Math.max(0, lvl - 2);
+    for (let i = 0; i < stars; i++) {
+      const a = (i / stars) * Math.PI * 2 + rnd() * 1.5, r = 0.14 + rnd() * 0.1;
+      const cx = Math.cos(a) * r, cz = Math.sin(a) * r;
+      const disc = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 4), starMat);
+      disc.scale.y = 0.5; disc.position.set(cx, rockY(cx, cz) + 0.008, cz); g.add(disc);
+      const a0 = rnd() * Math.PI * 2;
+      for (let k = 0; k < 5; k++) {
+        const aa = a0 + (k / 5) * Math.PI * 2, L = 0.13 + rnd() * 0.06, kink = (rnd() - 0.5) * 0.9;
+        const pts = [];
+        for (let j = 0; j <= 4; j++) {
+          const t = j / 4, ang = aa + kink * t * t;
+          const x = cx + Math.cos(ang) * L * t, z = cz + Math.sin(ang) * L * t;
+          pts.push(new THREE.Vector3(x, rockY(x, z) + 0.007, z));
+        }
+        g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 6, 0.0065, 4, false), starMat));
+      }
+    }
+    mergeByMaterial(g);
     g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     g.rotation.y = rnd() * Math.PI * 2;
     g.userData.seed = rnd() * 6.28;
-    g.userData.glowMats = [goldMat];   // brightens with the biolums after dark
+    g.userData.glowMats = [polypMat, twigMat];   // brightens with the biolums after dark
+  }
+  function makeGoldenTree(lvl = 1) {
+    const g = new THREE.Group();
+    const seedBase = 7777 + coralCounter++ * 7919;
+    g.userData = { grow: 0, buildSeed: seedBase };
+    buildGoldenTreeInto(g, seedBase, lvl);
     g.scale.setScalar(0.01);
     return g;
+  }
+  // Regrow any coral in place at a new stage — the builder depends on species.
+  function rebuildCoral(group, spec, seedBase, lvl) {
+    clearCoralGroup(group);
+    if (spec.id === 'goldenTree') buildGoldenTreeInto(group, seedBase, lvl);
+    else buildCoralInto(group, spec, seedBase, lvl);
   }
   function makeHideyHole() {
     const g = new THREE.Group();
@@ -3978,7 +4125,7 @@ export function initReefScene3D(canvas) {
     lvl ??= spec.utility ? CORAL_MAX_LEVEL : 0;
     tile.userData.occupied = true;
     const group = spec.decor ? makeHideyHole()
-      : spec.id === 'goldenTree' ? makeGoldenTree()
+      : spec.id === 'goldenTree' ? makeGoldenTree(Math.max(1, lvl))
       : makeCoral(spec, Math.max(1, lvl));
     group.position.set(tile.position.x, ZONES[tile.userData.biome].floorY + 0.18, tile.position.z);
     const entry = {
@@ -4015,10 +4162,7 @@ export function initReefScene3D(canvas) {
       grew = true;
     }
     if (!grew) return;
-    if (spec.id !== 'goldenTree') {   // the tree keeps its build; scale carries growth
-      clearCoralGroup(group);
-      buildCoralInto(group, spec, group.userData.buildSeed, Math.max(1, e.level));
-    }
+    rebuildCoral(group, spec, group.userData.buildSeed, Math.max(1, e.level));
     group.userData.levelScale = stageScale(e.level);
     group.userData.grow = Math.min(group.userData.grow, 0.85);
     recomputeRates(); refreshHud();
@@ -4218,12 +4362,8 @@ export function initReefScene3D(canvas) {
     e.level++;
     e.g = e.level < CORAL_MAX_LEVEL ? Date.now() + STAGE_MS[e.level] : 0;
     // Regrow the same individual with more branches/stalks — the stage shows
-    // as new growth, not an inflated copy of the old mesh. (The Golden Tree
-    // keeps its build; scale carries its growth.)
-    if (group.userData.spec?.id !== 'goldenTree') {
-      clearCoralGroup(group);
-      buildCoralInto(group, group.userData.spec, group.userData.buildSeed, Math.max(1, e.level));
-    }
+    // as new growth, not an inflated copy of the old mesh.
+    rebuildCoral(group, group.userData.spec, group.userData.buildSeed, Math.max(1, e.level));
     group.userData.levelScale = stageScale(e.level);
     group.userData.grow = Math.min(group.userData.grow, 0.82);   // small re-grow ease
     recomputeRates(); refreshHud(); save();   // growth affects rates only, not harmony/level inputs
@@ -5243,7 +5383,8 @@ export function initReefScene3D(canvas) {
       const { rt, sc, cam, buf, big, small, n } = thumbRig;
       // A "spec" can also be a portrait request — { id, build, focus?, dir?, zoom? }
       // — used for Skip-7's face on the Pearl Market counter.
-      g = spec.build ? spec.build() : spec.layer ? makeFish(spec) : makeCoral(spec);
+      g = spec.build ? spec.build() : spec.layer ? makeFish(spec)
+        : spec.id === 'goldenTree' ? makeGoldenTree(4) : makeCoral(spec);
       if (!spec.layer && !spec.build) g.scale.setScalar(1);   // corals spawn at 0.01 to grow in
       sc.add(g);
       g.updateMatrixWorld(true);
@@ -6877,7 +7018,7 @@ export function initReefScene3D(canvas) {
         0.7 + Math.random() * 0.35);
     }
     {   // one wild Golden Tree stands in the twilight grove, as in the papers
-      const gt = makeGoldenTree();
+      const gt = makeGoldenTree(5);
       const gx = tw.cx + twSpot[0], gz = tw.cz + twSpot[1];
       gt.position.set(gx, terrainHeight(gx, gz) + 0.15, gz);
       gt.scale.setScalar(0.95);
