@@ -123,6 +123,56 @@
     }
     .m-bar span { display: block; height: 100%; background: #46c08a; border-radius: 4px; }
     .m-bar span.full { background: #ffd54f; }
+    /* 📓 The Lost Journals — a waterproof field notebook: aged paper, faint
+       rules, a few water stains; dark ink kept well above AA contrast. */
+    .lj-row { cursor: pointer; }
+    .lj-row.locked { cursor: default; }
+    .lj-num { font-variant-numeric: tabular-nums; color: #7fb8d4; font-size: 11px; width: 30px; flex: none; }
+    .lj-title { flex: 1; min-width: 0; }
+    .lj-date { display: block; font-size: 10.5px; color: #8fb4c9; }
+    .lj-new {
+      margin-left: auto; flex: none; font-size: 9.5px; font-weight: 700; letter-spacing: 1px;
+      color: #0d3550; background: #ffd27f; border-radius: 999px; padding: 2px 7px;
+    }
+    .lj-intro, .lj-hint { font-size: 11.5px; color: #9fc4dc; line-height: 1.45; margin: 6px 0 8px; }
+    .lj-hint { margin-top: 12px; font-style: italic; }
+    .has-new { position: relative; }
+    .has-new::after {
+      content: ""; position: absolute; top: -3px; right: -3px; width: 9px; height: 9px;
+      border-radius: 50%; background: #ffd27f; box-shadow: 0 0 0 2px #0d3550;
+    }
+    .lj-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+    .lj-nav .m-tab:disabled { opacity: 0.35; cursor: default; }
+    .lj-pos { font-size: 11px; color: #9fc4dc; font-variant-numeric: tabular-nums; }
+    .lj-modal .panel { max-width: 520px; }
+    .lj-page {
+      position: relative; margin: 8px 0 4px; padding: 20px 22px 24px; border-radius: 4px;
+      color: #2b2118; font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.6;
+      background:
+        radial-gradient(ellipse 60% 40% at 85% 8%, rgba(120,90,40,0.18), transparent 70%),
+        radial-gradient(ellipse 45% 30% at 8% 92%, rgba(80,105,120,0.2), transparent 70%),
+        radial-gradient(ellipse 30% 18% at 68% 66%, rgba(120,90,40,0.1), transparent 70%),
+        linear-gradient(180deg, #efe4c8 0%, #e6d7b4 100%);
+      box-shadow: inset 0 0 40px rgba(110,80,30,0.18), 0 2px 10px rgba(0,0,0,0.35);
+    }
+    .lj-page::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 4px;
+      background: repeating-linear-gradient(180deg, transparent 0 23px, rgba(90,110,140,0.13) 23px 24px);
+      -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 56px);
+      mask-image: linear-gradient(180deg, transparent 0, #000 56px);
+    }
+    .lj-page p { position: relative; margin: 0 0 12px; }
+    .lj-page p:last-child { margin-bottom: 0; }
+    .lj-head {
+      position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+      margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(70,50,20,0.35);
+    }
+    .lj-ptitle { font-weight: 700; font-size: 16px; }
+    .lj-pdate { font-size: 11.5px; color: #5e4d33; font-style: italic; white-space: nowrap; }
+    .lj-found .panel { text-align: center; }
+    .lj-found-entry { font-size: 15px; font-weight: 700; color: #ffd27f; margin: 8px 0 4px; }
+    .lj-found-actions { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+    .lj-found-actions .pack-open-btn { margin-left: 0; padding: 8px 16px; font-size: 13px; }
     #menu3d { position: fixed; right: 12px; top: 12px; z-index: 3; display: flex; gap: 6px; }
     .menu-btn {
       font: inherit; font-size: 12px; color: #cfe6f4; cursor: pointer;

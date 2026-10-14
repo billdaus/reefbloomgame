@@ -25,6 +25,7 @@ import {
   BIOLUM_SPECIES, DAY_HIDER_SPECIES,
 } from '../constants.js';
 import { LINES as BUBBLES_LINES } from '../entities/bubblesLines.js';
+import { LOST_JOURNALS, JOURNAL_CHAPTERS, JOURNAL_AUTHOR, JOURNAL_AUTHOR_ROLE, LOST_JOURNAL_COUNT } from './lostJournals.js';
 import { createReefMusic } from './music.js';
 import { initCloudSave, cloudMarkWritten, onCloudSynced } from '../cloudsave.js';
 import { openAccountSheet, accountsEnabled, onAccountSignedIn } from '../accountSheet.js';
@@ -3818,12 +3819,45 @@ export function initReefScene3D(canvas) {
       && (zid ? primaryBiome(s) === zid : zoneUnlocked(primaryBiome(s))));
   const surveyCanFind = () =>
     ['coral', 'seagrass', 'deepTwilight'].some(z => discoverableCorals(z).length > 0);
+  // ── 📓 The Lost Journals ────────────────────────────────────────────────────
+  // Twenty-four pages from the notebook of the researcher who built Bubbles,
+  // surfacing one at a time from the Deep Twilight (the text lives in
+  // lostJournals.js). A page is a BONUS on top of a twilight find, never
+  // instead of one: every completed Deep Twilight expedition, and any twilight
+  // coral recorded by a forager or a settlement, rolls LJ_DROP_CHANCE for the
+  // NEXT page in order. The twilight has only a handful of corals to record,
+  // so its expeditions stay fundable while pages remain; one that brings back
+  // neither coral nor page returns its fee, as an empty survey always has.
+  const LJ_DROP_CHANCE = 0.25;        // ≈ one page per 3–5 eligible finds
+  let lj = { got: 0, read: [] };      // got = pages unlocked (#1..#got); read = seq numbers read (saved)
+  const ljRemain = () => lj.got < LOST_JOURNAL_COUNT;
+  const ljUnread = () => { let n = 0; for (let i = 1; i <= lj.got; i++) if (!lj.read.includes(i)) n++; return n; };
+  const ljNum = (n) => `#${String(n).padStart(2, '0')}`;
+  function ljLoad(saved) {
+    const got = Math.max(0, Math.min(LOST_JOURNAL_COUNT, Math.floor(Number(saved?.got) || 0)));
+    const read = [...new Set((saved?.read ?? []).map(Number).filter(n => n >= 1 && n <= got))];
+    lj = { got, read };
+  }
+  // Roll for the next page. Returns the entry found, or null.
+  function rollLostJournal(force = false) {
+    if (!ljRemain()) return null;
+    if (!force && Math.random() >= LJ_DROP_CHANCE) return null;
+    const entry = LOST_JOURNALS[lj.got];
+    lj.got++;
+    save();
+    refreshLjBadge();
+    showLostJournalFound(entry);
+    return entry;
+  }
+  if (window.__rb3d) window.__rb3d.lostJournal = () => rollLostJournal(true);
+
   // Resolve the live survey: 90% the surveyed biome, 5% each a drifter, with
   // graceful fallbacks so a find happens whenever anything remains anywhere.
   function resolveSurvey() {
     if (!survey) return;
     const { b, d = 0, cost = 40 } = survey;
     survey = null;
+    const pageRoll = b === 'deepTwilight';   // a twilight expedition can surface a journal page
     const zids = ['coral', 'seagrass', 'deepTwilight'];
     const others = zids.filter(z => z !== b);
     const roll = Math.random();
@@ -3841,6 +3875,9 @@ export function initReefScene3D(canvas) {
         ? ` recorded in the ${BIOMES[b].name}!`
         : ` recorded — a drifter from the ${BIOMES[zid].name}!`;
       discoverCoral(spec, `🔬 Survey complete: ${spec.name}${drift} The specimen is in your palette.`);
+      if (pageRoll || primaryBiome(spec) === 'deepTwilight') rollLostJournal();
+    } else if (pageRoll && rollLostJournal()) {
+      droneQueue.push('🔬 Survey complete: no unrecorded coral down there — but I found a page. Paper. In the deep. Recorded.');
     } else {
       polyps = Math.min(polyps + cost, POLYP_MAX);
       droneQueue.push('🔬 Survey complete: no unrecorded coral remains out there. Fee returned.');
@@ -4541,7 +4578,7 @@ export function initReefScene3D(canvas) {
         ach: [...achUnlocked], sawNight, lv30: true,
         packs, vouchers, seasonPacks,
         nest: nestEggs, starterEggs: starterEggsGiven,
-        starterPack: starterPackGiven, survey, coralDisc: true, quiz,
+        starterPack: starterPackGiven, survey, coralDisc: true, quiz, lj,
         dailyPack: dailyPackDate, tut: tutDone, tutp: tutPaid }));
       cloudMarkWritten(slotKey(slot));
     } catch (e) { /* storage full / disabled — ignore */ }
@@ -5296,10 +5333,11 @@ export function initReefScene3D(canvas) {
   let journalTab = 'all';
   const journalTabs = document.createElement('div');
   journalTabs.className = 'm-tabs';
-  [['all', 'All'], ['coral', 'Coral'], ['fish', 'Fish']].forEach(([id, name]) => {
+  [['all', 'All'], ['coral', 'Coral'], ['fish', 'Fish'], ['lost', '📓 Journals']].forEach(([id, name]) => {
     const b = document.createElement('button');
     b.className = 'm-tab' + (id === journalTab ? ' active' : '');
     b.textContent = name;
+    if (id === 'lost') b.dataset.ljBadge = '1';   // "New" dot while pages wait unread
     b.onclick = () => {
       journalTab = id;
       journalTabs.querySelectorAll('.m-tab').forEach(x => x.classList.remove('active'));
@@ -5481,6 +5519,7 @@ export function initReefScene3D(canvas) {
       + `${isRealSpecies(spec.id) ? '🌍' : '✨'} ${biomeIcons(spec)} ${badge}</small></div>`;
   }
   function fillJournal() {
+    if (journalTab === 'lost') { fillLostJournals(); return; }
     const cs = [...coralSpecs, ...Object.values(LOCAL_SPECS)], fs = fishSpecs;
     const all = [...cs, ...fs];
     const found = all.filter(s => seen.has(s.id)).length;
@@ -6276,6 +6315,8 @@ export function initReefScene3D(canvas) {
     const qz = e.target.closest('button[data-quiz]');
     if (qz) { quizFeedback = null; fillQuiz(); quizModal.show(); return; }
     if (e.target.closest('button[data-nest]')) { journal.ov.style.display = 'none'; openNest(); return; }
+    const lr = e.target.closest('[data-lj]');
+    if (lr) { openLostJournal(Number(lr.dataset.lj)); return; }
     const r = e.target.closest('[data-sp]');
     if (!r) return;
     const id = r.dataset.sp;
@@ -6283,6 +6324,95 @@ export function initReefScene3D(canvas) {
     if (!spec) return;
     fillSpecies(spec, FISH_SPECIES[id] ? 'fish' : 'coral');
     speciesModal.show();
+  });
+
+  // 📓 The Lost Journals tab — the whole notebook as a list: found pages by
+  // number, title and date; the rest "???". Chapter names stay hidden until a
+  // page from that chapter is found, so the notebook never spoils itself.
+  function fillLostJournals() {
+    journal.ov.querySelector('.m-sub')?.remove();
+    journal.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
+      `<div class="m-sub">The Lost Journals · ${lj.got} / ${LOST_JOURNAL_COUNT} pages found${bar(lj.got, LOST_JOURNAL_COUNT)}</div>`);
+    let html = `<div class="lj-intro">Pages from the waterproof field notebook of <b>${JOURNAL_AUTHOR}</b>,`
+      + ` ${JOURNAL_AUTHOR_ROLE.replace('Researcher', 'researcher')}, surfacing one at a time from the Deep Twilight.`
+      + ' Bubbles brings them back from her expeditions there.</div>';
+    for (const [ch, name] of Object.entries(JOURNAL_CHAPTERS)) {
+      const entries = LOST_JOURNALS.filter(e => e.chapter === ch);
+      const anyOpen = entries.some(e => e.n <= lj.got);
+      html += `<div class="m-sec">Chapter ${ch}${anyOpen ? ' · ' + name : ''}</div>`;
+      for (const e of entries) {
+        const open = e.n <= lj.got, isNew = open && !lj.read.includes(e.n);
+        html += open
+          ? `<div class="m-row lj-row" data-lj="${e.n}"><span class="lj-num">${ljNum(e.n)}</span>`
+            + `<span class="lj-title">${e.title}<span class="lj-date">${e.date}</span></span>`
+            + (isNew ? '<span class="lj-new">New</span>' : '') + '</div>'
+          : `<div class="m-row locked lj-row"><span class="lj-num">${ljNum(e.n)}</span><span class="lj-title">???</span></div>`;
+      }
+    }
+    if (!lj.got) {
+      html += `<div class="lj-hint">${zoneUnlocked('deepTwilight')
+        ? 'Nothing found yet. Fund a Deep Twilight expedition at Bubbles\' nest — she comes back with coral, and sometimes with something else.'
+        : `Whatever is down there lies in the 🌑 Deep Twilight — unlocks at Lv${ZONES.deepTwilight.unlock}.`}</div>`;
+    } else if (!ljRemain()) {
+      html += '<div class="lj-hint">Every page recovered. The notebook is complete.</div>';
+    }
+    journal.body.innerHTML = html;
+  }
+  function refreshLjBadge() {
+    const n = ljUnread();
+    document.querySelectorAll('[data-lj-badge]').forEach(el => el.classList.toggle('has-new', n > 0));
+  }
+  // The reader: one page at a time on aged paper, previous/next across the
+  // pages found so far. Opening a page marks it read.
+  const ljModal = buildMenuModal('📓 Lost Journal');
+  ljModal.ov.classList.add('lj-modal');
+  const ljNav = document.createElement('div');
+  ljNav.className = 'lj-nav';
+  ljNav.innerHTML = '<button class="m-tab" data-lj-nav="-1">‹ Previous</button>'
+    + '<span class="lj-pos"></span><button class="m-tab" data-lj-nav="1">Next ›</button>';
+  ljModal.head.appendChild(ljNav);
+  let ljOpen = 0;
+  function openLostJournal(n) {
+    if (n < 1 || n > lj.got) return;
+    const e = LOST_JOURNALS[n - 1];
+    ljOpen = n;
+    if (!lj.read.includes(n)) { lj.read.push(n); save(); }
+    ljModal.ov.querySelector('.m-sub')?.remove();
+    ljModal.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
+      `<div class="m-sub">Entry ${ljNum(n)} of ${LOST_JOURNAL_COUNT} · Chapter ${e.chapter} — ${JOURNAL_CHAPTERS[e.chapter]}</div>`);
+    ljNav.querySelector('.lj-pos').textContent = `${n} / ${lj.got} found`;
+    ljNav.querySelector('[data-lj-nav="-1"]').disabled = n <= 1;
+    ljNav.querySelector('[data-lj-nav="1"]').disabled = n >= lj.got;
+    ljModal.body.innerHTML = '<div class="lj-page">'
+      + `<div class="lj-head"><span class="lj-ptitle">${e.title}</span><span class="lj-pdate">${e.date}</span></div>`
+      + e.paragraphs.map(p => `<p>${p}</p>`).join('') + '</div>';
+    ljModal.body.scrollTop = 0;
+    ljModal.show();
+    refreshLjBadge();
+    if (journal.ov.style.display === 'flex' && journalTab === 'lost') fillLostJournals();
+  }
+  ljNav.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-lj-nav]');
+    if (b && !b.disabled) openLostJournal(ljOpen + Number(b.dataset.ljNav));
+  });
+  // The find — a prompt on top of everything else. Reading is never required:
+  // "Later" leaves the page waiting, marked New, in the journal.
+  const ljFoundModal = buildMenuModal('📓 Lost Journal Discovered!');
+  ljFoundModal.ov.classList.add('lj-found');
+  ljFoundModal.ov.querySelector('.shop-close').style.display = 'none';
+  function showLostJournalFound(entry) {
+    ljFoundModal.body.innerHTML = `<div class="lj-found-entry">Entry ${ljNum(entry.n)} — ${entry.title}</div>`
+      + '<div class="m-sub">A page from a waterproof notebook, brought up from the Deep Twilight.</div>'
+      + '<div class="lj-found-actions">'
+      + `<button class="pack-open-btn" data-lj-read="${entry.n}">Read Now</button>`
+      + '<button class="m-tab" data-lj-later>Later</button></div>';
+    flash(rateEl, `📓 Lost Journal ${ljNum(entry.n)} found!`, '#ffd27f');
+    ljFoundModal.show();
+  }
+  ljFoundModal.body.addEventListener('click', (e) => {
+    const rd = e.target.closest('[data-lj-read]');
+    if (rd) { ljFoundModal.ov.style.display = 'none'; openLostJournal(Number(rd.dataset.ljRead)); }
+    else if (e.target.closest('[data-lj-later]')) ljFoundModal.ov.style.display = 'none';
   });
 
   // 🐟 Fish ID toast — tapping a fish names it at the bottom of the screen for
@@ -6655,7 +6785,9 @@ export function initReefScene3D(canvas) {
             name: bio.shortName, say: BUBBLES.biome[zid], sub: '',
             buttons: SURVEY_TIERS.map((st, i) => ({ label: `${st.name} · ${st.min}m · ${st.cost} 🪸`, onClick: () => {
               if (survey) { bubblesCounter.say(BUBBLES.busy); return; }
-              if (!discoverableCorals(zid).length) { bubblesCounter.say(BUBBLES.nothingLeft); return; }
+              if (!discoverableCorals(zid).length && !(zid === 'deepTwilight' && ljRemain())) {
+                bubblesCounter.say(BUBBLES.nothingLeft); return;
+              }
               if (polyps < st.cost) { bubblesCounter.say(BUBBLES.noPolyps); return; }
               polyps -= st.cost;
               hudGain('polyps', -st.cost);
@@ -6677,8 +6809,10 @@ export function initReefScene3D(canvas) {
     for (const it of surveyShelf.cards) {
       if (it.away) { it.subEl.textContent = `returns in ${fmtMs(survey.at - Date.now())}`; continue; }
       const left = discoverableCorals(it.zid).length;
-      it.subEl.textContent = `${left} species unrecorded`;
-      it.buttons.forEach((b, i) => { b.disabled = !left || polyps < SURVEY_TIERS[i].cost; });
+      const pages = it.zid === 'deepTwilight' && ljRemain();
+      const pageNote = !pages ? '' : lj.got ? ` · 📓 ${LOST_JOURNAL_COUNT - lj.got} pages still out there` : ' · something else is down there…';
+      it.subEl.textContent = left ? `${left} species unrecorded${pageNote}` : `all coral recorded${pageNote}`;
+      it.buttons.forEach((b, i) => { b.disabled = !(left || pages) || polyps < SURVEY_TIERS[i].cost; });
     }
     bubblesCounter.refreshBal();
   }
@@ -6705,6 +6839,7 @@ export function initReefScene3D(canvas) {
     });
     packBtn = menuEl.children[2];
     refreshPackBtn();
+    menuEl.children[0].dataset.ljBadge = '1';   // 📖 shows a dot while journal pages wait unread
     // 👤 Account — free Reef Bloom accounts keep every slot in the cloud.
     if (accountsEnabled()) {
       const acctBtn = document.createElement('button');
@@ -6802,6 +6937,8 @@ export function initReefScene3D(canvas) {
     starterPackGiven = !!saved.starterPack;
     survey = saved.survey ?? null;
     if (saved.quiz) quiz = saved.quiz;
+    ljLoad(saved.lj);
+    refreshLjBadge();
     dailyPackDate = saved.dailyPack ?? '';
     if (!saved.coralDisc) {
       // Pre-discovery save: everything the reef could already buy counts as
@@ -7996,6 +8133,7 @@ export function initReefScene3D(canvas) {
         if (pool.length) {
           const spec = weightedPick(pool);
           discoverCoral(spec, `A forager surfaced a coral fragment — ${spec.name} recorded!`);
+          if (primaryBiome(spec) === 'deepTwilight') rollLostJournal();
         }
       }
       // ⚖ Harmony settlement — larvae settle wild on a reef held in harmony.
@@ -8010,6 +8148,7 @@ export function initReefScene3D(canvas) {
             droneQueue.push(`Larvae settled while the reef held its harmony — ${spec.name}, wild-grown!`);
             flash(rateEl, `📖 ${spec.name} settled!`, '#ffd27f');
             recomputeRates(); refreshProgress(); refreshHud(); save();
+            if (primaryBiome(spec) === 'deepTwilight') rollLostJournal();
           }
         }
       }
