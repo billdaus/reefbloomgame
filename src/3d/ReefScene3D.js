@@ -25,7 +25,7 @@ import {
   BIOLUM_SPECIES, DAY_HIDER_SPECIES,
 } from '../constants.js';
 import { LINES as BUBBLES_LINES } from '../entities/bubblesLines.js';
-import { LOST_JOURNALS, JOURNAL_CHAPTERS, JOURNAL_AUTHOR, JOURNAL_AUTHOR_ROLE, LOST_JOURNAL_COUNT } from './lostJournals.js';
+import { LOST_JOURNALS, JOURNAL_CHAPTERS, LOST_JOURNAL_COUNT } from './lostJournals.js';
 import { createReefMusic } from './music.js';
 import { initCloudSave, cloudMarkWritten, onCloudSynced } from '../cloudsave.js';
 import { openAccountSheet, accountsEnabled, onAccountSignedIn } from '../accountSheet.js';
@@ -1263,6 +1263,16 @@ function bodyHalfWidthAt(body, y, z) {
   return best || nearestX;
 }
 
+// Where the body's front surface is at (x, y), in the group's units: a ray
+// fired back along −z from ahead of the nose. null when it misses the body.
+// Lets a mouth be drawn ON a curved snout rather than floating in front of it.
+const _frontRay = new THREE.Raycaster();
+function bodyFrontZAt(body, x, y) {
+  body.updateMatrixWorld(true);
+  _frontRay.set(new THREE.Vector3(x, y, 5), new THREE.Vector3(0, 0, -1));
+  const hit = _frontRay.intersectObject(body, false)[0];
+  return hit ? hit.point.z : null;
+}
 // Top (or, with sign −1, bottom) of the body at a given z, in the group's
 // units — so a fin's base can hug the curve of the back or belly.
 function bodyEdgeAt(body, z, sign = 1) {
@@ -1489,9 +1499,23 @@ const FISH_BODY = {
     body.scale.set(0.36, 0.34, 1.75 * (0.95 + rnd() * 0.1));
     g.add(body);
     const zNose = 0.5 * 0.78 * body.scale.z;
-    // The mouth: a wide dark slit straight across the front of the head.
-    const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.1, 20), pupilMat);
-    mouth.scale.set(2.4, 0.28, 1); mouth.position.set(0, -0.03, zNose + 0.004); g.add(mouth);
+    // The mouth: a wide dark slit straight across the front of the head,
+    // traced over the snout's own surface so it sits snug on the face and
+    // wraps round the corners instead of standing out ahead of it.
+    {
+      const yM = -0.035;
+      let w = 0;                                        // half-width of the face at mouth height
+      for (let x = 0; x < 0.4; x += 0.01) { if (bodyFrontZAt(body, x, yM) === null) break; w = x; }
+      const pts = [], N = 18;
+      for (let k = 0; k <= N; k++) {
+        const t = k / N * 2 - 1, x = t * w * 0.86, y = yM - 0.012 * t * t;   // corners dip a touch
+        const z = bodyFrontZAt(body, x, y);
+        if (z !== null) pts.push(new THREE.Vector3(x, y, z + 0.002));
+      }
+      const mouth = new THREE.Mesh(
+        new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.0095, 5, false), pupilMat);
+      mouth.userData.noShadow = true; g.add(mouth);
+    }
     const ex = bodyHalfWidthAt(body, -0.02, zNose - 0.08);
     fishEyes(g, ex - 0.01, -0.01, zNose - 0.08, 0.4);
     // Ridges: three keels down each flank plus one along the back, each a
@@ -4426,7 +4450,8 @@ export function initReefScene3D(canvas) {
     const floorY = terrainHeight(f.tx, f.tz);
     const [lo, hi] = f.alt ?? [1.6, 4.6];
     const ceiling = f.alt ? SURFACE_Y - 0.9 : 11;   // surface-rafters may ride high
-    f.ty = clamp(floorY + lo + Math.random() * (hi - lo), floorY + Math.min(lo, 1.2), ceiling);
+    f.ty = clamp(floorY + lo + Math.random() * (hi - lo),
+      floorY + Math.max(Math.min(lo, 1.2), (f.lowY ?? 0.5) + 0.35), ceiling);
   }
   // Benthic crawlers wander short hops across the sand around their anchor.
   function newCrawlTarget(f) {
@@ -4460,6 +4485,11 @@ export function initReefScene3D(canvas) {
   function attachFish(spec, st, placed = false) {
     st.g = makeFish(spec);
     Object.assign(st.g.userData, { placed, stateRef: st });   // `placed` fish are player-owned & removable
+    // Draught: how far the body's lowest point (belly, pectorals, tail lobe)
+    // hangs below its origin, in world units. Every seabed clamp below keeps
+    // the fish at least this high, so a big shark never ploughs the sand.
+    st.g.updateMatrixWorld(true);
+    st.lowY = Math.max(0.3, -new THREE.Box3().setFromObject(st.g).min.y + 0.15);
     st.noct = isNocturnalSpec(spec);
     const prof = roamProfile(spec);
     if (BENTHIC_SPECIES.has(spec.id)) {
@@ -6333,9 +6363,9 @@ export function initReefScene3D(canvas) {
     journal.ov.querySelector('.m-sub')?.remove();
     journal.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
       `<div class="m-sub">The Lost Journals · ${lj.got} / ${LOST_JOURNAL_COUNT} pages found${bar(lj.got, LOST_JOURNAL_COUNT)}</div>`);
-    let html = `<div class="lj-intro">Pages from the waterproof field notebook of <b>${JOURNAL_AUTHOR}</b>,`
-      + ` ${JOURNAL_AUTHOR_ROLE.replace('Researcher', 'researcher')}, surfacing one at a time from the Deep Twilight.`
-      + ' Bubbles brings them back from her expeditions there.</div>';
+    // No preamble: who wrote these, and where they came from, is the mystery
+    // the pages themselves unfold — nothing is said about them up front.
+    let html = '';
     for (const [ch, name] of Object.entries(JOURNAL_CHAPTERS)) {
       const entries = LOST_JOURNALS.filter(e => e.chapter === ch);
       const anyOpen = entries.some(e => e.n <= lj.got);
@@ -8376,7 +8406,7 @@ export function initReefScene3D(canvas) {
         const [bx0, bx1] = ZONE_BAND[f.b] ?? ZONE_BAND.coral;
         f.px = clamp(f.px, bx0 + 1, bx1 - 1);
         f.pz = clamp(f.pz, -25, 25);
-        f.py = clamp(f.py, terrainHeight(f.px, f.pz) + 0.9, 10.5);
+        f.py = clamp(f.py, terrainHeight(f.px, f.pz) + Math.max(0.9, (f.lowY ?? 0.5) + 0.3), 10.5);
         const spdNow = Math.sqrt(f.vx * f.vx + f.vz * f.vz);
         if (spdNow > 0.05) {
           const want = Math.atan2(f.vx, f.vz);
@@ -8397,6 +8427,9 @@ export function initReefScene3D(canvas) {
           const step = Math.min(f.spd * dt * slow, d);
           f.px += (dx / d) * step; f.py += (dy / d) * step; f.pz += (dz / d) * step;
         }
+        // The straight line between two waypoints knows nothing about the sand
+        // in between — lagoon bumps, the beach slope — so hold the belly clear.
+        f.py = Math.max(f.py, terrainHeight(f.px, f.pz) + (f.lowY ?? 0.5) + 0.35);
         const want = Math.atan2(dx, dz);
         let dh = want - f.hdg;
         while (dh > Math.PI) dh -= Math.PI * 2;
@@ -8412,7 +8445,8 @@ export function initReefScene3D(canvas) {
         const ang = f.ang;
         const x = Math.cos(ang) * f.R + f.cx;
         const z = Math.sin(ang) * f.R + f.cz;
-        f.g.position.set(x, f.y + Math.sin(t * f.bobw + f.phase) * f.bob * slow, z);
+        const yy = f.y + Math.sin(t * f.bobw + f.phase) * f.bob * slow;
+        f.g.position.set(x, Math.max(yy, terrainHeight(x, z) + (f.lowY ?? 0.5) + 0.3), z);
         const heading = Math.atan2(-Math.sin(ang) * f.w, Math.cos(ang) * f.w);
         f.g.rotation.y = heading;   // sway comes from the swim pass below
       }
@@ -8421,7 +8455,7 @@ export function initReefScene3D(canvas) {
       f.sink = (f.sink ?? 0)
         + ((wantsHide && !f.home && !f.benthic ? 1 : 0) - (f.sink ?? 0)) * Math.min(1, dt * 0.6);
       if (f.sink > 0.01 && !f.clean && !f.benthic) {
-        const gy = terrainHeight(f.g.position.x, f.g.position.z) + 0.5;
+        const gy = terrainHeight(f.g.position.x, f.g.position.z) + Math.max(0.5, (f.lowY ?? 0.5) + 0.1);
         f.g.position.y += (gy - f.g.position.y) * f.sink;
       }
       // ── Locomotion-aware swimming ────────────────────────────────────────────
