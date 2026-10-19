@@ -3852,13 +3852,17 @@ export function initReefScene3D(canvas) {
   // ── 📓 The Lost Journals ────────────────────────────────────────────────────
   // Twenty-four pages from the notebook of the researcher who built Bubbles,
   // surfacing one at a time from the Deep Twilight (the text lives in
-  // lostJournals.js). A page is a BONUS on top of a twilight find, never
-  // instead of one: every completed Deep Twilight expedition, and any twilight
-  // coral recorded by a forager or a settlement, rolls LJ_DROP_CHANCE for the
-  // NEXT page in order. The twilight has only a handful of corals to record,
-  // so its expeditions stay fundable while pages remain; one that brings back
-  // neither coral nor page returns its fee, as an empty survey always has.
-  const LJ_DROP_CHANCE = 0.25;        // ≈ one page per 3–5 eligible finds
+  // lostJournals.js). A page is a FIND: it sits in the Deep Twilight survey
+  // pool beside the unrecorded corals, weighted like an uncommon species, and
+  // when it's drawn the expedition brings the NEXT page in order home instead
+  // of a coral. Once every twilight coral is recorded the page is all that's
+  // left down there, so each twilight expedition surfaces one until the
+  // notebook is complete. Pages never come from the other biomes, foragers
+  // or settlements.
+  const LJ_PAGE_SPEC = { id: 'lostJournalPage', name: 'a notebook page', tier: 'uncommon', page: true };
+  // The twilight find pool: its unrecorded corals, plus the next page while any remain.
+  const findPool = (zid) => (zid === 'deepTwilight' && ljRemain())
+    ? [...discoverableCorals(zid), LJ_PAGE_SPEC] : discoverableCorals(zid);
   let lj = { got: 0, read: [] };      // got = pages unlocked (#1..#got); read = seq numbers read (saved)
   const ljRemain = () => lj.got < LOST_JOURNAL_COUNT;
   const ljUnread = () => { let n = 0; for (let i = 1; i <= lj.got; i++) if (!lj.read.includes(i)) n++; return n; };
@@ -3869,9 +3873,8 @@ export function initReefScene3D(canvas) {
     lj = { got, read };
   }
   // Roll for the next page. Returns the entry found, or null.
-  function rollLostJournal(force = false) {
+  function grantLostJournal() {
     if (!ljRemain()) return null;
-    if (!force && Math.random() >= LJ_DROP_CHANCE) return null;
     const entry = LOST_JOURNALS[lj.got];
     lj.got++;
     save();
@@ -3879,7 +3882,7 @@ export function initReefScene3D(canvas) {
     showLostJournalFound(entry);
     return entry;
   }
-  if (window.__rb3d) window.__rb3d.lostJournal = () => rollLostJournal(true);
+  if (window.__rb3d) window.__rb3d.lostJournal = () => grantLostJournal();
 
   // Resolve the live survey: 90% the surveyed biome, 5% each a drifter, with
   // graceful fallbacks so a find happens whenever anything remains anywhere.
@@ -3887,27 +3890,31 @@ export function initReefScene3D(canvas) {
     if (!survey) return;
     const { b, d = 0, cost = 40 } = survey;
     survey = null;
-    const pageRoll = b === 'deepTwilight';   // a twilight expedition can surface a journal page
     const zids = ['coral', 'seagrass', 'deepTwilight'];
     const others = zids.filter(z => z !== b);
     const roll = Math.random();
     let zid = roll < 0.9 ? b : roll < 0.95 ? others[0] : others[1];
-    let pool = discoverableCorals(zid);
-    if (!pool.length) { zid = b; pool = discoverableCorals(b); }
+    let pool = findPool(zid);
+    if (!pool.length) { zid = b; pool = findPool(b); }
     if (!pool.length) {
       for (const z of zids) {
-        if (discoverableCorals(z).length) { zid = z; pool = discoverableCorals(z); break; }
+        if (findPool(z).length) { zid = z; pool = findPool(z); break; }
       }
     }
     if (pool.length) {
       const spec = surveyPick(pool, d);
-      const drift = zid === b
-        ? ` recorded in the ${BIOMES[b].name}!`
-        : ` recorded — a drifter from the ${BIOMES[zid].name}!`;
-      discoverCoral(spec, `🔬 Survey complete: ${spec.name}${drift} The specimen is in your palette.`);
-      if (pageRoll || primaryBiome(spec) === 'deepTwilight') rollLostJournal();
-    } else if (pageRoll && rollLostJournal()) {
-      droneQueue.push('🔬 Survey complete: no unrecorded coral down there — but I found a page. Paper. In the deep. Recorded.');
+      if (spec.page) {
+        // The page was the find this time — it comes home instead of a coral.
+        grantLostJournal();
+        droneQueue.push(zid === b
+          ? '🔬 Survey complete: no coral this time — a page. Paper, in the deep, still legible. Recorded.'
+          : '🔬 Survey complete: the current carried me into the Deep Twilight — and I found a page down there. Recorded.');
+      } else {
+        const drift = zid === b
+          ? ` recorded in the ${BIOMES[b].name}!`
+          : ` recorded — a drifter from the ${BIOMES[zid].name}!`;
+        discoverCoral(spec, `🔬 Survey complete: ${spec.name}${drift} The specimen is in your palette.`);
+      }
     } else {
       polyps = Math.min(polyps + cost, POLYP_MAX);
       droneQueue.push('🔬 Survey complete: no unrecorded coral remains out there. Fee returned.');
@@ -8189,7 +8196,6 @@ export function initReefScene3D(canvas) {
         if (pool.length) {
           const spec = weightedPick(pool);
           discoverCoral(spec, `A forager surfaced a coral fragment — ${spec.name} recorded!`);
-          if (primaryBiome(spec) === 'deepTwilight') rollLostJournal();
         }
       }
       // ⚖ Harmony settlement — larvae settle wild on a reef held in harmony.
@@ -8204,7 +8210,6 @@ export function initReefScene3D(canvas) {
             droneQueue.push(`Larvae settled while the reef held its harmony — ${spec.name}, wild-grown!`);
             flash(rateEl, `📖 ${spec.name} settled!`, '#ffd27f');
             recomputeRates(); refreshProgress(); refreshHud(); save();
-            if (primaryBiome(spec) === 'deepTwilight') rollLostJournal();
           }
         }
       }
