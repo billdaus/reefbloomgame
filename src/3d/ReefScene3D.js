@@ -26,6 +26,7 @@ import {
 } from '../constants.js';
 import { LINES as BUBBLES_LINES } from '../entities/bubblesLines.js';
 import { LOST_JOURNALS, JOURNAL_CHAPTERS, LOST_JOURNAL_COUNT } from './lostJournals.js';
+import { coralTraits, traitTags, traitIcon } from './coralStats.js';
 import { createReefMusic } from './music.js';
 import { initCloudSave, cloudMarkWritten, onCloudSynced } from '../cloudsave.js';
 import { openAccountSheet, accountsEnabled, onAccountSignedIn } from '../accountSheet.js';
@@ -74,6 +75,8 @@ function zoneAt(x) {
 // Lantern corals are the exception: they are lamps first and corals second,
 // and a lamp belongs anywhere it's dark — they place in every biome (3D only).
 const LANTERN_CORALS = new Set(['lanternCoral', 'wispCoral', 'phantomPolyp', 'lumenCoral']);
+// How much brighter and further a lantern of each tier lights the water.
+const LAMP_TIER_RANK = { common: 0.8, uncommon: 0.9, rare: 1, superRare: 1.3, epic: 1.5, legendary: 1.75, mythic: 2 };
 function matchesBiome(spec, biomeId) {
   if (LANTERN_CORALS.has(spec.id)) return true;
   const b = spec.biome;
@@ -3773,6 +3776,9 @@ export function initReefScene3D(canvas) {
   // are structures, not organisms — they place full grown.
   const STAGE_MS = [60e3, 150e3, 300e3, 600e3, 900e3].map(ms => ms * PACE_GROW);   // stage s -> s+1 (2m · 5m · 10m · 20m · 30m)
   const STAGE_NAMES = ['Hatchling', 'Sprout', 'Juvenile', 'Colony', 'Mature', 'Full grown'];
+  // Stage length for a given species: quick growers (kelp, staghorn) see
+  // stages sooner, slow ones (pillar, brain) later — see coralStats.js.
+  const stageMs = (spec, s) => STAGE_MS[s] / coralTraits(spec.id).growth;
   const stageScale = (s) => [0.22, 0.4, 0.55, 0.7, 0.85, 1][clamp(s, 0, 5)];
   const stageOutput = (s) => s === 0 ? 0 : (s / 5) * (1 + (s - 1) * POLYP_BE_BONUS);
 
@@ -4191,7 +4197,7 @@ export function initReefScene3D(canvas) {
     group.position.set(tile.position.x, ZONES[tile.userData.biome].floorY + 0.18, tile.position.z);
     const entry = {
       b: tile.userData.biome, c: tile.userData.c, r: tile.userData.r, id: spec.id, level: lvl,
-      g: growAt ?? (lvl < CORAL_MAX_LEVEL && !spec.utility ? Date.now() + STAGE_MS[lvl] : 0) };
+      g: growAt ?? (lvl < CORAL_MAX_LEVEL && !spec.utility ? Date.now() + stageMs(spec, lvl) : 0) };
     group.userData.spec = spec;
     group.userData.entry = entry;
     group.userData.levelScale = spec.decor ? 1 : stageScale(lvl);
@@ -4199,8 +4205,12 @@ export function initReefScene3D(canvas) {
       // Real light is dealt out from a fixed pool so placing many can't
       // blow the budget. The lantern family are the reef's designated
       // lamps: brighter, longer throw.
+      // Higher tiers are brighter lamps that throw further; a lamp also
+      // brightens as it grows (see tickBioLights and the night-glow pass).
       const lamp = LANTERN_CORALS.has(spec.id);
-      group.userData.lampBoost = lamp ? 1.7 : 1;
+      const rank = LAMP_TIER_RANK[spec.tier] ?? 1;
+      group.userData.lampRank = lamp ? rank : 0;
+      group.userData.lampBoost = lamp ? 2.0 * rank : 1;
       group.userData.bio = true;
       // Real light comes from the shared pool (see bioPool): the nearest
       // glowing things to where you're looking each carry a PointLight.
@@ -4219,7 +4229,7 @@ export function initReefScene3D(canvas) {
     let grew = false;
     while (e.level < CORAL_MAX_LEVEL && e.g && Date.now() >= e.g) {
       e.level++;
-      e.g = e.level < CORAL_MAX_LEVEL ? e.g + STAGE_MS[e.level] : 0;
+      e.g = e.level < CORAL_MAX_LEVEL ? e.g + stageMs(spec, e.level) : 0;
       grew = true;
     }
     if (!grew) return;
@@ -4342,10 +4352,11 @@ export function initReefScene3D(canvas) {
     for (const e of placedCorals) {
       const spec = CORAL_SPECIES[e.id] ?? LOCAL_SPECS[e.id];
       if (!spec) continue;
+      const tr = coralTraits(spec.id);
       if (!spec.utility) {
-        bePerTick += (BE_PER_TICK[spec.tier] ?? 1) * stageOutput(e.level);
+        bePerTick += (BE_PER_TICK[spec.tier] ?? 1) * tr.income * stageOutput(e.level);
       }
-      polypPerTick += POLYP_PER_CORAL_TICK * e.level;
+      polypPerTick += POLYP_PER_CORAL_TICK * tr.polyps * e.level;
       storage += spec.storage ?? 0;
     }
     incomePerSec = (bePerTick / TICK_SEC) * PACE_BE;
@@ -4421,7 +4432,7 @@ export function initReefScene3D(canvas) {
     if (polyps < cost) { flash(rateEl, `need ${cost} 🪸`); return; }
     polyps -= cost;
     e.level++;
-    e.g = e.level < CORAL_MAX_LEVEL ? Date.now() + STAGE_MS[e.level] : 0;
+    e.g = e.level < CORAL_MAX_LEVEL ? Date.now() + stageMs(group.userData.spec, e.level) : 0;
     // Regrow the same individual with more branches/stalks — the stage shows
     // as new growth, not an inflated copy of the old mesh.
     rebuildCoral(group, group.userData.spec, group.userData.buildSeed, Math.max(1, e.level));
@@ -4741,8 +4752,10 @@ export function initReefScene3D(canvas) {
     const badge = zones.length > 1 ? ` ${zones.map(id => BIOMES[id].icon).join('')}` : '';
     const btn = document.createElement('button');
     btn.className = 'coral-btn';
+    const glyph = type === 'coral' && !spec.utility ? traitIcon(coralTraits(spec.id)) : '';
     btn.innerHTML = `<span class="dot" style="background:${hex(spec.color)}"></span>`
-      + `${spec.name}${badge}<span class="free-badge" style="display:none">🎟 FREE</span>`
+      + `${spec.name}${badge}${glyph ? `<span class="trait" title="${traitTags(coralTraits(spec.id)).join(', ')}">${glyph}</span>` : ''}`
+      + `<span class="free-badge" style="display:none">🎟 FREE</span>`
       + `<small>${n} ${unit}</small>`
       + (need > 1 ? `<span class="lv">Lv${need}</span>` : '');
     btn.onclick = () => {
@@ -5731,7 +5744,8 @@ export function initReefScene3D(canvas) {
       `<div class="m-sub">${bio.icon} ${bio.name}`
       + `${spec.scientific ? ` · <i>${spec.scientific}</i>` : ''}</div>`);
     const max = e.level >= CORAL_MAX_LEVEL;
-    const basePerTick = spec.utility ? 0 : (BE_PER_TICK[spec.tier] ?? 1);
+    const tr = coralTraits(spec.id);
+    const basePerTick = spec.utility ? 0 : (BE_PER_TICK[spec.tier] ?? 1) * tr.income;
     const rate = s => basePerTick * stageOutput(s) / TICK_SEC;
     const cost = upgradeCost(e.level + 1);   // polyps
     const refund = (spec.pearlCost || spec.utility) ? 0
@@ -5748,7 +5762,8 @@ export function initReefScene3D(canvas) {
       : `<div class="m-row"><span>Income</span><small>+${rate(e.level).toFixed(1)}/s`
         + `${max ? '' : ` → +${rate(e.level + 1).toFixed(1)}/s`}</small></div>`;
     html += `<div class="m-row"><span>Polyp drip</span>`
-      + `<small>+${(POLYP_PER_CORAL_TICK * e.level / TICK_SEC).toFixed(2)}/s</small></div>`;
+      + `<small>+${(POLYP_PER_CORAL_TICK * tr.polyps * e.level / TICK_SEC).toFixed(2)}/s</small></div>`;
+    if (!spec.utility) html += `<div class="m-row"><span>Traits</span><small>${traitTags(tr).join(' · ')}</small></div>`;
     upgrade.body.innerHTML = html;
     const up = document.createElement('button');
     up.className = 'shop-pack';
@@ -6253,9 +6268,12 @@ export function initReefScene3D(canvas) {
       html += row('Reef layer', BENTHIC_SPECIES.has(spec.id) ? 'Seafloor crawler'
         : spec.layer === 'B' ? 'Open water — big swimmers' : 'Reef shelter — small fish');
     } else if (!spec.utility) {
+      const tr = coralTraits(spec.id);
       html += row('Income (full grown)',
-        `+${((BE_PER_TICK[spec.tier] ?? 1) * stageOutput(CORAL_MAX_LEVEL) / TICK_SEC * PACE_BE).toFixed(2)}/s 🫧`);
-      html += row('Growth', `hatchling → full grown in ${fmtMs(GROWTH_TOTAL_MS)}`);
+        `+${((BE_PER_TICK[spec.tier] ?? 1) * tr.income * stageOutput(CORAL_MAX_LEVEL) / TICK_SEC * PACE_BE).toFixed(2)}/s 🫧`);
+      html += row('Polyp drip (full grown)',
+        `+${(POLYP_PER_CORAL_TICK * tr.polyps * CORAL_MAX_LEVEL / TICK_SEC * PACE_POLYP).toFixed(2)}/s 🪸`);
+      html += row('Growth', `hatchling → full grown in ${fmtMs(GROWTH_TOTAL_MS / tr.growth)}`);
     }
     if (spec.shelter) html += row('Shelter', `sleeps ${spec.homeCap ?? 6} fish overnight`);
     if (spec.storage) html += row('Storage', `+${spec.storage} 🫧 wallet cap`);
@@ -6278,7 +6296,10 @@ export function initReefScene3D(canvas) {
       if (item) html += row('Event Shop', `unlocks at ${item.unlockAt} 🎟 earned · ${item.cost} 🎟 each, during the event`);
     }
     const traits = [];
-    if (BIOLUM_SPECIES.has(spec.id)) traits.push('✨ lights the water after dark');
+    if (kind === 'coral' && !spec.utility) traits.push(...traitTags(coralTraits(spec.id)));
+    if (BIOLUM_SPECIES.has(spec.id)) traits.push(LANTERN_CORALS.has(spec.id)
+      ? `🏮 lantern — ${TIER_LABEL[spec.tier] ?? ''} lamp, throws further as it grows`.replace('  ', ' ')
+      : '✨ lights the water after dark');
     if (DAY_HIDER_SPECIES.has(spec.id)) traits.push('🌙 nocturnal — hides by day');
     if (SCHOOL_SPECIES.has(spec.id)) traits.push('🐟 swims in schools');
     if (spec.chaotic) traits.push('🌀 chaotic');
@@ -7963,8 +7984,13 @@ export function initReefScene3D(canvas) {
       for (const g of corals) {
         if (!g.userData.bio || g.userData.grow < 0.3) continue;
         const d = g.position.distanceTo(focus);
+        const rank = g.userData.lampRank ?? 0;
+        // Lanterns: tier sets the lamp, growth turns it up — a hatchling is a
+        // candle, a full-grown Lumen Coral lights half the twilight.
+        const stage = rank ? 0.5 + 0.5 * ((g.userData.entry?.level ?? CORAL_MAX_LEVEL) / CORAL_MAX_LEVEL) : 1;
         cands.push({ obj: g, y: 0.9, color: g.userData.spec?.accentColor ?? g.userData.spec?.color ?? 0x7fd8ff,
-          power: (g.userData.lampBoost ?? 1) * 5.5, range: LANTERN_CORALS.has(g.userData.spec?.id) ? 16 : 11, score: d });
+          power: (g.userData.lampBoost ?? 1) * 5.5 * stage,
+          range: rank ? (12 + 8 * rank) * (0.65 + 0.35 * stage) : 11, score: d });
       }
       for (const f of fishes) {
         if (!f.g.userData.bio) continue;
@@ -8234,7 +8260,9 @@ export function initReefScene3D(canvas) {
       }
       g.rotation.z = Math.sin(t * 0.8 + g.userData.seed) * 0.04;
       if (g.userData.glowMats) {
-        for (const m of g.userData.glowMats) m.emissiveIntensity = 0.5 + nf * 0.85 + dk * 0.9;
+        const rank = g.userData.lampRank ?? 0;
+        const lamp = rank ? (0.8 + 0.5 * rank) * (0.7 + 0.3 * ((g.userData.entry?.level ?? CORAL_MAX_LEVEL) / CORAL_MAX_LEVEL)) : 1;
+        for (const m of g.userData.glowMats) m.emissiveIntensity = (0.5 + nf * 0.85 + dk * 0.9) * lamp;
       }
       if (g.userData.bio) g.userData.bioFlicker = 0.85 + Math.sin(t * 1.3 + g.userData.seed) * 0.15;
     }
