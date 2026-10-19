@@ -3856,10 +3856,13 @@ export function initReefScene3D(canvas) {
   // pool beside the unrecorded corals, weighted like an uncommon species, and
   // when it's drawn the expedition brings the NEXT page in order home instead
   // of a coral. Once every twilight coral is recorded the page is all that's
-  // left down there, so each twilight expedition surfaces one until the
-  // notebook is complete. Pages never come from the other biomes, foragers
-  // or settlements.
+  // left down there — but it's never a sure thing: a lone page turns up on
+  // LJ_LONE_PAGE_CHANCE of expeditions, the rest come home empty with the fee
+  // returned, and the usual 5%+5% drifter roll still fires first, so a
+  // twilight expedition can still surface a coral from another biome. Pages
+  // never come from foragers or settlements.
   const LJ_PAGE_SPEC = { id: 'lostJournalPage', name: 'a notebook page', tier: 'uncommon', page: true };
+  const LJ_LONE_PAGE_CHANCE = 0.4;    // when the page is all the twilight has left
   // The twilight find pool: its unrecorded corals, plus the next page while any remain.
   const findPool = (zid) => (zid === 'deepTwilight' && ljRemain())
     ? [...discoverableCorals(zid), LJ_PAGE_SPEC] : discoverableCorals(zid);
@@ -3901,7 +3904,11 @@ export function initReefScene3D(canvas) {
         if (findPool(z).length) { zid = z; pool = findPool(z); break; }
       }
     }
-    if (pool.length) {
+    const lonePage = pool.length === 1 && pool[0].page;
+    if (lonePage && Math.random() >= LJ_LONE_PAGE_CHANCE) {
+      polyps = Math.min(polyps + cost, POLYP_MAX);
+      droneQueue.push('🔬 Survey complete: nothing new in the deep this time — no page, no coral. Fee returned. There are more pages down there; I can feel it in my sensors.');
+    } else if (pool.length) {
       const spec = surveyPick(pool, d);
       if (spec.page) {
         // The page was the find this time — it comes home instead of a coral.
