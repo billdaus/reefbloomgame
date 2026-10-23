@@ -6392,26 +6392,37 @@ export function initReefScene3D(canvas) {
   });
 
   // 📓 The Lost Journals tab — the whole notebook as a list: found pages by
-  // number, title and date; the rest "???". Chapter names stay hidden until a
-  // page from that chapter is found, so the notebook never spoils itself.
+  // number, title and date; the rest a redacted strip. Chapter names stay
+  // hidden until a page from that chapter is found, so the notebook never
+  // spoils itself. A "Read next" strip at the top jumps to the first unread
+  // page (or, once everything is read, the latest one).
+  const ljNext = () => { for (let i = 1; i <= lj.got; i++) if (!lj.read.includes(i)) return i; return lj.got; };
   function fillLostJournals() {
     journal.ov.querySelector('.m-sub')?.remove();
+    const unread = ljUnread();
     journal.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
-      `<div class="m-sub">The Lost Journals · ${lj.got} / ${LOST_JOURNAL_COUNT} pages found${bar(lj.got, LOST_JOURNAL_COUNT)}</div>`);
+      `<div class="m-sub">The Lost Journals · ${lj.got} / ${LOST_JOURNAL_COUNT} pages found`
+      + (unread ? ` · <b class="lj-unread">${unread} unread</b>` : '') + bar(lj.got, LOST_JOURNAL_COUNT) + '</div>');
     // No preamble: who wrote these, and where they came from, is the mystery
     // the pages themselves unfold — nothing is said about them up front.
     let html = '';
+    if (lj.got) {
+      const t = LOST_JOURNALS[ljNext() - 1];
+      html += `<button class="lj-continue" data-lj="${t.n}"><span class="lj-continue-k">${unread ? 'Read next' : 'Read again'}</span>`
+        + `<span class="lj-continue-t">${ljNum(t.n)} · ${t.title}</span><span class="lj-continue-a">›</span></button>`;
+    }
     for (const [ch, name] of Object.entries(JOURNAL_CHAPTERS)) {
       const entries = LOST_JOURNALS.filter(e => e.chapter === ch);
-      const anyOpen = entries.some(e => e.n <= lj.got);
-      html += `<div class="m-sec">Chapter ${ch}${anyOpen ? ' · ' + name : ''}</div>`;
+      const found = entries.filter(e => e.n <= lj.got).length;
+      html += `<div class="m-sec lj-sec"><span>Chapter ${ch}${found ? ' · ' + name : ''}</span>`
+        + `<span class="lj-sec-n">${found} / ${entries.length}</span></div>`;
       for (const e of entries) {
         const open = e.n <= lj.got, isNew = open && !lj.read.includes(e.n);
         html += open
-          ? `<div class="m-row lj-row" data-lj="${e.n}"><span class="lj-num">${ljNum(e.n)}</span>`
+          ? `<div class="m-row lj-row${isNew ? ' is-new' : ''}" data-lj="${e.n}"><span class="lj-num">${ljNum(e.n)}</span>`
             + `<span class="lj-title">${e.title}<span class="lj-date">${e.date}</span></span>`
-            + (isNew ? '<span class="lj-new">New</span>' : '') + '</div>'
-          : `<div class="m-row locked lj-row"><span class="lj-num">${ljNum(e.n)}</span><span class="lj-title">???</span></div>`;
+            + (isNew ? '<span class="lj-new">New</span>' : '<span class="lj-read" title="Read">✓</span>') + '</div>'
+          : `<div class="m-row locked lj-row"><span class="lj-num">${ljNum(e.n)}</span><span class="lj-title"><span class="lj-locked"></span></span></div>`;
       }
     }
     if (!lj.got) {
@@ -6420,6 +6431,8 @@ export function initReefScene3D(canvas) {
         : `Whatever is down there lies in the 🌑 Deep Twilight — unlocks at Lv${ZONES.deepTwilight.unlock}.`}</div>`;
     } else if (!ljRemain()) {
       html += '<div class="lj-hint">Every page recovered. The notebook is complete.</div>';
+    } else {
+      html += '<div class="lj-hint">The rest of the notebook is still somewhere in the Deep Twilight.</div>';
     }
     journal.body.innerHTML = html;
   }
@@ -6427,17 +6440,28 @@ export function initReefScene3D(canvas) {
     const n = ljUnread();
     document.querySelectorAll('[data-lj-badge]').forEach(el => el.classList.toggle('has-new', n > 0));
   }
+  // Back to the list: close the reader and land on the 📓 tab of the Ocean
+  // Journal (opening it if the reader was reached from the found prompt).
+  function showLostJournalList() {
+    ljModal.ov.style.display = 'none';
+    journalTab = 'lost';
+    journalTabs.querySelectorAll('.m-tab').forEach(x => x.classList.toggle('active', x.dataset.ljBadge === '1'));
+    fillJournal();
+    journal.show();
+  }
   // The reader: one page at a time on aged paper, previous/next across the
-  // pages found so far. Opening a page marks it read.
+  // pages found so far — by button, by swipe, or by arrow key. Each turn slides
+  // the new page in from the side it came from. Opening a page marks it read.
   const ljModal = buildMenuModal('📓 Lost Journal');
   ljModal.ov.classList.add('lj-modal');
   const ljNav = document.createElement('div');
   ljNav.className = 'lj-nav';
-  ljNav.innerHTML = '<button class="m-tab" data-lj-nav="-1">‹ Previous</button>'
+  ljNav.innerHTML = '<button class="m-tab" data-lj-list>📓 Notebook</button><span class="lj-spacer"></span>'
+    + '<button class="m-tab" data-lj-nav="-1">‹ Prev</button>'
     + '<span class="lj-pos"></span><button class="m-tab" data-lj-nav="1">Next ›</button>';
   ljModal.head.appendChild(ljNav);
   let ljOpen = 0;
-  function openLostJournal(n) {
+  function openLostJournal(n, dir = 0) {
     if (n < 1 || n > lj.got) return;
     const e = LOST_JOURNALS[n - 1];
     ljOpen = n;
@@ -6445,28 +6469,61 @@ export function initReefScene3D(canvas) {
     ljModal.ov.querySelector('.m-sub')?.remove();
     ljModal.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
       `<div class="m-sub">Entry ${ljNum(n)} of ${LOST_JOURNAL_COUNT} · Chapter ${e.chapter} — ${JOURNAL_CHAPTERS[e.chapter]}</div>`);
+    const last = n >= lj.got;
     ljNav.querySelector('.lj-pos').textContent = `${n} / ${lj.got} found`;
     ljNav.querySelector('[data-lj-nav="-1"]').disabled = n <= 1;
-    ljNav.querySelector('[data-lj-nav="1"]').disabled = n >= lj.got;
-    ljModal.body.innerHTML = '<div class="lj-page">'
+    const nextBtn = ljNav.querySelector('[data-lj-nav="1"]');
+    nextBtn.disabled = last;
+    nextBtn.title = last && ljRemain() ? 'The next page is still down there' : '';
+    const foot = last
+      ? (ljRemain() ? 'The next page is still somewhere in the Deep Twilight.' : '— the last page —')
+      : '';
+    ljModal.body.innerHTML = `<div class="lj-page ${dir > 0 ? 'turn-fwd' : dir < 0 ? 'turn-back' : 'turn-in'}">`
+      + `<span class="lj-stamp">${ljNum(n)}</span>`
       + `<div class="lj-head"><span class="lj-ptitle">${e.title}</span><span class="lj-pdate">${e.date}</span></div>`
-      + e.paragraphs.map(p => `<p>${p}</p>`).join('') + '</div>';
+      + e.paragraphs.map(p => `<p>${p}</p>`).join('')
+      + (foot ? `<div class="lj-foot">${foot}</div>` : '') + '</div>';
     ljModal.body.scrollTop = 0;
     ljModal.show();
     refreshLjBadge();
     if (journal.ov.style.display === 'flex' && journalTab === 'lost') fillLostJournals();
   }
   ljNav.addEventListener('click', (e) => {
+    if (e.target.closest('[data-lj-list]')) { showLostJournalList(); return; }
     const b = e.target.closest('button[data-lj-nav]');
-    if (b && !b.disabled) openLostJournal(ljOpen + Number(b.dataset.ljNav));
+    if (b && !b.disabled) { const d = Number(b.dataset.ljNav); openLostJournal(ljOpen + d, d); }
   });
-  // The find — a prompt on top of everything else. Reading is never required:
+  // Swipe left/right on the page to turn it (ignores mostly-vertical scrolls).
+  let ljTouch = null;
+  ljModal.body.addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0]; ljTouch = { x: t.clientX, y: t.clientY };
+  }, { passive: true });
+  ljModal.body.addEventListener('touchend', (e) => {
+    if (!ljTouch) return;
+    const t = e.changedTouches[0], dx = t.clientX - ljTouch.x, dy = t.clientY - ljTouch.y;
+    ljTouch = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      const d = dx < 0 ? 1 : -1;   // swipe left → next page
+      openLostJournal(ljOpen + d, d);
+    }
+  }, { passive: true });
+  window.addEventListener('keydown', (e) => {
+    if (ljModal.ov.style.display !== 'flex') return;
+    if (e.key === 'ArrowRight') openLostJournal(ljOpen + 1, 1);
+    else if (e.key === 'ArrowLeft') openLostJournal(ljOpen - 1, -1);
+  });
+  // The find — a prompt on top of everything else, showing the page itself as
+  // a dripping scrap with the first line visible. Reading is never required:
   // "Later" leaves the page waiting, marked New, in the journal.
   const ljFoundModal = buildMenuModal('📓 Lost Journal Discovered!');
   ljFoundModal.ov.classList.add('lj-found');
   ljFoundModal.ov.querySelector('.shop-close').style.display = 'none';
   function showLostJournalFound(entry) {
-    ljFoundModal.body.innerHTML = `<div class="lj-found-entry">Entry ${ljNum(entry.n)} — ${entry.title}</div>`
+    const first = entry.paragraphs[0];
+    const teaser = first.length > 150 ? first.slice(0, 150).replace(/\s+\S*$/, '') + '…' : first;
+    ljFoundModal.body.innerHTML = `<div class="lj-page lj-found-page turn-in"><span class="lj-stamp">${ljNum(entry.n)}</span>`
+      + `<div class="lj-head"><span class="lj-ptitle">${entry.title}</span><span class="lj-pdate">${entry.date}</span></div>`
+      + `<p>${teaser}</p></div>`
       + '<div class="m-sub">A page from a waterproof notebook, brought up from the Deep Twilight.</div>'
       + '<div class="lj-found-actions">'
       + `<button class="pack-open-btn" data-lj-read="${entry.n}">Read Now</button>`
@@ -6478,8 +6535,8 @@ export function initReefScene3D(canvas) {
     const rd = e.target.closest('[data-lj-read]');
     if (rd) { ljFoundModal.ov.style.display = 'none'; openLostJournal(Number(rd.dataset.ljRead)); }
     else if (e.target.closest('[data-lj-later]')) ljFoundModal.ov.style.display = 'none';
+    else if (e.target.closest('.lj-found-page')) { ljFoundModal.ov.style.display = 'none'; openLostJournal(ljNext()); }
   });
-
   // 🐟 Fish ID toast — tapping a fish names it at the bottom of the screen for
   // a few seconds (the pet reaction still plays). Tapping the toast opens the
   // species page; coral keeps its full upgrade modal because that's where its

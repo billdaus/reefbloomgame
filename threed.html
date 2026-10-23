@@ -124,53 +124,115 @@
     .m-bar span { display: block; height: 100%; background: #46c08a; border-radius: 4px; }
     .m-bar span.full { background: #ffd54f; }
     /* 📓 The Lost Journals — a waterproof field notebook: aged paper, faint
-       rules, a few water stains; dark ink kept well above AA contrast. */
+       rules sized to the line height so the pencil sits on them, a red margin
+       line and punched holes down the left, a few water stains; graphite-grey
+       ink kept well above AA contrast. */
+    .lj-unread { color: #ffd27f; font-weight: 700; }
+    .lj-continue {
+      display: flex; align-items: center; gap: 8px; width: 100%; margin: 8px 0 2px;
+      font: inherit; font-size: 12.5px; color: #eaf6ff; cursor: pointer; text-align: left;
+      background: linear-gradient(90deg, rgba(255,210,127,0.16), rgba(255,210,127,0.04));
+      border: 1px solid rgba(255,210,127,0.45); border-radius: 10px; padding: 8px 12px;
+    }
+    .lj-continue:active { background: rgba(255,210,127,0.26); }
+    .lj-continue-k {
+      flex: none; font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      color: #0d3550; background: #ffd27f; border-radius: 999px; padding: 2px 7px;
+    }
+    .lj-continue-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lj-continue-a { flex: none; color: #ffd27f; font-size: 16px; line-height: 1; }
+    .lj-sec { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .lj-sec-n { letter-spacing: 0; font-variant-numeric: tabular-nums; color: #5f8fab; }
     .lj-row { cursor: pointer; }
-    .lj-row.locked { cursor: default; }
+    .lj-row.is-new .lj-title { color: #fff3d6; }
+    .lj-row.locked { cursor: default; opacity: 0.5; }
     .lj-num { font-variant-numeric: tabular-nums; color: #7fb8d4; font-size: 11px; width: 30px; flex: none; }
     .lj-title { flex: 1; min-width: 0; }
     .lj-date { display: block; font-size: 10.5px; color: #8fb4c9; }
+    .lj-locked {
+      display: block; width: 58%; height: 9px; border-radius: 2px; margin: 4px 0;
+      background: repeating-linear-gradient(135deg, rgba(127,184,212,0.35) 0 3px, transparent 3px 7px);
+    }
     .lj-new {
       margin-left: auto; flex: none; font-size: 9.5px; font-weight: 700; letter-spacing: 1px;
       color: #0d3550; background: #ffd27f; border-radius: 999px; padding: 2px 7px;
     }
-    .lj-hint { font-size: 11.5px; color: #9fc4dc; line-height: 1.45; margin: 6px 0 8px; }
-    .lj-hint { margin-top: 12px; font-style: italic; }
+    .lj-read { margin-left: auto; flex: none; font-size: 11px; color: #5f8fab; }
+    .lj-hint { font-size: 11.5px; color: #9fc4dc; line-height: 1.45; margin: 12px 0 8px; font-style: italic; }
     .has-new { position: relative; }
     .has-new::after {
       content: ""; position: absolute; top: -3px; right: -3px; width: 9px; height: 9px;
       border-radius: 50%; background: #ffd27f; box-shadow: 0 0 0 2px #0d3550;
     }
-    .lj-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+    .lj-nav { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+    .lj-spacer { flex: 1; }
     .lj-nav .m-tab:disabled { opacity: 0.35; cursor: default; }
-    .lj-pos { font-size: 11px; color: #9fc4dc; font-variant-numeric: tabular-nums; }
-    .lj-modal .panel { max-width: 520px; }
+    .lj-pos { font-size: 11px; color: #9fc4dc; font-variant-numeric: tabular-nums; white-space: nowrap; padding: 0 2px; }
+    .lj-modal .panel { max-width: 560px; }
     .lj-page {
-      position: relative; margin: 8px 0 4px; padding: 20px 22px 24px; border-radius: 4px;
-      color: #2b2118; font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.6;
+      --lj-lh: 24px;
+      position: relative; margin: 8px 0 4px; padding: 20px 22px 24px 44px; border-radius: 3px 6px 6px 3px;
+      color: #332b22; font-family: Georgia, 'Times New Roman', serif; font-size: 14.5px; line-height: var(--lj-lh);
       background:
         radial-gradient(ellipse 60% 40% at 85% 8%, rgba(120,90,40,0.18), transparent 70%),
         radial-gradient(ellipse 45% 30% at 8% 92%, rgba(80,105,120,0.2), transparent 70%),
         radial-gradient(ellipse 30% 18% at 68% 66%, rgba(120,90,40,0.1), transparent 70%),
         linear-gradient(180deg, #efe4c8 0%, #e6d7b4 100%);
       box-shadow: inset 0 0 40px rgba(110,80,30,0.18), 0 2px 10px rgba(0,0,0,0.35);
+      overflow: hidden;
     }
-    .lj-page::before {
-      content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 4px;
-      background: repeating-linear-gradient(180deg, transparent 0 23px, rgba(90,110,140,0.13) 23px 24px);
+    .lj-page::before {   /* ruled lines, one per text line, under the header fade */
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background:
+        linear-gradient(90deg, transparent 33px, rgba(190,80,80,0.35) 33px 34px, transparent 34px),
+        repeating-linear-gradient(180deg, transparent 0 calc(var(--lj-lh) - 1px), rgba(90,110,140,0.14) calc(var(--lj-lh) - 1px) var(--lj-lh));
       -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 56px);
       mask-image: linear-gradient(180deg, transparent 0, #000 56px);
     }
-    .lj-page p { position: relative; margin: 0 0 12px; }
+    .lj-page::after {    /* punched holes down the margin */
+      content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 12px; pointer-events: none;
+      background: radial-gradient(circle at 6px 50%, rgba(13,53,80,0.9) 0 3.5px, rgba(60,45,25,0.25) 4px 4.6px, transparent 5px);
+      background-size: 12px 96px; background-position: 0 28px;
+    }
+    .lj-page p { position: relative; margin: 0 0 var(--lj-lh); }
     .lj-page p:last-child { margin-bottom: 0; }
+    .lj-stamp {
+      position: absolute; top: 10px; right: 14px; transform: rotate(6deg);
+      font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1px; font-weight: 700;
+      color: rgba(120,60,50,0.55); border: 1.5px solid rgba(120,60,50,0.4); border-radius: 3px; padding: 1px 5px;
+    }
     .lj-head {
       position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-      margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(70,50,20,0.35);
+      margin: 0 44px 12px 0; padding-bottom: 6px; border-bottom: 1px solid rgba(70,50,20,0.35);
     }
     .lj-ptitle { font-weight: 700; font-size: 16px; }
     .lj-pdate { font-size: 11.5px; color: #5e4d33; font-style: italic; white-space: nowrap; }
-    .lj-found .panel { text-align: center; }
-    .lj-found-entry { font-size: 15px; font-weight: 700; color: #ffd27f; margin: 8px 0 4px; }
+    .lj-foot {
+      position: relative; margin-top: var(--lj-lh); text-align: center;
+      font-size: 11.5px; font-style: italic; color: #6b5a3f;
+    }
+    @keyframes ljTurnFwd  { from { opacity: 0; transform: translateX(36px) rotate(0.6deg); } to { opacity: 1; transform: none; } }
+    @keyframes ljTurnBack { from { opacity: 0; transform: translateX(-36px) rotate(-0.6deg); } to { opacity: 1; transform: none; } }
+    @keyframes ljTurnIn   { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
+    .lj-page.turn-fwd  { animation: ljTurnFwd 0.26s ease-out both; }
+    .lj-page.turn-back { animation: ljTurnBack 0.26s ease-out both; }
+    .lj-page.turn-in   { animation: ljTurnIn 0.3s ease-out both; }
+    @media (prefers-reduced-motion: reduce) {
+      .lj-page.turn-fwd, .lj-page.turn-back, .lj-page.turn-in { animation: none; }
+    }
+    .lj-found .panel { text-align: center; max-width: 400px; }
+    .lj-found-page {
+      text-align: left; margin: 10px 6px 12px; padding: 14px 16px 16px 40px; cursor: pointer;
+      transform: rotate(-1.5deg); font-size: 13px; --lj-lh: 22px;
+    }
+    .lj-found-page.turn-in { animation-name: ljDrop; animation-duration: 0.45s; }
+    @keyframes ljDrop { from { opacity: 0; transform: translateY(-18px) rotate(2deg); } to { opacity: 1; transform: rotate(-1.5deg); } }
+    .lj-found-page .lj-ptitle { font-size: 15px; }
+    .lj-found-page p {
+      max-height: calc(var(--lj-lh) * 3); overflow: hidden;
+      -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 100%);
+      mask-image: linear-gradient(180deg, #000 45%, transparent 100%);
+    }
     .lj-found-actions { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
     .lj-found-actions .pack-open-btn { margin-left: 0; padding: 8px 16px; font-size: 13px; }
     #menu3d { position: fixed; right: 12px; top: 12px; z-index: 3; display: flex; gap: 6px; }
