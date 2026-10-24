@@ -355,9 +355,15 @@
       // The website ships betas as its release, so it shows the same number.
       var APP_VERSION = '1.2.6';
       var isWeb = document.documentElement.classList.contains('website');
+      // Mac edition: the iPad build running on an Apple-silicon Mac. The shell
+      // tags the user agent (ReefBridgeViewController.swift) because iPadOS
+      // already calls itself a Mac; a Mac-shaped platform with no touch points
+      // is the fallback.
+      var isMac = /ReefBloomMac/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && !(navigator.maxTouchPoints > 0));
       var isPad = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       document.getElementById('ver').textContent = 'Reef Bloom v' + APP_VERSION + ' · '
-        + (isWeb ? '3D edition' : (isPad ? 'iPad' : 'iPhone') + ' edition');
+        + (isWeb ? '3D edition' : (isMac ? 'Mac' : isPad ? 'iPad' : 'iPhone') + ' edition');
 
       // ── Rising bubbles ────────────────────────────────────────────────────
       var sea = document.getElementById('sea');

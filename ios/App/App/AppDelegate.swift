@@ -27,6 +27,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        if ProcessInfo.processInfo.isiOSAppOnMac {
+            // Mac edition ("Designed for iPad" on Apple silicon): the reef lays
+            // out for a landscape tablet, so keep the window from being
+            // squeezed below that. The green button still gives full screen.
+            for case let scene as UIWindowScene in application.connectedScenes {
+                scene.sizeRestrictions?.minimumSize = CGSize(width: 900, height: 600)
+            }
+        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

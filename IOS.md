@@ -124,6 +124,44 @@ StoreKit Configuration File, "Sync with App Store Connect") and select it under
 the scheme's Run → Options → StoreKit Configuration; purchases then work with
 no sandbox account. TestFlight builds use the sandbox automatically.
 
+## Mac edition
+
+The Mac edition is the iPad build running natively on Apple-silicon Macs
+("Mac (Designed for iPad)"). It is the same binary, bundle ID, build number,
+saves, sign-in and pearl packs as the iPad app — nothing extra to archive or
+upload. The Xcode project opts in with `SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD`,
+and `Info.plist` carries the `LSApplicationCategoryType` (Games) the Mac App
+Store listing needs.
+
+What is Mac-specific:
+
+- `ReefBridgeViewController.swift` (the storyboard's view controller) appends
+  `ReefBloomMac` to the WebView user agent when `isiOSAppOnMac` is true, so
+  `app.html` can label the footer "Mac edition". iPadOS already reports itself
+  as a Mac, so the user agent is the only reliable signal.
+- `AppDelegate.swift` keeps the window at least 900×600 (the reef lays out for
+  a landscape tablet). The window is otherwise resizable and the green button
+  gives full screen.
+- Mouse and trackpad already work: the 3D edition runs on desktop browsers.
+
+Shipping it: App Store Connect → Reef Bloom → Pricing and Availability →
+**Mac** ("Make this app available on Mac" under *iPhone and iPad Apps on
+Apple Silicon Macs*). Once that is on, the next approved iOS version is also
+listed on the Mac App Store; Apple reviews it on a Mac as well, so it is worth
+one run on a Mac before submitting.
+
+Running it on this Mac: in Xcode choose the destination **My Mac (Designed for
+iPad)** and Run. The first run registers the Mac as a development device,
+which needs the Apple Account signed in to Xcode. From the CLI:
+
+```bash
+npm run mac:run        # build:app + cap sync + xcodebuild for My Mac + open the .app
+```
+
+Mac Catalyst (a native Mac build) is not an option here: Capacitor's Swift
+package is a binary framework with no Catalyst slice, and the purchases plugin
+depends on the same binary.
+
 ## Building without a Mac
 
 The **iOS Build (Simulator)** GitHub Actions workflow

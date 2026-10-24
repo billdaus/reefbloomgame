@@ -30,6 +30,10 @@
 	<string>Main</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.games</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Defenestration Technologies LLC</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>arm64</string>
