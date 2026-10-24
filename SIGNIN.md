@@ -32,7 +32,7 @@ sign-in UI appears and no AWS code loads — the game behaves exactly as before.
 
 ## Status
 
-Deployed Sep 24 2026 (stack `reef-bloom-auth`, us-east-1); `src/aws-config.js` holds the outputs. Sign-in is the in-app account sheet (`src/accountSheet.js`) over Cognito's JSON API — email + password, emailed confirmation code, password reset, account deletion — and it works on the website, in the iOS app and on the Home screen. Cloud sync covers Classic's three slots (`s0–s2`) and the 3D edition's three (`t0–t2`). Verification and reset codes are sent through Amazon SES from `noreply@reefbloomgame.com` (domain verified with DKIM in Route 53 by `infra/reef-ops.yaml`); the saves table has point-in-time recovery and both it and the user pool are deletion-protected.
+Deployed Sep 24 2026 (stack `reef-bloom-auth`, us-east-1); `src/aws-config.js` holds the outputs. Sign-in is the in-app account sheet (`src/accountSheet.js`) over Cognito's JSON API — email + password, a username (Cognito's standard `preferred_username`, carried in the ID token; shown to other players, not unique, not used to sign in), emailed confirmation code, password reset, account deletion — and it works on the website, in the iOS app and on the Home screen. Cloud sync covers Classic's three slots (`s0–s2`) and the 3D edition's three (`t0–t2`). Verification and reset codes are sent through Amazon SES from `noreply@reefbloomgame.com` (domain verified with DKIM in Route 53 by `infra/reef-ops.yaml`); the saves table has point-in-time recovery and both it and the user pool are deletion-protected.
 
 ## Enable it (one command + one paste)
 

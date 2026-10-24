@@ -1,15 +1,18 @@
 import {
   isAuthAvailable, currentUser, onAuthChange, signIn, signUp, confirmSignUp, resendCode,
   forgotPassword, confirmForgotPassword, signOutUser, deleteAccount,
+  setUsername, usernameProblem, cleanUsername, USERNAME_MAX,
 } from './auth.js';
 import { initCloudSave, syncNow, onCloudStatus, deleteCloudSaves } from './cloudsave.js';
 
 /**
  * accountSheet.js — the one Reef Bloom account panel, shared by the website
  * (Classic), the 3D reef and the app's Home screen. Free accounts: sign in
- * or create one with an email and password, confirm with the emailed code,
- * reset a forgotten password; signed in, see sync status, sync now, sign
- * out, or delete the account (and its cloud saves) for good.
+ * or create one with an email, a username and a password, confirm with the
+ * emailed code, reset a forgotten password; signed in, see sync status, sync
+ * now, change the username, sign out, or delete the account (and its cloud
+ * saves) for good. The username is what other players would see; the email
+ * is only ever the sign-in.
  *
  * Self-contained: builds its own DOM and injects its own CSS on first open.
  * openAccountSheet() is all a page needs; it is a no-op while accounts are
@@ -42,9 +45,15 @@ const CSS = `
 #acct-sheet .ac-status { display: flex; align-items: center; gap: 8px; font-size: 13px; background: rgba(0,0,0,0.3);
   border-radius: 10px; padding: 10px 12px; margin: 6px 0 4px; }
 #acct-sheet .ac-close { width: 100%; margin-top: 8px; background: none; color: #9fc4dc; font-size: 12px; }
+#acct-sheet .ac-who { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; }
+#acct-sheet .ac-name { font-size: 20px; font-weight: 800; color: #ffe9b0; }
+#acct-sheet .ac-name.none { font-weight: 400; font-style: italic; color: #9fc4dc; font-size: 14px; }
+#acct-sheet .ac-who .ac-sub { margin: 0; }
+#acct-sheet .ac-who .ac-link { padding: 0 2px; font-size: 12px; margin-left: auto; }
+#acct-sheet .ac-hint { font-size: 11.5px; color: #7fb8d4; margin: 6px 0 0; line-height: 1.35; }
 `;
 
-let sheet = null, view = 'signin', busy = false, pendingEmail = '';
+let sheet = null, view = 'signin', busy = false, pendingEmail = '', pendingName = '';
 let onSignedInHook = null;
 let els = {};
 
@@ -77,19 +86,41 @@ function build() {
 }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const field = (id, label, type, placeholder, value = '') =>
-  `<label for="ac-${id}">${label}</label><input id="ac-${id}" type="${type}" placeholder="${placeholder}" value="${esc(value)}" autocomplete="${type === 'password' ? 'current-password' : type === 'email' ? 'email' : 'one-time-code'}" autocapitalize="none" autocorrect="off">`;
+const AUTOCOMPLETE = { password: 'current-password', email: 'email', username: 'nickname' };
+const field = (id, label, type, placeholder, value = '') => {
+  const t = type === 'username' ? 'text' : type;
+  const extra = type === 'username' ? ` maxlength="${USERNAME_MAX}" autocapitalize="words"` : ' autocapitalize="none"';
+  return `<label for="ac-${id}">${label}</label><input id="ac-${id}" type="${t}" placeholder="${placeholder}" value="${esc(value)}" autocomplete="${AUTOCOMPLETE[type] ?? 'one-time-code'}"${extra} autocorrect="off">`;
+};
 
 function render() {
   const p = sheet.querySelector('.ac-panel');
   const user = currentUser();
   let html = '';
   if (view === 'account' && user) {
-    html = `<h2>👤 Your account</h2><p class="ac-sub">${esc(user.email)}</p>
+    html = `<h2>👤 Your account</h2>
+      <div class="ac-who">${user.username
+        ? `<span class="ac-name">${esc(user.username)}</span>`
+        : '<span class="ac-name none">No username yet</span>'}
+        <span class="ac-sub">${esc(user.email)}</span>
+        <button class="ac-link" id="ac-rename">${user.username ? 'Change username' : 'Choose one'}</button></div>
       <div class="ac-status" id="ac-status"></div>
       <p class="ac-sub">All six reef slots — Classic and 3D — sync to this account. Newest save wins on each slot; sign in on another device and your reefs come with you.</p>
       <div class="ac-row"><button class="ac-secondary" id="ac-sync">Sync now</button><button class="ac-secondary" id="ac-signout">Sign out</button></div>
       <div class="ac-row"><button class="ac-danger" id="ac-delete">Delete account…</button></div>
+      <div class="ac-msg" id="ac-msg"></div>`;
+  } else if (view === 'username' && user) {
+    html = `<h2>${user.username ? 'Change your username' : 'Choose a username'}</h2><p class="ac-sub">The name other players would see. 3–${USERNAME_MAX} characters; your email stays private and is still how you sign in.</p>
+      ${field('name', 'Username', 'username', 'ReefKeeper', user.username ?? '')}
+      <div class="ac-row"><button class="ac-primary" id="ac-rename-go">Save</button><button class="ac-secondary" id="ac-back">Back</button></div>
+      <div class="ac-msg" id="ac-msg"></div>`;
+  } else if (view === 'signup') {
+    html = `<h2>☁️ Create your account</h2><p class="ac-sub">Free. Keeps your reefs in the cloud and brings them to any device.</p>
+      ${field('email', 'Email', 'email', 'you@example.com', pendingEmail)}
+      ${field('name', 'Username', 'username', 'ReefKeeper', pendingName)}
+      <p class="ac-hint">What other players would see. Your email stays private.</p>
+      ${field('pw', 'Password (8+ characters)', 'password', '')}
+      <div class="ac-row"><button class="ac-primary" id="ac-signup-go">Create account</button><button class="ac-secondary" id="ac-back">Back</button></div>
       <div class="ac-msg" id="ac-msg"></div>`;
   } else if (view === 'delete') {
     html = `<h2>Delete your account?</h2><p class="ac-sub">This removes your Reef Bloom account and the reefs saved to it in the cloud. Reefs already on this device stay on this device. There is no undo.</p>
@@ -160,6 +191,7 @@ function friendly(e) {
   if (c === 'ExpiredCodeException') return 'That code has expired — send a new one.';
   if (c === 'LimitExceededException' || c === 'TooManyRequestsException') return 'Too many tries — wait a minute and try again.';
   if (c === 'InvalidParameterException') return e.message.replace(/^.*?: /, '');
+  if (c === 'InvalidUsername') return e.message;
   if (e?.message === 'Failed to fetch') return 'No connection. Try again when you\'re online.';
   return e?.message ?? 'Something went wrong.';
 }
@@ -178,15 +210,31 @@ function wire() {
     });
     els.signin.onclick = go;
     els.pw.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
-    els.signup.onclick = () => run(async () => {
-      const email = val('email'), pw = val('pw');
+    els.signup.onclick = () => { pendingEmail = val('email'); view = 'signup'; render(); };
+    els['forgot-link'].onclick = () => { pendingEmail = val('email'); view = 'forgot'; render(); };
+  }
+  if (els['signup-go']) {
+    const go = () => run(async () => {
+      const email = val('email'), pw = val('pw'), name = cleanUsername(val('name'));
+      pendingEmail = email; pendingName = name;
       if (!email || !pw) throw new Error('Enter an email and choose a password (8+ characters).');
-      pendingEmail = email;
-      const needsCode = await signUp(email, pw);
+      const bad = usernameProblem(name);
+      if (bad) throw new Error(bad);
+      const needsCode = await signUp(email, pw, name);
       if (needsCode) { view = 'confirm'; render(); msg('Code sent. Check your inbox (and spam).'); }
       else { await signIn(email, pw); view = 'account'; render(); onSignedInHook?.(); }
     });
-    els['forgot-link'].onclick = () => { pendingEmail = val('email'); view = 'forgot'; render(); };
+    els['signup-go'].onclick = go;
+    els.pw.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+  }
+  els.rename && (els.rename.onclick = () => { view = 'username'; render(); });
+  if (els['rename-go']) {
+    const go = () => run(async () => {
+      const name = await setUsername(val('name'));
+      view = 'account'; render(); msg(`You're ${name} now.`, 'ok');
+    });
+    els['rename-go'].onclick = go;
+    els.name.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
   }
   els.confirm && (els.confirm.onclick = () => run(async () => {
     await confirmSignUp(pendingEmail, val('code'));

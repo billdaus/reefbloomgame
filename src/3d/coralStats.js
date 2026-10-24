@@ -50,6 +50,15 @@ export const CORAL_TRAITS = {
   abyssalFan:     T(1.1,  1,    0.85),
   lanternCoral:   T(1.15, 0.9,  0.95),
   wispCoral:      T(0.85, 1.25, 1.1),
+  // ── Legendary & Mythic (Bubble-Energy corals, 3D only) ──
+  blueCoral:      T(1.25, 1,    0.75),   // massive skeleton, slow
+  flowerpotCoral: T(0.95, 1.4,  1),      // a nursery of daisy polyps
+  seaPen:         T(0.9,  1.1,  1.35),   // quick quill
+  bambooCoral:    T(1.3,  0.9,  0.7),
+  carnationCoral: T(1,    1.45, 1.1),
+  neptunesCup:    T(1.35, 1.2,  0.6),
+  bubblegumCoral: T(1.3,  1,    0.75),
+  blackCoral:     T(1.5,  0.8,  0.5),    // four thousand years, a few microns a year
   // ── Event exclusives ──
   pearlOrganPipe: T(1.2,  1.1,  1),
   blossomCoral:   T(1,    1.4,  1),

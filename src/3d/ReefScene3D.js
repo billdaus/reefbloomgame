@@ -193,6 +193,11 @@ function gradientTexture(stops) {
 }
 
 function hex(n) { return `#${n.toString(16).padStart(6, '0')}`; }
+// Rarity as the player reads it: the tier's label in the tier's colour, so
+// Legendary is always the same orange and Mythic the same red wherever a tier
+// is named in HTML (packs, journal, counters, confirm sheets).
+const tierHex = (tier) => hex(COLORS[`tier_${tier}`] ?? 0xb0bec5);
+const tierHtml = (tier) => `<span class="tier" style="color:${tierHex(tier)}">${TIER_LABEL[tier] ?? tier}</span>`;
 
 // Small deterministic PRNG so each coral gets its own silhouette without
 // re-randomizing on every frame.
@@ -302,7 +307,9 @@ function coralTexture(spec, variant = 0) {
   // New shape families reuse the closest existing pattern.
   const shape = spec.id === 'candycane' ? 'candycane'
     : raw === 'lettuce' ? 'plate'
-    : raw === 'kelp' || raw === 'sapling' ? 'grass'
+    : raw === 'kelp' || raw === 'sapling' || raw === 'seapen' ? 'grass'
+    : raw === 'cup' ? 'plate'
+    : raw === 'carnation' ? 'bubble'
     : raw;
   if (shape === 'candycane') {
     // Signature pale bands around each tube.
@@ -648,6 +655,12 @@ function shapeOf(spec) {
   if (id === 'lanternCoral' || id === 'lumenCoral') return 'lantern';
   if (['essenceVault', 'grandReservoir'].includes(id)) return 'clam';
   if (id === 'reefCave') return 'cave';
+  if (['blueCoral', 'bubblegumCoral'].includes(id)) return 'branch';
+  if (id === 'flowerpotCoral') return 'flowerpot';
+  if (id === 'seaPen') return 'seapen';
+  if (id === 'bambooCoral') return 'bamboo';
+  if (id === 'carnationCoral') return 'carnation';
+  if (id === 'neptunesCup') return 'cup';
   return spec.tall ? 'branch' : 'brain';
 }
 
@@ -664,6 +677,10 @@ const CORAL_STYLE = {
   sunfire: { n: 7, r: 0.06, h: 1.1, lean: 0.2, fork: true },
   rainbowCoral: { n: 9, r: 0.045, h: 0.8, lean: 0.3, fork: true },
   fireCoral: { n: 8, r: 0.05, h: 0.95, lean: 0.22, fork: true },
+  // Blue coral: blunt upright blades and columns, no forking.
+  blueCoral: { n: 6, r: 0.07, h: 0.72, lean: 0.14, fork: false, flat: 2.2 },
+  // Bubblegum coral: a few thick trunks forking into knobbly pink tips.
+  bubblegumCoral: { n: 5, r: 0.1, h: 1.35, lean: 0.22, fork: true, knobs: true, nub: 0.8 },
 };
 
 // Each builder gets ({ mat, tipMat, darkMat }, rnd) — rnd is a per-coral PRNG so
@@ -698,8 +715,16 @@ const BODY = {
         const tip = new THREE.Mesh(new THREE.SphereGeometry(r0 * 0.55, 6, 6), tipMat);
         if (st.flat) tip.scale.x = st.flat * 0.6;
         tip.position.y = h2; fork.add(tip);
+        if (st.knobs) {   // bubblegum: a cluster of knobs crowds every tip
+          for (let k = 0; k < 2 + Math.floor(rnd() * 2); k++) {
+            const knob = new THREE.Mesh(new THREE.SphereGeometry(r0 * (0.4 + rnd() * 0.25), 6, 5), tipMat);
+            const ka = rnd() * Math.PI * 2;
+            knob.position.set(Math.cos(ka) * r0 * 0.5, h2 - r0 * (0.2 + rnd() * 0.5), Math.sin(ka) * r0 * 0.5);
+            fork.add(knob);
+          }
+        }
         arm.add(fork);
-        if (rnd() < 0.5) {
+        if (rnd() < (st.nub ?? 0.5)) {
           const nh = 0.2 + rnd() * 0.25;
           const nub = new THREE.Mesh(new THREE.CylinderGeometry(r0 * 0.25, r0 * 0.5, nh, 5), mat);
           nub.position.set(0, h1 * (0.35 + rnd() * 0.3), 0);
@@ -1033,6 +1058,140 @@ const BODY = {
       b.position.set(Math.cos(a) * rr, 0.2 + rnd() * 0.26, Math.sin(a) * rr);
       g.add(b);
     }
+  },
+  // Flowerpot coral (Goniopora): a low mound bristling with long-stalked
+  // daisy polyps — each a thin stalk ending in a ring of tentacles round a
+  // pale mouth. Growth stages add stalks and stretch them.
+  flowerpot(g, { mat, tipMat, lvl = 1 }, rnd) {
+    const mound = new THREE.Mesh(new THREE.SphereGeometry(0.5 * (1 + (lvl - 1) * 0.07),
+      14, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), mat);
+    mound.position.y = 0.1; mound.scale.y = 0.6; g.add(mound);
+    const mouthMat = new THREE.MeshStandardMaterial({ color: 0xfff3c4, roughness: 0.6,
+      emissive: 0x6a5a20, emissiveIntensity: 0.15 });
+    const N = 14 + (lvl - 1) * 5;
+    for (let i = 0; i < N; i++) {
+      const a = rnd() * Math.PI * 2, rr = 0.04 + rnd() * 0.36;
+      const h = 0.35 + rnd() * 0.3 + (lvl - 1) * 0.03;
+      const stalk = new THREE.Group();
+      stalk.position.set(Math.cos(a) * rr, 0.28, Math.sin(a) * rr);
+      stalk.rotation.z = (rnd() - 0.5) * 0.5; stalk.rotation.x = (rnd() - 0.5) * 0.5;
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, h, 5), mat);
+      tube.position.y = h / 2; stalk.add(tube);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.018, 4, 8), tipMat);
+      ring.rotation.x = Math.PI / 2; ring.position.y = h; stalk.add(ring);
+      const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.024, 6, 5), mouthMat);
+      mouth.position.y = h; stalk.add(mouth);
+      g.add(stalk);
+    }
+  },
+  // Sea pen (Ptilosarcus): a fleshy orange quill — a bulbous foot anchored in
+  // the sand, a tapering rachis, and two ranks of feathery leaves climbing it
+  // in one plane, the way the real pen stands across the current.
+  seapen(g, { mat, tipMat, lvl = 1 }, rnd) {
+    const H = 1.1 + (lvl - 1) * 0.14;
+    const quill = new THREE.Group();
+    quill.rotation.y = rnd() * Math.PI;
+    quill.rotation.z = (rnd() - 0.5) * 0.2;
+    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.11, H, 8), mat);
+    stalk.position.y = 0.06 + H / 2; quill.add(stalk);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), mat);
+    bulb.scale.set(1, 1.4, 1); bulb.position.y = 0.16; quill.add(bulb);
+    const leafMat = tipMat.clone(); leafMat.side = THREE.DoubleSide;
+    const N = 8 + (lvl - 1) * 2;
+    for (let i = 0; i < N; i++) {
+      const t = (i + 0.5) / N;
+      const y = 0.3 + t * (H - 0.3);
+      const len = 0.42 * Math.sin(Math.PI * (0.25 + t * 0.7)) + 0.08;
+      for (const side of [-1, 1]) {
+        const leaf = new THREE.Mesh(new THREE.PlaneGeometry(len, 0.075, 1, 1), leafMat);
+        leaf.position.set(side * len / 2, y, 0);
+        leaf.rotation.z = side * (0.35 + (1 - t) * 0.25);
+        leaf.rotation.y = side * 0.3;
+        quill.add(leaf);
+      }
+    }
+    g.add(quill);
+  },
+  // Bamboo coral (Isididae): a sparse deep-sea candelabra of pale calcite
+  // internodes joined by dark horny nodes — a jointed skeleton that really
+  // does look like bamboo. Stages add joints and arms.
+  bamboo(g, { mat, tipMat, lvl = 1 }, rnd) {
+    const nodeMat = new THREE.MeshStandardMaterial({ color: 0x2a2326, roughness: 0.9 });
+    const UP = new THREE.Vector3(0, 1, 0);
+    const stem = (start, dir, r, n) => {
+      let pos = start.clone();
+      for (let s = 0; s < n; s++) {
+        const h = 0.22 + rnd() * 0.1;
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.85, r, h, 6), mat);
+        seg.quaternion.setFromUnitVectors(UP, dir);
+        seg.position.copy(pos).addScaledVector(dir, h / 2);
+        g.add(seg);
+        pos = pos.clone().addScaledVector(dir, h);
+        const knot = new THREE.Mesh(new THREE.SphereGeometry(r * 1.15, 7, 5), nodeMat);
+        knot.position.copy(pos); g.add(knot);
+        if (s >= 1 && s < n - 1 && rnd() < 0.4) {   // a side arm from this node
+          const bd = dir.clone().add(new THREE.Vector3((rnd() - 0.5) * 1.4, 0.2, (rnd() - 0.5) * 1.4)).normalize();
+          stem(pos, bd, r * 0.7, Math.max(1, n - s - 2));
+        }
+        dir = dir.clone().add(new THREE.Vector3((rnd() - 0.5) * 0.35, 0.15, (rnd() - 0.5) * 0.35)).normalize();
+        r *= 0.88;
+      }
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(r * 1.1, 6, 5), tipMat);
+      tip.position.copy(pos); g.add(tip);
+    };
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.08, 9), nodeMat);
+    foot.position.y = 0.12; g.add(foot);
+    const arms = 3 + Math.floor(rnd() * 2) + Math.floor((lvl - 1) / 2);
+    const joints = 2 + Math.min(4, lvl);
+    for (let i = 0; i < arms; i++) {
+      const a = (i / arms) * Math.PI * 2 + rnd() * 0.8;
+      const dir = new THREE.Vector3(Math.cos(a) * 0.35, 1, Math.sin(a) * 0.35).normalize();
+      stem(new THREE.Vector3(Math.cos(a) * 0.07, 0.16, Math.sin(a) * 0.07), dir, 0.04 + rnd() * 0.01, joints);
+    }
+  },
+  // Carnation coral (Dendronephthya): a glassy, near-white trunk forking into
+  // short limbs, each ending in a bouquet of prickly polyp bundles in the
+  // colony's own vivid colour — the spicules show through the stem.
+  carnation(g, { mat, lvl = 1 }, rnd, spec) {
+    const glass = new THREE.MeshStandardMaterial({ color: 0xf6ecf3, roughness: 0.3,
+      transparent: true, opacity: 0.72, emissive: spec?.color ?? 0xff5fa2, emissiveIntensity: 0.08 });
+    const budMat = new THREE.MeshStandardMaterial({ color: spec?.color ?? 0xff5fa2, roughness: 0.55,
+      emissive: spec?.color ?? 0xff5fa2, emissiveIntensity: 0.18 });
+    const trunkH = 0.35 + (lvl - 1) * 0.05;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, trunkH, 8), glass);
+    trunk.position.y = 0.06 + trunkH / 2; g.add(trunk);
+    const limbs = 5 + Math.floor(rnd() * 3) + (lvl - 1) * 2;
+    for (let i = 0; i < limbs; i++) {
+      const a = (i / limbs) * Math.PI * 2 + rnd() * 0.5, lean = 0.5 + rnd() * 0.6;
+      const len = 0.3 + rnd() * 0.25 + (lvl - 1) * 0.03;
+      const limb = new THREE.Group();
+      limb.position.set(Math.cos(a) * 0.06, 0.06 + trunkH * 0.9, Math.sin(a) * 0.06);
+      limb.rotation.z = Math.cos(a) * lean; limb.rotation.x = -Math.sin(a) * lean;
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.06, len, 6), glass);
+      seg.position.y = len / 2; limb.add(seg);
+      const k = 4 + Math.floor(rnd() * 3);
+      for (let j = 0; j < k; j++) {
+        const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.075, 0), budMat);
+        b.scale.setScalar(0.8 + rnd() * 0.6);
+        b.position.set((rnd() - 0.5) * 0.14, len + (rnd() - 0.3) * 0.1, (rnd() - 0.5) * 0.14);
+        b.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
+        limb.add(b);
+      }
+      g.add(limb);
+    }
+  },
+  // Neptune's Cup (Cliona patera): a goblet sponge on a thick stalk, big
+  // enough to bathe a baby in — one lathe-turned bowl with a rolled rim.
+  cup(g, { mat, tipMat, lvl = 1 }, rnd) {
+    const grow = 0.7 + lvl * 0.08;
+    const pts = [[0, 0], [0.16, 0], [0.13, 0.25], [0.12, 0.5], [0.2, 0.62], [0.42, 0.78], [0.56, 0.96],
+      [0.6, 1.12], [0.57, 1.16], [0.5, 1.1], [0.4, 0.98], [0.26, 0.8], [0.14, 0.7], [0, 0.66]];
+    const prof = pts.map(([x, y]) => new THREE.Vector2(x * grow * (0.95 + rnd() * 0.1), y * grow));
+    const m = mat.clone(); m.side = THREE.DoubleSide;
+    const bowl = new THREE.Mesh(new THREE.LatheGeometry(prof, 20), m);
+    bowl.position.y = 0.06; bowl.rotation.y = rnd() * Math.PI; g.add(bowl);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.585 * grow, 0.035 * grow, 6, 24), tipMat);
+    rim.rotation.x = Math.PI / 2; rim.position.y = 0.06 + 1.14 * grow; g.add(rim);
   },
   // Seagrass vegetation: a clump of tall, slightly bowed blades.
   grass(g, { mat, tipMat, lvl = 1 }, rnd) {
@@ -3386,11 +3545,12 @@ export function initReefScene3D(canvas) {
     && Object.keys(ZONES).some(z => zoneUnlocked(z) && matchesBiome(s, z));
   const packFishPool = (tier) => tierFish(tier).filter(fishAvailable);
   const packCoralPool = (tier) =>
-    allCorals().filter(s => s.tier === tier && !s.eventId && !s.utility && !s.pearlCost && coralAvailable(s));
-  // Legendary and Mythic coral are all Skip-7's, so those packs can never deal
-  // a coral card — they deal a second riches card in its place.
+    reefCorals().filter(s => s.tier === tier && !s.eventId && !s.utility && !s.pearlCost && coralAvailable(s));
+  // A tier with no Bubble-Energy coral at all (every species Skip-7's) can't
+  // deal a coral card — it deals a second riches card in its place. Since the
+  // 3D-only legendary and mythic corals arrived, every tier has one.
   const packHasCoral = (tier) =>
-    allCorals().some(s => s.tier === tier && !s.utility && !s.pearlCost);
+    reefCorals().some(s => s.tier === tier && !s.utility && !s.pearlCost);
 
   // ── Wild-abundance odds ──────────────────────────────────────────────────────
   // Within a tier, species roll roughly as often as the real ocean serves
@@ -3428,6 +3588,9 @@ export function initReefScene3D(canvas) {
     clownTriggerfish: 0.8, sailfinTang: 1.3, bumpheadParrotfish: 0.5, coelacanth: 0.2,
     barreleye: 0.6, ribbonfish: 0.6, gulperEel: 0.6, nautilus: 0.6, dolphin: 0.6,
     abyssalRay: 0.6, rainbowCoral: 0.6, sunfire: 0.6, blacktipReefShark: 0.6,
+    // the Bubble-Energy legendaries and mythics — rarer than their pearl peers
+    blueCoral: 0.7, flowerpotCoral: 0.8, seaPen: 0.8, bambooCoral: 0.6,
+    carnationCoral: 0.6, bubblegumCoral: 0.5, blackCoral: 0.4, neptunesCup: 0.3,
     // threatened & endangered in the real ocean
     seahorse: 0.5, neonSeahorse: 0.5, twilightSeahorse: 0.5, shark: 0.5, lemonShark: 0.5,
     frogfish: 0.5,
@@ -3476,7 +3639,7 @@ export function initReefScene3D(canvas) {
   function openRarityPack(tier) {
     if (!(packs[tier] > 0)) return null;
     packs[tier]--;
-    const lbl = TIER_LABEL[tier] ?? tier;
+    const lbl = tierHtml(tier);
     const cards = [];
     // Card 1 — Riches.
     const R = PACK_RICHES[tier];
@@ -3559,7 +3722,7 @@ export function initReefScene3D(canvas) {
       cards.push({ icon: '🪸', title: `+${amt} Polyps`,
         sub: 'Daily riches — the 40% roll. Science fuel.', gain: { polyps: amt } });
     }
-    const kn = [...allCorals(), GOLDEN_SPEC]
+    const kn = reefCorals()
       .filter(s => !s.utility && !s.eventId && !s.pearlCost && seen.has(s.id));
     if (kn.length) {
       const spec = weightedPick(kn);
@@ -3808,7 +3971,83 @@ export function initReefScene3D(canvas) {
       + ' standing among stars.',
     wildNote: 'Newly described — deep Pacific seamounts only',
   };
+  // ── Legendary & Mythic Bubble-Energy corals (3D only) ─────────────────────
+  // Until now every Legendary and Mythic coral was Skip-7's (pearls). These
+  // eight are ordinary reef corals at the top of the 🫧 ladder: priced from
+  // CORAL_COST, recorded by survey, settlement or a pack voucher, listed in
+  // their home biome's palette row. Like the Golden Tree they live only here,
+  // so Classic is untouched. All real species.
+  const L = (o) => ({ scientific: '', tall: false, ...o });
+  const LEGEND_SPECS = [
+    L({ id: 'blueCoral', name: 'Blue Coral', scientific: 'Heliopora coerulea',
+      tier: 'legendary', color: 0x5f8fd6, accentColor: 0xa9c4ef, unlockLevel: 9,
+      lore: 'The only soft-coral relative that builds a massive stony skeleton — and it'
+        + ' builds it blue, from iron salts, though you only see the colour where a blade'
+        + ' breaks. A living fossil: the last of a line that goes back a hundred million'
+        + ' years, and oddly happy on hot, shallow reef flats where other corals bleach.',
+      wildNote: 'Indo-Pacific reef flats; listed Vulnerable' }),
+    L({ id: 'flowerpotCoral', name: 'Flowerpot Coral', scientific: 'Goniopora spp.',
+      tier: 'legendary', color: 0x8bc34a, accentColor: 0xffb3d9, unlockLevel: 10,
+      lore: 'By day the mound disappears under a meadow of daisies: every polyp rides a'
+        + ' long fleshy stalk and opens a ring of two dozen tentacles at the top, swaying'
+        + ' together in the surge. Beautiful and notoriously hard to keep — aquarists'
+        + ' call it the coral that teaches patience.',
+      wildNote: 'Indo-Pacific lagoons and turbid reefs' }),
+    L({ id: 'seaPen', name: 'Sea Pen', scientific: 'Ptilosarcus gurneyi',
+      tier: 'legendary', tall: true, color: 0xff8a3d, accentColor: 0xffc27a, unlockLevel: 10,
+      biome: 'seagrass',
+      lore: 'Not one animal but a colony shaped like an old quill pen, standing on soft'
+        + ' sand with its bulbous foot buried. Brush it and it ripples with green light,'
+        + ' then draws itself down into the seabed until only a stub shows. Sea stars'
+        + ' and nudibranchs hunt it; it can live a hundred years dodging them.',
+      wildNote: 'North Pacific sand flats, Alaska to California' }),
+    L({ id: 'bambooCoral', name: 'Bamboo Coral', scientific: 'Isidella / Keratoisis spp.',
+      tier: 'legendary', tall: true, color: 0xece7dc, accentColor: 0x9fd8ff, unlockLevel: 11,
+      biome: 'deepTwilight',
+      lore: 'A deep-sea skeleton of chalk-white internodes joined by dark horny knuckles,'
+        + ' so like bamboo the name needed no imagination. Touched, it flashes blue light'
+        + ' rippling along the colony. Its rings record centuries of ocean chemistry, so'
+        + ' scientists read bamboo corals the way they read trees.',
+      wildNote: 'Deep slopes and seamounts worldwide' }),
+  ];
+  const MYTHIC_SPECS = [
+    L({ id: 'carnationCoral', name: 'Carnation Coral', scientific: 'Dendronephthya spp.',
+      tier: 'mythic', color: 0xff5fa2, accentColor: 0xffc1dd, unlockLevel: 12,
+      lore: 'A glassy trunk crowned with bouquets of prickly polyps in pink, orange or'
+        + ' violet. It keeps no algae and lives on plankton alone, so it inflates with water'
+        + ' at night to feed in the current and shrinks to a wrinkled knot by day.'
+        + ' Divers adore it; almost nobody has kept one alive in a tank.',
+      wildNote: 'Current-swept Indo-Pacific drop-offs' }),
+    L({ id: 'neptunesCup', name: "Neptune's Cup", scientific: 'Cliona patera',
+      tier: 'mythic', tall: true, color: 0xc9b58c, accentColor: 0xe6d9bd, unlockLevel: 13,
+      biome: 'seagrass',
+      lore: 'A goblet sponge a metre across, once so common off Singapore that colonial'
+        + ' households used them as baby baths. Collected to nothing by 1908 and written'
+        + ' off as extinct — until divers found two alive off St John\'s Island in 2011.'
+        + ' A handful are known today. Every one of them is counted.',
+      wildNote: 'Back from extinction — a few known off Singapore and Cambodia' }),
+    L({ id: 'bubblegumCoral', name: 'Bubblegum Coral', scientific: 'Paragorgia arborea',
+      tier: 'mythic', tall: true, blocksB: true, color: 0xf06292, accentColor: 0xffb3cf, unlockLevel: 12,
+      biome: 'deepTwilight',
+      lore: 'One of the biggest corals on Earth: a pink tree taller than a house, every'
+        + ' twig ending in a knob the colour of chewed bubblegum. It grows in the cold dark'
+        + ' for centuries and whole communities of fish, shrimp and brittle stars live in'
+        + ' its branches like birds in an oak.',
+      wildNote: 'Cold deep slopes of the North Atlantic and Pacific' }),
+    L({ id: 'blackCoral', name: 'Black Coral', scientific: 'Leiopathes glaberrima',
+      tier: 'mythic', tall: true, color: 0x4a3a3c, accentColor: 0xff7043, unlockLevel: 14,
+      biome: 'deepTwilight',
+      lore: 'The oldest animal anyone has ever dated: a colony off Hawaii was growing'
+        + ' when the pyramids were new — 4,265 years, a few microns of black horn a year.'
+        + ' The skeleton is jet; the living fuzz over it is orange. Carved into jewellery for'
+        + ' millennia, it is now protected almost everywhere it grows.',
+      wildNote: 'Deep slopes off Hawaii, the Gulf and the Mediterranean' }),
+  ];
+  const LOCAL_CORALS = [GOLDEN_SPEC, ...LEGEND_SPECS, ...MYTHIC_SPECS];   // income corals that live only in 3D
+  // Every reef coral the 3D edition knows: the shared catalog plus the locals.
+  const reefCorals = () => [...allCorals(), ...LOCAL_CORALS];
   const LOCAL_SPECS = { hideyHole: HIDEY_SPEC, goldenTree: GOLDEN_SPEC };
+  for (const s of LOCAL_CORALS) LOCAL_SPECS[s.id] = s;
 
   // ── Coral discovery ─────────────────────────────────────────────────────────
   // Corals are discovered like fish now: the palette's standard coral rows show
@@ -3844,7 +4083,7 @@ export function initReefScene3D(canvas) {
   const SETTLE_HARMONY = 85;
   const SETTLE_CHANCE = 1 / 5400;      // per second while harmony holds
   const discoverableCorals = (zid) =>
-    [...allCorals(), GOLDEN_SPEC].filter(s =>
+    reefCorals().filter(s =>
       !s.utility && !s.pearlCost && !s.eventId && !seen.has(s.id)
       && (zid ? primaryBiome(s) === zid : zoneUnlocked(primaryBiome(s))));
   const surveyCanFind = () =>
@@ -3970,6 +4209,8 @@ export function initReefScene3D(canvas) {
     'seagrass', 'kelp', 'sunCoral', 'lagoonFan', 'fireCoral', 'mangroveSapling',
     'tidepoolAnemone', 'gooseneckBarnacles', 'seaLettuce', 'corallineAlgae',
     'anemoneHome', 'goldenTree',
+    'blueCoral', 'flowerpotCoral', 'seaPen', 'bambooCoral',
+    'carnationCoral', 'neptunesCup', 'bubblegumCoral', 'blackCoral',
       'leafySeaDragon', 'weedySeaDragon', 'molaMola', 'spinnerDolphin',
   ]);
   const isRealSpecies = (id) => REAL_SPECIES.has(id);
@@ -4036,15 +4277,24 @@ export function initReefScene3D(canvas) {
   // full tree five times), and brittle stars gather at the foot of big ones,
   // as in the papers. One mesh per material once baked.
   const GOLD_ROCK_RX = 0.42, GOLD_ROCK_RY = 0.17, GOLD_ROCK_RZ = 0.38;
-  function buildGoldenTreeInto(g, seedBase, lvl = 1) {
+  // The same tree, dressed differently. Black Coral (Leiopathes) is the
+  // architecture in jet horn with orange living tissue: thinner, a little
+  // longer in the limb, no brittle stars, and it does not glow.
+  const TREE_LOOKS = {
+    goldenTree: { bark: 0x8a5a26, barkEm: 0x3a2004, twig: 0xdcab3c, twigEm: 0x7a4e0a,
+      polyp: 0xffd54f, polypEm: 0xffb300, polypGlow: 0.4, stars: true, glow: true, r: 1, len: 1 },
+    blackCoral: { bark: 0x1a1717, barkEm: 0x000000, twig: 0x2b2426, twigEm: 0x000000,
+      polyp: 0xff7043, polypEm: 0x8a2d10, polypGlow: 0.12, stars: false, glow: false, r: 0.75, len: 1.12 },
+  };
+  function buildTreeCoralInto(g, seedBase, lvl = 1, look = TREE_LOOKS.goldenTree) {
     const rnd = mulberry32(seedBase);
     const barkMat = new THREE.MeshStandardMaterial({
-      color: 0x8a5a26, roughness: 0.8, bumpMap: bumpTex, bumpScale: 0.02,
-      emissive: 0x3a2004, emissiveIntensity: 0.15 });
+      color: look.bark, roughness: 0.8, bumpMap: bumpTex, bumpScale: 0.02,
+      emissive: look.barkEm, emissiveIntensity: 0.15 });
     const twigMat = new THREE.MeshStandardMaterial({
-      color: 0xdcab3c, roughness: 0.55, emissive: 0x7a4e0a, emissiveIntensity: 0.3 });
+      color: look.twig, roughness: 0.55, emissive: look.twigEm, emissiveIntensity: 0.3 });
     const polypMat = new THREE.MeshStandardMaterial({
-      color: 0xffd54f, roughness: 0.4, emissive: 0xffb300, emissiveIntensity: 0.4 });
+      color: look.polyp, roughness: 0.4, emissive: look.polypEm, emissiveIntensity: look.polypGlow });
     const starMat = new THREE.MeshStandardMaterial({ color: 0x4a2a24, roughness: 0.9 });
     // The foot: a knob of dark rock, smooth enough that the stars can follow it.
     const rock = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6), coralRock);
@@ -4131,7 +4381,7 @@ export function initReefScene3D(canvas) {
       }
     }
     const stemDir = new THREE.Vector3((rnd() - 0.5) * 0.2, 1, (rnd() - 0.5) * 0.2).normalize();
-    limb(new THREE.Vector3(0, 0.08, 0), stemDir, 0.38 + lvl * 0.015, 0.034 + lvl * 0.005, 0);
+    limb(new THREE.Vector3(0, 0.08, 0), stemDir, (0.38 + lvl * 0.015) * look.len, (0.034 + lvl * 0.005) * look.r, 0);
     if (polyps.length) {
       const merged = mergeGeometries(polyps, false);
       polyps.forEach(x => x.dispose());
@@ -4140,7 +4390,7 @@ export function initReefScene3D(canvas) {
     proto.dispose();
     // Brittle stars at the foot of the bigger trees: a small disc and five
     // thin, kinked arms draped over the rock.
-    const stars = Math.max(0, lvl - 2);
+    const stars = look.stars ? Math.max(0, lvl - 2) : 0;
     for (let i = 0; i < stars; i++) {
       const a = (i / stars) * Math.PI * 2 + rnd() * 1.5, r = 0.14 + rnd() * 0.1;
       const cx = Math.cos(a) * r, cz = Math.sin(a) * r;
@@ -4162,21 +4412,28 @@ export function initReefScene3D(canvas) {
     g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     g.rotation.y = rnd() * Math.PI * 2;
     g.userData.seed = rnd() * 6.28;
-    g.userData.glowMats = [polypMat, twigMat];   // brightens with the biolums after dark
+    g.userData.glowMats = look.glow ? [polypMat, twigMat] : null;   // brightens with the biolums after dark
   }
-  function makeGoldenTree(lvl = 1) {
+  // Species with their own builder instead of the BODY shape families.
+  const CUSTOM_BUILD = {
+    goldenTree: (g, seed, lvl) => buildTreeCoralInto(g, seed, lvl, TREE_LOOKS.goldenTree),
+    blackCoral: (g, seed, lvl) => buildTreeCoralInto(g, seed, lvl, TREE_LOOKS.blackCoral),
+  };
+  // Build a fresh coral of any species at a growth stage (custom or BODY).
+  function makeAnyCoral(spec, lvl = 1) {
+    const custom = CUSTOM_BUILD[spec.id];
+    if (!custom) return makeCoral(spec, lvl);
     const g = new THREE.Group();
-    const seedBase = 7777 + coralCounter++ * 7919;
+    const seedBase = (hashId(spec.id) % 9973) + coralCounter++ * 7919;
     g.userData = { grow: 0, buildSeed: seedBase };
-    buildGoldenTreeInto(g, seedBase, lvl);
+    custom(g, seedBase, lvl);
     g.scale.setScalar(0.01);
     return g;
   }
   // Regrow any coral in place at a new stage — the builder depends on species.
   function rebuildCoral(group, spec, seedBase, lvl) {
     clearCoralGroup(group);
-    if (spec.id === 'goldenTree') buildGoldenTreeInto(group, seedBase, lvl);
-    else buildCoralInto(group, spec, seedBase, lvl);
+    (CUSTOM_BUILD[spec.id] ?? ((g, s, l) => buildCoralInto(g, spec, s, l)))(group, seedBase, lvl);
   }
   function makeHideyHole() {
     const g = new THREE.Group();
@@ -4205,9 +4462,7 @@ export function initReefScene3D(canvas) {
   function addCoral(spec, tile, lvl, growAt) {
     lvl ??= spec.utility ? CORAL_MAX_LEVEL : 0;
     tile.userData.occupied = true;
-    const group = spec.decor ? makeHideyHole()
-      : spec.id === 'goldenTree' ? makeGoldenTree(Math.max(1, lvl))
-      : makeCoral(spec, Math.max(1, lvl));
+    const group = spec.decor ? makeHideyHole() : makeAnyCoral(spec, Math.max(1, lvl));
     group.position.set(tile.position.x, ZONES[tile.userData.biome].floorY + 0.18, tile.position.z);
     const entry = {
       b: tile.userData.biome, c: tile.userData.c, r: tile.userData.r, id: spec.id, level: lvl,
@@ -4427,7 +4682,7 @@ export function initReefScene3D(canvas) {
       droneTrigger('levelUp');
       refreshPackBtn();
       flash(rateEl,
-        level >= MYTHIC_PACK_LEVEL ? '🎁 MYTHIC Pack earned!' : '🎁 Rarity Pack earned!',
+        level >= MYTHIC_PACK_LEVEL ? `🎁 ${TIER_LABEL.mythic} Pack earned!` : '🎁 Rarity Pack earned!',
         '#ffd27f');
     }
   }
@@ -4729,7 +4984,7 @@ export function initReefScene3D(canvas) {
 
   // ── Palette UI (full Classic catalog, grouped by biome, level-gated) ──────────
   const paletteEl = document.getElementById('palette');
-  const coralSpecs = allCorals();
+  const coralSpecs = reefCorals().sort(byUnlock);
   const fishSpecs = allFish();
   let selected = { type: 'coral', spec: coralSpecs.find(s => !s.utility && !s.pearlCost) };
 
@@ -4767,8 +5022,13 @@ export function initReefScene3D(canvas) {
     const btn = document.createElement('button');
     btn.className = 'coral-btn';
     const glyph = type === 'coral' && !spec.utility ? traitIcon(coralTraits(spec.id)) : '';
+    // Rarity under the name in the tier colour, echoed as a stripe down the
+    // row's left edge so a glance down the sidebar reads the tiers.
+    const tiered = TIER_LABEL[spec.tier] != null;
+    if (tiered) btn.style.boxShadow = `inset 3px 0 0 ${tierHex(spec.tier)}`;
     btn.innerHTML = `<span class="dot" style="background:${hex(spec.color)}"></span>`
-      + `${spec.name}${badge}${glyph ? `<span class="trait" title="${traitTags(coralTraits(spec.id)).join(', ')}">${glyph}</span>` : ''}`
+      + `<span class="nm"><span>${spec.name}${badge}${glyph ? `<span class="trait" title="${traitTags(coralTraits(spec.id)).join(', ')}">${glyph}</span>` : ''}</span>`
+      + (tiered ? `<span class="rar" style="color:${tierHex(spec.tier)}">${TIER_LABEL[spec.tier]}</span>` : '') + '</span>'
       + `<span class="free-badge" style="display:none">🎟 FREE</span>`
       + `<small>${n} ${unit}</small>`
       + (need > 1 ? `<span class="lv">Lv${need}</span>` : '');
@@ -4862,7 +5122,6 @@ export function initReefScene3D(canvas) {
     const bio = BIOMES[zid];
     const lv = ZONES[zid].unlock > 1 ? ` · Lv${ZONES[zid].unlock}` : '';
     const cs = stdCorals.filter(s => primaryBiome(s) === zid);
-    if (zid === 'deepTwilight') cs.push(GOLDEN_SPEC);   // the twilight's native glow
     if (cs.length) {
       label(`${bio.icon} ${bio.shortName}${lv} — coral · click a tile`);
       cs.forEach(s => button(s, 'coral'));
@@ -5449,6 +5708,8 @@ export function initReefScene3D(canvas) {
     }
   }
   let THUMB_PX_OVERRIDE = 0;
+  if (window.__rb3d) window.__rb3d.buildCoral = (id, lvl = 5) =>   // dev: a built coral group, for tri counts
+    makeAnyCoral(CORAL_SPECIES[id] ?? LOCAL_SPECS[id], lvl);
   if (window.__rb3d) window.__rb3d.portrait = (id, px, dir) =>
     speciesPortrait({ ...(CORAL_SPECIES[id] ?? FISH_SPECIES[id] ?? LOCAL_SPECS[id]), ...(dir ? { dir } : {}) }, px);
   function speciesThumb(spec) {
@@ -5479,7 +5740,7 @@ export function initReefScene3D(canvas) {
       // A "spec" can also be a portrait request — { id, build, focus?, dir?, zoom? }
       // — used for Skip-7's face on the Pearl Market counter.
       g = spec.build ? spec.build() : spec.layer ? makeFish(spec)
-        : spec.id === 'goldenTree' ? makeGoldenTree(4) : makeCoral(spec);
+        : CUSTOM_BUILD[spec.id] ? makeAnyCoral(spec, 4) : makeCoral(spec);
       if (!spec.layer && !spec.build) g.scale.setScalar(1);   // corals spawn at 0.01 to grow in
       sc.add(g);
       g.updateMatrixWorld(true);
@@ -5552,8 +5813,8 @@ export function initReefScene3D(canvas) {
   function journalRow(spec) {
     const found = seen.has(spec.id);
     const need = Math.max(unlockOf(spec), ZONES[primaryBiome(spec)].unlock);
-    const tierCol = hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5);
-    const badge = `<span style="font-size:9px;letter-spacing:1px;color:${tierCol};`
+    const tierCol = tierHex(spec.tier);
+    const badge = `<span style="font-size:9px;letter-spacing:0.3px;color:${tierCol};`
       + `border:1px solid ${tierCol};border-radius:4px;padding:1px 4px">`
       + `${TIER_LABEL[spec.tier] ?? '?'}</span>`;
     const thumb = found
@@ -5577,7 +5838,7 @@ export function initReefScene3D(canvas) {
   }
   function fillJournal() {
     if (journalTab === 'lost') { fillLostJournals(); return; }
-    const cs = [...coralSpecs, ...Object.values(LOCAL_SPECS)], fs = fishSpecs;
+    const cs = [...coralSpecs, HIDEY_SPEC], fs = fishSpecs;
     const all = [...cs, ...fs];
     const found = all.filter(s => seen.has(s.id)).length;
     journal.ov.querySelector('.m-sub')?.remove();
@@ -6255,12 +6516,11 @@ export function initReefScene3D(canvas) {
   function fillSpecies(spec, kind) {
     const found = seen.has(spec.id);
     const need = Math.max(unlockOf(spec), ZONES[primaryBiome(spec)].unlock);
-    const tierCol = hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5);
     speciesModal.ov.querySelector('.m-title').textContent = found ? spec.name : '???';
     speciesModal.ov.querySelector('.m-sub')?.remove();
     speciesModal.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
       `<div class="m-sub">${found && spec.scientific ? `<i>${spec.scientific}</i> · ` : ''}`
-      + `<span style="color:${tierCol}">${TIER_LABEL[spec.tier] ?? '?'}</span>`
+      + `${tierHtml(spec.tier)}`
       + ` · ${kind === 'coral' ? '🪸 coral' : '🐟 fish'}</div>`);
     const row = (k, v) => `<div class="m-row"><span>${k}</span><small>${v}</small></div>`;
     const biomes = Object.keys(ZONES).filter(z => matchesBiome(spec, z))
@@ -6312,7 +6572,7 @@ export function initReefScene3D(canvas) {
     const traits = [];
     if (kind === 'coral' && !spec.utility) traits.push(...traitTags(coralTraits(spec.id)));
     if (BIOLUM_SPECIES.has(spec.id)) traits.push(LANTERN_CORALS.has(spec.id)
-      ? `🏮 lantern — ${TIER_LABEL[spec.tier] ?? ''} lamp, throws further as it grows`.replace('  ', ' ')
+      ? `🏮 lantern — ${tierHtml(spec.tier)} lamp, throws further as it grows`
       : '✨ lights the water after dark');
     if (DAY_HIDER_SPECIES.has(spec.id)) traits.push('🌙 nocturnal — hides by day');
     if (SCHOOL_SPECIES.has(spec.id)) traits.push('🐟 swims in schools');
@@ -6547,13 +6807,12 @@ export function initReefScene3D(canvas) {
     if (!fishToast || !spec) return;
     fishToastSpec = spec;
     const found = seen.has(spec.id);
-    const tierCol = hex(COLORS[`tier_${spec.tier}`] ?? 0xb0bec5);
     fishToast.innerHTML = (found
       ? `<img class="ft-thumb" src="${speciesThumb(spec)}" alt="">`
       : '<span class="ft-thumb"></span>')
       + `<span><span class="ft-name">${found ? spec.name : 'Unrecorded fish'}</span><br>`
       + `<span class="ft-sub">${found && spec.scientific ? `<i>${spec.scientific}</i> · ` : ''}`
-      + `<span style="color:${tierCol}">${TIER_LABEL[spec.tier] ?? '?'}</span>`
+      + `${tierHtml(spec.tier)}`
       + `${isRealSpecies(spec.id) ? ' · 🌍 real species' : ''}</span></span>`
       + '<span class="ft-more">Learn more ›</span>';
     fishToast.classList.add('show');
@@ -6590,15 +6849,15 @@ export function initReefScene3D(canvas) {
   // 🎁 Packs — Rarity Packs from level-ups, Season Packs from event passes.
   // Every roll's odds are published right here, in plain numbers.
   const packModal = buildMenuModal('🎁 Packs',
-    'Packs cost 🫧 only — never pearls, never real money — and MYTHIC packs are never sold.'
+    `Packs cost 🫧 only — never pearls, never real money — and ${tierHtml('mythic')} packs are never sold.`
     + ' All odds published below.');
   function fillPack() {
     const feat = featuredFish();
     let html = '';
     if (feat) {
       html += `<div class="m-sub">⭐ Featured this week: <b>${feat.name}</b>`
-        + ` (${TIER_LABEL[feat.tier]}) — takes a fixed 25% of the fish roll in`
-        + ` ${TIER_LABEL[feat.tier]} packs.</div>`;
+        + ` (${tierHtml(feat.tier)}) — takes a fixed 25% of the fish roll in`
+        + ` ${tierHtml(feat.tier)} packs.</div>`;
     }
     const dailyOpen = dailyPackDate !== EV_TODAY();
     html += '<div class="m-sec">🌅 Daily Pack — free, once a day</div>'
@@ -6632,12 +6891,12 @@ export function initReefScene3D(canvas) {
         actions = `<small>never sold — Lv ${MYTHIC_PACK_LEVEL}+ level-ups only</small>`;
       }
       html += `<div class="m-row${(n || priceTag) && stocked ? '' : ' locked'}">`
-        + `<span><b>${TIER_LABEL[tier]}</b>${n ? ` ×${n}` : ''}<br>`
+        + `<span><b>${tierHtml(tier)}</b>${n ? ` ×${n}` : ''}<br>`
         + `<span style="font-size:10.5px;color:#9fc4dc">`
         + `60%: ${R.be[0]}–${R.be[1]} 🫧 / 40%: ${R.pearls[0]}–${R.pearls[1]} 💎`
         + (packHasCoral(tier)
-          ? ` · a free ${TIER_LABEL[tier]} coral 🎟 · `
-          : ` · another ${R.be[0]}–${R.be[1]} 🫧 (${TIER_LABEL[tier]} coral is Skip-7's) · `)
+          ? ` · a free ${tierHtml(tier)} coral 🎟 · `
+          : ` · another ${R.be[0]}–${R.be[1]} 🫧 (${tierHtml(tier)} coral is Skip-7's) · `)
         + (stocked
           ? `guaranteed fish (${fp.length} species, wild-abundance odds)`
           : 'no fish in your unlocked waters yet — levels and biomes stock this pack')
@@ -6657,7 +6916,7 @@ export function initReefScene3D(canvas) {
       });
     }
     html += '<div class="m-sub" style="margin-top:10px">Every level-up also mints a free'
-      + ' pack, its tier climbing with your level — and MYTHIC packs are never sold:'
+      + ` pack, its tier climbing with your level — and ${tierHtml('mythic')} packs are never sold:`
       + ' they mint only at level 12 and every level beyond, so the top of the ladder'
       + ' stays skill-gated. Season Packs come only from event pass tiers. Within a'
       + ' tier, species odds follow real-ocean abundance: commoner creatures roll more'
@@ -6703,10 +6962,11 @@ export function initReefScene3D(canvas) {
     const cost = price.be ?? price.pearls;
     const cur = price.be ? '🫧' : '💎';
     const have = Math.floor(price.be ? be : pearls);
-    const lbl = TIER_LABEL[tier] ?? tier;
+    const lbl = tierHtml(tier);
     const short = have < cost;
     packModal.body.innerHTML = '<div class="pack-confirm">'
-      + `<div class="m-sec">Buy a ${lbl} pack?</div>`
+      + '<div class="m-sec">Buy a pack?</div>'
+      + `<div class="pc-name">${lbl} Pack</div>`
       + `<div class="pc-cost">−${cost} ${cur}</div>`
       + (short
         ? `<div class="pc-after">You have ${have} ${cur} — ${cost - have} ${cur} short.</div>`
@@ -6868,9 +7128,9 @@ export function initReefScene3D(canvas) {
       const buyable = eggBuyable(id);
       const pool = packFishPool(et.tier);
       const odds = et.choose
-        ? `hatches the ${TIER_LABEL[et.tier]} you choose — no roll (${pool.length} to pick from)`
-        : `hatches 1 of ${pool.length} ${TIER_LABEL[et.tier]} fish, wild-abundance odds`;
-      it.subEl.textContent = `${fmtMs(et.ms)} incubation · `
+        ? `hatches the ${tierHtml(et.tier)} you choose — no roll (${pool.length} to pick from)`
+        : `hatches 1 of ${pool.length} ${tierHtml(et.tier)} fish, wild-abundance odds`;
+      it.subEl.innerHTML = `${fmtMs(et.ms)} incubation · `
         + (buyable ? odds : 'no species in your unlocked biomes yet — new biomes stock this egg');
       it.card.classList.toggle('locked', !buyable);
       it.buttons[0].textContent = et.be ? `🫧 ${et.be}` : `💎 ${et.pearls}`;
@@ -7065,7 +7325,7 @@ export function initReefScene3D(canvas) {
     if (!saved.coralDisc) {
       // Pre-discovery save: everything the reef could already buy counts as
       // recorded — veterans lose nothing to the new gate.
-      for (const s of [...allCorals(), GOLDEN_SPEC]) {
+      for (const s of reefCorals()) {
         if (s.utility || s.pearlCost || s.eventId) continue;
         const need = Math.max(unlockOf(s), ZONES[primaryBiome(s)].unlock);
         if (need <= level) seen.add(s.id);
@@ -7277,7 +7537,7 @@ export function initReefScene3D(canvas) {
         0.7 + Math.random() * 0.35);
     }
     {   // one wild Golden Tree stands in the twilight grove, as in the papers
-      const gt = makeGoldenTree(5);
+      const gt = makeAnyCoral(GOLDEN_SPEC, 5);
       const gx = tw.cx + twSpot[0], gz = tw.cz + twSpot[1];
       gt.position.set(gx, terrainHeight(gx, gz) + 0.15, gz);
       gt.scale.setScalar(0.95);

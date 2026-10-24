@@ -51,6 +51,7 @@ export const BIOLUM_SPECIES = new Set([
   'twilightWhaleShark',
   // coral
   'auroraCoral', 'lanternCoral', 'orchidCoral', 'twilightBrain', 'phantomPolyp', 'wispCoral', 'lumenCoral',
+  'seaPen', 'bambooCoral',   // 3D-only legendary corals (ReefScene3D LOCAL_SPECS)
 ]);
 
 // Starting resources
@@ -114,13 +115,13 @@ export const TIER = {
 
 // Short display labels for each tier
 export const TIER_LABEL = {
-  common:    'COMMON',
-  uncommon:  'UNCOMMON',
-  rare:      'RARE',
-  superRare: 'S.RARE',
-  epic:      'EPIC',
-  legendary: 'LEGEND',
-  mythic:    'MYTHIC',
+  common:    'Common',
+  uncommon:  'Uncommon',
+  rare:      'Rare',
+  superRare: 'Super Rare',
+  epic:      'Epic',
+  legendary: 'Legendary',
+  mythic:    'Mythic',
 };
 
 // ─── Palette ─────────────────────────────────────────────────────────────────

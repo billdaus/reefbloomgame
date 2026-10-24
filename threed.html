@@ -283,13 +283,15 @@
       background: rgba(0,0,0,0.4); border: 1px solid transparent;
       padding: 6px 10px; border-radius: 10px;
     }
-    .coral-btn small { color: #9fc4dc; margin-left: auto; }
+    .coral-btn small { color: #9fc4dc; margin-left: auto; white-space: nowrap; }
     .coral-btn.sel { border-color: #7fd8ff; background: rgba(20,80,120,0.7); }
     .coral-btn .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
     .coral-btn .trait { font-size: 11px; margin-left: 4px; opacity: 0.85; }
+    .coral-btn .nm { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; line-height: 1.15; }
+    .coral-btn .rar { font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; }
     .coral-btn .lv {
       font-size: 10px; color: #ffd27f; background: rgba(0,0,0,0.35);
-      padding: 1px 5px; border-radius: 8px; letter-spacing: 0.5px;
+      padding: 1px 5px; border-radius: 8px; letter-spacing: 0.5px; white-space: nowrap;
     }
     .coral-btn.locked { opacity: 0.4; }
     .coral-btn.locked .dot { filter: grayscale(1); }
@@ -347,6 +349,7 @@
       font-size: 26px; font-weight: 800; color: #ff8a80; margin: 6px 0 2px;
       font-variant-numeric: tabular-nums;
     }
+    .pack-confirm .pc-name { font-size: 16px; font-weight: 700; margin: 2px 0 6px; }
     .pack-confirm .pc-after { font-size: 12px; color: #9fc4dc; }
     .pack-confirm .pc-auto {
       display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -359,7 +362,7 @@
     .pack-open-btn:disabled { opacity: 0.4; cursor: default; }
     .free-badge {
       font-size: 10px; color: #ffd27f; background: rgba(0,0,0,0.35);
-      padding: 1px 5px; border-radius: 8px; letter-spacing: 0.5px;
+      padding: 1px 5px; border-radius: 8px; letter-spacing: 0.5px; white-space: nowrap;
     }
 
     #hint {
@@ -541,7 +544,8 @@
     .ct-disc.plain span { display: none; }
     .ct-disc.plain em { font-size: 42px; }
     .ct-name { font-size: 13px; font-weight: 700; text-align: center; line-height: 1.2; }
-    .ct-tier { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; }
+    .ct-tier { font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px; }
+    .tier { font-weight: 700; }
     .ct-sub { font-size: 10.5px; color: #9fc4dc; text-align: center; line-height: 1.35; }
     .ct-sub b { color: #eaf6ff; }
     .ct-item .ct-sub:has(br) { text-align: left; }

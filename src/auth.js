@@ -74,15 +74,51 @@ export async function signIn(email, password) {
   return _user;
 }
 
-/** Create an account. Resolves to true if a confirmation code was emailed. */
-export async function signUp(email, password) {
+// ── Usernames ────────────────────────────────────────────────────────────────
+// A username is the name other players would see — stored as Cognito's
+// standard `preferred_username` attribute and carried in the ID token, so it
+// costs no extra lookups. Email stays the sign-in identity; usernames are
+// not enforced unique (no backend exists to check).
+export const USERNAME_MIN = 3, USERNAME_MAX = 20;
+/** Normalises a username; returns a reason string when it isn't acceptable, else null. */
+export function usernameProblem(name) {
+  const n = String(name ?? '').trim().replace(/\s+/g, ' ');
+  if (n.length < USERNAME_MIN) return `Usernames need at least ${USERNAME_MIN} characters.`;
+  if (n.length > USERNAME_MAX) return `Usernames can be at most ${USERNAME_MAX} characters.`;
+  if (!/^[\p{L}\p{N} _.-]+$/u.test(n)) return 'Letters, numbers, spaces, dots, dashes and underscores only.';
+  return null;
+}
+export const cleanUsername = (name) => String(name ?? '').trim().replace(/\s+/g, ' ');
+
+/** Create an account: email + password, plus the username other players see. Resolves true when an emailed code is needed. */
+export async function signUp(email, password, username) {
+  const attrs = [{ Name: 'email', Value: email.trim() }];
+  const u = cleanUsername(username);
+  if (u) attrs.push({ Name: 'preferred_username', Value: u });
   const r = await _idp('SignUp', {
     ClientId: awsConfig.userPoolClientId,
     Username: email.trim(),
     Password: password,
-    UserAttributes: [{ Name: 'email', Value: email.trim() }],
+    UserAttributes: attrs,
   });
   return !r.UserConfirmed;
+}
+
+/** Sets or changes the signed-in player's username, then refreshes the ID token so currentUser() carries it. */
+export async function setUsername(username) {
+  const u = cleanUsername(username);
+  const bad = usernameProblem(u);
+  if (bad) throw Object.assign(new Error(bad), { code: 'InvalidUsername' });
+  const token = await getAccessToken();
+  if (!token) throw new Error('not signed in');
+  await _idp('UpdateUserAttributes', {
+    AccessToken: token,
+    UserAttributes: [{ Name: 'preferred_username', Value: u }],
+  });
+  const t = _readTokens();
+  if (t?.refreshToken) await _refresh(t);   // new ID token → new claims
+  _emit();
+  return u;
 }
 
 export async function confirmSignUp(email, code) {
@@ -182,7 +218,9 @@ function _storeAuth(result, refreshToken) {
 
 function _setUser(t) {
   const claims = _decode(t.idToken);
-  _user = claims ? { email: claims.email ?? null, sub: claims.sub ?? null } : null;
+  _user = claims
+    ? { email: claims.email ?? null, sub: claims.sub ?? null, username: claims.preferred_username ?? null }
+    : null;
 }
 
 function _readTokens() {

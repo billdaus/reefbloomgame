@@ -125,7 +125,7 @@ function initAuthUI(rebuildCards) {
   const render = user => {
     row.innerHTML = '';
     if (user) {
-      row.appendChild(el('span', 'slp-auth-status', `☁️ Reefs synced — ${user.email ?? 'signed in'}`));
+      row.appendChild(el('span', 'slp-auth-status', `☁️ Reefs synced — ${user.username ?? user.email ?? 'signed in'}`));
       const acct = el('button', 'slp-auth-signout', 'Account');
       acct.addEventListener('click', () => openAccountSheet('account'));
       row.appendChild(acct);
