@@ -4,8 +4,8 @@
   "description": "Reef Bloom — ecosystem stewardship prototype",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/gen-mobile.mjs && vite",
-    "build": "node scripts/gen-mobile.mjs && vite build",
+    "dev": "node scripts/gen-mobile.mjs && node scripts/gen-species.mjs && vite",
+    "build": "node scripts/gen-mobile.mjs && node scripts/gen-species.mjs && vite build",
     "preview": "vite preview",
     "build:app": "vite build --mode app",
     "ios:sync": "npm run build:app && cap sync ios",

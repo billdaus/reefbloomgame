@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Complete species guide for Reef Bloom — every coral and fish species, their rarity tiers, unlock levels, biomes, and gameplay details." />
+  <meta name="description" content="Complete species guide for Reef Bloom — all 182 coral, plant and fish species with rarity tiers, unlock levels, biomes, prices and which ones are real. Generated from the game's own data." />
   <title>Species Guide — Reef Bloom</title>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
   <style>
@@ -16,9 +16,7 @@
       padding: 0 0 80px;
     }
     .reef-silhouette {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      height: 100px;
+      position: fixed; bottom: 0; left: 0; right: 0; height: 100px;
       background: linear-gradient(180deg, transparent 0%, rgba(5,20,45,0.55) 35%, rgba(4,15,32,0.96) 100%);
       clip-path: polygon(
         0% 58%, 3% 38%, 6% 54%, 9% 28%, 12% 46%,
@@ -29,158 +27,76 @@
         75% 16%, 78% 33%, 81% 20%, 84% 38%, 87% 26%,
         90% 43%, 93% 30%, 96% 48%, 100% 33%, 100% 100%, 0% 100%
       );
-      pointer-events: none;
-      z-index: 0;
+      pointer-events: none; z-index: 0;
     }
     header {
-      background: rgba(4, 18, 50, 0.55);
-      backdrop-filter: blur(10px);
+      background: rgba(4, 18, 50, 0.55); backdrop-filter: blur(10px);
       border-bottom: 1px solid rgba(100,200,255,0.18);
-      padding: 18px 32px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
+      padding: 18px 32px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
     }
-    header a {
-      color: rgba(255,255,255,0.5);
-      text-decoration: none;
-      font-size: 13px;
-      letter-spacing: 1px;
-      transition: color 0.15s;
-    }
+    header a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: 13px; letter-spacing: 1px; transition: color 0.15s; }
     header a:hover { color: #fff; }
-    header .site-name {
-      font-size: 18px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: 2px;
-      text-decoration: none;
-    }
-    .content {
-      position: relative;
-      max-width: 800px;
-      margin: 48px auto 0;
-      padding: 0 24px;
-      z-index: 1;
-    }
-    h1 {
-      font-size: 32px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: 1px;
-      margin-bottom: 6px;
-    }
-    .tagline {
-      font-size: 14px;
-      color: rgba(255,255,255,0.5);
-      letter-spacing: 1px;
-      margin-bottom: 40px;
-    }
-    h2 {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: rgba(140,210,255,0.85);
-      margin: 36px 0 10px;
-    }
-    h3 {
-      font-size: 16px;
-      font-weight: 700;
-      color: rgba(255,255,255,0.9);
-      margin: 24px 0 8px;
-    }
-    p, li {
-      font-size: 14px;
-      line-height: 1.75;
-      color: rgba(255,255,255,0.75);
-    }
-    ul {
-      padding-left: 20px;
-      margin-top: 6px;
-    }
-    li { margin-bottom: 4px; }
+    header .site-name { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: 2px; text-decoration: none; }
+    .content { position: relative; max-width: 860px; margin: 48px auto 0; padding: 0 24px; z-index: 1; }
+    h1 { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: 1px; margin-bottom: 6px; }
+    .tagline { font-size: 14px; color: rgba(255,255,255,0.5); letter-spacing: 1px; margin-bottom: 28px; }
+    h2 { font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: rgba(140,210,255,0.85); margin: 40px 0 10px; }
+    h3 { font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.9); margin: 24px 0 8px; }
+    h3 .when { font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.5); margin-left: 8px; letter-spacing: 0.5px; }
+    p, li { font-size: 14px; line-height: 1.75; color: rgba(255,255,255,0.75); }
+    p { margin-bottom: 12px; }
     a { color: rgba(140,210,255,0.9); }
     a:hover { color: #fff; }
-    strong { color: rgba(255,255,255,0.9); }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 12px 0 24px;
-      font-size: 13px;
+    b, strong { color: rgba(255,255,255,0.9); }
+    small { color: rgba(255,255,255,0.45); font-size: 0.85em; }
+    .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; }
+    .stats div {
+      flex: 1 1 130px; background: rgba(4,18,50,0.45); border: 1px solid rgba(100,200,255,0.18); border-radius: 12px;
+      padding: 12px 14px; display: flex; flex-direction: column; gap: 2px;
     }
+    .stats b { font-size: 24px; font-weight: 800; color: #fff; line-height: 1.1; }
+    .stats span { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: rgba(140,210,255,0.7); }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 13px; }
     th {
-      text-align: left;
-      padding: 8px 10px;
-      font-size: 10px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: rgba(140,210,255,0.65);
-      border-bottom: 1px solid rgba(100,200,255,0.2);
+      text-align: left; padding: 8px 10px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(140,210,255,0.65); border-bottom: 1px solid rgba(100,200,255,0.2);
     }
-    td {
-      padding: 8px 10px;
-      color: rgba(255,255,255,0.72);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      vertical-align: top;
-    }
+    td { padding: 8px 10px; color: rgba(255,255,255,0.72); border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: top; line-height: 1.6; }
     tr:last-child td { border-bottom: none; }
-    td:first-child { font-weight: 600; color: rgba(200,230,255,0.9); white-space: nowrap; }
+    td:first-child { font-weight: 600; color: rgba(200,230,255,0.92); }
+    td.lv, td.cost { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    td.lv small { color: rgba(127,216,255,0.7); }
+    .bio { font-size: 11px; letter-spacing: 1px; }
     .tier-badge {
-      display: inline-block;
-      padding: 1px 8px;
-      border-radius: 20px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      white-space: nowrap;
+      display: inline-block; padding: 1px 8px; border-radius: 20px; border: 1px solid;
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px; white-space: nowrap;
     }
-    .tier-common     { background: rgba(100,180,255,0.15); color: rgba(100,180,255,0.85); border: 1px solid rgba(100,180,255,0.3); }
-    .tier-uncommon   { background: rgba(130,200,130,0.15); color: rgba(130,200,130,0.85); border: 1px solid rgba(130,200,130,0.3); }
-    .tier-rare       { background: rgba(66,165,245,0.15); color: rgba(100,180,255,0.9); border: 1px solid rgba(66,165,245,0.35); }
-    .tier-superrare  { background: rgba(102,187,106,0.15); color: rgba(102,187,106,0.9); border: 1px solid rgba(102,187,106,0.35); }
-    .tier-epic       { background: rgba(239,83,80,0.15); color: rgba(239,120,120,0.9); border: 1px solid rgba(239,83,80,0.35); }
-    .tier-legendary  { background: rgba(255,183,77,0.15); color: rgba(255,183,77,0.9); border: 1px solid rgba(255,183,77,0.35); }
-    .tier-mythic     { background: rgba(206,147,216,0.15); color: rgba(206,147,216,0.9); border: 1px solid rgba(206,147,216,0.35); }
-    .section-intro {
-      margin-bottom: 16px;
+    .tag {
+      display: inline-block; font-size: 10px; letter-spacing: 0.5px; color: rgba(255,255,255,0.6);
+      background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0 6px; margin: 1px 0; white-space: nowrap;
     }
+    .wild { display: block; font-size: 12px; color: rgba(180,220,255,0.7); font-style: italic; }
+    em { color: rgba(180,220,255,0.8); }
+    .section-intro { margin-bottom: 14px; }
+    .play-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
     .play-btn {
-      display: inline-block;
-      margin-top: 28px;
-      padding: 14px 48px;
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: #0a3050;
-      background: #fff;
-      border-radius: 40px;
-      text-decoration: none;
-      box-shadow: 0 4px 32px rgba(0,100,200,0.4);
-      transition: transform 0.12s, background 0.12s;
+      display: inline-block; padding: 14px 48px; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      color: #0a3050; background: #fff; border-radius: 40px; text-decoration: none;
+      box-shadow: 0 4px 32px rgba(0,100,200,0.4); transition: transform 0.12s, background 0.12s;
     }
     .play-btn:hover { background: #d0f0ff; transform: scale(1.04); color: #0a3050; }
-    .divider {
-      border: none;
-      border-top: 1px solid rgba(100,200,255,0.15);
-      margin: 36px 0 0;
-    }
-    footer {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 40px 24px 20px;
-      font-size: 12px;
-      color: rgba(255,255,255,0.35);
-    }
+    .play-btn.secondary { background: #0a3050; color: #cfe6f4; box-shadow: 0 4px 32px rgba(0,60,120,0.5); }
+    .play-btn.secondary:hover { background: #124a78; color: #fff; }
+    .divider { border: none; border-top: 1px solid rgba(100,200,255,0.15); margin: 36px 0 0; }
+    footer { position: relative; z-index: 1; text-align: center; padding: 40px 24px 20px; font-size: 12px; color: rgba(255,255,255,0.35); }
     footer a { color: rgba(140,210,255,0.6); text-decoration: none; }
     footer a:hover { color: #fff; }
     @media (max-width: 639px) {
-      header { padding: 12px 16px; gap: 14px; }
-      .content { padding: 0 12px; }
-      table { font-size: 11px; }
-      th, td { padding: 6px 6px; }
+      header { padding: 12px 16px; gap: 12px; }
+      .content { padding: 0 10px; }
+      table { font-size: 11.5px; }
+      th, td { padding: 6px 5px; }
+      td.cost { display: none; } th:nth-child(4) { display: none; }
     }
   </style>
 </head>
@@ -198,143 +114,286 @@
 
   <div class="content">
     <h1>Species Guide</h1>
-    <p class="tagline">Every coral and fish in Reef Bloom, organized by biome.</p>
+    <p class="tagline">Every coral, plant and fish in Reef Bloom — 182 species, generated from the game itself &nbsp;&middot;&nbsp; v1.2.6</p>
 
-    <!-- ── Coral Reef Coral ──────────────────────────────────────────────── -->
-    <h2>Coral Reef — Coral Species</h2>
-    <p class="section-intro">Coral is the foundation of your reef. Each species generates Bubble Energy passively and contributes to your reef's Harmony score. Tall coral blocks Layer A fish movement, so plan placement carefully.</p>
+    <div class="stats">
+      <div><b>58</b><span>corals &amp; plants</span></div>
+      <div><b>124</b><span>fish &amp; friends</span></div>
+      <div><b>140</b><span>real species 🌍</span></div>
+      <div><b>9</b><span>3D-only corals</span></div>
+      <div><b>8</b><span>seasonal events</span></div>
+    </div>
 
-    <table>
-      <thead>
-        <tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Tall</th><th>Notes</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Starter Coral</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>No</td><td>Your first coral. Cheap and reliable BE source.</td></tr>
-        <tr><td>Firetip Coral</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>Yes</td><td>Orange-tipped coral. Blocks Layer A fish.</td></tr>
-        <tr><td>Ghost Coral</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>No</td><td>Pale white coral. Subtle and elegant.</td></tr>
-        <tr><td>Staghorn Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>Yes</td><td><em>Acropora cervicornis</em> — branching cyan coral.</td></tr>
-        <tr><td>Finger Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>Yes</td><td><em>Porites compressa</em> — purple finger-like branches.</td></tr>
-        <tr><td>Brain Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>No</td><td><em>Platygyra spp.</em> — round, orange with maze-like ridges.</td></tr>
-        <tr><td>Lettuce Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>No</td><td><em>Agaricia spp.</em> — flat green plates.</td></tr>
-        <tr><td>Star Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>No</td><td><em>Orbicella spp.</em> — golden dome-shaped coral.</td></tr>
-        <tr><td>Bubble Coral</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>No</td><td><em>Physogyra lichtensteini</em> — inflated bubble-like polyps.</td></tr>
-        <tr><td>Candy Cane Coral</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>Yes</td><td><em>Caulastrea furcata</em> — pink striped stalks.</td></tr>
-        <tr><td>Toadstool Leather</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>No</td><td><em>Sarcophyton spp.</em> — soft green leather coral.</td></tr>
-        <tr><td>Elkhorn Coral</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>Yes</td><td><em>Acropora palmata</em> — massive branching. Blocks Layer B fish.</td></tr>
-        <tr><td>Pillar Coral</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>Yes</td><td><em>Dendrogyra cylindrus</em> — tall golden pillars. Blocks Layer B fish.</td></tr>
-        <tr><td>Table Coral</td><td><span class="tier-badge tier-legendary">Legendary</span></td><td>Lv 10</td><td>No</td><td>Costs Pearls. Wide flat table shape. Blocks Layer B fish.</td></tr>
-        <tr><td>Rainbow Coral</td><td><span class="tier-badge tier-mythic">Mythic</span></td><td>Lv 12</td><td>No</td><td>Costs Pearls. Shifts through vibrant colors.</td></tr>
-        <tr><td>Sunfire Coral</td><td><span class="tier-badge tier-mythic">Mythic</span></td><td>Lv 12</td><td>Yes</td><td>Costs Pearls. Glowing orange. Blocks Layer B fish.</td></tr>
-      </tbody>
-    </table>
+    <p>Both editions of Reef Bloom — the original browser game and the 3D reef on the web, iPhone and iPad — share this catalogue. The 3D edition adds 9 corals of its own (marked <span class="tag" title="">3D</span>) and stretches the level curve: a species that unlocks at Classic level <b>n</b> unlocks at 3D level <b>2n&nbsp;&minus;&nbsp;1</b>, shown in the Unlock column as <span class="lv">Lv n <small>/ 3D</small></span>. Biomes unlock in the same way: the Seagrass Basin at Classic Lv 3 <small>/ 5</small>, the Deep Twilight at Lv 6 <small>/ 11</small>.</p>
 
-    <!-- ── Coral Reef Fish ────────────────────────────────────────────────── -->
-    <h2>Coral Reef — Fish Species</h2>
-    <p class="section-intro">Fish swim autonomously using boids-style flocking AI. Layer A fish are small and avoid all tall coral. Layer B fish are larger and only avoid coral marked as "blocksB" (Elkhorn, Pillar, Table, Sunfire).</p>
+    <h2>Rarity Tiers</h2>
+    <p class="section-intro">Seven tiers, colour-coded the same way in the game. Rarer coral earns more Bubble Energy per tick; rarer fish lift Harmony further. Prices are the standard 🫧 Bubble Energy cost — a few species are sold for 💎 pearls at Skip-7's Pearl Market or earned with 🎟 event tokens instead.</p>
+    <table class="tiers"><thead><tr><th>Tier</th><th>Coral</th><th>Fish</th><th>How you find them</th></tr></thead><tbody>
+      <tr><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="cost">5 🫧</td><td class="cost">2 🫧</td><td>Known from the start.</td></tr>
+      <tr><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="cost">10 🫧</td><td class="cost">5 🫧</td><td>Early surveys and eggs.</td></tr>
+      <tr><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="cost">20 🫧</td><td class="cost">10 🫧</td><td>Surveys, eggs and packs.</td></tr>
+      <tr><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="cost">25 🫧</td><td class="cost">25 🫧</td><td>Deeper surveys; Super Rare eggs and packs.</td></tr>
+      <tr><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="cost">60 🫧</td><td class="cost">60 🫧</td><td>Epic eggs and packs; late surveys.</td></tr>
+      <tr><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="cost">150 🫧</td><td class="cost">150 🫧</td><td>Legendary packs and eggs — or, for coral, a Deep Twilight survey.</td></tr>
+      <tr><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="cost">300 🫧</td><td class="cost">300 🫧</td><td>Mythic packs are never sold: level-ups only, from Lv 23 in 3D.</td></tr>
+    </tbody></table>
 
-    <table>
-      <thead>
-        <tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Layer</th><th>Notes</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Blue Chromis</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>A</td><td>Small, fast blue schooling fish.</td></tr>
-        <tr><td>Green Chromis</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>A</td><td><em>Chromis viridis</em> — green schooling fish.</td></tr>
-        <tr><td>Neon Goby</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>A</td><td><em>Elacatinus oceanops</em> — tiny dark fish with neon stripe.</td></tr>
-        <tr><td>Firefish</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>A</td><td><em>Nemateleotris magnifica</em> — pale body, fiery red tail.</td></tr>
-        <tr><td>Zebra Goby</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>A</td><td>Yellow with dark banding.</td></tr>
-        <tr><td>Cardinalfish</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>A</td><td>Pinkish-red, slow-moving.</td></tr>
-        <tr><td>Damselfish</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 2</td><td>A</td><td><em>Pomacentridae spp.</em> — bold blue territorial fish.</td></tr>
-        <tr><td>Clownfish</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>A</td><td><em>Amphiprion ocellaris</em> — iconic orange with white bands.</td></tr>
-        <tr><td>Yellow Tang</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>B</td><td><em>Zebrasoma flavescens</em> — dual-biome (Coral + Seagrass).</td></tr>
-        <tr><td>Blue Tang</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>B</td><td>Deep blue — dual-biome (Coral + Seagrass).</td></tr>
-        <tr><td>Royal Gramma</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>A</td><td><em>Gramma loreto</em> — purple and yellow bicolor.</td></tr>
-        <tr><td>Octopus</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 4</td><td>B</td><td><em>Octopus vulgaris</em> — slow, intelligent-looking cephalopod.</td></tr>
-        <tr><td>Pajama Cardinalfish</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 4</td><td>A</td><td><em>Sphaeramia nematoptera</em> — white with red spots.</td></tr>
-        <tr><td>Moorish Idol</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>B</td><td><em>Zanclus cornutus</em> — elegant black-and-white with yellow.</td></tr>
-        <tr><td>Butterflyfish</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>A</td><td><em>Chaetodon spp.</em> — white and gold disc-shaped.</td></tr>
-        <tr><td>Zebrafish</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>A</td><td><em>Danio rerio</em> — fast white-and-navy stripes.</td></tr>
-        <tr><td>Seahorse</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>A</td><td><em>Hippocampus spp.</em> — the slowest fish in the game.</td></tr>
-        <tr><td>Shrimp Goby</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>A</td><td><em>Amblyeleotris spp.</em> — pale orange, small.</td></tr>
-        <tr><td>Banggai Cardinalfish</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>A</td><td><em>Pterapogon kauderni</em> — striking black-and-white pattern.</td></tr>
-        <tr><td>Cleaner Wrasse</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 6</td><td>A</td><td><em>Labroides dimidiatus</em> — blue with yellow accents.</td></tr>
-        <tr><td>Cuttlefish</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>B</td><td><em>Sepia spp.</em> — large purple cephalopod.</td></tr>
-        <tr><td>Moray Eel</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>B</td><td><em>Gymnothorax spp.</em> — long brown serpentine swimmer.</td></tr>
-        <tr><td>Flame Angelfish</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>B</td><td><em>Centropyge loricula</em> — vivid red-orange.</td></tr>
-        <tr><td>Mandarinfish</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 8</td><td>A</td><td><em>Synchiropus splendidus</em> — psychedelic blue-orange patterns.</td></tr>
-        <tr><td>Harlequin Tuskfish</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 8</td><td>B</td><td><em>Choerodon fasciatus</em> — blue with orange stripes.</td></tr>
-        <tr><td>Dolphin</td><td><span class="tier-badge tier-legendary">Legendary</span></td><td>Lv 10</td><td>B</td><td><em>Tursiops truncatus</em> — the largest and fastest reef visitor.</td></tr>
-        <tr><td>Blue Ribbon Eel</td><td><span class="tier-badge tier-legendary">Legendary</span></td><td>Lv 10</td><td>B</td><td><em>Rhinomuraena quaesita</em> — long blue eel with yellow accents.</td></tr>
-        <tr><td>Reef Shark</td><td><span class="tier-badge tier-mythic">Mythic</span></td><td>Lv 12</td><td>B</td><td><em>Carcharhinus amblyrhynchos</em> — the apex of your reef.</td></tr>
-        <tr><td>Napoleon Wrasse</td><td><span class="tier-badge tier-mythic">Mythic</span></td><td>Lv 13</td><td>B</td><td><em>Cheilinus undulatus</em> — huge indigo wrasse.</td></tr>
-        <tr><td>Giant Moray</td><td><span class="tier-badge tier-mythic">Mythic</span></td><td>Lv 14</td><td>B</td><td><em>Gymnothorax javanicus</em> — the largest eel in the game.</td></tr>
-      </tbody>
-    </table>
+    <h2>🪸 Coral Reef</h2>
+    <p class="section-intro">The sunlit shallows: stony reef-builders that host symbiotic algae, and the small schooling fish that shelter among them.</p>
+    
+    <h3>Coral</h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Starter Coral</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">5 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span></td></tr>
+<tr><td>Firetip Coral</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">10 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Ghost Coral</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">10 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span></td></tr>
+<tr><td>Brain Coral</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">20 🫧</td><td><em>Platygyra spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Finger Coral</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">20 🫧</td><td><em>Porites compressa</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Lettuce Coral</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">20 🫧</td><td><em>Agaricia spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Staghorn Coral</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">20 🫧</td><td><em>Acropora cervicornis</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Star Coral</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">20 🫧</td><td><em>Orbicella spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Bubble Coral</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Physogyra lichtensteini</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Candy Cane Coral</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Caulastrea furcata</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Toadstool Leather</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Sarcophyton spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Lantern Coral <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">20 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Lights the water after dark, in every biome">🏮 lantern</span></td></tr>
+<tr><td>Elkhorn Coral</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">60 🫧</td><td><em>Acropora palmata</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Blocks the big (Layer B) swimmers too">blocks B</span></td></tr>
+<tr><td>Pillar Coral</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">60 🫧</td><td><em>Dendrogyra cylindrus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Blocks the big (Layer B) swimmers too">blocks B</span></td></tr>
+<tr><td>Blue Coral <span class="tag" title="Only in the 3D edition">3D</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">150 🫧</td><td><em>Heliopora coerulea</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="wild">Indo-Pacific reef flats; listed Vulnerable</span></td></tr>
+<tr><td>Flowerpot Coral <span class="tag" title="Only in the 3D edition">3D</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">150 🫧</td><td><em>Goniopora spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="wild">Indo-Pacific lagoons and turbid reefs</span></td></tr>
+<tr><td>Carnation Coral <span class="tag" title="Only in the 3D edition">3D</span></td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">300 🫧</td><td><em>Dendronephthya spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="wild">Current-swept Indo-Pacific drop-offs</span></td></tr></tbody></table>
 
-    <!-- ── Seagrass Basin ─────────────────────────────────────────────────── -->
-    <h2>Seagrass Basin — Vegetation</h2>
-    <p class="section-intro">The Seagrass Basin biome features underwater vegetation instead of traditional coral. These plants function the same as coral for BE generation but create a completely different visual atmosphere.</p>
+    <h3>Fish</h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Anthias</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">2 🫧</td><td><em>Pseudanthias squamipinnis</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Blue Chromis</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">2 🫧</td><td><span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Firefish</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">2 🫧</td><td><em>Nemateleotris magnifica</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Green Chromis</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">2 🫧</td><td><em>Chromis viridis</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Neon Goby</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">2 🫧</td><td><em>Elacatinus oceanops</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Gavin</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 1</td><td class="cost">60 🫧</td><td><em>Pisces gaseousus</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Blenny</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">2 🫧</td><td><em>Ecsenius spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Damselfish</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">2 🫧</td><td><em>Pomacentridae spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Cardinalfish</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">5 🫧</td><td><span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Hawkfish</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">5 🫧</td><td><em>Cirrhitidae spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Zebra Goby</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">5 🫧</td><td><span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Cleaner Shrimp <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">2 🫧</td><td><em>Lysmata amboinensis</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Cleans the reef">🧽 cleaner</span></td></tr>
+<tr><td>Squirrelfish</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">2 🫧</td><td><em>Sargocentron spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Out after dark">🌙 nocturnal</span></td></tr>
+<tr><td>Dottyback</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">5 🫧</td><td><em>Pseudochromis spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Blue Tang <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">10 🫧</td><td><span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Clownfish</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">10 🫧</td><td><em>Amphiprion ocellaris</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Royal Gramma</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">10 🫧</td><td><em>Gramma loreto</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Yellow Tang <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">10 🫧</td><td><em>Zebrasoma flavescens</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Filefish</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 4 <small>/ 7</small></td><td class="cost">5 🫧</td><td><em>Monacanthidae spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Octopus</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 4 <small>/ 7</small></td><td class="cost">10 🫧</td><td><em>Octopus vulgaris</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Out after dark">🌙 nocturnal</span></td></tr>
+<tr><td>Pajama Cardinalfish</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 4 <small>/ 7</small></td><td class="cost">10 🫧</td><td><em>Sphaeramia nematoptera</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Raccoon Butterflyfish</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 4 <small>/ 7</small></td><td class="cost">10 🫧</td><td><em>Chaetodon lunula</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Boxfish</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">5 🫧</td><td><em>Ostracion cubicus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Bicolor Angelfish</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">10 🫧</td><td><em>Centropyge bicolor</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Longnose Butterflyfish</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">10 🫧</td><td><em>Forcipiger flavissimus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Banggai Cardinalfish</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Pterapogon kauderni</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Butterflyfish</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Chaetodon spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Moorish Idol</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Zanclus cornutus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Seahorse</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Hippocampus spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Shrimp Goby</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Amblyeleotris spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Zebrafish</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Danio rerio</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Foxface Rabbitfish <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">10 🫧</td><td><em>Siganus vulpinus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Powder Brown Tang</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">10 🫧</td><td><em>Acanthurus japonicus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Cleaner Wrasse <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">25 🫧</td><td><em>Labroides dimidiatus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Cleans the reef">🧽 cleaner</span></td></tr>
+<tr><td>Lionfish</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">25 🫧</td><td><em>Pterois volitans</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Copperband Butterflyfish</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">10 🫧</td><td><em>Chelmon rostratus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Porcupine Puffer</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">10 🫧</td><td><em>Diodon holocanthus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Clown Triggerfish</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">25 🫧</td><td><em>Balistoides conspicillum</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Cuttlefish</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">60 🫧</td><td><em>Sepia spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Out after dark">🌙 nocturnal</span></td></tr>
+<tr><td>Flame Angelfish</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">60 🫧</td><td><em>Centropyge loricula</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Moray Eel</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">60 🫧</td><td><em>Gymnothorax spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Out after dark">🌙 nocturnal</span></td></tr>
+<tr><td>Spotted Drum</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">10 🫧</td><td><em>Equetus punctatus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Emperor Snapper</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">25 🫧</td><td><em>Lutjanus sebae</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Harlequin Tuskfish</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">60 🫧</td><td><em>Choerodon fasciatus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Mandarinfish</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">60 🫧</td><td><em>Synchiropus splendidus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Scorpionfish</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">60 🫧</td><td><em>Scorpaenopsis spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Out after dark">🌙 nocturnal</span></td></tr>
+<tr><td>Emperor Angelfish</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">25 🫧</td><td><em>Pomacanthus imperator</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Longfin Batfish</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">60 🫧</td><td><em>Platax teira</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Frogfish</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">25 🫧</td><td><em>Antennarius spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Blue Ribbon Eel</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">150 🫧</td><td><em>Rhinomuraena quaesita</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Out after dark">🌙 nocturnal</span></td></tr>
+<tr><td>Dolphin</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">150 🫧</td><td><em>Tursiops truncatus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Giant Trevally <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 11 <small>/ 21</small></td><td class="cost">60 🫧</td><td><em>Caranx ignobilis</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Sea Turtle <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 11 <small>/ 21</small></td><td class="cost">300 🫧</td><td><em>Chelonia mydas</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Blacktip Reef Shark</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">60 🫧</td><td><em>Carcharhinus melanopterus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Grey Reef Shark</td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">300 🫧</td><td><em>Carcharhinus amblyrhynchos</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Whale Shark <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 13 <small>/ 25</small></td><td class="cost">150 🫧</td><td><em>Rhincodon typus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Napoleon Wrasse</td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 13 <small>/ 25</small></td><td class="cost">300 🫧</td><td><em>Cheilinus undulatus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Giant Moray</td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 14 <small>/ 27</small></td><td class="cost">300 🫧</td><td><em>Gymnothorax javanicus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Out after dark">🌙 nocturnal</span></td></tr></tbody></table>
 
-    <table>
-      <thead>
-        <tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Tall</th><th>Notes</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Barnacles</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>No</td><td>Rocky grey clusters. Cheap BE source.</td></tr>
-        <tr><td>Seaweed</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 1</td><td>No</td><td><em>Ulva sp.</em> — bright green sheets.</td></tr>
-        <tr><td>Red Seagrass</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>No</td><td><em>Halymenia sp.</em> — deep red fronds.</td></tr>
-        <tr><td>Seagrass</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>No</td><td><em>Halophila sp.</em> — the biome's namesake. Ripples when grazed.</td></tr>
-        <tr><td>Giant Kelp</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>Yes</td><td><em>Macrocystis pyrifera</em> — tall, blocks Layer B. Impressive visuals.</td></tr>
-      </tbody>
-    </table>
 
-    <h2>Seagrass Basin — Fish &amp; Grazers</h2>
-    <p class="section-intro">Grazers are unique to the Seagrass Basin. They generate bonus BE while feeding on seagrass patches, making them a source of passive income beyond coral. Dual-biome fish (Yellow Tang, Blue Tang) travel between Coral Reef and Seagrass automatically.</p>
+    <h2>🌿 Seagrass Basin</h2>
+    <p class="section-intro">Underwater meadows and kelp instead of stony coral, grazed by herbivores that turn seagrass into bonus energy.</p>
+    
+    <h3>Plants &amp; Coral</h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Barnacles</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">5 🫧</td><td><em>Balanus sp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Seaweed</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 1</td><td class="cost">10 🫧</td><td><em>Ulva sp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Red Seagrass</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">10 🫧</td><td><em>Halymenia sp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Seagrass</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">20 🫧</td><td><em>Halophila sp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Giant Kelp</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Macrocystis pyrifera</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Blocks the big (Layer B) swimmers too">blocks B</span></td></tr>
+<tr><td>Sun Coral</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">10 🫧</td><td><em>Tubastraea coccinea</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Lagoon Sea Fan</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">20 🫧</td><td><em>Gorgonia flabellum</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Giant Green Anemone</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">10 🫧</td><td><em>Anthopleura xanthogrammica</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Fire Coral</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">20 🫧</td><td><em>Millepora alcicornis</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Gooseneck Barnacles</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">20 🫧</td><td><em>Pollicipes polymerus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Sea Lettuce</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">10 🫧</td><td><em>Ulva lactuca</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Mangrove Sapling</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">25 🫧</td><td><em>Rhizophora mangle</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Sea Pen <span class="tag" title="Only in the 3D edition">3D</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">150 🫧</td><td><em>Ptilosarcus gurneyi</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span> <span class="wild">North Pacific sand flats, Alaska to California</span></td></tr>
+<tr><td>Coralline Algae</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 11 <small>/ 21</small></td><td class="cost">25 🫧</td><td><em>Corallina officinalis</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span></td></tr>
+<tr><td>Neptune's Cup <span class="tag" title="Only in the 3D edition">3D</span></td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 13 <small>/ 25</small></td><td class="cost">300 🫧</td><td><em>Cliona patera</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="wild">Back from extinction — a few known off Singapore and Cambodia</span></td></tr></tbody></table>
 
-    <table>
-      <thead>
-        <tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Type</th><th>Notes</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Pipefish</td><td><span class="tier-badge tier-common">Common</span></td><td>Lv 1</td><td>Grazer</td><td><em>Syngnathus spp.</em> — long, thin, slow green fish.</td></tr>
-        <tr><td>Sand Dollar</td><td><span class="tier-badge tier-uncommon">Uncommon</span></td><td>Lv 2</td><td>Grazer</td><td><em>Echinarachnius parma</em> — nearly stationary bottom feeder.</td></tr>
-        <tr><td>Horseshoe Crab</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 3</td><td>Benthic</td><td><em>Limulus polyphemus</em> — armored bottom crawler.</td></tr>
-        <tr><td>Queen Conch</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 4</td><td>Grazer</td><td><em>Aliger gigas</em> — large slow-moving shell.</td></tr>
-        <tr><td>Pufferfish</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 5</td><td>Grazer</td><td><em>Tetraodontidae spp.</em> — round, spiny, and charming.</td></tr>
-        <tr><td>Spotted Eagle Ray</td><td><span class="tier-badge tier-epic">Epic</span></td><td>Lv 7</td><td>Fish</td><td><em>Aetobatus narinari</em> — wide dark ray with white spots.</td></tr>
-      </tbody>
-    </table>
+    <h3>Fish &amp; Grazers</h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Pipefish</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">2 🫧</td><td><em>Syngnathus spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Feeds on seagrass for bonus energy">🌿 grazer</span></td></tr>
+<tr><td>Sand Dollar</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">5 🫧</td><td><em>Echinarachnius parma</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Feeds on seagrass for bonus energy">🌿 grazer</span></td></tr>
+<tr><td>Tropic Blenny</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">5 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Feeds on seagrass for bonus energy">🌿 grazer</span></td></tr>
+<tr><td>Horseshoe Crab</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">10 🫧</td><td><em>Limulus polyphemus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Sea Urchin</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">10 🫧</td><td><em>Diadema antillarum</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Feeds on seagrass for bonus energy">🌿 grazer</span></td></tr>
+<tr><td>Goatfish</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 4 <small>/ 7</small></td><td class="cost">5 🫧</td><td><em>Mullidae spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Queen Conch</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 4 <small>/ 7</small></td><td class="cost">10 🫧</td><td><em>Aliger gigas</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Feeds on seagrass for bonus energy">🌿 grazer</span></td></tr>
+<tr><td>Parrotfish</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Scaridae spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Feeds on seagrass for bonus energy">🌿 grazer</span></td></tr>
+<tr><td>Pufferfish</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">25 🫧</td><td><em>Tetraodontidae spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Feeds on seagrass for bonus energy">🌿 grazer</span></td></tr>
+<tr><td>Rabbitfish</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">60 🫧</td><td><em>Siganus spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Feeds on seagrass for bonus energy">🌿 grazer</span></td></tr>
+<tr><td>Spotted Eagle Ray</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">60 🫧</td><td><em>Aetobatus narinari</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Sergeant Major</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">2 🫧</td><td><em>Abudefduf saxatilis</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Striped Mullet</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">2 🫧</td><td><em>Mugil cephalus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Hermit Crab</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">5 🫧</td><td><em>Pagurus bernhardus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Manatee</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">150 🫧</td><td><em>Trichechus manatus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Tidepool Sculpin</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">2 🫧</td><td><em>Oligocottus maculosus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Bonefish</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">5 🫧</td><td><em>Albula vulpes</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Ochre Sea Star</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">5 🫧</td><td><em>Pisaster ochraceus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Flamingo Tongue</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">10 🫧</td><td><em>Cyphoma gibbosum</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Dugong</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">150 🫧</td><td><em>Dugong dugon</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Feeds on seagrass for bonus energy">🌿 grazer</span></td></tr>
+<tr><td>Gumboot Chiton</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">10 🫧</td><td><em>Cryptochiton stelleri</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Shore Crab</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">10 🫧</td><td><em>Pachygrapsus crassipes</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Southern Stingray</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">60 🫧</td><td><em>Hypanus americanus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Opaleye</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 11 <small>/ 21</small></td><td class="cost">25 🫧</td><td><em>Girella nigricans</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Ruby Octopus</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">60 🫧</td><td><em>Octopus rubescens</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Out after dark">🌙 nocturnal</span></td></tr>
+<tr><td>Lemon Shark</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">150 🫧</td><td><em>Negaprion brevirostris</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Sea Otter</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 13 <small>/ 25</small></td><td class="cost">150 🫧</td><td><em>Enhydra lutris</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr></tbody></table>
 
-    <!-- ── Deep Twilight ──────────────────────────────────────────────────── -->
-    <h2>Deep Twilight — Coral</h2>
-    <p class="section-intro">The Deep Twilight biome features bioluminescent coral that glows softly in deep water. These species create an otherworldly atmosphere and tend to unlock at higher levels.</p>
 
-    <table>
-      <thead>
-        <tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Tall</th><th>Notes</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Twilight Brain Coral</td><td><span class="tier-badge tier-rare">Rare</span></td><td>Lv 6</td><td>No</td><td>Glowing cyan brain coral for the deep.</td></tr>
-        <tr><td>Phantom Polyp</td><td><span class="tier-badge tier-superrare">Super Rare</span></td><td>Lv 8</td><td>Yes</td><td>Tall, purple, bioluminescent.</td></tr>
-        <tr><td>Midnight Table Coral</td><td><span class="tier-badge tier-legendary">Legendary</span></td><td>Lv 12</td><td>No</td><td>Costs Pearls. Blue glowing table. Blocks Layer B.</td></tr>
-      </tbody>
-    </table>
+    <h2>🌌 Deep Twilight Reef</h2>
+    <p class="section-intro">Below the light: slow-growing deep corals, bioluminescent fish, and the oldest animals in the game.</p>
+    
+    <h3>Coral</h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Golden Tree <span class="tag" title="Only in the 3D edition">3D</span></td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 1</td><td class="cost">20 🫧</td><td><em>Laurinque elenya</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="wild">Newly described — deep Pacific seamounts only</span></td></tr>
+<tr><td>Abyssal Fan</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">10 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span></td></tr>
+<tr><td>Twilight Brain Coral</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">20 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Phantom Polyp <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">25 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Lights the water after dark, in every biome">🏮 lantern</span></td></tr>
+<tr><td>Wisp Coral <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">25 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Lights the water after dark, in every biome">🏮 lantern</span></td></tr>
+<tr><td>Bamboo Coral <span class="tag" title="Only in the 3D edition">3D</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 11 <small>/ 21</small></td><td class="cost">150 🫧</td><td><em>Isidella / Keratoisis spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span> <span class="wild">Deep slopes and seamounts worldwide</span></td></tr>
+<tr><td>Bubblegum Coral <span class="tag" title="Only in the 3D edition">3D</span></td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">300 🫧</td><td><em>Paragorgia arborea</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Blocks the big (Layer B) swimmers too">blocks B</span> <span class="wild">Cold deep slopes of the North Atlantic and Pacific</span></td></tr>
+<tr><td>Black Coral <span class="tag" title="Only in the 3D edition">3D</span></td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 14 <small>/ 27</small></td><td class="cost">300 🫧</td><td><em>Leiopathes glaberrima</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="wild">Deep slopes off Hawaii, the Gulf and the Mediterranean</span></td></tr></tbody></table>
 
-    <h2>Event-Exclusive Species</h2>
-    <p class="section-intro">Some species are only available during limited-time seasonal events. These cannot be obtained outside their event period, making them the rarest additions to your reef.</p>
+    <h3>Fish</h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Ghost Goby</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">2 🫧</td><td><span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Glow Cleaner Goby</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">2 🫧</td><td><em>Elacatinus lumen</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Cleans the reef">🧽 cleaner</span></td></tr>
+<tr><td>Lanternfish</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">2 🫧</td><td><em>Myctophidae spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Deep Blenny</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">5 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Hatchetfish</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">5 🫧</td><td><em>Argyropelecus spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Dragonfish</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">10 🫧</td><td><em>Stomiidae spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Flashlight Fish</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">10 🫧</td><td><em>Anomalopidae spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Viperfish</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">10 🫧</td><td><em>Chauliodus spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Barreleye</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">25 🫧</td><td><em>Macropinna microstoma</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Ribbonfish</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">25 🫧</td><td><em>Trachipteridae spp.</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Twilight Seahorse</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">25 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Anglerfish</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">60 🫧</td><td><em>Melanocetus johnsonii</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Fangtooth</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">60 🫧</td><td><em>Anoplogaster cornuta</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Gulper Eel</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">60 🫧</td><td><em>Eurypharynx pelecanoides</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Nautilus</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">60 🫧</td><td><em>Nautilus pompilius</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Abyssal Ray</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">150 🫧</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Frilled Shark</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">150 🫧</td><td><em>Chlamydoselachus anguineus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Oarfish</td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 13 <small>/ 25</small></td><td class="cost">300 🫧</td><td><em>Regalecus glesne</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr></tbody></table>
 
-    <table>
-      <thead>
-        <tr><th>Species</th><th>Tier</th><th>Type</th><th>Event</th><th>Notes</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Pearl Organ Pipe</td><td><span class="tier-badge tier-legendary">Legendary</span></td><td>Coral</td><td>Pearl Tide 2026</td><td><em>Tubipora musica (pearl form)</em> — tall, pearlescent white organ pipe coral. Event pass exclusive.</td></tr>
-      </tbody>
-    </table>
 
-    <p style="margin-top:24px;">New species are added regularly through updates and seasonal events. Check the <a href="/guide.html">Game Guide</a> for tips on building your reef, or jump in and start discovering species yourself.</p>
+    <h2>🤖 Pearl Market</h2>
+    <p class="section-intro">Skip-7's counter sells these for pearls, never for Bubble Energy. A purchase is a voucher: the species then places free, once.</p>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Yellow Chromis</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">10 💎</td><td><em>Chromis analis</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Rainbow Goby</td><td><span class="tier-badge" style="color:#66bb6a;border-color:#66bb6a55;background:#66bb6a1f">Super Rare</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">15 💎</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Glowfin Angelfish</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">20 💎</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Neon Seahorse</td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">25 💎</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Manta Ray</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">60 💎</td><td><em>Mobula birostris</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Sunburst Wrasse</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">50 💎</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Table Coral</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 10 <small>/ 19</small></td><td class="cost">50 💎</td><td><span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Blocks the big (Layer B) swimmers too">blocks B</span></td></tr>
+<tr><td>Giant Squid</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 11 <small>/ 21</small></td><td class="cost">60 💎</td><td><em>Architeuthis dux</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Midnight Table Coral</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">50 💎</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Blocks the big (Layer B) swimmers too">blocks B</span></td></tr>
+<tr><td>Phantom Lionfish <span class="bio">🪸🌌</span></td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">60 💎</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Rainbow Coral</td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">60 💎</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span></td></tr>
+<tr><td>Sunfire Coral</td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 12 <small>/ 23</small></td><td class="cost">60 💎</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Blocks the big (Layer B) swimmers too">blocks B</span></td></tr>
+<tr><td>Twilight Whale Shark</td><td><span class="tier-badge" style="color:#ef5350;border-color:#ef535055;background:#ef53501f">Mythic</span></td><td class="lv">Lv 14 <small>/ 27</small></td><td class="cost">80 💎</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr></tbody></table>
 
-    <div style="text-align:center;">
-      <a class="play-btn" href="/">Play Now</a>
+    <h2>🎉 Seasonal Events</h2>
+    <p class="section-intro">Each festival returns on the same dates every year with its own exclusive species, bought at the Event Shop with event tokens. Exclusives you have already earned stay on your reef.</p>
+    
+    <h3>Coral Bloom Festival <span class="when">Apr 1 – Apr 30</span></h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Blossom Coral</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Acropora floralis</em> <span class="tag" title="Invented for Reef Bloom">fiction</span></td></tr>
+<tr><td>Sakura Anthias</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Pseudanthias sakura</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr></tbody></table>
+
+    <h3>Moonfish Migration <span class="when">May 1 – May 7</span></h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Moontide Coral</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Lobophyllia lunaris</em> <span class="tag" title="Invented for Reef Bloom">fiction</span></td></tr>
+<tr><td>Opah</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Lampris guttatus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr></tbody></table>
+
+    <h3>Pearl Tide <span class="when">Jun 1 – Jun 5</span></h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Pearl Organ Pipe</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Tubipora musica (pearl form)</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Pearlfish</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Margarites nacreus</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr></tbody></table>
+
+    <h3>Shoreline Summer <span class="when">Jun 15 – Jul 31</span></h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Golden Seahorse <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Hippocampus aestas</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Sunset Fan <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Gorgonia crepuscula</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr></tbody></table>
+
+    <h3>Sea Dragon Days <span class="when">Aug 16 – Aug 22</span></h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Leafy Sea Dragon</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Phycodurus eques</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr>
+<tr><td>Verdant Frond <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Pavona renovata</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Weedy Sea Dragon</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Phyllopteryx taeniolatus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr></tbody></table>
+
+    <h3>Golden Kelp Harvest <span class="when">Oct 1 – Oct 31</span></h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Amber Kelp <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Macrocystis aurantia</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Garibaldi <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Hypsypops rubicundus</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span></td></tr></tbody></table>
+
+    <h3>Autumn Current <span class="when">Nov 1 – Nov 14</span></h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Mola mola</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Mola mola</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr>
+<tr><td>Russet Sea Fan <span class="bio">🪸🌿</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Gorgonia autumnalis</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span></td></tr>
+<tr><td>Spinner Dolphin</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Stenella longirostris</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span></td></tr></tbody></table>
+
+    <h3>Bioluminescence Night <span class="when">Dec 1 – Jan 31</span></h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Glow Eel</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Gymnothorax bioluminescens</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Moon Seahorse</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Hippocampus phosphoreus</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Small fish — avoids all tall coral">layer A</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Aurora Coral</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Euphyllia lux</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr>
+<tr><td>Lumen Coral <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Lucerna abyssi</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Lights the water after dark, in every biome">🏮 lantern</span></td></tr>
+<tr><td>Twilight Orchid <span class="bio">🪸🌌</span></td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Dendronephthya noctis</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Tall coral — small (Layer A) fish steer around it">tall</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr></tbody></table>
+
+    <h3>Retired: Twilight Festival <span class="when">no longer scheduled — kept by players who earned it</span></h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Twilight Lanternfish</td><td><span class="tier-badge" style="color:#ff7043;border-color:#ff704355;background:#ff70431f">Legendary</span></td><td class="lv"><small>event shop</small></td><td class="cost">event 🎟</td><td><em>Myctophum noctis</em> <span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Big swimmer — avoids only coral that blocks B">layer B</span> <span class="tag" title="Bioluminescent after dark">✨ glows</span></td></tr></tbody></table>
+
+
+    <h2>🪸 Utility &amp; Decor</h2>
+    <p class="section-intro">Working corals paid in polyps — cleaning stations, vaults, shelters — and the decorations that dress the sand.</p>
+    
+    <h3>Utility Coral</h3>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Anemone Haven <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 4 <small>/ 7</small></td><td class="cost">30 🪸</td><td><em>Heteractis magnifica</em> <span class="tag" title="A real species — the Ocean Journal marks it">🌍 real</span> <span class="tag" title="Fish shelter in it">🏠 shelter</span></td></tr>
+<tr><td>Essence Vault <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 4 <small>/ 7</small></td><td class="cost">20 🪸</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span></td></tr>
+<tr><td>Reef Grotto <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">40 🪸</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span> <span class="tag" title="Fish shelter in it">🏠 shelter</span></td></tr>
+<tr><td>Grand Reservoir <span class="bio">🪸🌿🌌</span></td><td><span class="tier-badge" style="color:#ffd54f;border-color:#ffd54f55;background:#ffd54f1f">Epic</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">60 🪸</td><td><span class="tag" title="Invented for Reef Bloom">fiction</span></td></tr></tbody></table>
+
+    <h3>Decor</h3>
+    <table><thead><tr><th>Item</th><th>Tier</th><th>Unlock</th><th>Cost</th><th>Notes</th></tr></thead><tbody><tr><td>Sea Pebble</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">3 🫧</td><td>pebble <span class="tag" title="">stackable</span></td></tr>
+<tr><td>Smooth Pebble</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 1</td><td class="cost">3 🫧</td><td>pebble <span class="tag" title="">stackable</span></td></tr>
+<tr><td>Conch Shell</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 2 <small>/ 3</small></td><td class="cost">6 🫧</td><td>conch <span class="tag" title="">stackable</span></td></tr>
+<tr><td>Oyster Cluster</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 3 <small>/ 5</small></td><td class="cost">8 🫧</td><td>oysters <span class="tag" title="">stackable</span></td></tr>
+<tr><td>Driftwood</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 4 <small>/ 7</small></td><td class="cost">12 🫧</td><td>driftwood</td></tr>
+<tr><td>Cleaning Station</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 4 <small>/ 7</small></td><td class="cost">30 🪸</td><td>cleaningStation <span class="tag" title="">🧽 cleaning</span></td></tr>
+<tr><td>Rusty Anchor</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 5 <small>/ 9</small></td><td class="cost">20 🫧</td><td>anchor</td></tr>
+<tr><td>Glow Orb</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">5 🫧</td><td>orb <span class="tag" title="">stackable</span></td></tr>
+<tr><td>Treasure Chest</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 6 <small>/ 11</small></td><td class="cost">30 🫧</td><td>chest</td></tr>
+<tr><td>Fossil Ammonite</td><td><span class="tier-badge" style="color:#b0bec5;border-color:#b0bec555;background:#b0bec51f">Common</span></td><td class="lv">Lv 7 <small>/ 13</small></td><td class="cost">12 🫧</td><td>fossil <span class="tag" title="">stackable</span></td></tr>
+<tr><td>Hydrothermal Vent</td><td><span class="tier-badge" style="color:#42a5f5;border-color:#42a5f555;background:#42a5f51f">Rare</span></td><td class="lv">Lv 8 <small>/ 15</small></td><td class="cost">40 🫧</td><td>vent</td></tr>
+<tr><td>Abyss Cairn</td><td><span class="tier-badge" style="color:#ab47bc;border-color:#ab47bc55;background:#ab47bc1f">Uncommon</span></td><td class="lv">Lv 9 <small>/ 17</small></td><td class="cost">25 🫧</td><td>cairn</td></tr></tbody></table>
+
+
+    <p style="margin-top:24px;">New species arrive with updates and seasonal events; this page is rebuilt from the game's data with every release. Read the stories behind the real ones on the <a href="/reef-education.html">Reef Education</a> page, or check the <a href="/guide.html">Game Guide</a> for how to find them.</p>
+
+    <div class="play-row">
+      <a class="play-btn" href="/reef/">Play 3D ✨</a>
+      <a class="play-btn secondary" href="/">Play Classic</a>
     </div>
 
     <hr class="divider">
