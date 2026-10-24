@@ -5,10 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Reef Bloom</title>
   <!--
-    App Home screen — iOS app shell only. Built by `vite build --mode app` as the
-    shell's index.html (see vite.config.js); the website never ships this page.
-    Pure HTML/CSS/JS, no imports: it reads the 3D edition's save slots straight
-    from localStorage and hands off to threed.html with the chosen slot.
+    App Home screen — and the website's 3D reef-select. Built by
+    `vite build --mode app` as the iOS shell's index.html, and by the website
+    build as /reef/index.html (see vite.config.js, which also marks the website
+    copy with html.website so the "Home page" link appears). It reads the 3D
+    edition's save slots straight from localStorage and hands off to
+    threed.html with the chosen slot.
   -->
   <style>
     :root {
@@ -124,6 +126,15 @@
     .reefs[hidden] { display: none; }
 
     footer { font-size: 12px; letter-spacing: 1px; color: rgba(255,255,255,0.5); }
+    /* Website only: the way back to the landing page (Classic, newsletter, the rest). */
+    .home {
+      display: none; position: fixed; left: calc(12px + var(--sal)); top: calc(12px + var(--sat)); z-index: 2;
+      align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,0.82); text-decoration: none;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 7px 14px;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    }
+    .home:hover { border-color: var(--accent); color: #fff; }
+    html.website .home { display: inline-flex; }
     .acct {
       font: inherit; font-size: 13px; color: rgba(255,255,255,0.75); cursor: pointer;
       background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px;
@@ -168,6 +179,8 @@
     </svg>
   </div>
 
+  <a class="home" id="home-link" href="/">⌂ Home page</a>
+
   <main>
     <header class="hero">
       <div class="kicker">A coral reef, yours to grow</div>
@@ -189,7 +202,7 @@
     (function () {
       var SAVE_BASE = 'reefbloom_3d_save_v1';   // same keys the 3D edition uses
       var SLOT_KEY  = 'reefbloom_3d_slot';
-      var PLAYED    = 'reefbloom_app_played_s';   // app-only: when each reef was last opened
+      var PLAYED    = 'reefbloom_app_played_s';   // when each reef was last opened from this screen
       var SLOTS = ['1', '2', '3'];
       var GAME = './threed.html';
 
@@ -339,9 +352,12 @@
       }
 
       // Footer: game build, App Store version (kept in step by scripts/bump-version.mjs), device.
+      // The website ships betas as its release, so it shows the same number.
       var APP_VERSION = '1.2.6';
+      var isWeb = document.documentElement.classList.contains('website');
       var isPad = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      document.getElementById('ver').textContent = 'Reef Bloom v' + APP_VERSION + ' · ' + (isPad ? 'iPad' : 'iPhone') + ' edition';
+      document.getElementById('ver').textContent = 'Reef Bloom v' + APP_VERSION + ' · '
+        + (isWeb ? '3D edition' : (isPad ? 'iPad' : 'iPhone') + ' edition');
 
       // ── Rising bubbles ────────────────────────────────────────────────────
       var sea = document.getElementById('sea');

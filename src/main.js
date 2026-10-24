@@ -3,7 +3,7 @@ import { ReefScene }   from './scenes/ReefScene.js';
 import { SCREEN_W, SCREEN_H, IS_PORTRAIT, GAME_VERSION } from './constants.js';
 import { setCurrentSlot, setCurrentBiome, getSlotPreview, clearSlot, clearBiome, getBiomePreview,
          getProfile, defaultProfile } from './save.js';
-import { isAuthAvailable, onAuthChange } from './auth.js';
+import { isAuthAvailable, onAuthChange, initAuth } from './auth.js';
 import { openAccountSheet } from './accountSheet.js';
 import { initCloudSave, onCloudSynced } from './cloudsave.js';
 import { state } from './state.js';

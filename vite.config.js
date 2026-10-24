@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { renameSync, existsSync } from 'node:fs';
+import { renameSync, existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 
 // Everything the 3D page needs to behave as an app (status-bar inset, a Home
 // link instead of "← Classic", a save flush when iOS backgrounds the app) is
@@ -37,11 +37,20 @@ const APP_SHELL_INJECT = `
     @media (min-width: 701px) and (max-width: 1200px) { #hud { top: calc(48px + var(--sat)); } }
   </style>`;
 
+// The app's Home screen doubles as the website's 3D reef-select at /reef/.
+// Same page, two small differences injected at build time: links resolve from
+// the site root (the page moves into a folder), and the page knows it is on
+// the website so it can show the "Home page" link back to the landing page.
+const WEB_REEF_INJECT = `
+  <meta name="robots" content="noindex" />
+  <script>document.documentElement.classList.add('website');</script>`;
+
 // Two builds from one codebase:
-//   vite build              → dist/      the website: Classic + Mobile + 3D
+//   vite build              → dist/      the website: Classic + Mobile + 3D (+ /reef/ select)
 //   vite build --mode app   → dist-app/  the iOS app shell: 3D edition only
 // The app build has its own Home screen (app.html, emitted as index.html) that
 // hands off to threed.html; nothing from Classic or the public/ pages ships.
+// The website emits the same app.html as reef/index.html.
 export default defineConfig(({ mode }) => {
   const isApp = mode === 'app';
   return {
@@ -61,6 +70,7 @@ export default defineConfig(({ mode }) => {
               main:   'index.html',
               mobile: 'mobile/index.html',
               threed: 'threed.html',
+              reef:   'app.html',
             },
       },
     },
@@ -77,6 +87,27 @@ export default defineConfig(({ mode }) => {
       closeBundle() {
         if (existsSync('dist-app/app.html')) renameSync('dist-app/app.html', 'dist-app/index.html');
       },
-    }] : [],
+    }] : [{
+      name: 'reef-select-web',
+      transformIndexHtml: {
+        order: 'pre',
+        handler(html, ctx) {
+          if (!ctx.filename.endsWith('app.html')) return html;
+          return html
+            .replace('<head>', '<head>' + WEB_REEF_INJECT)
+            .replace('<title>Reef Bloom</title>', '<title>Reef Bloom — 3D Reefs</title>')
+            .replaceAll('./threed.html', '/threed.html');   // the page lives at /reef/, the game at the root
+        },
+      },
+      closeBundle() {
+        if (existsSync('dist/app.html')) {
+          mkdirSync('dist/reef', { recursive: true });
+          // One folder down, so the hashed bundle paths step back up to /assets/.
+          const html = readFileSync('dist/app.html', 'utf8').replaceAll('"./assets/', '"../assets/');
+          writeFileSync('dist/reef/index.html', html);
+          unlinkSync('dist/app.html');
+        }
+      },
+    }],
   };
 });
