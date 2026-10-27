@@ -645,14 +645,21 @@
     @media (pointer: coarse) and (min-width: 1201px) {
       .chip { padding: 9px 13px; }
     }
-    /* Tablet: the strip between the side menus is too narrow for chips —
-       drop the HUD to its own second row, slightly compacted. */
-    @media (max-width: 1200px) {
+    /* Tablets, laptops and ordinary desktop windows: the strip between the
+       Classic button and the (twelve-button) menu row is too narrow for the
+       chips — drop the HUD to its own second row, slightly compacted. */
+    @media (max-width: 1799px) {
       #hud { left: 118px; right: 262px; top: 48px; }
       .chip { padding: 5px 9px; gap: 6px; }
       .chip .ico { font-size: 15px; }
       .chip .val { font-size: 13.5px; }
       .chip .col { min-width: 46px; }
+    }
+    /* Narrow windows (the Mac minimum, small tablets): a compact menu row so
+       all of it stays on screen. */
+    @media (max-width: 1200px) {
+      .menu-btn { font-size: 11px; padding: 4px 7px; }
+      #menu3d { gap: 4px; }
     }
     @media (max-width: 900px) {
       #hud { gap: 6px; }
@@ -694,11 +701,80 @@
       #palette-toggle { padding: 11px 14px; font-size: 14px; }
       .menu-btn { padding: 10px 14px; }
     }
+
+    /* ── 1.2.6: journal filters, reef names, settings, photo mode, prefs ── */
+    .j-filters { display: flex; flex-direction: column; gap: 5px; margin: 6px 0 2px; }
+    .j-search {
+      font: inherit; font-size: 12.5px; color: #eaf6ff; width: 100%;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(127,216,255,0.25); border-radius: 8px; padding: 6px 10px;
+    }
+    .j-search:focus { outline: none; border-color: #7fd8ff; }
+    .j-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .j-chip {
+      font: inherit; font-size: 10.5px; color: #cfe6f4; cursor: pointer;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(127,216,255,0.18); border-radius: 999px; padding: 3px 9px;
+    }
+    .j-chip.on { border-color: var(--tc, #7fd8ff); color: var(--tc, #eaf6ff); background: rgba(127,216,255,0.12); }
+    .reef-name {
+      flex: 1; min-width: 0; font: inherit; font-size: 13px; color: #eaf6ff;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(127,216,255,0.25); border-radius: 8px; padding: 6px 10px;
+    }
+    .reef-name:focus { outline: none; border-color: #7fd8ff; }
+    .st-row { font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; background: none; border: 0; border-bottom: 1px solid rgba(127,216,255,0.12); }
+    .st-row > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+    .st-row small { font-size: 10.5px; color: #9fc4dc; }
+    .st-tog { flex: none; width: 38px; height: 22px; border-radius: 11px; background: rgba(127,216,255,0.18); position: relative; transition: background 0.15s; }
+    .st-tog i { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #9fc4dc; transition: left 0.15s, background 0.15s; }
+    .st-tog.on { background: #2f9bd6; }
+    .st-tog.on i { left: 19px; background: #fff; }
+    /* Photo mode: only the reef and a small bar. */
+    #photo-bar {
+      display: none; position: fixed; left: 50%; transform: translateX(-50%);
+      bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 6; gap: 8px; align-items: center;
+      background: rgba(3,18,28,0.72); border: 1px solid rgba(127,216,255,0.3); border-radius: 999px; padding: 6px 8px;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+    #photo-bar button { font: inherit; font-size: 13px; color: #eaf6ff; cursor: pointer; background: rgba(127,216,255,0.14); border: 1px solid transparent; border-radius: 999px; padding: 7px 14px; }
+    #photo-bar button[data-snap] { background: #2f9bd6; font-weight: 700; }
+    #photo-bar button:disabled { opacity: 0.5; }
+    html.photo #hud, html.photo #menu3d, html.photo #palette, html.photo #palette-toggle, html.photo #back,
+    html.photo #slots, html.photo #hint, html.photo #version-badge-3d, html.photo #bubbles-speech, html.photo #fish-toast { display: none !important; }
+    html.photo #photo-bar { display: flex; }
+    /* Reduce motion (settings): the same as the OS switch, chosen in-game. */
+    html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+      animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.001s !important;
+    }
+    /* Larger text (settings). */
+    html.big-text .modal3d .panel { font-size: 15px; }
+    html.big-text .m-row { font-size: 14px; }
+    html.big-text .coral-btn { font-size: 15px; }
+    html.big-text .menu-btn, html.big-text #palette-toggle { font-size: 14px; }
+    html.big-text .chip .val { font-size: 17px; }
+    html.big-text .j-chip { font-size: 12px; }
+    /* Wide windows (Mac, big monitors): roomier chips, a wider species palette. */
+    @media (min-width: 1800px) {
+      #hud { right: 940px; gap: 10px; }   /* the menu row is ~870px wide */
+      .chip { padding: 9px 14px; gap: 10px; }
+      .chip .val { font-size: 16px; }
+      .chip .ico { font-size: 19px; }
+      #palette, #palette-toggle { width: 300px; }
+      .coral-btn { font-size: 14px; padding: 7px 12px; }
+      .menu-btn { font-size: 13px; padding: 7px 12px; }
+      #menu3d { gap: 8px; }
+    }
+    /* Short windows (the Mac minimum, small laptops): keep the palette on screen. */
+    @media (max-height: 640px) {
+      #palette { top: 78px; bottom: 10px; padding: 6px 8px; gap: 3px; }
+      #palette-toggle { top: 46px; }
+      .coral-btn { padding: 4px 9px; font-size: 12px; }
+      #hint { display: none; }
+    }
   </style>
 </head>
 <body>
   <a id="back" href="/reef/">⌂ Reefs</a>
   <div id="slots"></div>
+  <div id="photo-bar"><button data-snap>📷 Snap</button><button data-done>✕ Done</button></div>
   <div id="menu3d"></div>
   <div id="hud">
     <div class="chip" title="Bubble Energy — the bar shows how full your wallet is">

@@ -4883,6 +4883,7 @@ export function initReefScene3D(canvas) {
     try {
       localStorage.setItem(slotKey(slot), JSON.stringify({
         savedAt: Date.now(),   // cloud sync: newest save wins per slot
+        name: reefName,        // player-chosen reef name (1.2.6)
         be, polyps, pearls, harmony, level, timeOfDay,
         corals: placedCorals, fish: placedFish, seen: [...seen], exp: expansions,
         eggs: [...eggsClaimed], stations: placedStations,
@@ -4975,14 +4976,23 @@ export function initReefScene3D(canvas) {
 
   // ── Save-slot switcher — one button opening the slot-select menu ─────────────
   // (fillSlots / slotsMenu are defined with the other menus below.)
+  // Reef names (1.2.6): each slot can carry a player-chosen name, saved with
+  // the reef and shown here, in the slots menu and on the Home screen.
+  let reefName = '';
+  const REEF_NAME_MAX = 24;
+  const cleanReefName = (v) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, REEF_NAME_MAX);
+  const slotLabel = (s, info) => (s === slot ? reefName : cleanReefName(info?.name)) || `Slot ${s}`;
   const slotsEl = document.getElementById('slots');
+  let slotBtn = null;
   if (slotsEl) {
-    const b = document.createElement('button');
-    b.className = 'slot-btn active';
-    b.textContent = `💾 Slot ${slot}`;
-    b.onclick = () => { fillSlots(); slotsMenu.show(); };
-    slotsEl.appendChild(b);
+    slotBtn = document.createElement('button');
+    slotBtn.className = 'slot-btn active';
+    slotBtn.title = 'Reef slots — switch reefs or name this one';
+    slotBtn.onclick = () => { fillSlots(); slotsMenu.show(); };
+    slotsEl.appendChild(slotBtn);
   }
+  function refreshSlotBtn() { if (slotBtn) slotBtn.textContent = `💾 ${slotLabel(slot)}`; }
+  refreshSlotBtn();
 
   // ── Palette UI (full Classic catalog, grouped by biome, level-gated) ──────────
   const paletteEl = document.getElementById('palette');
@@ -5665,6 +5675,56 @@ export function initReefScene3D(canvas) {
     journalTabs.appendChild(b);
   });
   journal.head.appendChild(journalTabs);
+  // Filters (1.2.6): biome, tier, real/fiction, glows, unseen — plus a search
+  // box. They narrow the species lists; the Lost Journals tab hides them.
+  const jf = { biome: '', tier: '', real: '', glow: false, unseen: false, q: '' };
+  const journalFilters = document.createElement('div');
+  journalFilters.className = 'j-filters';
+  journalFilters.innerHTML = `<input class="j-search" type="search" placeholder="Search species…" autocomplete="off" spellcheck="false">`
+    + `<div class="j-chips">`
+    + [['biome', '', 'All waters'], ['biome', 'coral', '🪸 Reef'], ['biome', 'seagrass', '🌿 Seagrass'], ['biome', 'deepTwilight', '🌌 Twilight']]
+      .map(([k, v, t]) => `<button class="j-chip" data-k="${k}" data-v="${v}">${t}</button>`).join('')
+    + `</div><div class="j-chips">`
+    + [['tier', '', 'Any tier'], ...Object.keys(TIER_LABEL).map(t => ['tier', t, TIER_LABEL[t]])]
+      .map(([k, v, t]) => `<button class="j-chip" data-k="${k}" data-v="${v}"${v ? ` style="--tc:${tierHex(v)}"` : ''}>${t}</button>`).join('')
+    + `</div><div class="j-chips">`
+    + [['real', '', 'Real &amp; fiction'], ['real', 'real', '🌍 Real'], ['real', 'fiction', '✨ Fiction'], ['glow', 'on', '✨ Glows'], ['unseen', 'on', '🔍 Not yet seen']]
+      .map(([k, v, t]) => `<button class="j-chip" data-k="${k}" data-v="${v}">${t}</button>`).join('')
+    + `</div>`;
+  const jfActive = () => jf.biome || jf.tier || jf.real || jf.glow || jf.unseen || jf.q;
+  function jfPaint() {
+    journalFilters.querySelectorAll('.j-chip').forEach(b => {
+      const k = b.dataset.k, v = b.dataset.v;
+      const on = (k === 'glow' || k === 'unseen') ? jf[k] : jf[k] === v;
+      b.classList.toggle('on', !!on);
+    });
+    journalFilters.style.display = journalTab === 'lost' ? 'none' : '';
+  }
+  journalFilters.addEventListener('click', (e) => {
+    const b = e.target.closest('.j-chip'); if (!b) return;
+    const k = b.dataset.k, v = b.dataset.v;
+    if (k === 'glow' || k === 'unseen') jf[k] = !jf[k]; else jf[k] = v;
+    jfPaint(); fillJournal();
+  });
+  const jSearch = journalFilters.querySelector('.j-search');
+  jSearch.addEventListener('input', () => { jf.q = jSearch.value.trim().toLowerCase(); fillJournal(); });
+  jSearch.addEventListener('keydown', (e) => e.stopPropagation());
+  journal.head.appendChild(journalFilters);
+  function jfMatch(spec) {
+    if (jf.biome && primaryBiome(spec) !== jf.biome && !matchesBiome(spec, jf.biome)) return false;
+    if (jf.tier && spec.tier !== jf.tier) return false;
+    if (jf.real === 'real' && !isRealSpecies(spec.id)) return false;
+    if (jf.real === 'fiction' && isRealSpecies(spec.id)) return false;
+    if (jf.glow && !BIOLUM_SPECIES.has(spec.id)) return false;
+    if (jf.unseen && seen.has(spec.id)) return false;
+    if (jf.q) {
+      const hay = `${spec.name} ${spec.scientific ?? ''}`.toLowerCase();
+      // Unrecorded species keep their mystery: only the name of a RECORDED
+      // species can be searched; the rest match on nothing.
+      if (!seen.has(spec.id) || !hay.includes(jf.q)) return false;
+    }
+    return true;
+  }
   // Thumbnails — each recorded species is photographed once: its real 3D model
   // is built, framed by its bounding box, and rendered offscreen. Data URLs are
   // cached, so every later journal open (and fish toast) is free.
@@ -5839,10 +5899,14 @@ export function initReefScene3D(canvas) {
       + `${isRealSpecies(spec.id) ? '🌍' : '✨'} ${biomeIcons(spec)} ${badge}</small></div>`;
   }
   function fillJournal() {
+    jfPaint();
     if (journalTab === 'lost') { fillLostJournals(); return; }
-    const cs = [...coralSpecs, HIDEY_SPEC], fs = fishSpecs;
-    const all = [...cs, ...fs];
+    const csAll = [...coralSpecs, HIDEY_SPEC], fsAll = fishSpecs;
+    const all = [...csAll, ...fsAll];
     const found = all.filter(s => seen.has(s.id)).length;
+    const filtering = jfActive();
+    const cs = filtering ? csAll.filter(jfMatch) : csAll;
+    const fs = filtering ? fsAll.filter(jfMatch) : fsAll;
     journal.ov.querySelector('.m-sub')?.remove();
     journal.ov.querySelector('.m-title').insertAdjacentHTML('afterend',
       `<div class="m-sub">${found} of ${all.length} species recorded${bar(found, all.length)}</div>`);
@@ -5853,27 +5917,34 @@ export function initReefScene3D(canvas) {
           + here.map(journalRow).join('')
         : '';
     }).join('');
-    let html = '<div class="m-sec">🔬 Research surveys</div>'
-      + '<div class="m-row"><span>Bubbles finds new coral on expeditions — fund one at her nest.</span>'
-      + '<button class="pack-open-btn" data-nest>Nest &amp; Market</button></div>';
-    const quizDone = quiz.date === EV_TODAY() && quiz.i >= 5;
-    html += '<div class="m-sec">🧪 Field ID — real or fiction?</div>'
-      + '<div class="m-row"><span>Which of your species truly exist?<br>'
-      + '<span style="font-size:10.5px;color:#9fc4dc">+4 🪸 per correct · +1 💎 for a perfect day</span></span>'
-      + `<button class="pack-open-btn" data-quiz${quizDone ? ' disabled' : ''}>`
-      + `${quizDone ? `${quiz.score}/5 today` : 'Take the quiz'}</button></div>`;
+    let html = '';
+    if (!filtering) {
+      html += '<div class="m-sec">🔬 Research surveys</div>'
+        + '<div class="m-row"><span>Bubbles finds new coral on expeditions — fund one at her nest.</span>'
+        + '<button class="pack-open-btn" data-nest>Nest &amp; Market</button></div>';
+      const quizDone = quiz.date === EV_TODAY() && quiz.i >= 5;
+      html += '<div class="m-sec">🧪 Field ID — real or fiction?</div>'
+        + '<div class="m-row"><span>Which of your species truly exist?<br>'
+        + '<span style="font-size:10.5px;color:#9fc4dc">+4 🪸 per correct · +1 💎 for a perfect day</span></span>'
+        + `<button class="pack-open-btn" data-quiz${quizDone ? ' disabled' : ''}>`
+        + `${quizDone ? `${quiz.score}/5 today` : 'Take the quiz'}</button></div>`;
+    } else {
+      const n = (journalTab !== 'fish' ? cs.length : 0) + (journalTab !== 'coral' ? fs.length : 0);
+      html += `<div class="m-sec">🔎 ${n} ${n === 1 ? 'match' : 'matches'}</div>`;
+    }
     if (journalTab !== 'fish') html += group(cs, 'Coral');
     if (journalTab !== 'coral') html += group(fs, 'Fish');
     // Event exclusives — recorded ones get full entries; the rest stay a mystery.
-    const excl = [
+    let excl = [
       ...Object.values(CORAL_SPECIES).filter(s => s.eventId && s.color != null),
       ...Object.values(FISH_SPECIES).filter(s => s.eventId && s.color != null && s.layer),
     ];
+    if (filtering) excl = excl.filter(jfMatch);
     if (excl.length) {
       const owned = excl.filter(s => seen.has(s.id));
       const hidden = excl.length - owned.length;
       html += '<div class="m-sec">Event exclusives · 🎉</div>' + owned.map(journalRow).join('');
-      if (hidden > 0) {
+      if (hidden > 0 && !filtering) {
         html += `<div class="m-row locked"><span class="j-thumb mystery">?</span>`
           + `<span style="flex:1;min-width:0">???`
           + `<span style="display:block;font-size:10.5px;line-height:1.35;color:#8fb4c9">`
@@ -5970,6 +6041,27 @@ export function initReefScene3D(canvas) {
     'Three independent reefs — switching saves this one first.');
   function fillSlots() {
     slotsMenu.body.innerHTML = '';
+    // Name this reef — an inline field, saved on Enter or the button.
+    const nameRow = document.createElement('div');
+    nameRow.className = 'm-row';
+    nameRow.style.gap = '8px';
+    nameRow.innerHTML = `<span style="flex:none">🏷️ Name</span>`
+      + `<input id="reef-name" class="reef-name" maxlength="${REEF_NAME_MAX}" placeholder="Slot ${slot}" `
+      + `value="${reefName.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}" `
+      + `autocomplete="off" autocapitalize="words" spellcheck="false">`
+      + `<button class="pack-open-btn" data-save-name>Save</button>`;
+    const inp = nameRow.querySelector('input');
+    const commit = () => {
+      reefName = cleanReefName(inp.value);
+      inp.value = reefName;
+      refreshSlotBtn();
+      save();
+      flash(rateEl, reefName ? `🏷️ ${reefName}` : '🏷️ name cleared', '#7fd8ff');
+      fillSlots();
+    };
+    nameRow.querySelector('[data-save-name]').onclick = commit;
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } e.stopPropagation(); });
+    slotsMenu.body.appendChild(nameRow);
     for (const s of SLOTS) {
       let info = null;
       try { info = JSON.parse(localStorage.getItem(slotKey(s))); } catch (e) { /* corrupt — treat as empty */ }
@@ -5982,7 +6074,8 @@ export function initReefScene3D(canvas) {
         : info
           ? `Lv${info.level ?? 1} · ${Math.floor(info.be ?? 0)} 🫧 · ${(info.corals ?? []).length} 🪸 · ${(info.fish ?? []).length} 🐠`
           : 'empty — start fresh';
-      row.innerHTML = `<span>${active ? '▶ ' : ''}Slot ${s}</span><span>${summary}</span>`;
+      const nm = slotLabel(s, info).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      row.innerHTML = `<span>${active ? '▶ ' : ''}${nm}${nm === `Slot ${s}` ? '' : ` <small style="color:#9fc4dc">· slot ${s}</small>`}</span><span>${summary}</span>`;
       row.onclick = () => {
         if (s === slot) { slotsMenu.ov.style.display = 'none'; return; }
         save();                              // persist current slot
@@ -5994,9 +6087,9 @@ export function initReefScene3D(canvas) {
         const clr = document.createElement('button');
         clr.className = 'shop-close';
         clr.style.cssText = 'margin:0 0 6px;text-align:right;color:#ffb4ac;';
-        clr.textContent = `✕ Erase slot ${s}`;
+        clr.textContent = `✕ Erase ${slotLabel(s, info)}`;
         clr.onclick = () => {
-          if (confirm(`Erase the reef in slot ${s}? This can't be undone.`)) {
+          if (confirm(`Erase ${slotLabel(s, info)} (slot ${s})? This can't be undone.`)) {
             localStorage.removeItem(slotKey(s));
             cloudMarkWritten(slotKey(s), true);
             fillSlots();
@@ -7220,18 +7313,21 @@ export function initReefScene3D(canvas) {
 
   const menuEl = document.getElementById('menu3d');
   if (menuEl) {
-    [['📖 Ocean Journal', journal, () => { tutNote('journal'); fillJournal(); }],
-     ['🏆', achModal, fillAch],
-     ['🎁', packModal, fillPack],
-     ['🥚', { show: openNest }, () => {}],
-     ['📅 Daily', daily, fillDaily],
-     ['🎉 Event', { show: openEvent }, () => {}],
-     ['⚖ Advisor', advisor, fillAdvisor],
-     ['⭐ Progress', progress, fillProgress]].forEach(([text, modal, fill]) => {
+    const menuActions = {};   // key → open(), for the keyboard shortcuts
+    [['📖 Ocean Journal', journal, () => { tutNote('journal'); fillJournal(); }, 'j', 'Ocean Journal'],
+     ['🏆', achModal, fillAch, 't', 'Achievements'],
+     ['🎁', packModal, fillPack, 'p', 'Packs'],
+     ['🥚', { show: openNest }, () => {}, 'n', "Bubbles' Nest & Market"],
+     ['📅 Daily', daily, fillDaily, 'q', 'Daily quests'],
+     ['🎉 Event', { show: openEvent }, () => {}, 'e', 'Seasonal event'],
+     ['⚖ Advisor', advisor, fillAdvisor, 'v', 'Harmony Advisor'],
+     ['⭐ Progress', progress, fillProgress, 'r', 'Progress']].forEach(([text, modal, fill, key, name]) => {
       const b = document.createElement('button');
       b.className = 'menu-btn';
       b.textContent = text;
+      b.title = `${name} (${key.toUpperCase()})`;
       b.onclick = () => { fill(); modal.show(); };
+      menuActions[key] = b.onclick;
       menuEl.appendChild(b);
     });
     packBtn = menuEl.children[2];
@@ -7268,7 +7364,131 @@ export function initReefScene3D(canvas) {
       try { localStorage.setItem('rb3d_music', on ? 'on' : 'off'); } catch (e) { /* ignore */ }
       music.poke();
     };
+    musicBtn.title = 'Music (M)';
     menuEl.appendChild(musicBtn);
+    menuActions.m = () => musicBtn.click();
+
+    // 📷 Photo mode (1.2.6): hides every panel, frames the reef, and saves or
+    // shares a PNG of exactly what the game draws. The picture is taken with
+    // a fresh render into the live canvas, so no preserveDrawingBuffer.
+    const photoBtn = document.createElement('button');
+    photoBtn.className = 'menu-btn';
+    photoBtn.textContent = '📷';
+    photoBtn.title = 'Photo mode (C)';
+    const photoBar = document.getElementById('photo-bar');
+    const photoOn = () => document.documentElement.classList.contains('photo');
+    function photoEnter() {
+      openModals.forEach(m => { m.style.display = 'none'; });
+      counters.forEach(c => c.hide());
+      document.documentElement.classList.add('photo');
+      flash(rateEl, '📷 drag to frame · Snap when ready', '#7fd8ff');
+    }
+    function photoExit() { document.documentElement.classList.remove('photo'); }
+    async function photoSnap() {
+      const snapBtn = photoBar?.querySelector('[data-snap]');
+      if (snapBtn) snapBtn.disabled = true;
+      try {
+        renderer.render(scene, camera);
+        const blob = await new Promise((res) => renderer.domElement.toBlob(res, 'image/png'));
+        if (!blob) throw new Error('no image');
+        const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '.');
+        const file = new File([blob], `Reef Bloom — ${reefName || 'Slot ' + slot} ${stamp}.png`, { type: 'image/png' });
+        // Share sheet on touch devices and in the app (no downloads there); a
+        // plain download on desktop browsers.
+        const wantShare = (window.Capacitor?.isNativePlatform?.() || navigator.maxTouchPoints > 0) && navigator.canShare?.({ files: [file] });
+        if (wantShare) {
+          try { await navigator.share({ files: [file], title: 'Reef Bloom' }); }
+          catch (e) { if (e?.name !== 'AbortError') throw e; }
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = file.name;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+        }
+      } catch (e) {
+        flash(rateEl, '📷 could not save the photo', '#ffb4ac');
+      } finally {
+        if (snapBtn) snapBtn.disabled = false;
+      }
+    }
+    photoBtn.onclick = photoEnter;
+    menuEl.appendChild(photoBtn);
+    menuActions.c = () => { if (photoOn()) photoExit(); else photoEnter(); };
+    if (photoBar) {
+      photoBar.querySelector('[data-snap]').onclick = photoSnap;
+      photoBar.querySelector('[data-done]').onclick = photoExit;
+    }
+
+    // ⚙ Settings (1.2.6): music, reduced motion, larger text, light quality.
+    const settings = buildMenuModal('⚙ Settings');
+    const prefGet = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } };
+    const prefSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } };
+    const applyPrefs = () => {
+      document.documentElement.classList.toggle('reduce-motion', prefGet('rb3d_motion', '') === 'reduce');
+      document.documentElement.classList.toggle('big-text', prefGet('rb3d_text', '') === 'big');
+    };
+    applyPrefs();
+    function fillSettings() {
+      const motion = prefGet('rb3d_motion', '') === 'reduce';
+      const big = prefGet('rb3d_text', '') === 'big';
+      const lights = prefGet('rb3d_lights', 'auto');
+      const musicNow = localStorage.getItem('rb3d_music') !== 'off';
+      const tog = (on) => `<span class="st-tog${on ? ' on' : ''}"><i></i></span>`;
+      settings.body.innerHTML = '<div class="m-sec">Sound</div>'
+        + `<button class="m-row st-row" data-st="music"><span>🎵 Ambient music</span>${tog(musicNow)}</button>`
+        + '<div class="m-sec">Display</div>'
+        + `<button class="m-row st-row" data-st="motion"><span>🌀 Reduce motion<small>Fewer animations in menus and panels</small></span>${tog(motion)}</button>`
+        + `<button class="m-row st-row" data-st="text"><span>🔠 Larger text<small>Bigger type in menus, the palette and the HUD</small></span>${tog(big)}</button>`
+        + '<div class="m-sec">Night lighting</div>'
+        + '<div class="m-row" style="flex-direction:column;align-items:stretch;gap:8px">'
+        + '<span>✨ Glowing species cast real light. More lights look best; fewer run smoother on older devices.</span>'
+        + `<div class="m-tabs">${[['low', 'Fewer'], ['auto', 'Auto'], ['high', 'All']].map(([v, t]) =>
+            `<button class="m-tab${lights === v ? ' active' : ''}" data-lights="${v}">${t}</button>`).join('')}</div>`
+        + `<small style="color:#9fc4dc">${lightPref === lights ? 'Current setting.' : 'Takes effect next time the reef loads.'}</small></div>`
+        + '<div class="m-sec">Keyboard</div>'
+        + '<div class="m-row" style="flex-direction:column;align-items:flex-start;gap:4px;font-size:11.5px;color:#cfe6f4">'
+        + '<span><b>Arrows / WASD</b> move the view · <b>Esc</b> closes a panel</span>'
+        + '<span><b>J</b> Journal · <b>E</b> Event · <b>P</b> Packs · <b>N</b> Nest · <b>Q</b> Daily quests · <b>V</b> Advisor · <b>R</b> Progress · <b>T</b> Achievements</span>'
+        + '<span><b>C</b> Photo mode · <b>M</b> Music · <b>O</b> Settings · <b>H</b> Hide / show the species palette</span></div>';
+      settings.body.querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
+        const k = b.dataset.st;
+        if (k === 'music') musicBtn.click();
+        else if (k === 'motion') prefSet('rb3d_motion', motion ? '' : 'reduce');
+        else if (k === 'text') prefSet('rb3d_text', big ? '' : 'big');
+        applyPrefs(); fillSettings();
+      });
+      settings.body.querySelectorAll('[data-lights]').forEach(b => b.onclick = () => { prefSet('rb3d_lights', b.dataset.lights); fillSettings(); });
+    }
+    const settingsBtn = document.createElement('button');
+    settingsBtn.className = 'menu-btn';
+    settingsBtn.textContent = '⚙';
+    settingsBtn.title = 'Settings (O)';
+    settingsBtn.onclick = () => { fillSettings(); settings.show(); };
+    menuEl.appendChild(settingsBtn);
+    menuActions.o = settingsBtn.onclick;   // O for options — S is taken by WASD
+    menuActions.h = () => document.getElementById('palette-toggle')?.click();
+
+    // ⌨️ Keyboard shortcuts (1.2.6) — letters open panels; WASD moves the view
+    // by replaying the arrow keys OrbitControls already listens for. Typing in
+    // a field, or a modifier, never triggers anything.
+    const WASD = { w: 'ArrowUp', a: 'ArrowLeft', s: 'ArrowDown', d: 'ArrowRight' };
+    window.addEventListener('keydown', (e) => {
+      if (!e.isTrusted || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      const k = e.key.toLowerCase();
+      if (WASD[k]) {   // held keys repeat, like the arrows
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: WASD[k], key: WASD[k] }));
+        return;
+      }
+      if (e.repeat) return;
+      const anyOpen = openModals.some(m => m.style.display === 'flex');
+      if (k === 'escape') { if (photoOn()) photoExit(); return; }   // panels close in the shared Escape handler
+      if (photoOn() && k !== 'c') return;
+      if (anyOpen && k !== 'o' && k !== 'm') return;              // one panel at a time
+      if (menuActions[k]) { e.preventDefault(); menuActions[k](); }
+    });
   }
   // Browsers require a gesture before audio: any press wakes the ambience.
   window.addEventListener('pointerdown', () => music.poke());
@@ -7288,6 +7508,8 @@ export function initReefScene3D(canvas) {
     // was unlocked locks again (old 12 → 23, the same species and zones).
     if (!saved.lv30 && saved.level != null) level = stretchLevel(level);
     timeOfDay = saved.timeOfDay ?? 0.3;
+    reefName = typeof saved.name === 'string' ? cleanReefName(saved.name) : '';
+    refreshSlotBtn();
     // Rebuild bought expansions before restoring corals that may sit on them.
     Object.entries(saved.exp ?? {}).forEach(([zid, keys]) =>
       (keys ?? []).forEach(k => buildExpansion(zid, k)));
@@ -8311,7 +8533,11 @@ export function initReefScene3D(canvas) {
   // halo. Lanterns throw furthest; Bioluminescence Night turns it all up.
   // Pool size is the real cost knob: every light is shaded on every lit
   // fragment. Phones and tablets get fewer; desktops light the whole reef.
-  const BIO_POOL_N = (navigator.maxTouchPoints > 1 || /iPhone|iPad|Android/i.test(navigator.userAgent)) ? 10 : 16;
+  // Settings sheet: 'low' halves the pool for older devices, 'high' lights the
+  // whole reef anywhere; 'auto' (default) picks by device. Read at start-up.
+  const lightPref = (() => { try { return localStorage.getItem('rb3d_lights') || 'auto'; } catch (e) { return 'auto'; } })();
+  const BIO_POOL_N = lightPref === 'low' ? 6 : lightPref === 'high' ? 16
+    : (navigator.maxTouchPoints > 1 || /iPhone|iPad|Android/i.test(navigator.userAgent)) ? 10 : 16;
   const bioPool = [];
   for (let i = 0; i < BIO_POOL_N; i++) {
     const pl = new THREE.PointLight(0xffffff, 0, 12, 1.7);

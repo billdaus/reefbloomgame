@@ -231,7 +231,8 @@
         var info = read(s);
         var card = document.createElement('button');
         card.className = 'reef' + (s === current ? ' active' : '') + (info ? '' : ' empty');
-        var name = '<div class="name"><span>🐚 Reef ' + s + '</span>'
+        var reefName = info && typeof info.name === 'string' ? info.name.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }).trim() : '';
+        var name = '<div class="name"><span>🐚 ' + (reefName || 'Reef ' + s) + '</span>'
           + (s === current ? '<span class="tag">▶ current</span>' : '') + '</div>';
         var stats, meta = [];
         var hm = '';
