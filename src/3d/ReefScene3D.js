@@ -115,7 +115,7 @@ const BENTHIC_SPECIES = new Set([
   'horseshoeCrab', 'sandDollar', 'conch', 'seaUrchin', 'cleanerShrimp',
   'hermitCrab', 'flamingoTongue',
   'sculpin', 'ochreStar', 'chiton', 'tidepoolCrab',
-  'blenny', 'hawkfish', 'goatfish', 'frogfish', 'scorpionfish',
+  'blenny', 'hawkfish', 'goatfish', 'frogfish', 'scorpionfish', 'peacockFlounder',
 ]);
 // How high each benthic body's origin sits above the sand (× its base scale).
 const BENTHIC_LIFT = {
@@ -144,7 +144,7 @@ const ROAM_STYLE = {
 const SCHOOL_SPECIES = new Set([
   'blueChromis', 'chromis', 'damselfish', 'cardinalfish',
   'pajamaCardinalfish', 'banggaiCardinalfish', 'zebrafish',
-  'mullet', 'sergeantMajor', 'anthias', 'yellowChromis',
+  'mullet', 'sergeantMajor', 'anthias', 'yellowChromis', 'bluestreakFusilier',
 ]);
 
 // Classic's day/night: 4-minute day, timeOfDay 0→1 (midnight 0, sunrise 0.25,
@@ -2521,10 +2521,10 @@ function fishBodyOf(id) {
     'leafySeaDragon', 'weedySeaDragon'].includes(id)) return 'seahorse';
   if (id === 'seaTurtle') return 'turtle';
   if (id === 'whaleShark' || id === 'twilightWhaleShark') return 'whaleShark';
-  if (['shark', 'frilledShark', 'lemonShark', 'blacktipReefShark'].includes(id)) return 'shark';
+  if (['shark', 'frilledShark', 'lemonShark', 'blacktipReefShark', 'leopardShark', 'lanternShark'].includes(id)) return 'shark';
   if (['morayEel', 'giantMoray', 'blueRibbonEel', 'glowEel', 'gulperEel',
     'oarfish', 'ribbonfish'].includes(id)) return 'eel';
-  if (['octopus', 'giantSquid', 'rubyOctopus'].includes(id)) return 'octopus';
+  if (['octopus', 'giantSquid', 'rubyOctopus', 'vampireSquid'].includes(id)) return 'octopus';
   if (id === 'dolphin' || id === 'spinnerDolphin') return 'dolphin';
   if (id === 'molaMola') return 'mola';
   if (['yellowTang', 'blueTang', 'powderBrownTang'].includes(id)) return 'tang';
@@ -2534,7 +2534,7 @@ function fishBodyOf(id) {
   if (['manatee', 'dugong'].includes(id)) return 'sirenian';
   if (id === 'seaOtter') return 'otter';
   if (['pufferfish', 'boxfish', 'porcupinePuffer'].includes(id)) return 'puffer';
-  if (['spottedEagleRay', 'mantaRay', 'abyssalRay', 'stingray'].includes(id)) return 'ray';
+  if (['spottedEagleRay', 'mantaRay', 'abyssalRay', 'stingray', 'cownoseRay'].includes(id)) return 'ray';
   if (id === 'nautilus') return 'nautilus';
   if (id === 'horseshoeCrab') return 'horseshoe';
   if (id === 'seaUrchin') return 'urchin';
@@ -4203,6 +4203,8 @@ export function initReefScene3D(canvas) {
     'spottedDrum', 'lionfish', 'emperorSnapper', 'emperorAngelfish', 'frogfish',
     'scorpionfish', 'longfinBatfish', 'giantTrevally', 'blacktipReefShark', 'whaleShark',
     'yellowChromis',
+    'sixlineWrasse', 'bluestreakFusilier', 'coralGrouper', 'peacockFlounder', 'cownoseRay',
+    'leopardShark', 'lanternShark', 'vampireSquid',
     // corals & flora
     'staghorn', 'finger', 'brain', 'lettuce', 'star', 'bubble', 'candycane',
     'toadstool', 'elkhorn', 'pillar', 'table', 'barnacles', 'redSeagrass', 'seaweed',
@@ -6105,7 +6107,20 @@ export function initReefScene3D(canvas) {
     }
     if (ev3 && ev3.earned == null) ev3.earned = ev3.tokens;   // saves from before Events 2.0
   }
-  const ev3Def = () => eventById(ev3?.id);
+  // Bioluminescence Night adds a spark-popping line to every other quest set —
+  // 3D only (Classic has no sparks), so it is layered on here, after the shared
+  // schedule, and always appended so saved progress indexes stay put.
+  const ev3DefCache = new Map();
+  const ev3Def = () => {
+    const d = eventById(ev3?.id);
+    if (!d || d.baseId !== 'bioluminescence_night') return d;
+    if (!ev3DefCache.has(d.id)) {
+      ev3DefCache.set(d.id, { ...d, questSets: d.questSets.map((set, i) => i % 2
+        ? { ...set, challenges: [...set.challenges, { type: 'pop_spark', label: `Pop ${4 + 3 * i} sparks`, target: 4 + 3 * i }] }
+        : set) });
+    }
+    return ev3DefCache.get(d.id);
+  };
   const ev3Live = () => {
     const d = ev3Def();
     return !!d && EV_TODAY() >= d.startDate && EV_TODAY() <= d.endDate;
@@ -8320,8 +8335,8 @@ export function initReefScene3D(canvas) {
         // candle, a full-grown Lumen Coral lights half the twilight.
         const stage = rank ? 0.5 + 0.5 * ((g.userData.entry?.level ?? CORAL_MAX_LEVEL) / CORAL_MAX_LEVEL) : 1;
         cands.push({ obj: g, y: 0.9, color: g.userData.spec?.accentColor ?? g.userData.spec?.color ?? 0x7fd8ff,
-          power: (g.userData.lampBoost ?? 1) * 5.5 * stage,
-          range: rank ? (12 + 8 * rank) * (0.65 + 0.35 * stage) : 11, score: d });
+          power: (g.userData.lampBoost ?? 1) * (rank ? 7 : 5.5) * stage,
+          range: rank ? (22 + 14 * rank) * (0.65 + 0.35 * stage) : 11, score: d });   // lanterns throw far: ~36 at rare, ~50 at mythic
       }
       for (const f of fishes) {
         if (!f.g.userData.bio) continue;
@@ -8375,7 +8390,7 @@ export function initReefScene3D(canvas) {
     be = Math.min(be + 1, beMax);
     hudGain('be', 1);
     flash(rateEl, '✨ pop! +1 🫧', '#9fe8ff');
-    if (ev3 && ev3Live()) ev3Record('earn_be', 1);
+    if (ev3 && ev3Live()) { ev3Record('earn_be', 1); ev3Record('pop_spark', 1); }
   }
   function tickBioNight(t, dt, nf) {
     const bn = bioNight();
@@ -8391,7 +8406,7 @@ export function initReefScene3D(canvas) {
       pos.needsUpdate = true;
     }
     if (bn && nf > 0.6) {
-      if (t > sparkNext) { spawnSpark(t); sparkNext = t + 25 + Math.random() * 35; }
+      if (t > sparkNext) { spawnSpark(t); sparkNext = t + 10 + Math.random() * 10; }   // every 10–20 s of night (was 25–60)
     }
     for (let i = glowSparks.length - 1; i >= 0; i--) {
       const s = glowSparks[i];

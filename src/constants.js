@@ -48,7 +48,7 @@ export const BIOLUM_SPECIES = new Set([
   // fish
   'glowEel', 'moonSeahorse', 'anglerfish', 'gulperEel', 'lanternfish', 'flashlightFish',
   'dragonfish', 'viperfish', 'barreleye', 'twilightLantern', 'glowfinAngelfish', 'abyssalRay',
-  'twilightWhaleShark',
+  'twilightWhaleShark', 'lanternShark', 'vampireSquid',
   // coral
   'auroraCoral', 'lanternCoral', 'orchidCoral', 'twilightBrain', 'phantomPolyp', 'wispCoral', 'lumenCoral',
   'seaPen', 'bambooCoral',   // 3D-only legendary corals (ReefScene3D LOCAL_SPECS)
@@ -1031,8 +1031,8 @@ export const FISH_SPECIES = {
   twilightLantern: {
     id: 'twilightLantern', name: 'Twilight Lanternfish', scientific: 'Myctophum noctis',
     tier: TIER.LEGENDARY, layer: 'B', color: 0x4a2b8c, accentColor: 0x9c64ff,
-    size: 22, speed: 0.8, unlockLevel: 1,
-    eventId: 'twilight_festival_2026',
+    size: 22, speed: 0.8, unlockLevel: 1, biome: 'deepTwilight',
+    eventId: 'bioluminescence_night_2026',   // rehomed from the retired Twilight Festival (1.2.6)
   },
   garibaldi: {
     id: 'garibaldi', name: 'Garibaldi', scientific: 'Hypsypops rubicundus',
@@ -1069,6 +1069,48 @@ export const FISH_SPECIES = {
     tier: TIER.LEGENDARY, layer: 'B', color: 0x546e7a, accentColor: 0xeceff1,
     size: 36, speed: 1.3, unlockLevel: 1, biome: 'seagrass',
     eventId: 'autumn_current_2026',
+  },
+
+  // ── 1.2.6 fish pack — eight real species across the three biomes ─────────
+  sixlineWrasse: {
+    id: 'sixlineWrasse', name: 'Sixline Wrasse', scientific: 'Pseudocheilinus hexataenia',
+    tier: TIER.COMMON, layer: 'A', color: 0x7e57c2, accentColor: 0xffa726,
+    size: 10, speed: 1.4, unlockLevel: 3,
+  },
+  bluestreakFusilier: {
+    id: 'bluestreakFusilier', name: 'Bluestreak Fusilier', scientific: 'Caesio teres',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0x29b6f6, accentColor: 0xffee58,
+    size: 14, speed: 1.5, unlockLevel: 5,
+  },
+  coralGrouper: {
+    id: 'coralGrouper', name: 'Coral Grouper', scientific: 'Cephalopholis miniata',
+    tier: TIER.RARE, layer: 'B', color: 0xe53935, accentColor: 0x40c4ff,
+    size: 26, speed: 0.7, unlockLevel: 8,
+  },
+  peacockFlounder: {
+    id: 'peacockFlounder', name: 'Peacock Flounder', scientific: 'Bothus mancus',
+    tier: TIER.UNCOMMON, layer: 'A', color: 0xa1887f, accentColor: 0x4fc3f7,
+    size: 16, speed: 0.5, unlockLevel: 4, biome: 'seagrass',
+  },
+  cownoseRay: {
+    id: 'cownoseRay', name: 'Cownose Ray', scientific: 'Rhinoptera bonasus',
+    tier: TIER.RARE, layer: 'B', color: 0x8d6e63, accentColor: 0xefebe9,
+    size: 30, speed: 0.9, unlockLevel: 7, biome: 'seagrass',
+  },
+  leopardShark: {
+    id: 'leopardShark', name: 'Leopard Shark', scientific: 'Triakis semifasciata',
+    tier: TIER.EPIC, layer: 'B', color: 0xbcaaa4, accentColor: 0x3e2723,
+    size: 34, speed: 0.8, unlockLevel: 10, biome: 'seagrass',
+  },
+  lanternShark: {
+    id: 'lanternShark', name: 'Velvet Belly Lanternshark', scientific: 'Etmopterus spinax',
+    tier: TIER.EPIC, layer: 'B', color: 0x37474f, accentColor: 0x64b5f6,
+    size: 24, speed: 0.9, unlockLevel: 12, biome: 'deepTwilight',
+  },
+  vampireSquid: {
+    id: 'vampireSquid', name: 'Vampire Squid', scientific: 'Vampyroteuthis infernalis',
+    tier: TIER.SUPER_RARE, layer: 'B', color: 0x6a1b3a, accentColor: 0x80deea,
+    size: 18, speed: 0.5, unlockLevel: 14, biome: 'deepTwilight',
   },
 
   // ── Gavin ────────────────────────────────────────────────────────────────

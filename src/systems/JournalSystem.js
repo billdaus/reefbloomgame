@@ -32,6 +32,7 @@ const CORAL_LORE = {
   midnightTable:  'A deep-sea table coral that uses bioluminescent lure patterns on its underside to attract and harvest zooplankton drifting through the twilight zone.',
   pearlOrganPipe: 'A rare colour morph of Tubipora musica whose skeletal tubes are saturated with nacre, producing a lustrous pearl sheen. Colonies grow in tight clusters — each tube opening bears eight ivory polyp arms that retract at the slightest shadow.',
   amberKelp:     'A Reef Bloom original, grown from a true story: giant kelp can add two feet in a single day, and in low autumn light a kelp canopy really does glow amber, sheltering hundreds of species beneath it.',
+  russetFan:           'A seasonal sea fan of Reef Bloom\'s own invention: in the cold weeks of the autumn current its polyps turn the colour of fallen leaves and the whole fan leans into the flow to feed. Real gorgonians do the leaning; the colour change is ours.',
 };
 
 const FISH_LORE = {
@@ -95,6 +96,17 @@ const FISH_LORE = {
   barreleye:           'The barreleye\'s tubular eyes rotate inside a transparent fluid-filled dome on its head — always scanning upward for the silhouettes of prey against the faint surface light.',
   ribbonfish:          'Ribbonfish undulate like a living banner through the water column. The bioluminescent stripe along their lateral line pulses in rhythmic waves to coordinate group movement.',
   twilightSeahorse:    'This deep-adapted seahorse has a vestigial dorsal fin and relies on jet propulsion from its gill plates — an adaptation to the still, pressurized water of the twilight zone.',
+  sixlineWrasse:       'Six violet-and-orange lines run the length of this busy little wrasse, which never stops picking tiny crustaceans from the coral. At night it spins a mucus cocoon to sleep in, like its parrotfish cousins.',
+  bluestreakFusilier:  'Fusiliers are the reef\'s commuters: by day they shoal in open water above the reef picking plankton from the current, and at dusk they drop into the coral to sleep. The electric-blue back turns a mottled red at night.',
+  coralGrouper:        'The coral hind wears hundreds of blue spots on a scarlet body and hunts from an ambush under a ledge. It sometimes hunts in a team with a moray eel, the two signalling each other with head shakes.',
+  peacockFlounder:     'A flatfish that can change colour and pattern in seconds to match the sand or rubble beneath it — in experiments it has copied a checkerboard. Both eyes sit on the left side, having migrated there as it grew.',
+  cownoseRay:          'Cownose rays travel in schools that can number in the thousands, flapping along the coast in spring and autumn migrations. The squared-off, notched snout gives the name; they crush clams with flat tooth plates.',
+  leopardShark:        'A harmless, saddle-spotted shark of shallow bays and kelp beds along the Californian coast, often seen cruising in water barely deep enough to cover it. It feeds on crabs, clams and innkeeper worms sucked from the mud.',
+  lanternShark:        'One of the smallest sharks in the world, the velvet belly glows: photophores along its underside match the faint light from above so it casts no silhouette, and its spines glow too, as a warning to anything below.',
+  vampireSquid:        'Neither squid nor octopus but its own ancient line, drifting at depths where oxygen barely exists. Threatened, it turns its webbed arms inside-out over its body and squirts a cloud of glowing mucus instead of ink.',
+  twilightLantern:     'A lanternfish of the twilight shelf, its flanks set with rows of blue photophores it can brighten or dim at will. On the two months of Bioluminescence Night it rises to the reef and hangs in the plankton like a loose constellation.',
+  molaMola:            'The ocean sunfish is the heaviest bony fish in the sea — up to a tonne — and it looks like it was left unfinished. It basks on its side at the surface to warm up after deep dives for jellyfish, which is how the autumn current sweeps it in toward the coast.',
+  spinnerDolphin:      'Spinner dolphins are named for the leaps in which they spin on their long axis up to seven times before splashing down. They rest in shallow bays by day and hunt the deep scattering layer at night; cold currents bring them close to shore.',
   moonSeahorse:        'Moon seahorses emit a faint phosphorescent glow that intensifies during the full moon — synchronising their courtship dances with the monthly tidal cycle.',
   glowEel:             'The glow eel\'s skin contains a dense network of bioluminescent chromatophores capable of generating full-body rippling light patterns used to startle and confuse predators.',
   anglerfish:          'Female anglerfish carry a modified dorsal spine tipped with a glowing lure. Males are microscopic parasites that fuse permanently to the female\'s bloodstream shortly after hatching.',

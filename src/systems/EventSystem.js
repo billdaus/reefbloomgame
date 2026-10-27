@@ -158,13 +158,13 @@ export const EVENT_SCHEDULE = [
     description: 'For two months the nights turn deep and the reef lights itself — glowing coral, drifting plankton, and the creatures that shine after dark.',
     reward: { be: 500, pearls: 120 },
     questSets: _sets(['First Glow', 'Blue Drift', 'Lantern Hour', 'Moonless', 'Glowing Shoals', 'Aurora', 'Deep Radiance', 'Night Eternal']),
-    shop: _shop(['auroraCoral', 10, 8], ['orchidCoral', 18, 10], ['lumenCoral', 28, 12], ['moonSeahorse', 40, 16], ['glowEel', 55, 20]),
+    shop: _shop(['auroraCoral', 10, 8], ['orchidCoral', 18, 10], ['lumenCoral', 28, 12], ['moonSeahorse', 40, 16], ['glowEel', 55, 20], ['twilightLantern', 70, 24]),
     pass: _pass([[5, { be: 100 }, '100 🫧'], [20, { pearls: 20 }, '20 💎'], [45, { be: 400 }, '400 🫧'], [70, { pearls: 30 }, '30 💎'], [90, { be: 600 }, '600 🫧']],
-      _shop(['auroraCoral', 10, 8], ['orchidCoral', 18, 10], ['lumenCoral', 28, 12], ['moonSeahorse', 40, 16], ['glowEel', 55, 20])),
+      _shop(['auroraCoral', 10, 8], ['orchidCoral', 18, 10], ['lumenCoral', 28, 12], ['moonSeahorse', 40, 16], ['glowEel', 55, 20], ['twilightLantern', 70, 24])),
   },
 ];
 
-const INCREMENTAL_TYPES = new Set(['place_coral', 'hatch_fish', 'earn_be', 'idle_streak']);
+const INCREMENTAL_TYPES = new Set(['place_coral', 'hatch_fish', 'earn_be', 'idle_streak', 'pop_spark']);   // pop_spark: 3D-only Bioluminescence Night sparks
 const SNAPSHOT_TYPES    = new Set(['reach_harmony', 'have_fish', 'have_coral']);
 
 // Days past endDate before state.event is fully cleared.
