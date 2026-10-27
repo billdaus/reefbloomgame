@@ -1014,17 +1014,30 @@ const BODY = {
     // single thick mushroom cap. Everything attaches — no floating discs.
     const grow = 1 + (lvl - 1) * 0.08;
     const wide = spec?.id === 'table' || spec?.id === 'midnightTable';
-    const stemH = wide ? 0.5 : 0.4;
+    const stemH = wide ? 0.72 : 0.4;   // tables stand tall: fish sleep under the plate
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, stemH, 9), mat);
     stem.position.y = stemH / 2 + 0.06; g.add(stem);
     if (wide) {
-      const r = (0.85 + rnd() * 0.2) * grow;
-      const disc = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.82, 0.06, 24), mat);
+      const r = (0.9 + rnd() * 0.2) * grow;
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.8, 0.07, 24), mat);
       disc.position.y = stemH + 0.07;
       disc.rotation.x = (rnd() - 0.5) * 0.1; disc.rotation.z = (rnd() - 0.5) * 0.1;
       g.add(disc);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.025, 6, 30), tipMat);
       rim.rotation.x = Math.PI / 2; rim.position.y = 0.02; disc.add(rim);
+      // The plate's top is a crust of short upright branchlets, the way a
+      // real table Acropora's is, denser toward the rim and taller with age.
+      const n = 20 + (lvl - 1) * 6;
+      for (let i = 0; i < n; i++) {
+        const a = rnd() * Math.PI * 2, rr = r * (0.2 + Math.sqrt(rnd()) * 0.72);
+        const h = 0.07 + rnd() * 0.09 * grow;
+        const twig = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, h, 5), mat);
+        twig.position.set(Math.cos(a) * rr, 0.035 + h / 2, Math.sin(a) * rr);
+        disc.add(twig);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), tipMat);
+        tip.position.set(Math.cos(a) * rr, 0.035 + h, Math.sin(a) * rr);
+        disc.add(tip);
+      }
     } else {
       const r = (0.55 + rnd() * 0.12) * grow;
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.55, 0.2, 20), mat);
@@ -4525,8 +4538,55 @@ export function initReefScene3D(canvas) {
     const b = bedBiome(g);
     return b === f.b || matchesBiome(spec, b);
   };
+  // How a coral sleeps a fish (1.2.6). Real reef fish wedge themselves between
+  // the branches of staghorn and tree corals, or tuck in under a table
+  // coral's plate; the rounded "rock" corals (brain, star, bubble…) are a last
+  // resort. 'shelter' is a built home (Anemone Haven, Reef Grotto…).
+  const ROCK_BED_PENALTY = 18 * 18;   // a branch or table within 18 units beats the rock next door
+  function bedKind(g) {
+    const spec = g.userData.spec;
+    if (!spec) return 'rock';
+    if (spec.shelter) return 'shelter';
+    if (TREE_LOOKS[spec.id]) return 'branch';
+    const sh = shapeOf(spec);
+    return sh === 'branch' ? 'branch' : sh === 'plate' ? 'under' : 'rock';
+  }
+  // Bed height above the coral's base, in the coral's own (level-scaled) units.
+  const BED_Y = { shelter: 0.5, branch: 0.95, under: 0.3, rock: 0.5 };
+  const bedHeight = (g) => (BED_Y[bedKind(g)] ?? 0.5) * (g.scale?.y || 1);
+  // Every sleeping fish species has ONE preferred bed coral — a branching or
+  // table coral from its own waters, fixed per species — that it heads for
+  // first and talks about in the Advisor: no complaint while the coral is
+  // still undiscovered, grumbles once it's in the journal but not planted,
+  // happy bedtime once it's on the reef.
+  const prefBedCache = new Map();
+  function preferredBed(spec) {
+    if (prefBedCache.has(spec.id)) return prefBedCache.get(spec.id);
+    let out = null;
+    if (spec.layer && !isNocturnalSpec(spec) && !BENTHIC_SPECIES.has(spec.id)) {
+      const zone = primaryBiome(spec);
+      const cands = coralSpecs.filter(c => !c.utility && !c.decor && !c.shelter && !c.eventId
+        && (TREE_LOOKS[c.id] || ['branch', 'plate'].includes(shapeOf(c))) && matchesBiome(c, zone));
+      // Everyday corals first: a chromis should want a staghorn, not a mythic.
+      const everyday = cands.filter(c => !['legendary', 'mythic'].includes(c.tier));
+      const pool = everyday.length ? everyday : cands;
+      if (pool.length) {
+        let h = 0; for (const ch of spec.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+        out = pool[h % pool.length];
+      }
+    }
+    prefBedCache.set(spec.id, out);
+    return out;
+  }
+  const bedState = (fishSpec) => {   // 'none' | 'undiscovered' | 'unplaced' | 'placed'
+    const pref = preferredBed(fishSpec);
+    if (!pref) return 'none';
+    if (placedCorals.some(c => c.id === pref.id)) return 'placed';
+    return seen.has(pref.id) ? 'unplaced' : 'undiscovered';
+  };
   function claimHome(f) {
     const spec = FISH_SPECIES[f.id];
+    const pref = spec ? preferredBed(spec) : null;
     let best = null, bd = Infinity;
     for (const s of shelters) {
       const sp = s.userData.spec;
@@ -4539,20 +4599,28 @@ export function initReefScene3D(canvas) {
       if (d < bd) { bd = d; best = s; }
     }
     if (!best) {
-      // Every shelter and Hidey-Hole is full (or missing) — nestle into a
-      // grown coral instead (2 sleepers each), so night finds the reef tucked
-      // into its coral rather than lying out on the sand.
+      // Every shelter and Hidey-Hole is full (or missing) — bed down in a grown
+      // coral instead, so night finds the reef tucked into its coral rather
+      // than lying out on the sand. Branches and tables take three sleepers
+      // and win over any rock coral within ROCK_BED_PENALTY; rocks take two.
       for (const g of corals) {
         const e = g.userData.entry;
         if (!e || g.userData.spec?.utility || e.level < 3 || !bedSuits(f, spec, g)) continue;
+        const kind = bedKind(g);
         const set = (g.userData.homed ??= new Set());
-        if (set.size >= 2) continue;
+        if (set.size >= (kind === 'rock' ? 2 : 3)) continue;
         const dx = g.position.x - f.g.position.x, dz = g.position.z - f.g.position.z;
-        const d = dx * dx + dz * dz;
+        const d = dx * dx + dz * dz + (kind === 'rock' ? ROCK_BED_PENALTY : 0)
+          - (g.userData.spec?.id === pref?.id ? 12 * 12 : 0);   // its own favourite wins within ~12 units
         if (d < bd) { bd = d; best = g; }
       }
     }
-    if (best) { (best.userData.homed ??= new Set()).add(f); f.home = best; }
+    if (best) {
+      (best.userData.homed ??= new Set()).add(f);
+      f.home = best;
+      f.bedY = bedHeight(best);
+      f.bedR = bedKind(best) === 'under' ? 0.3 : 0.55;   // under a plate: stay beneath it
+    }
     return best;
   }
   function releaseHome(f) {
@@ -4560,6 +4628,7 @@ export function initReefScene3D(canvas) {
     f.home.userData.homed?.delete(f);
     f.home = null;
     f.bed = null;
+    f.bedY = undefined; f.bedR = undefined;
     // Wake pointing the way we slept, so steering resumes without a snap.
     if (f.hdg !== undefined && f.g) f.hdg = f.g.rotation.y;
   }
@@ -5997,6 +6066,7 @@ export function initReefScene3D(canvas) {
       tips.push('Your Cleaning Station has no staff — hatch a cleaner (Cleaner Wrasse, Cleaner Shrimp, or Glow Cleaner Goby).');
     }
     if (!tips.length) tips.push('The reef is thriving. Keep growing it to hold the ratchet at 100.');
+    const voices = fishVoices({ coralTypes, fishCount, fishTypes, A, B, pBalance });
     advisor.body.innerHTML =
       line('Coral variety', pVariety, 40)
       + line('Fish population', pFish, 20)
@@ -6004,7 +6074,187 @@ export function initReefScene3D(canvas) {
       + line('Water layers', pLayers, 15)
       + line('Fish ⇄ coral balance', pBalance, 15)
       + '<div class="m-sec">How to improve</div>'
-      + tips.map(t => `<div class="m-row" style="border:none">• <span>${t}</span></div>`).join('');
+      + tips.map(t => `<div class="m-row" style="border:none">• <span>${t}</span></div>`).join('')
+      + (voices.length ? '<div class="m-sec">🐠 The fish talk back</div>'
+        + voices.map(v => `<div class="m-row fv" data-sp="${v.id}" style="cursor:pointer">`
+          + `<img class="j-thumb" src="${speciesThumb(v.spec)}" alt="">`
+          + `<span style="flex:1;min-width:0"><b>${v.spec.name}</b>${v.n > 1 ? ` <small style="color:#9fc4dc">×${v.n}</small>` : ''}`
+          + `<span class="fv-q">“${v.line}”</span></span></div>`).join('')
+        + '<div class="m-row" style="border:none"><small style="color:#9fc4dc">The residents\' view of the reef today — tap one for its journal entry.</small></div>'
+        : '');
+  }
+  advisor.body.addEventListener('click', (e) => {
+    const r = e.target.closest('.fv[data-sp]');
+    if (!r) return;
+    const spec = FISH_SPECIES[r.dataset.sp] ?? LOCAL_SPECS[r.dataset.sp];
+    if (spec) { fillSpecies(spec, 'fish'); speciesModal.show(); }
+  });
+  // 🐠 The fish talk back (1.2.6): a few residents give their own view of the
+  // reef, picked by what they actually have or lack — somewhere to sleep, a
+  // shoal, company, variety — and by the harmony score. Scripted lines, chosen
+  // per species per day so the chorus changes without ever repeating itself
+  // in one sitting.
+  const FISH_LINES = {
+    // Bedtime — tone follows whether the player could provide the coral.
+    prefUndiscovered: ['No {coral} on this coast yet. I will make do.',
+      'Somewhere out there is {coral}. One day.'],
+    prefUnplaced: ['😤 You have {coral} in your journal and none on the reef. Plant one. I would sleep in it.',
+      '😤 {coral} would be nice. You have found one. Just saying.',
+      '😤 I keep hearing about {coral}. I have never seen one here.'],
+    prefPlaced: ['💤 Bedded down in the {coral} every night. Bliss.',
+      '💤 The {coral} is my bed. Do not sell it.',
+      '💤 Sleeping in the {coral}. Finally.'],
+    noBeds: ['Nowhere to tuck in after dark. Grow me a staghorn to sleep in.',
+      'I slept on the sand last night. A table coral would be nice.',
+      'The rock corals are full and they are lumpy. Plant something with branches.'],
+    // Company
+    lonely: ['Only {n} of us. A shoal needs more than that.',
+      'Hatch me some company. We swim better in numbers.',
+      'A school of {n} is not a school. It is a queue.'],
+    quiet: ['It is quiet. Too quiet. Hatch someone.', 'Where is everybody?',
+      'I talk to the drone now. That is how quiet it is.'],
+    neighbour: ['{other} keeps staring at me. Tell it to stop.',
+      'The {other} thinks it runs this reef. It does not.',
+      'Me and the {other} have an arrangement. It does not know about it.',
+      'Whoever let the {other} in: thank you. Good neighbour.',
+      'The {other} snores. Fish snore. Look it up.'],
+    predator: ['There is a {big} in the lane. I am not going up there.',
+      'The {big} says it is friendly. I have counted its teeth.',
+      'Every time the {big} swims over, the whole reef holds its breath.'],
+    // The people
+    drone: ['The drone counted me twice. I am two fish now, officially.',
+      'Bubbles asked if I was a new species. I said yes. Recording.',
+      'That little drone works harder than you do.',
+      'Bubbles hummed at me for an hour. I think it was a song.'],
+    skip: ['Skip-7 looked at me like I was overpriced.',
+      'The robot at the counter has opinions about everyone. Ask it about me. Actually, do not.',
+      'Skip-7 said "mud". I think that was a compliment.'],
+    // Weather, light, season
+    nightGlow: ['The lantern corals light the whole shelf. I cannot sleep. Worth it.',
+      'Everything glows after dark here. Even me, a bit.',
+      'Blue plankton all night. Like sleeping inside a lamp.'],
+    day: ['Good light today. The algae is coming in nicely.', 'Morning. I have been up since four.',
+      'Current is slack. Lazy day. Do not expect much from me.'],
+    event: ['{event} again. The whole reef changes its outfit.',
+      'Is it {event} already? Nobody tells me anything.',
+      'I like {event}. The water tastes different.'],
+    // The reef itself
+    hatchling: ['The new {young} is a twig. Give it a week.',
+      'Someone planted a {young}. It is tiny. I have named it.'],
+    sand: ['Half this grid is sand. Fill it.', 'So much empty sand. I get nervous crossing it.',
+      'More coral, keeper. The sand is for crabs.'],
+    sameCoral: ['Same coral everywhere. I keep getting lost.', 'Try a new kind of coral. For my sake.',
+      'Variety, keeper. A reef is not a lawn.'],
+    clean: ['The cleaning station is the best thing you have built. Say so.',
+      'Just had my fins done. Feeling good.', 'The cleaner wrasse knows things. Tip it well.'],
+    nest: ['Something is hatching at the nest. I can hear it.',
+      'Eggs in the nest. The gossip is unbearable.'],
+    pages: ['Someone dropped paper in the twilight. Not me.',
+      'There is a notebook page under the shelf. Smells of people.'],
+    // Personality
+    night: ['You sleep. I work. The reef is mine after dark.', 'Do not wait up.',
+      'Daylight is overrated. Ask me at midnight.'],
+    benthic: ['Nothing happening down here. Just how I like it.', 'Sand is warm. Carry on.',
+      'I have walked this whole reef. It is bigger than it looks from up there.'],
+    big: ['Give me room. Big swimmers need open water above the coral.',
+      'I patrol the deep lane. Keep the tall coral out of it.'],
+    gossip: ['Who ate the plankton? Me. It was me.', 'I saw the drone fall asleep on a tile. Do not tell it.',
+      'I have a theory about the tide. It is long. Pull up a rock.',
+      'Fish do not have knees. I checked. Twice.', 'I was a legend in my last reef. Nobody here believes me.'],
+    // Mood (harmony)
+    happy: ['Water is clear, coral is thick. No complaints.', 'Best reef I have lived on. Change nothing.',
+      'Harmony is high and so is my opinion of you.', 'Tell the advisor to take the day off.'],
+    fine: ['Could be worse. Could be a lot better.', 'Getting there. Keep planting.',
+      'Decent reef. The advisor nags, though.', 'Fine. Read the tips. I read them.'],
+    grumpy: ['This reef is a mess. Read the tips above.', 'I have seen better. I have lived in better.',
+      'Fix the harmony or I am swimming for the edge.', 'The water tastes of neglect.'],
+  };
+  function fishVoices(ctx) {
+    let seed = 7; for (const ch of EV_TODAY()) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const rng = mulberry32(seed);
+    const pick = (arr) => arr[Math.floor(rng() * arr.length)];
+    // Beds per biome tonight: branches and tables sleep three, shelters their
+    // capacity, rocks count for nothing (fish only use them unhappily).
+    const beds = {}, sleepers = {};
+    for (const g of corals) {
+      const e = g.userData.entry;
+      if (!e || g.userData.spec?.utility || e.level < 3) continue;
+      const k = bedKind(g), b = bedBiome(g);
+      if (k === 'rock' || k === 'shelter') continue;
+      beds[b] = (beds[b] ?? 0) + 3;
+    }
+    for (const sh of shelters) { const b = bedBiome(sh); beds[b] = (beds[b] ?? 0) + (sh.userData.spec?.homeCap ?? 6); }
+    for (const f of fishes) if (!f.noct && !f.benthic) sleepers[f.b] = (sleepers[f.b] ?? 0) + 1;
+    const bySpecies = new Map();
+    for (const f of fishes) { if (!bySpecies.has(f.id)) bySpecies.set(f.id, []); bySpecies.get(f.id).push(f); }
+    const ids = [...bySpecies.keys()];
+    for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    // Reef-wide facts the fish can talk about.
+    const live = liveEvent(EV_TODAY());
+    const bigIds = [...new Set(fishes.filter(f => f.g.userData.big).map(f => f.id))];
+    const youngIds = [...new Set(corals.filter(g => g.userData.entry && !g.userData.spec?.utility && g.userData.entry.level < 3).map(g => g.userData.spec?.id).filter(Boolean))];
+    const emptyish = placedCorals.length < 24;
+    const eggsReady = nestEggs.some(e => e && e.at <= Date.now());
+    const nameOf = (id) => (FISH_SPECIES[id] ?? CORAL_SPECIES[id] ?? LOCAL_SPECS[id])?.name ?? id;
+    const used = new Set();
+    const out = [];
+    for (const id of ids.slice(0, 5)) {
+      const spec = FISH_SPECIES[id] ?? LOCAL_SPECS[id];
+      if (!spec) continue;
+      const group = bySpecies.get(id), f = group[0];
+      const L = FISH_LINES;
+      const sleeper = !f.noct && !f.benthic;
+      const pref = preferredBed(spec), st = bedState(spec);
+      const others = ids.filter(o => o !== id && !(FISH_SPECIES[o] ?? {}).benthic);
+      const other = others.length ? nameOf(others[Math.floor(rng() * others.length)]) : null;
+      const bigOther = bigIds.filter(b => b !== id);
+      // Topics this fish could raise today, each weighted; a grumble about a
+      // coral the player could plant is the loudest, happy bedtime next.
+      const topics = [];
+      const add = (key, w, lines) => { if (w > 0 && lines?.length) topics.push({ key, w, lines }); };
+      add('bed', st === 'unplaced' ? 4 : st === 'placed' ? 2.2 : st === 'undiscovered' ? 0.6 : 0,
+        st === 'unplaced' ? L.prefUnplaced : st === 'placed' ? L.prefPlaced : L.prefUndiscovered);
+      add('noBeds', sleeper && st !== 'placed' && (sleepers[f.b] ?? 0) > (beds[f.b] ?? 0) ? 2.5 : 0, L.noBeds);
+      add('lonely', f.school && group.length < 3 ? 2 : 0, L.lonely);
+      add('quiet', ctx.fishCount < 4 ? 1.5 : 0, L.quiet);
+      add('neighbour', other ? 1.6 : 0, L.neighbour);
+      add('predator', bigOther.length && !f.g.userData.big ? 1.6 : 0, L.predator);
+      add('drone', 1.2, L.drone);
+      add('skip', level >= 5 ? 0.9 : 0, L.skip);
+      add('nightGlow', nightFactor > 0.5 && corals.some(g => g.userData.bio) ? 1.6 : 0, L.nightGlow);
+      add('day', nightFactor < 0.3 ? 0.9 : 0, L.day);
+      add('event', live ? 1.5 : 0, L.event);
+      add('hatchling', youngIds.length ? 1.3 : 0, L.hatchling);
+      add('sand', emptyish ? 1.1 : 0, L.sand);
+      add('sameCoral', ctx.coralTypes < 5 ? 1.3 : 0, L.sameCoral);
+      add('clean', placedStations.length && spec.layer === 'A' ? 1.2 : 0, L.clean);
+      add('nest', eggsReady ? 1.6 : 0, L.nest);
+      add('pages', lj.got > 0 && f.b === 'deepTwilight' ? 1.4 : 0, L.pages);
+      add('night', f.noct ? 1.6 : 0, L.night);
+      add('benthic', f.benthic ? 1.6 : 0, L.benthic);
+      add('big', f.g.userData.big ? 1.2 : 0, L.big);
+      add('gossip', 1.0, L.gossip);
+      add('mood', 1.3, harmony >= 85 ? L.happy : harmony < 40 ? L.grumpy : L.fine);
+      // Weighted draw; no two fish on the same topic in one sitting.
+      const fresh = topics.filter(t => !used.has(t.key));
+      const pool = fresh.length ? fresh : topics;
+      let total = pool.reduce((a, t) => a + t.w, 0), r = rng() * total, topic = pool[pool.length - 1];
+      for (const t of pool) { r -= t.w; if (r <= 0) { topic = t; break; } }
+      used.add(topic.key);
+      const line = pick(topic.lines)
+        .replace('{n}', group.length)
+        .replace('{coral}', pref?.name ?? 'coral')
+        .replace('{other}', other ?? 'the neighbour')
+        .replace('{big}', bigOther.length ? nameOf(bigOther[Math.floor(rng() * bigOther.length)]) : 'shark')
+        .replace('{young}', youngIds.length ? nameOf(youngIds[Math.floor(rng() * youngIds.length)]) : 'coral')
+        .replace('{event}', live?.name ?? 'the season');
+      out.push({ id, spec, n: group.length, line });
+    }
+    return out;
+  }
+  // Dev hook: where every fish is bedded down right now.
+  if (import.meta.env?.DEV && window.__rb3d) {
+    window.__rb3d.beds = () => fishes.map(f => ({ id: f.id, home: f.home?.userData.spec?.id ?? null, kind: f.home ? bedKind(f.home) : null, pref: preferredBed(FISH_SPECIES[f.id] ?? {})?.id ?? null }));
   }
 
   // ⭐ Progress — next-level milestones and biome unlocks (Classic's level panel).
@@ -6658,6 +6908,10 @@ export function initReefScene3D(canvas) {
       html += row('Growth', `hatchling → full grown in ${fmtMs(GROWTH_TOTAL_MS / tr.growth)}`);
     }
     if (spec.shelter) html += row('Shelter', `sleeps ${spec.homeCap ?? 6} fish overnight`);
+    if (spec.layer && preferredBed(spec)) {
+      const st = bedState(spec), pb = preferredBed(spec);
+      html += row('Sleeps in', st === 'placed' ? `💤 ${pb.name}` : st === 'unplaced' ? `😤 ${pb.name} — none planted` : `${pb.name}`);
+    }
     if (spec.storage) html += row('Storage', `+${spec.storage} 🫧 wallet cap`);
     if (!spec.eventId) {
       if (seedOnly(spec, kind)) {
@@ -8937,8 +9191,8 @@ export function initReefScene3D(canvas) {
         // first, then a quick burrow-in wiggle, then a slow-breathing sleep
         // hover (the sideways sleep-lean comes from the roll pass below).
         const hp = f.home.position;
-        const tx = hp.x + Math.sin(f.phase * 2.6) * 0.55;
-        const tz = hp.z + Math.cos(f.phase * 3.1) * 0.55;
+        const tx = hp.x + Math.sin(f.phase * 2.6) * (f.bedR ?? 0.55);
+        const tz = hp.z + Math.cos(f.phase * 3.1) * (f.bedR ?? 0.55);
         const cur = f.g.position;
         const dxh = tx - cur.x, dzh = tz - cur.z;
         if (!f.bed && dxh * dxh + dzh * dzh > 2.6) {
@@ -8956,7 +9210,7 @@ export function initReefScene3D(canvas) {
         } else {
           if (!f.bed) f.bed = t;                      // arrived — tuck in
           const settle = clamp((t - f.bed) / 1.1, 0, 1);
-          const ty = hp.y + 0.5 - 0.14 * settle + Math.sin(t * 0.8 + f.phase) * 0.05;
+          const ty = hp.y + (f.bedY ?? 0.5) - 0.14 * settle + Math.sin(t * 0.8 + f.phase) * 0.05;
           const k = Math.min(1, dt * 1.6);
           cur.set(cur.x + (tx - cur.x) * k, cur.y + (ty - cur.y) * k, cur.z + (tz - cur.z) * k);
           f.g.rotation.y += Math.sin(t * 13 + f.phase) * 0.3 * (1 - settle);   // burrow wiggle
