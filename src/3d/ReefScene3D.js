@@ -4557,7 +4557,7 @@ export function initReefScene3D(canvas) {
   // 0.35 out sits BETWEEN the arms in the middle of the cluster, where the
   // ring of arms is ~0.5 out.
   const BED_Y = { shelter: 0.5, branch: 1.3, under: 0.3, rock: 0.5 };
-  const BED_R = { shelter: 0.55, branch: 0.35, under: 0.3, rock: 0.55 };
+  const BED_R = { shelter: 0.55, branch: 0.16, under: 0.3, rock: 0.55 };   // branch: inside the bundle of arms
   const bedHeight = (g) => (BED_Y[bedKind(g)] ?? 0.5) * (g.scale?.y || 1);
   // Every sleeping fish species has ONE preferred bed coral — a branching or
   // table coral from its own waters, fixed per species — that it heads for
@@ -4627,7 +4627,7 @@ export function initReefScene3D(canvas) {
       // Branch sleepers stagger their heights (×0.8–1.25) so a shoal in one
       // staghorn is tucked at different levels, not lined up on a shelf.
       f.bedY = bedHeight(best) * (kind === 'branch' ? 0.8 + (Math.sin(f.phase * 9.1) * 0.5 + 0.5) * 0.45 : 1);
-      f.bedR = BED_R[kind] ?? 0.55;   // how far from the trunk: inside the arms, under the plate
+      f.bedR = (BED_R[kind] ?? 0.55) * (kind === 'branch' ? (best.scale?.y || 1) : 1);   // branch: in the arm cluster; under: beneath the plate
     }
     return best;
   }
