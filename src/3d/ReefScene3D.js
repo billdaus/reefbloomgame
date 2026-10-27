@@ -2824,7 +2824,37 @@ function makeDrone(palette = DRONE_PALETTES.bubbles) {
   return g;
 }
 
-export function initReefScene3D(canvas) {
+// ── Loading screen ─────────────────────────────────────────────────────────────
+// threed.html paints #loading before any script runs. The scene build below is
+// one long synchronous function, so between its heavy sections it reports a
+// stage and yields one frame — that is what lets the bar and label repaint.
+// The screen fades on the first rendered frame; a boot failure removes it so
+// the error panel shows.
+const loadEl = () => document.getElementById('loading');
+function loadStage(label, pct) {
+  const el = loadEl();
+  if (el) {
+    const l = el.querySelector('.ld-label'), f = el.querySelector('.ld-fill');
+    if (l) l.textContent = label;
+    if (f) f.style.width = pct + '%';
+  }
+  return new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+}
+let loadHidden = false;
+function loadDone() {
+  if (loadHidden) return;
+  loadHidden = true;
+  const el = loadEl();
+  if (!el) return;
+  const f = el.querySelector('.ld-fill'); if (f) f.style.width = '100%';
+  const l = el.querySelector('.ld-label'); if (l) l.textContent = 'Welcome back to the reef';
+  // Fast machines finish the build in a blink; hold the screen a moment so it
+  // reads as a splash, not a flicker (performance.now() counts from navigation).
+  const hold = Math.max(0, 1200 - performance.now());
+  setTimeout(() => { el.classList.add('done'); setTimeout(() => el.remove(), 900); }, hold);
+}
+
+export async function initReefScene3D(canvas) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -2895,6 +2925,7 @@ export function initReefScene3D(canvas) {
   controls.keys = { LEFT: 'ArrowLeft', UP: 'ArrowUp', RIGHT: 'ArrowRight', BOTTOM: 'ArrowDown' };
   controls.listenToKeyEvents(window);
 
+  await loadStage('Shaping the seafloor', 22);
   // ── Lighting ────────────────────────────────────────────────────────────────
   const hemi = new THREE.HemisphereLight(0xcdeefc, 0x46483a, 1.05);
   scene.add(hemi);
@@ -3338,6 +3369,7 @@ export function initReefScene3D(canvas) {
     if (pool.length) droneQueue.push(pool[Math.floor(Math.random() * pool.length)]);
   }
 
+  await loadStage('Laying out the reefs', 38);
   // ── Grid tiles (one grid per biome) ──────────────────────────────────────────
   // Tiles read as raked sand patches, not game-board squares — a shade lighter
   // than the local seafloor with a soft edge, glowing only on hover.
@@ -5071,6 +5103,7 @@ export function initReefScene3D(canvas) {
   function refreshSlotBtn() { if (slotBtn) slotBtn.textContent = `💾 ${slotLabel(slot)}`; }
   refreshSlotBtn();
 
+  await loadStage('Opening the species palette', 52);
   // ── Palette UI (full Classic catalog, grouped by biome, level-gated) ──────────
   const paletteEl = document.getElementById('palette');
   const coralSpecs = reefCorals().sort(byUnlock);
@@ -7755,6 +7788,7 @@ export function initReefScene3D(canvas) {
   // Browsers require a gesture before audio: any press wakes the ambience.
   window.addEventListener('pointerdown', () => music.poke());
 
+  await loadStage('Growing your coral', 66);
   // ── Restore saved reef ───────────────────────────────────────────────────────
   // Pre-biome saves lack `b`: corals default to the coral grid; fish anchors are
   // re-confined to the coral zone. No ambient fish — like Classic, every fish in
@@ -7987,6 +8021,7 @@ export function initReefScene3D(canvas) {
   const drone = makeDrone();
   // Dock sits in the open channel south-east of the reef grid, clear of the
   // tiles, the expansion aprons, and the decor ring around them.
+  await loadStage('Planting the wild groves', 80);
   // ── Wild groves — dense life beyond the grid ─────────────────────────────────
   // Untamed patches outside the buildable footprint: seagrass meadows in the
   // seagrass zone, wild coral heads in the reef, a small grove in the
@@ -8980,6 +9015,7 @@ export function initReefScene3D(canvas) {
     opacity: 0.95, depthWrite: false, sizeAttenuation: true }));
   scene.add(sparks);
 
+  await loadStage('Waking Bubbles', 93);
   // ── Render loop ──────────────────────────────────────────────────────────────
   const clock = new THREE.Clock();
   const SUN_DAY = new THREE.Color(0xeaf6ff), SUN_NIGHT = new THREE.Color(0x8fb3e8);
@@ -9011,6 +9047,7 @@ export function initReefScene3D(canvas) {
   function frame() {
     if (!running) return;
     requestAnimationFrame(frame);
+    if (!loadHidden) loadDone();   // first frame drawn — the loading screen can go
     const dt = clock.getDelta();
     const t = clock.getElapsedTime();
     adaptResolution(dt);

@@ -770,9 +770,73 @@
       .coral-btn { padding: 4px 9px; font-size: 12px; }
       #hint { display: none; }
     }
+
+    /* ── Loading screen — painted before any script, fades on the first frame ── */
+    #loading {
+      position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px; overflow: hidden;
+      background: linear-gradient(180deg, #70d4f8 0%, #28a0e0 32%, #1468b0 66%, #0a3050 100%);
+      color: #eaf6ff; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      transition: opacity 0.7s ease; -webkit-user-select: none; user-select: none;
+    }
+    #loading.done { opacity: 0; pointer-events: none; }
+    #loading .ld-kicker { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: rgba(234,246,255,0.7); }
+    #loading .ld-title { font-size: clamp(34px, 7vw, 56px); font-weight: 800; letter-spacing: -1px; line-height: 1; text-shadow: 0 4px 24px rgba(0,30,60,0.35); }
+    #loading .ld-bar { width: min(320px, 70vw); height: 6px; border-radius: 3px; background: rgba(3,18,28,0.35); overflow: hidden; margin-top: 10px; }
+    #loading .ld-fill { display: block; height: 100%; width: 6%; border-radius: 3px; background: linear-gradient(90deg, #7fe8ff, #ffffff); transition: width 0.5s ease; box-shadow: 0 0 12px rgba(127,232,255,0.8); }
+    #loading .ld-label { font-size: 13.5px; color: rgba(234,246,255,0.9); min-height: 1.3em; }
+    #loading .ld-tip { position: absolute; left: 24px; right: 24px; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 12.5px; line-height: 1.5; color: rgba(234,246,255,0.75); }
+    #loading .ld-tip b { color: #ffd27f; font-weight: 700; }
+    #loading .ld-sea { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    #loading .ld-bubble { position: absolute; bottom: -40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.45); background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.45), rgba(255,255,255,0.05)); animation: ldRise linear infinite; }
+    @keyframes ldRise { from { transform: translateY(0); opacity: 0; } 15% { opacity: 0.8; } to { transform: translateY(-110vh); opacity: 0; } }
+    #loading .ld-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 18vh; background: linear-gradient(180deg, transparent, rgba(5,24,40,0.55)); }
+    @media (prefers-reduced-motion: reduce) { #loading .ld-bubble { animation: none; display: none; } }
   </style>
 </head>
 <body>
+  <div id="loading" aria-live="polite">
+    <div class="ld-sea" id="ld-sea"></div>
+    <div class="ld-floor"></div>
+    <div class="ld-kicker">A coral reef, yours to grow</div>
+    <div class="ld-title">Reef Bloom</div>
+    <div class="ld-bar"><span class="ld-fill"></span></div>
+    <div class="ld-label">Loading the reef…</div>
+    <div class="ld-tip" id="ld-tip"></div>
+  </div>
+  <script>
+    // Loading-screen dressing: rising bubbles and a rotating tip. Plain script
+    // so it runs while the game's module is still downloading.
+    (function () {
+      var sea = document.getElementById('ld-sea');
+      for (var i = 0; i < 16; i++) {
+        var b = document.createElement('span');
+        b.className = 'ld-bubble';
+        var size = 6 + Math.random() * 20;
+        b.style.width = b.style.height = size + 'px';
+        b.style.left = (Math.random() * 100) + '%';
+        b.style.animationDuration = (7 + Math.random() * 9) + 's';
+        b.style.animationDelay = (-Math.random() * 14) + 's';
+        sea.appendChild(b);
+      }
+      var TIPS = [
+        '<b>Drag</b> to glide across the reef · <b>right-drag</b> or two fingers to orbit',
+        'Corals grow from hatchlings. <b>Tap one</b> to see its stage',
+        'Fish bed down at night in <b>branching coral</b> and under <b>table coral</b>',
+        'Lantern corals light the water <b>five tiles</b> across after dark',
+        'The <b>Harmony Advisor</b> tells you what the reef needs. The fish tell you what they think',
+        'Research surveys in the <b>Deep Twilight</b> bring home more than coral',
+        'Press <b>C</b> for photo mode, <b>J</b> for the Ocean Journal, <b>O</b> for settings',
+        'Every species marked 🌍 in the journal is a <b>real animal</b>',
+        'Bubbles finds new coral on <b>expeditions</b>. Fund one at her nest',
+        'Name your reef from the <b>Reef Slots</b> menu'
+      ];
+      var tip = document.getElementById('ld-tip'), n = Math.floor(Math.random() * TIPS.length);
+      function show() { tip.innerHTML = TIPS[n % TIPS.length]; n++; }
+      show();
+      setInterval(show, 3600);
+    })();
+  </script>
   <a id="back" href="/reef/">⌂ Reefs</a>
   <div id="slots"></div>
   <div id="photo-bar"><button data-snap>📷 Snap</button><button data-done>✕ Done</button></div>
@@ -842,13 +906,14 @@
           cv = fresh;
         }
         try {
-          initReefScene3D(cv);
+          await initReefScene3D(cv);
           return;
         } catch (err) {
           lastErr = err;
           console.error('3D boot attempt failed:', err);
         }
       }
+      document.getElementById('loading')?.remove();   // let the error panel through
       const d = document.createElement('div');
       d.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;'
         + 'justify-content:center;background:#0a3550;padding:24px;';
