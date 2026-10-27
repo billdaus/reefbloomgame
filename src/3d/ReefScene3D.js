@@ -8545,6 +8545,14 @@ export function initReefScene3D(canvas) {
     scene.add(pl);
     bioPool.push({ pl, src: null });
   }
+  // Lamp light is the coral's colour pulled 40% toward white, so an orange
+  // lantern still lights the blue twilight floor (pure orange × blue ≈ dark).
+  const lampColorCache = new Map();
+  const lampColor = (hex) => {
+    let v = lampColorCache.get(hex);
+    if (v == null) { v = new THREE.Color(hex).lerp(new THREE.Color(0xffffff), 0.4).getHex(); lampColorCache.set(hex, v); }
+    return v;
+  };
   let bioDealAt = 0;
   const _bioTmp = new THREE.Vector3();
   function tickBioLights(t, dt, nf, dk) {
@@ -8560,9 +8568,14 @@ export function initReefScene3D(canvas) {
         // Lanterns: tier sets the lamp, growth turns it up — a hatchling is a
         // candle, a full-grown Lumen Coral lights half the twilight.
         const stage = rank ? 0.5 + 0.5 * ((g.userData.entry?.level ?? CORAL_MAX_LEVEL) / CORAL_MAX_LEVEL) : 1;
-        cands.push({ obj: g, y: 0.9, color: g.userData.spec?.accentColor ?? g.userData.spec?.color ?? 0x7fd8ff,
-          power: (g.userData.lampBoost ?? 1) * (rank ? 7 : 5.5) * stage,
-          range: rank ? (22 + 14 * rank) * (0.65 + 0.35 * stage) : 11, score: d });   // lanterns throw far: ~36 at rare, ~50 at mythic
+        // Lanterns light a pool FIVE TILES across in every direction once
+        // grown (a hatchling lights three): no distance falloff (decay 0), so
+        // the pool is an even disc that the range window fades out at its
+        // edge; tier sets how bright the pool is, not how far it reaches.
+        const tint = g.userData.spec?.accentColor ?? g.userData.spec?.color ?? 0x7fd8ff;
+        cands.push({ obj: g, y: 0.9, color: rank ? lampColor(tint) : tint,
+          power: rank ? (6.5 + 2 * rank) * stage : (g.userData.lampBoost ?? 1) * 5.5 * stage,
+          range: rank ? TILE * 5 * (0.6 + 0.4 * stage) : 11, decay: rank ? 0 : 1.7, score: d });
       }
       for (const f of fishes) {
         if (!f.g.userData.bio) continue;
@@ -8583,7 +8596,7 @@ export function initReefScene3D(canvas) {
         if (kept.has(w)) continue;
         const free = bioPool.find(s => !s.src);
         if (!free) break;
-        free.src = w; free.pl.color.setHex(w.color); free.pl.distance = w.range; free.pl.intensity = 0;
+        free.src = w; free.pl.color.setHex(w.color); free.pl.distance = w.range; free.pl.decay = w.decay ?? 1.7; free.pl.intensity = 0;
       }
     }
     const boost = 1 + dk * 0.8;
