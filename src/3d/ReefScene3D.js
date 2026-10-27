@@ -4552,7 +4552,11 @@ export function initReefScene3D(canvas) {
     return sh === 'branch' ? 'branch' : sh === 'plate' ? 'under' : 'rock';
   }
   // Bed height above the coral's base, in the coral's own (level-scaled) units.
-  const BED_Y = { shelter: 0.5, branch: 0.95, under: 0.3, rock: 0.5 };
+  // Branch arms start 0.18 from the trunk and lean out ~0.28 rad, reaching
+  // ~1.4 high: at 0.85 up the ring of arms is ~0.4 out, so a bed 0.85 up and
+  // 0.3 out sits BETWEEN the arms, halfway up the cluster.
+  const BED_Y = { shelter: 0.5, branch: 0.85, under: 0.3, rock: 0.5 };
+  const BED_R = { shelter: 0.55, branch: 0.3, under: 0.3, rock: 0.55 };
   const bedHeight = (g) => (BED_Y[bedKind(g)] ?? 0.5) * (g.scale?.y || 1);
   // Every sleeping fish species has ONE preferred bed coral — a branching or
   // table coral from its own waters, fixed per species — that it heads for
@@ -4619,7 +4623,7 @@ export function initReefScene3D(canvas) {
       (best.userData.homed ??= new Set()).add(f);
       f.home = best;
       f.bedY = bedHeight(best);
-      f.bedR = bedKind(best) === 'under' ? 0.3 : 0.55;   // under a plate: stay beneath it
+      f.bedR = BED_R[bedKind(best)] ?? 0.55;   // how far from the trunk: inside the arms, under the plate
     }
     return best;
   }
