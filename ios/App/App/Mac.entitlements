@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Mac edition (Mac Catalyst) only: the Mac App Store requires the App
+	     Sandbox; outgoing network is for Cognito sign-in, cloud saves and
+	     StoreKit. iOS builds ignore this file (CODE_SIGN_ENTITLEMENTS[sdk=macosx*]). -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>

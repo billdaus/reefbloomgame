@@ -144,6 +144,90 @@ no sandbox account. TestFlight builds use the sandbox automatically.
 
 ## Mac edition
 
+The Mac edition is a **Mac Catalyst** build of the same app — one binary for
+Intel and Apple-silicon Macs (macOS 12+), same bundle ID, saves, sign-in and
+pearl packs. To make it possible the project uses **CocoaPods** rather than
+Swift Package Manager: Capacitor's Swift package is a prebuilt binary with no
+Catalyst slice, while the pods build Capacitor, Cordova and the purchases
+plugin from source. Open `ios/App/App.xcworkspace` (not the .xcodeproj) and
+run `pod install` in `ios/App` after `npm install` (`cap sync` does it too).
+`ios/App/Podfile`'s `post_install` turns Catalyst on for every pod.
+
+Mac-specific pieces:
+
+- `project.pbxproj`: `SUPPORTS_MACCATALYST`, `TARGETED_DEVICE_FAMILY 1,2,6`
+  (Mac idiom), `MACOSX_DEPLOYMENT_TARGET 12.0`, hardened runtime and
+  `App/Mac.entitlements` (App Sandbox + outgoing network) for the macosx SDK.
+- `ReefBridgeViewController.swift` appends `ReefBloomMac` to the WebView user
+  agent on Catalyst (and on "Designed for iPad"), so `app.html` labels the
+  footer "Mac edition". `AppDelegate.swift` keeps the window ≥ 900×600.
+- `Info.plist` carries `LSApplicationCategoryType` (Games) for the Mac App Store.
+
+```bash
+npm run mac:run        # Debug Catalyst build, ad-hoc signed, opened on this Mac
+npm run mac:archive    # Release Catalyst archive into Xcode's Archives folder
+npm run ios:upload -- "<Mac archive>.xcarchive"   # upload it (see below)
+```
+
+App Store Connect needs the **macOS platform added to the app record** once
+(App Store → Reef Bloom → "+" platform → macOS) before the first Mac upload
+is accepted; after that Mac builds show up under TestFlight → macOS and ship
+with the iOS version.
+
+## Uploading without Xcode's sign-in
+
+Uploads go through the team's App Store Connect API key, so they never
+depend on the Apple Account in Xcode (whose session expires and cannot be
+seen from the command line):
+
+```bash
+npm run ios:upload                       # newest archive in Xcode's Archives folder
+npm run ios:upload -- "<path>.xcarchive" # a specific archive
+```
+
+The key file lives at `~/.private_keys/AuthKey_<KEY_ID>.p8` (never committed).
+It must have the **Admin** role — cloud-managed signing refuses Developer and
+App Manager keys with "Cloud signing permission error". Key ID and Issuer ID
+are in `scripts/ios-upload.sh` and can be overridden with `ASC_KEY_ID`,
+`ASC_ISSUER_ID` and `ASC_KEY_PATH`. Generate keys at App Store Connect →
+Users and Access → Integrations → App Store Connect API.
+
+## In-app purchases
+
+The Pearl Shop sells three consumable pearl packs through StoreKit 2 via
+`@capgo/native-purchases`. The product IDs, pearl amounts and fallback prices
+live in `src/3d/iap.js` and must match App Store Connect (Monetization →
+In-App Purchases) exactly:
+
+| Product ID (suffix) | Pearls | Price |
+|---|---|---|
+| `…reefbloom.pearls10` | 10 | $0.99 |
+| `…reefbloom.pearls35` | 35 | $2.99 |
+| `…reefbloom.pearls60` | 60 | $4.99 |
+
+Inside the app the shop shows the App Store's own names and localized prices
+and grants pearls only after a verified transaction; on the website (no
+store) the rows keep their original stub behaviour. The plugin is imported
+lazily so the web bundle never loads it. Promotional images for App Store
+Connect are rendered by `node scripts/render-iap-images.mjs` into `assets/iap/`.
+
+One-time setup:
+
+1. Xcode → App target → Signing & Capabilities → **+ Capability → In-App Purchase**.
+2. App Store Connect → Business → Agreements: the **Paid Apps** agreement must
+   be active (banking + tax), or StoreKit returns no products at all.
+3. Create the three products (type *Consumable*) with a localization, price and
+   review screenshot so each reaches *Ready to Submit*.
+4. Users and Access → Sandbox → Test Accounts: make a sandbox tester, then on
+   the iPad sign in under Settings → App Store → Sandbox Account.
+
+For the Simulator, add a StoreKit configuration file (File → New → File →
+StoreKit Configuration File, "Sync with App Store Connect") and select it under
+the scheme's Run → Options → StoreKit Configuration; purchases then work with
+no sandbox account. TestFlight builds use the sandbox automatically.
+
+## Mac edition
+
 The Mac edition is the iPad build running natively on Apple-silicon Macs
 ("Mac (Designed for iPad)"). It is the same binary, bundle ID, build number,
 saves, sign-in and pearl packs as the iPad app — nothing extra to archive or

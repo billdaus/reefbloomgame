@@ -9,7 +9,11 @@ import Capacitor
 class ReefBridgeViewController: CAPBridgeViewController {
     override func instanceDescriptor() -> InstanceDescriptor {
         let descriptor = super.instanceDescriptor()
-        if ProcessInfo.processInfo.isiOSAppOnMac {
+        var onMac = ProcessInfo.processInfo.isiOSAppOnMac   // "Designed for iPad" on Apple silicon
+        #if targetEnvironment(macCatalyst)
+        onMac = true                                          // the Mac Catalyst build (Intel + Apple silicon)
+        #endif
+        if onMac {
             let existing = descriptor.appendedUserAgentString ?? ""
             descriptor.appendedUserAgentString = (existing + " ReefBloomMac").trimmingCharacters(in: .whitespaces)
         }
