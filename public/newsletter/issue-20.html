@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Issue 20 — The Lost Journals, and a Slower Tide. Reef Bloom 1.3.0: pages of a waterproof notebook surface in the Deep Twilight, eight legend-tier corals, fish that sleep in the branches and talk back, sixteen new species, photo mode, a Mac edition — and the Dispatch goes monthly." />
+  <title>The Lost Journals, and a Slower Tide — Reef Bloom Newsletter</title>
+  <link rel="stylesheet" href="/newsletter/style.css" />
+  <style>
+    /* Issue 20 — a waterproof notebook brought up from the twilight: deep
+       water, with the warm paper-and-pencil gold of the pages for accents. */
+    :root {
+      --nl-bg-1: #0b1d3f;
+      --nl-bg-2: #081532;
+      --nl-bg-3: #050d24;
+      --nl-bg-4: #030718;
+      --theme-glow:   rgba(255, 210, 127, 0.14);
+      --theme-accent: #ffd27f;
+      --theme-rule:   rgba(255, 210, 127, 0.42);
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 16% 22%, rgba(255,210,127,0.10) 0, transparent 5%),
+        radial-gradient(circle at 70% 28%, rgba(127,232,255,0.09) 0, transparent 4%),
+        radial-gradient(circle at 44% 70%, rgba(255,210,127,0.08) 0, transparent 3%),
+        radial-gradient(circle at 88% 76%, rgba(127,232,255,0.08) 0, transparent 4%);
+      z-index: 0;
+    }
+    .page-scrap {
+      margin: 18px 0 22px; padding: 16px 20px 16px 40px; border-radius: 3px 6px 6px 3px;
+      color: #332b22; font-family: Georgia, 'Times New Roman', serif; font-size: 0.98em; line-height: 24px;
+      background:
+        linear-gradient(90deg, transparent 26px, rgba(190,80,80,0.35) 26px 27px, transparent 27px),
+        repeating-linear-gradient(180deg, transparent 0 23px, rgba(90,110,140,0.14) 23px 24px),
+        linear-gradient(180deg, #efe4c8 0%, #e6d7b4 100%);
+      box-shadow: inset 0 0 40px rgba(110,80,30,0.18), 0 2px 10px rgba(0,0,0,0.35);
+      transform: rotate(-0.6deg);
+    }
+    .page-scrap em { color: #5e4d33; }
+    .cadence {
+      border: 1px solid var(--theme-rule); border-radius: 12px; padding: 18px 22px; margin: 26px 0;
+      background: var(--theme-glow);
+    }
+    .cadence h2 { margin-top: 0; }
+    .fact-table { width: 100%; border-collapse: collapse; margin: 14px 0 18px; font-size: 0.95em; }
+    .fact-table td { padding: 7px 10px; border-bottom: 1px solid var(--theme-rule); vertical-align: top; }
+    .fact-table td:first-child { color: var(--theme-accent); white-space: nowrap; }
+    @media (max-width: 640px) {
+      .fact-table, .fact-table tbody, .fact-table tr, .fact-table td { display: block; width: 100%; }
+      .fact-table td { padding: 6px 0; border-bottom: none; }
+      .fact-table td:first-child { padding-top: 14px; white-space: normal; font-weight: 700; }
+      .fact-table tr { border-bottom: 1px solid var(--theme-rule); }
+    }
+    .play-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 6px; }
+    .article-content a.store-cta {
+      display: inline-block; padding: 12px 22px; border-radius: 999px;
+      background: #fff; color: #0a3050; font-weight: 700; letter-spacing: 0.4px; text-decoration: none;
+    }
+    .article-content a.store-cta:hover { background: #ffe9b8; color: #0a3050; }
+    .article-content a.store-cta.secondary { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.45); }
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2397359547710356" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <header>
+    <a class="site-name" href="/">Reef Bloom</a>
+    <a href="/">Play</a>
+    <a href="/guide.html">Guide</a>
+    <a href="/species.html">Species</a>
+    <a href="/reef-education.html">Reef Education</a>
+    <a href="/newsletter/" class="active">Newsletter</a>
+    <a href="/contact.html">Contact</a>
+  </header>
+
+  <div class="content">
+    <article class="article-content">
+      <a class="back-link" href="/newsletter/issue-19.html">← Issue 19: A New Update on the Horizon</a>
+
+      <div class="byline">
+        <span>Issue 20</span>
+        <span>October 27, 2026</span>
+        <span>Release Notes</span>
+      </div>
+      <h1 class="issue-title">The Lost Journals, and a Slower Tide</h1>
+      <p class="issue-deck">Reef Bloom 1.3.0 is here: pages of a waterproof notebook surface in the Deep Twilight, eight corals from the legend tier, fish that sleep in the branches and talk back, sixteen new species, photo mode, and a Mac edition. Also: this Dispatch is going monthly.</p>
+
+      <p class="lede">The website has 1.3.0 today. The App Store build is in TestFlight now and follows as soon as it clears review, so iPhone and iPad players get it within the week. Everything below is in both.</p>
+
+      <h2>The Lost Journals</h2>
+      <p>Research surveys in the Deep Twilight have started bringing something home that isn't coral: single pages from a waterproof field notebook, pencil on ruled paper, water-stained and still legible. There are twenty-four of them, in four chapters, and the Ocean Journal has a new tab that keeps them in order. Bubbles finds the next one on a survey, or occasionally a lone page drifts in on its own. Read them when you like; the game never makes you.</p>
+      <p>We aren't going to tell you whose notebook it is, or how it ended up on the shelf. The pages do that. We will say that if you have ever wondered where a one-eyed survey drone with a self-righting bladder came from, the first chapter is titled <em>A Side Project</em>.</p>
+      <div class="page-scrap">
+        Second day out and I have already lost a pen to the sea, which the bosun says is traditional. New notebook, then. Waterproof cover, pencil on a string… <em>— page 1 of 24</em>
+      </div>
+
+      <h2>Eight corals from the legend tier</h2>
+      <p>Blue Coral, Flowerpot Coral, Sea Pen, Bamboo Coral, Carnation Coral, Neptune's Cup, Bubblegum Coral and Black Coral join the Golden Tree as the reef's legendary and mythic corals. All nine are real animals, each with its field notes in the Ocean Journal, and the Sea Pen and Bamboo Coral glow after dark. They are 🫧 corals, so Rarity and Season Packs now deal coral cards alongside fish. Rarity tiers are also spelled the way people say them, Legendary and Mythic rather than shouting, and colour-coded everywhere they appear.</p>
+
+      <h2>Where the fish sleep</h2>
+      <p>Night on the reef used to mean fish lying on the sand. Now they do what reef fish actually do: wedge themselves into the arms of a staghorn or a tree coral, or tuck in under the plate of a table coral, three to a coral. The rounded corals, brain and star and bubble, are a last resort, and only two will put up with one. The table coral was rebuilt for the job, with a taller stem, a wider plate, and a crust of branchlets on top the way a real table Acropora grows.</p>
+      <p>Every species has a favourite bed, a branching or table coral from its own waters, and heads for it first. The species sheet now says which.</p>
+
+      <h2>The fish talk back</h2>
+      <p>The Harmony Advisor has always told you what the reef needs. Now the reef answers. Five residents a day have their say at the bottom of the Advisor, and they are not shy: a chromis that slept on the sand will tell you to plant a staghorn, a lone fusilier wants a shoal, a wrasse has opinions about the neighbours, and everyone has something to say about Skip-7. A fish whose favourite coral is in your journal but not on the reef grumbles about it. One whose favourite is planted says goodnight. Tap any of them for their journal entry.</p>
+
+      <h2>Sixteen new species, and the autumn current</h2>
+      <p>Eight new permanent fish, all real: the Sixline Wrasse, the Bluestreak Fusilier that shoals above the reef by day, the Coral Grouper that hunts with moray eels, the Peacock Flounder that can copy a checkerboard, the Cownose Ray, the Leopard Shark, the Velvet Belly Lanternshark whose underside glows to erase its own silhouette, and the Vampire Squid, which is neither.</p>
+      <p>The Autumn Current runs November 1 to 14 and brings the open-ocean wanderers close to shore: the Ocean Sunfish, the Spinner Dolphin, and a Russet Sea Fan that turns the colour of fallen leaves. The Twilight Lanternfish, orphaned when its old festival left the calendar, has a home again in Bioluminescence Night, where the glowing sparks now drift past every ten to twenty seconds and popping them is a quest line of its own. Lantern corals light a pool five tiles across.</p>
+
+      <h2>Photo mode, and the rest</h2>
+      <table class="fact-table">
+        <tr><td>📷 Photo mode</td><td>Hides every panel and saves a picture of your reef exactly as the game draws it, to Photos on iPhone and iPad, as a download on the web.</td></tr>
+        <tr><td>🏷️ Reef names</td><td>Name each of your three reefs. The name follows the save everywhere, including the Home screen.</td></tr>
+        <tr><td>🔎 Journal filters</td><td>Search the Ocean Journal, or filter by waters, tier, real or fiction, glows, and not yet seen.</td></tr>
+        <tr><td>⚙ Settings</td><td>Music, reduced motion, larger text, and a night-light quality setting for older devices.</td></tr>
+        <tr><td>⌨️ Keyboard</td><td>WASD and the arrows move the view; single keys open every panel. The list is in Settings.</td></tr>
+        <tr><td>👤 Usernames</td><td>Accounts can carry a display name now. Pick one on the account screen.</td></tr>
+      </table>
+
+      <h2>A Mac edition</h2>
+      <p>Reef Bloom is coming to the Mac App Store for Apple Silicon Macs, as the same app, same saves, same pearls, with a window you can resize and a keyboard that works. If your Mac is an Intel one, the website edition at <a href="/reef/">reefbloomgame.com/reef</a> is the same game in your browser, and your account carries the saves between the two.</p>
+
+      <h2>On the website</h2>
+      <p>The site's 3D edition now opens on the same reef-select screen as the app. The <a href="/species.html">Species Guide</a> is generated straight from the game's data, all 190 species, so it can never drift out of date again. And <a href="/reef-education.html">Reef Education</a> has been rewritten for the 3D edition, with a section on the rare and deep corals the game now grows, Golden Tree included.</p>
+
+      <div class="cadence">
+        <h2>The Dispatch goes monthly</h2>
+        <p>This is the last weekly issue. Starting in November, the Reef Bloom Dispatch comes out once a month, in the last week, and each issue will carry a real update rather than the week's loose change. The weekly habit was a good one while the reef was being invented at speed; twenty issues in, it was starting to run ahead of the game it was describing. Special issues will still appear when something can't wait, as the half-numbered ones always have.</p>
+        <p>The archive stays where it is. Issue 21 arrives at the end of November, with the autumn current behind us and the glowing season ahead.</p>
+      </div>
+
+      <div class="play-row">
+        <a class="store-cta" href="/reef/">Play 1.3.0 now</a>
+        <a class="store-cta secondary" href="https://apps.apple.com/app/id6809200807">On the App Store</a>
+      </div>
+
+      <p class="signoff">— The Reef Bloom team</p>
+
+      <a class="back-link" href="/newsletter/" style="margin-top:32px;">← Back to dispatch</a>
+    </article>
+  </div>
+
+  <footer>
+    &copy; 2026 ReefBloomGame.com &nbsp;&middot;&nbsp;
+    <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+    <a href="/reef-education.html">Reef Education</a> &nbsp;&middot;&nbsp;
+    <a href="/newsletter/">Newsletter</a> &nbsp;&middot;&nbsp;
+    <a href="/contact.html">Contact</a> &nbsp;&middot;&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="/terms.html">Terms of Service</a>
+  </footer>
+
+  <div class="reef-silhouette"></div>
+
+  <div id="cookie-banner" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:rgba(4,18,50,0.95); backdrop-filter:blur(10px);
+    border-top:1px solid rgba(100,200,255,0.2);
+    padding:14px 24px; font-family:system-ui,-apple-system,sans-serif;
+    align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  ">
+    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.5;flex:1;min-width:240px;">
+      This site uses cookies from Google to serve ads and analyze traffic.
+      <a href="/privacy.html" style="color:rgba(140,210,255,0.9);">Learn more</a>
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="acceptCookies()" style="
+        padding:8px 24px;background:#fff;color:#0a3050;border:none;border-radius:20px;
+        font-size:12px;font-weight:700;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Accept</button>
+      <button onclick="declineCookies()" style="
+        padding:8px 24px;background:transparent;color:rgba(255,255,255,0.5);
+        border:1px solid rgba(255,255,255,0.2);border-radius:20px;
+        font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:inherit;
+      ">Decline</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var consent = localStorage.getItem('cookie_consent');
+      if (!consent) document.getElementById('cookie-banner').style.display = 'flex';
+    })();
+    function acceptCookies() { localStorage.setItem('cookie_consent','accepted'); document.getElementById('cookie-banner').style.display='none'; }
+    function declineCookies() { localStorage.setItem('cookie_consent','declined'); document.getElementById('cookie-banner').style.display='none'; }
+  </script>
+</body>
+</html>
