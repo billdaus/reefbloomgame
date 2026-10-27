@@ -90,6 +90,24 @@ TestFlight tab ~10–30 minutes later; internal testers need no review.
 Commit the bump and tag it (`git tag ios-v1.0.1`) so the store build maps to
 a commit.
 
+## Uploading without Xcode's sign-in
+
+Uploads go through the team's App Store Connect API key, so they never
+depend on the Apple Account in Xcode (whose session expires and cannot be
+seen from the command line):
+
+```bash
+npm run ios:upload                       # newest archive in Xcode's Archives folder
+npm run ios:upload -- "<path>.xcarchive" # a specific archive
+```
+
+The key file lives at `~/.private_keys/AuthKey_<KEY_ID>.p8` (never committed).
+It must have the **Admin** role — cloud-managed signing refuses Developer and
+App Manager keys with "Cloud signing permission error". Key ID and Issuer ID
+are in `scripts/ios-upload.sh` and can be overridden with `ASC_KEY_ID`,
+`ASC_ISSUER_ID` and `ASC_KEY_PATH`. Generate keys at App Store Connect →
+Users and Access → Integrations → App Store Connect API.
+
 ## In-app purchases
 
 The Pearl Shop sells three consumable pearl packs through StoreKit 2 via
