@@ -785,8 +785,19 @@
     #loading .ld-bar { width: min(320px, 70vw); height: 6px; border-radius: 3px; background: rgba(3,18,28,0.35); overflow: hidden; margin-top: 10px; }
     #loading .ld-fill { display: block; height: 100%; width: 6%; border-radius: 3px; background: linear-gradient(90deg, #7fe8ff, #ffffff); transition: width 0.5s ease; box-shadow: 0 0 12px rgba(127,232,255,0.8); }
     #loading .ld-label { font-size: 13.5px; color: rgba(234,246,255,0.9); min-height: 1.3em; }
-    #loading .ld-tip { position: absolute; left: 24px; right: 24px; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 12.5px; line-height: 1.5; color: rgba(234,246,255,0.75); }
+    #loading .ld-tip {
+      position: absolute; left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 40px));
+      bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+      display: flex; align-items: center; gap: 14px; padding: 10px 16px 10px 10px; border-radius: 16px;
+      background: rgba(3,18,28,0.42); border: 1px solid rgba(127,216,255,0.22);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      font-size: 13px; line-height: 1.45; color: rgba(234,246,255,0.9); text-align: left;
+      transition: opacity 0.35s ease;
+    }
+    #loading .ld-tip.swap { opacity: 0; }
+    #loading .ld-tip img { width: 64px; height: 64px; flex: none; border-radius: 12px; background: radial-gradient(circle at 40% 35%, rgba(255,255,255,0.22), rgba(255,255,255,0.04)); object-fit: contain; }
     #loading .ld-tip b { color: #ffd27f; font-weight: 700; }
+    #loading .ld-tip .who { display: block; font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; color: #7fe8ff; margin-bottom: 2px; }
     #loading .ld-sea { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
     #loading .ld-bubble { position: absolute; bottom: -40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.45); background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.45), rgba(255,255,255,0.05)); animation: ldRise linear infinite; }
     @keyframes ldRise { from { transform: translateY(0); opacity: 0; } 15% { opacity: 0.8; } to { transform: translateY(-110vh); opacity: 0; } }
@@ -802,7 +813,7 @@
     <div class="ld-title">Reef Bloom</div>
     <div class="ld-bar"><span class="ld-fill"></span></div>
     <div class="ld-label">Loading the reef…</div>
-    <div class="ld-tip" id="ld-tip"></div>
+    <div class="ld-tip" id="ld-tip"><img id="ld-tip-img" alt=""><span><span class="who" id="ld-tip-who"></span><span id="ld-tip-text"></span></span></div>
   </div>
   <script>
     // Loading-screen dressing: rising bubbles and a rotating tip. Plain script
@@ -819,22 +830,43 @@
         b.style.animationDelay = (-Math.random() * 14) + 's';
         sea.appendChild(b);
       }
+      // Loading tips: a resident, their portrait (rendered by the game itself,
+      // in /loading/), and something they would like you to know.
       var TIPS = [
-        '<b>Drag</b> to glide across the reef · <b>right-drag</b> or two fingers to orbit',
-        'Corals grow from hatchlings. <b>Tap one</b> to see its stage',
-        'Fish bed down at night in <b>branching coral</b> and under <b>table coral</b>',
-        'Lantern corals light the water <b>five tiles</b> across after dark',
-        'The <b>Harmony Advisor</b> tells you what the reef needs. The fish tell you what they think',
-        'Research surveys in the <b>Deep Twilight</b> bring home more than coral',
-        'Press <b>C</b> for photo mode, <b>J</b> for the Ocean Journal, <b>O</b> for settings',
-        'Every species marked 🌍 in the journal is a <b>real animal</b>',
-        'Bubbles finds new coral on <b>expeditions</b>. Fund one at her nest',
-        'Name your reef from the <b>Reef Slots</b> menu'
+        ['bubbles', 'Bubbles', 'Day 1: everyone is probably fine. <b>61% certain.</b> Recording.'],
+        ['bubbles', 'Bubbles', 'I counted you twice. You are <b>two players</b> now, officially.'],
+        ['clownfish', 'Clownfish', 'All clownfish are born male. The anemone has <b>no comment</b>.'],
+        ['pufferfish', 'Pufferfish', 'Please stop asking me to <b>do the thing</b>.'],
+        ['cleanerWrasse', 'Cleaner Wrasse', 'I accept tips. Not money. <b>Actual fish tips.</b>'],
+        ['seahorse', 'Seahorse', 'The males carry the eggs. The females have <b>opinions</b> about the nursery.'],
+        ['parrotfish', 'Parrotfish', 'I sleep in a bag of my own mucus. It is <b>exactly as cosy</b> as it sounds.'],
+        ['anglerfish', 'Anglerfish', 'My lure is <b>100% effective</b> and 0% honest.'],
+        ['octopus', 'Octopus', 'I have three hearts, and all three are <b>judging you</b>.'],
+        ['morayEel', 'Moray Eel', 'I have a second set of jaws in my throat. <b>Sweet dreams.</b>'],
+        ['hermitCrab', 'Hermit Crab', 'We queue by size to swap shells. The reef\'s only <b>orderly queue</b>.'],
+        ['chromis', 'Green Chromis', 'A school of two is not a school. It is a <b>queue</b>.'],
+        ['whaleShark', 'Whale Shark', 'I eat plankton only, and I am still <b>bigger than your reef</b>.'],
+        ['seaTurtle', 'Sea Turtle', 'Sea turtles cry salty tears. To flush salt. <b>Only to flush salt.</b>'],
+        ['mandarinfish', 'Mandarinfish', 'No scales, and I smell terrible. The colours are a <b>distraction</b>.'],
+        ['nautilus', 'Nautilus', '500 million years of practice and I <b>still can\'t see</b> very well.'],
+        ['table', 'Table Coral', 'Fish sleep under me. I did not agree to this. I am <b>furniture now</b>.'],
+        ['lanternCoral', 'Lantern Coral', 'I light five tiles after dark. Ask the fish. They <b>cannot sleep</b>.'],
+        ['vampireSquid', 'Vampire Squid', 'Not a squid. Not an octopus. Not a vampire. <b>Stop asking.</b>'],
+        ['molaMola', 'Ocean Sunfish', 'I weigh a tonne and I look <b>unfinished</b>. Both are true.'],
+        ['bubbles', 'Skip-7', 'The Pearl Market does not do refunds. Or haggling. Or <b>eye contact</b>.'],
+        ['bubbles', 'Bubbles', 'Fish do not have knees. <b>I checked. Twice.</b>']
       ];
-      var tip = document.getElementById('ld-tip'), n = Math.floor(Math.random() * TIPS.length);
-      function show() { tip.innerHTML = TIPS[n % TIPS.length]; n++; }
+      var tip = document.getElementById('ld-tip'), img = document.getElementById('ld-tip-img'),
+          who = document.getElementById('ld-tip-who'), txt = document.getElementById('ld-tip-text');
+      var order = TIPS.map(function (_, i) { return i; });
+      for (var k = order.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)); var t = order[k]; order[k] = order[j]; order[j] = t; }
+      var n = 0;
+      function show() {
+        var tp = TIPS[order[n % order.length]]; n++;
+        img.src = '/loading/' + tp[0] + '.png'; who.textContent = tp[1]; txt.innerHTML = tp[2];
+      }
       show();
-      setInterval(show, 3600);
+      setInterval(function () { tip.classList.add('swap'); setTimeout(function () { show(); tip.classList.remove('swap'); }, 350); }, 4200);
     })();
   </script>
   <a id="back" href="/reef/">⌂ Reefs</a>
