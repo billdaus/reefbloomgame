@@ -36,6 +36,7 @@ import {
   cachedProducts as iapCachedProducts, resetProducts as iapResetProducts,
   restorePurchases as iapRestore,
 } from './iap.js';
+import * as ads from './ads.js';   // rewarded ads (iOS app only)
 
 const TILE = 2;
 const SURFACE_Y = 13;     // the ocean surface — everything swims beneath it
@@ -3576,6 +3577,7 @@ export async function initReefScene3D(canvas) {
   const vouchers = {};      // coralId -> free placements left (saved)
   let packBtn = null;       // menu button; assigned with the other menus
   let dailyPackDate = '';   // last calendar day the free Daily Pack was opened (saved)
+  let adDay = '', adCount = 0;   // rewarded ads watched today — the daily cap (saved)
 
   const rollRange = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
   // Pack and egg pools are level- AND biome-gated: they only roll species the
@@ -5001,7 +5003,7 @@ export async function initReefScene3D(canvas) {
         packs, vouchers, seasonPacks,
         nest: nestEggs, starterEggs: starterEggsGiven,
         starterPack: starterPackGiven, survey, coralDisc: true, quiz, lj,
-        dailyPack: dailyPackDate, tut: tutDone, tutp: tutPaid }));
+        dailyPack: dailyPackDate, ads: { d: adDay, n: adCount }, tut: tutDone, tutp: tutPaid }));
       cloudMarkWritten(slotKey(slot));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
@@ -5500,6 +5502,11 @@ export async function initReefScene3D(canvas) {
     restoreFound: 'Found it.',
     restoreNone: 'Nothing new.',
     web: 'Pearls are sold in the app. Out here they come from packs and eggs.',
+    adStart: 'A brief commercial interruption. The pearls at the end are real.',
+    adDone: ['Thank you for your attention. Pearls dispensed.', 'The advertisers send their regards. And pearls.',
+      'Watched to the end. I respect that.'],
+    adSkipped: 'Closed early. No pearls, no hard feelings.',
+    adCap: 'That is enough commerce for one day. The advertisers need rest too.',
   };
   const skipCounter = buildCounter({
     id: 'counter-skip7', who: 'Skip-7 · Pearl Market',
@@ -5634,6 +5641,7 @@ export async function initReefScene3D(canvas) {
       }
       shopBusy = false;
       shopList.querySelectorAll('.shop-pack').forEach(b => { b.disabled = false; });
+      refreshAdRow();
       if (paid !== null) {
         if (paid > 0) grantPearls(paid);   // 0: the update stream already paid it out
         say(pickLine(SKIP7.done));
@@ -5641,6 +5649,42 @@ export async function initReefScene3D(canvas) {
     };
     row.title = p.title ?? '';
   }
+  // ── Rewarded ads: a "watch a short ad" row on the pearl shelf (iOS app only;
+  // src/3d/ads.js says no on the website and the Mac). Two pearls per ad
+  // watched to the end, five a day. The row is live only while an ad is
+  // actually loaded, so a tap never leads to a blank screen.
+  let adRow = null;
+  const adsLeft = () => (adDay === EV_TODAY() ? Math.max(0, ads.REWARDS_PER_DAY - adCount) : ads.REWARDS_PER_DAY);
+  function refreshAdRow() {
+    if (!adRow || !adRow.isConnected) return;
+    const left = adsLeft();
+    const [a, b] = !left ? ['📺 Today\'s ads all watched', 'back tomorrow']
+      : [`📺 Watch a short ad · ${left} left today`, ads.isReady() ? `+${ads.REWARD_PEARLS} 💎` : 'loading…'];
+    adRow.innerHTML = `<span>${a}</span><span>${b}</span>`;
+    adRow.disabled = shopBusy || !left || !ads.isReady();
+  }
+  function renderAdRow() {
+    if (!ads.supported()) return;
+    adRow = shopRow('', '', async () => {
+      if (shopBusy || !adsLeft() || !ads.isReady()) return;
+      shopBusy = true; refreshAdRow();
+      say(SKIP7.adStart);
+      let earned = 0;
+      try { earned = await ads.show(); } catch (e) { earned = 0; }
+      shopBusy = false;
+      if (earned > 0) {
+        if (adDay !== EV_TODAY()) { adDay = EV_TODAY(); adCount = 0; }
+        adCount += 1;                       // counted before grantPearls() saves
+        grantPearls(ads.REWARD_PEARLS);
+        say(adsLeft() ? pickLine(SKIP7.adDone) : SKIP7.adCap);
+      } else say(SKIP7.adSkipped);
+      refreshAdRow();
+    });
+    adRow.classList.add('shop-ad');
+    refreshAdRow();
+    if (adsLeft()) ads.load().catch(() => {});
+  }
+  ads.watch(() => refreshAdRow());
   function restoreLink() {
     const b = document.createElement('button');
     b.className = 'ct-link'; b.textContent = 'Restore purchases';
@@ -5671,6 +5715,7 @@ export async function initReefScene3D(canvas) {
         wireShopRow(row, p);
         rowsById.set(p.id, row);
       });
+      renderAdRow();
       if (shopBusy) rowsById.forEach(r => { r.disabled = true; });
       iapLoadProducts().then(fresh => {
         if (seq !== shopOpenSeq || shopBusy) return;
@@ -5687,6 +5732,7 @@ export async function initReefScene3D(canvas) {
       row.disabled = true;
       rowsById.set(p.id, row);
     });
+    renderAdRow();
     shopNote.textContent = 'Fetching prices from the App Store…';
     let products = null, failure = null;
     try {
@@ -5722,6 +5768,10 @@ export async function initReefScene3D(canvas) {
   }
   // Warm the price cache shortly after launch so the shop opens ready.
   if (iapIsNative()) setTimeout(() => { iapLoadProducts().catch(() => {}); }, 1500);
+  // Likewise the first rewarded ad: fetched after the reef is up, so the shop's
+  // ad row is live by the time anyone opens it.
+  if (ads.supported()) setTimeout(() => { ads.load().catch(() => {}); }, 3000);
+  if (import.meta.env?.DEV && window.__rb3d) Object.assign(window.__rb3d, { openCounter, adState: () => ({ adDay, adCount, pearls: Math.floor(pearls), left: adsLeft() }) });
   // Purchases can also complete OUTSIDE the buy tap — interrupted purchases,
   // approvals, anything finished while the app was closed. Listen for them, and
   // collect pearls banked while only the Home screen was open. Deferred a tick
@@ -7855,6 +7905,7 @@ export async function initReefScene3D(canvas) {
     ljLoad(saved.lj);
     refreshLjBadge();
     dailyPackDate = saved.dailyPack ?? '';
+    adDay = saved.ads?.d ?? ''; adCount = Number(saved.ads?.n) || 0;
     if (!saved.coralDisc) {
       // Pre-discovery save: everything the reef could already buy counts as
       // recorded — veterans lose nothing to the new gate.

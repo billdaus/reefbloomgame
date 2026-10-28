@@ -11,6 +11,7 @@ install! 'cocoapods', :disable_input_output_paths => true
 def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorCommunityAdmob', :path => '../../node_modules/@capacitor-community/admob'
   pod 'CapgoNativePurchases', :path => '../../node_modules/@capgo/native-purchases'
 end
 
@@ -26,6 +27,25 @@ post_install do |installer|
     target.build_configurations.each do |config|
       config.build_settings['SUPPORTS_MACCATALYST'] = 'YES'
       config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '12.0'
+      # The Google Mobile Ads SDK ships no Mac Catalyst slice, so the AdMob
+      # plugin's sources (which import it) are compiled for iOS only; the pod's
+      # generated dummy.m keeps the static library non-empty on the Mac.
+      if target.name == 'CapacitorCommunityAdmob'
+        config.build_settings['EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]'] = '*.swift'
+      end
     end
+  end
+  # ...and the Mac link line drops the ad frameworks. With the plugin absent the
+  # app's JS (src/3d/ads.js) sees "no ads on this platform" and shows none.
+  no_mac = %w[GoogleMobileAds Google_Mobile_Ads_SDK UserMessagingPlatform CapacitorCommunityAdmob]
+  Dir.glob(File.join(installer.sandbox.root, 'Target Support Files', '**', '*.xcconfig')).each do |f|
+    text = File.read(f)
+    ld = text[/^OTHER_LDFLAGS = (.*)$/, 1]
+    next if ld.nil? || text.include?('OTHER_LDFLAGS[sdk=macosx*]')
+    # No $(inherited) here: inside a conditional it would re-pull the unconditional
+    # line above, and the ad frameworks with it.
+    mac = ld.gsub(/-framework "(#{no_mac.join('|')})"\s*/, '').sub('$(inherited)', '').strip
+    next if mac == ld.strip
+    File.write(f, text + "OTHER_LDFLAGS[sdk=macosx*] = #{mac}\n")
   end
 end

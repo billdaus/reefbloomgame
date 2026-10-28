@@ -21,6 +21,7 @@
     "@aws-sdk/client-cognito-identity": "^3.1067.0",
     "@aws-sdk/client-dynamodb": "^3.1067.0",
     "@aws-sdk/credential-provider-cognito-identity": "^3.972.45",
+    "@capacitor-community/admob": "^8.2.1",
     "@capacitor/core": "^8.4.0",
     "@capacitor/ios": "^8.4.0",
     "@capgo/native-purchases": "^8.7.0",

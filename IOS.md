@@ -174,95 +174,43 @@ App Store Connect needs the **macOS platform added to the app record** once
 is accepted; after that Mac builds show up under TestFlight → macOS and ship
 with the iOS version.
 
-## Uploading without Xcode's sign-in
+## Ads
 
-Uploads go through the team's App Store Connect API key, so they never
-depend on the Apple Account in Xcode (whose session expires and cannot be
-seen from the command line):
+Rewarded video ads, served by **Google AdMob** through
+`@capacitor-community/admob`, live in one place: a "📺 Watch a short ad" row
+on the pearl shelf of Skip-7's Pearl Market. Two pearls per ad watched to the
+end, five a day (`REWARD_PEARLS` / `REWARDS_PER_DAY` in `src/3d/ads.js`); the
+count is saved per reef (`ads: { d, n }`). The row is only tappable while an
+ad is actually loaded, and the payout is driven by the SDK's *Rewarded* event,
+never by the tap.
 
-```bash
-npm run ios:upload                       # newest archive in Xcode's Archives folder
-npm run ios:upload -- "<path>.xcarchive" # a specific archive
-```
+Where ads exist: the iOS app on iPhone and iPad only. The website never loads
+the plugin (lazy import, like `iap.js`). The Mac edition has no ad SDK at all —
+Google ships no Mac Catalyst slice of the Google Mobile Ads SDK, so
+`ios/App/Podfile`'s `post_install` compiles the plugin's sources for iOS only
+and strips the ad frameworks from the Catalyst link line; `ads.supported()`
+also says no when the user agent carries `ReefBloomMac`.
 
-The key file lives at `~/.private_keys/AuthKey_<KEY_ID>.p8` (never committed).
-It must have the **Admin** role — cloud-managed signing refuses Developer and
-App Manager keys with "Cloud signing permission error". Key ID and Issuer ID
-are in `scripts/ios-upload.sh` and can be overridden with `ASC_KEY_ID`,
-`ASC_ISSUER_ID` and `ASC_KEY_PATH`. Generate keys at App Store Connect →
-Users and Access → Integrations → App Store Connect API.
+Privacy posture: requests are non-personalised (`npa`), the App Tracking
+Transparency prompt is never shown, content is capped at the *General*
+rating. The App Store privacy label should list *Advertising Data* and
+*Coarse Location / Device ID* as "used for third-party advertising, not linked
+to you" (Google's guidance for AdMob), and `public/privacy.html` carries the
+disclosure.
 
-## In-app purchases
+Ids: the app id goes in `ios/App/App/Info.plist` (`GADApplicationIdentifier`),
+the rewarded unit id in `REWARDED_UNIT` in `src/3d/ads.js`. Both come from
+AdMob → Apps → Reef Bloom (account pub-8911863192466816, the same one as
+Dragonperch; `public/app-ads.txt` already lists it). Until a real unit id is
+set, every build serves Google's sample test ads (`usingTestAds()`), which
+look real and pay nothing. Dev builds always use the test unit.
 
-The Pearl Shop sells three consumable pearl packs through StoreKit 2 via
-`@capgo/native-purchases`. The product IDs, pearl amounts and fallback prices
-live in `src/3d/iap.js` and must match App Store Connect (Monetization →
-In-App Purchases) exactly:
+Testing the native path: `window.__rb3dFakeAds` lets a headless browser run
+the shop flow against a fake plugin, but the bridge round trip is only proved
+on the simulator — look for `⚡️ To Native -> AdMob initialize` and
+`prepareRewardVideoAd` followed by `TO JS` in the console, and the test ad on
+screen.
 
-| Product ID (suffix) | Pearls | Price |
-|---|---|---|
-| `…reefbloom.pearls10` | 10 | $0.99 |
-| `…reefbloom.pearls35` | 35 | $2.99 |
-| `…reefbloom.pearls60` | 60 | $4.99 |
-
-Inside the app the shop shows the App Store's own names and localized prices
-and grants pearls only after a verified transaction; on the website (no
-store) the rows keep their original stub behaviour. The plugin is imported
-lazily so the web bundle never loads it. Promotional images for App Store
-Connect are rendered by `node scripts/render-iap-images.mjs` into `assets/iap/`.
-
-One-time setup:
-
-1. Xcode → App target → Signing & Capabilities → **+ Capability → In-App Purchase**.
-2. App Store Connect → Business → Agreements: the **Paid Apps** agreement must
-   be active (banking + tax), or StoreKit returns no products at all.
-3. Create the three products (type *Consumable*) with a localization, price and
-   review screenshot so each reaches *Ready to Submit*.
-4. Users and Access → Sandbox → Test Accounts: make a sandbox tester, then on
-   the iPad sign in under Settings → App Store → Sandbox Account.
-
-For the Simulator, add a StoreKit configuration file (File → New → File →
-StoreKit Configuration File, "Sync with App Store Connect") and select it under
-the scheme's Run → Options → StoreKit Configuration; purchases then work with
-no sandbox account. TestFlight builds use the sandbox automatically.
-
-## Mac edition
-
-The Mac edition is the iPad build running natively on Apple-silicon Macs
-("Mac (Designed for iPad)"). It is the same binary, bundle ID, build number,
-saves, sign-in and pearl packs as the iPad app — nothing extra to archive or
-upload. The Xcode project opts in with `SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD`,
-and `Info.plist` carries the `LSApplicationCategoryType` (Games) the Mac App
-Store listing needs.
-
-What is Mac-specific:
-
-- `ReefBridgeViewController.swift` (the storyboard's view controller) appends
-  `ReefBloomMac` to the WebView user agent when `isiOSAppOnMac` is true, so
-  `app.html` can label the footer "Mac edition". iPadOS already reports itself
-  as a Mac, so the user agent is the only reliable signal.
-- `AppDelegate.swift` keeps the window at least 900×600 (the reef lays out for
-  a landscape tablet). The window is otherwise resizable and the green button
-  gives full screen.
-- Mouse and trackpad already work: the 3D edition runs on desktop browsers.
-
-Shipping it: App Store Connect → Reef Bloom → Pricing and Availability →
-**Mac** ("Make this app available on Mac" under *iPhone and iPad Apps on
-Apple Silicon Macs*). Once that is on, the next approved iOS version is also
-listed on the Mac App Store; Apple reviews it on a Mac as well, so it is worth
-one run on a Mac before submitting.
-
-Running it on this Mac: in Xcode choose the destination **My Mac (Designed for
-iPad)** and Run. The first run registers the Mac as a development device,
-which needs the Apple Account signed in to Xcode. From the CLI:
-
-```bash
-npm run mac:run        # build:app + cap sync + xcodebuild for My Mac + open the .app
-```
-
-Mac Catalyst (a native Mac build) is not an option here: Capacitor's Swift
-package is a binary framework with no Catalyst slice, and the purchases plugin
-depends on the same binary.
 
 ## Building without a Mac
 
