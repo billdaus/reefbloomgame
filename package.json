@@ -1,7 +1,7 @@
 {
   "name": "reef-bloom",
   "version": "1.3.0",
-  "description": "Reef Bloom — ecosystem stewardship prototype",
+  "description": "Reef Bloom \u2014 ecosystem stewardship prototype",
   "type": "module",
   "scripts": {
     "dev": "node scripts/gen-mobile.mjs && node scripts/gen-species.mjs && vite",
@@ -15,7 +15,8 @@
     "mac:run": "npm run build:app && cap sync ios && xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=macOS,variant=Mac Catalyst' -derivedDataPath build/mac CODE_SIGNING_ALLOWED=NO build && codesign --force --deep --sign - --entitlements ios/App/App/Mac.entitlements build/mac/Build/Products/Debug-maccatalyst/App.app && open -n build/mac/Build/Products/Debug-maccatalyst/App.app",
     "ios:upload": "sh scripts/ios-upload.sh",
     "version:bump": "node scripts/bump-version.mjs",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "mac:legacy": "npm run build:app && rm -rf mac-legacy/app && cp -R dist-app mac-legacy/app && cd mac-legacy && npm install --no-audit --no-fund && CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity": "^3.1067.0",

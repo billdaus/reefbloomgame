@@ -174,6 +174,27 @@ App Store Connect needs the **macOS platform added to the app record** once
 is accepted; after that Mac builds show up under TestFlight → macOS and ship
 with the iOS version.
 
+## Older Macs (macOS 10.15 Catalina) — the Electron build
+
+Mac Catalyst stops at macOS 12, so Macs that top out at Catalina (Liam's
+mid-2012 unibody MacBook Pro) get a separate, unsigned **Electron 32** shell
+in `mac-legacy/` around the same `dist-app` build: Electron 32 is the last
+Electron that runs on 10.15 (33 dropped it — never bump past 32). Pages are
+served from a custom `app://reefbloom` origin (Chromium refuses ES-module
+scripts over `file://`; a fixed origin keeps the saves' localStorage stable),
+the user agent carries `ReefBloomMac` so the Home page says "Mac edition",
+Cognito sign-in and cloud saves work (they talk straight to AWS), and the
+Pearl Market shows its web message (no StoreKit). No ads (no Capacitor).
+
+```bash
+npm run mac:legacy     # build:app → mac-legacy/app → electron-builder: Intel DMG + zip in mac-legacy/dist
+```
+
+The DMG is unsigned (no Developer ID certificate): copied over by USB it just
+opens; downloaded, Catalina will say the developer can't be verified — right-
+click → Open once. `mac-legacy/res/icon.icns` is the app icon; `mac-legacy/app`
+and `mac-legacy/dist` are build outputs and ignored.
+
 ## Ads
 
 Rewarded video ads, served by **Google AdMob** through
