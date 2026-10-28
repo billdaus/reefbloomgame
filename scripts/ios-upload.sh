@@ -30,8 +30,15 @@ cat > "$TMP/ExportOptions.plist" <<PLIST
 </dict></plist>
 PLIST
 echo "Uploading: $ARCHIVE"
+# Keep xcodebuild's own exit status: a filtered pipeline would hide a failed
+# upload behind grep's status (Apple's "Account credentials have expired"
+# token flake fails this way and simply needs a retry).
+set +e
 xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportOptionsPlist "$TMP/ExportOptions.plist" \
   -exportPath "$TMP/export" -allowProvisioningUpdates \
   -authenticationKeyPath "$KEY_PATH" -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID" \
-  | grep -E "Progress|Upload|EXPORT|error" || true
+  > "$TMP/xcodebuild.log" 2>&1
+STATUS=$?
+grep -E "Progress|Upload|EXPORT|error" "$TMP/xcodebuild.log" || true
 rm -rf "$TMP"
+exit $STATUS
