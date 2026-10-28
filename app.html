@@ -362,9 +362,11 @@
       // is the fallback.
       var isMac = /ReefBloomMac/.test(navigator.userAgent)
         || (navigator.platform === 'MacIntel' && !(navigator.maxTouchPoints > 0));
+      // Desktop edition: the Electron build (desktop/) for older Macs, Linux and Windows.
+      var isDesktop = /ReefBloomDesktop/.test(navigator.userAgent);
       var isPad = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       document.getElementById('ver').textContent = 'Reef Bloom v' + APP_VERSION + ' · '
-        + (isWeb ? '3D edition' : (isMac ? 'Mac' : isPad ? 'iPad' : 'iPhone') + ' edition');
+        + (isWeb ? '3D edition' : (isDesktop ? 'Desktop' : isMac ? 'Mac' : isPad ? 'iPad' : 'iPhone') + ' edition');
 
       // ── Rising bubbles ────────────────────────────────────────────────────
       var sea = document.getElementById('sea');

@@ -174,26 +174,30 @@ App Store Connect needs the **macOS platform added to the app record** once
 is accepted; after that Mac builds show up under TestFlight → macOS and ship
 with the iOS version.
 
-## Older Macs (macOS 10.15 Catalina) — the Electron build
+## Desktop Edition (Electron) — older Macs, Linux, Windows
 
-Mac Catalyst stops at macOS 12, so Macs that top out at Catalina (Liam's
-mid-2012 unibody MacBook Pro) get a separate, unsigned **Electron 32** shell
-in `mac-legacy/` around the same `dist-app` build: Electron 32 is the last
-Electron that runs on 10.15 (33 dropped it — never bump past 32). Pages are
-served from a custom `app://reefbloom` origin (Chromium refuses ES-module
-scripts over `file://`; a fixed origin keeps the saves' localStorage stable),
-the user agent carries `ReefBloomMac` so the Home page says "Mac edition",
-Cognito sign-in and cloud saves work (they talk straight to AWS), and the
-Pearl Market shows its web message (no StoreKit). No ads (no Capacitor).
+Mac Catalyst stops at macOS 12, and there is no App Store for Linux or
+Windows, so `desktop/` wraps the same `dist-app` build in an unsigned
+**Electron 32** shell: the Desktop Edition. Electron 32 is the last Electron
+that runs on macOS 10.15 Catalina (Liam's mid-2012 unibody MacBook Pro tops
+out there); 33 dropped it — never bump past 32. Pages are served from a custom
+`app://reefbloom` origin (Chromium refuses ES-module scripts over `file://`;
+a fixed origin keeps the saves' localStorage stable), the user agent carries
+`ReefBloomDesktop` so the Home page says "Desktop edition", Cognito sign-in
+and cloud saves work (they talk straight to AWS), and the Pearl Market shows
+its web message (no StoreKit). No ads (no Capacitor).
 
 ```bash
-npm run mac:legacy     # build:app → mac-legacy/app → electron-builder: Intel DMG + zip in mac-legacy/dist
+npm run desktop:mac     # Intel DMG + zip, macOS 10.15+   → desktop/dist
+npm run desktop:linux   # AppImage, x64 (a .deb needs a Linux host: macOS's ar breaks fpm) → desktop/dist
+npm run desktop:win     # NSIS installer, x64             → desktop/dist
 ```
 
-The DMG is unsigned (no Developer ID certificate): copied over by USB it just
-opens; downloaded, Catalina will say the developer can't be verified — right-
-click → Open once. `mac-legacy/res/icon.icns` is the app icon; `mac-legacy/app`
-and `mac-legacy/dist` are build outputs and ignored.
+Everything is unsigned (no Developer ID / Authenticode certificates). macOS:
+copied over by USB it just opens; downloaded, Catalina says the developer
+can't be verified — right-click → Open once. Windows: SmartScreen's "More
+info → Run anyway". `desktop/res/icon.icns|png` are the icons; `desktop/app`
+and `desktop/dist` are build outputs and ignored.
 
 ## Ads
 

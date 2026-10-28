@@ -1,9 +1,10 @@
-// Reef Bloom for older Macs — an Electron shell around the same app build the
+// Reef Bloom Desktop Edition — an Electron shell around the same app build the
 // iOS/Mac Catalyst editions use (../dist-app, copied into ./app at build time).
+// Ships as a macOS DMG (10.15 Catalina and up, Intel), a Linux AppImage/deb,
+// and a Windows installer.
 //
-// Why it exists: Mac Catalyst can't go below macOS 12, but Electron 32 is the
-// last Electron that still runs on macOS 10.15 Catalina (a 2012 MacBook Pro
-// tops out there). Electron 33 dropped 10.15 — do not bump past 32.
+// Why Electron 32: it is the last Electron that still runs on macOS 10.15 (a
+// 2012 MacBook Pro tops out there); Electron 33 dropped it — do not bump past 32.
 //
 // The pages are served from a custom app://reefbloom origin rather than
 // file://: Chromium refuses ES-module scripts over file://, and a fixed origin
@@ -16,8 +17,8 @@ const APP_DIR = path.join(__dirname, 'app');
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
 ]);
-// The Home page and the reef tell "Mac edition" from this token, as on Catalyst.
-app.userAgentFallback = app.userAgentFallback.replace(/Electron\/[\d.]+ /, '') + ' ReefBloomMac';
+// The Home page labels itself "Desktop edition" from this token (app.html).
+app.userAgentFallback = app.userAgentFallback.replace(/Electron\/[\d.]+ /, '') + ' ReefBloomDesktop';
 
 function createWindow() {
   const win = new BrowserWindow({

@@ -16,7 +16,9 @@
     "ios:upload": "sh scripts/ios-upload.sh",
     "version:bump": "node scripts/bump-version.mjs",
     "postinstall": "patch-package",
-    "mac:legacy": "npm run build:app && rm -rf mac-legacy/app && cp -R dist-app mac-legacy/app && cd mac-legacy && npm install --no-audit --no-fund && CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist"
+    "desktop:mac": "npm run build:app && rm -rf desktop/app && cp -R dist-app desktop/app && cd desktop && npm install --no-audit --no-fund && CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist:mac",
+    "desktop:linux": "npm run build:app && rm -rf desktop/app && cp -R dist-app desktop/app && cd desktop && npm install --no-audit --no-fund && npm run dist:linux",
+    "desktop:win": "npm run build:app && rm -rf desktop/app && cp -R dist-app desktop/app && cd desktop && npm install --no-audit --no-fund && npm run dist:win"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity": "^3.1067.0",

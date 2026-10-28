@@ -1,0 +1,91 @@
+{
+  "name": "reef-bloom-desktop",
+  "productName": "Reef Bloom",
+  "version": "1.3.0",
+  "description": "Reef Bloom Desktop Edition \u2014 an Electron shell around the app build, for Macs older than Catalyst allows (macOS 10.15 Catalina and up), Linux and Windows.",
+  "private": true,
+  "main": "main.cjs",
+  "author": "Defenestration Technologies LLC",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac --x64",
+    "dist:linux": "electron-builder --linux --x64",
+    "dist:win": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "32.3.3",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "com.defenestrationtech.games.reefbloom.desktop",
+    "productName": "Reef Bloom",
+    "copyright": "\u00a9 2026 Defenestration Technologies LLC",
+    "directories": {
+      "output": "dist",
+      "buildResources": "res"
+    },
+    "files": [
+      "main.cjs",
+      "app/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "minimumSystemVersion": "10.15.0",
+      "icon": "res/icon.icns",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Reef Bloom",
+      "artifactName": "Reef-Bloom-${version}-Desktop-macOS-10.15.dmg"
+    },
+    "artifactName": "Reef-Bloom-${version}-Desktop-${os}-${arch}.${ext}",
+    "linux": {
+      "category": "Game",
+      "icon": "res/icon.png",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Reef-Bloom-${version}-Desktop-linux-${arch}.${ext}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "res/icon.png",
+      "artifactName": "Reef-Bloom-${version}-Desktop-windows-setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Reef-Bloom-${version}-Desktop-windows-setup.${ext}"
+    }
+  },
+  "homepage": "https://reefbloomgame.com"
+}
