@@ -166,13 +166,18 @@ Mac-specific pieces:
 ```bash
 npm run mac:run        # Debug Catalyst build, ad-hoc signed, opened on this Mac
 npm run mac:archive    # Release Catalyst archive into Xcode's Archives folder
-npm run ios:upload -- "<Mac archive>.xcarchive"   # upload it (see below)
+npm run mac:upload -- "<Mac archive>.xcarchive"   # export the signed .pkg, upload it with altool
 ```
 
-App Store Connect needs the **macOS platform added to the app record** once
-(App Store → Reef Bloom → "+" platform → macOS) before the first Mac upload
-is accepted; after that Mac builds show up under TestFlight → macOS and ship
-with the iOS version.
+App Store Connect needs the **macOS platform on the app record** before the
+first Mac upload is accepted. It was added Oct 28 2026 by API (POST
+/v1/appStoreVersions with platform MAC_OS — the UI's "+ platform" does the
+same). Mac uploads go through `scripts/mac-upload.sh`, not `ios-upload.sh`:
+xcodebuild's own upload of a Mac package fails every time with "Account
+credentials have expired", so the script exports the signed App.pkg and hands
+it to `xcrun altool --upload-app --type macos` with the same API key. Mac
+builds then show up under TestFlight → macOS and the macOS version gets its
+own listing (description, keywords, 2880×1800 screenshots) and review.
 
 ## Desktop Edition (Electron) — older Macs, Linux, Windows
 

@@ -18,7 +18,8 @@
     "postinstall": "patch-package",
     "desktop:mac": "npm run build:app && rm -rf desktop/app && cp -R dist-app desktop/app && cd desktop && npm install --no-audit --no-fund && CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist:mac",
     "desktop:linux": "npm run build:app && rm -rf desktop/app && cp -R dist-app desktop/app && cd desktop && npm install --no-audit --no-fund && npm run dist:linux",
-    "desktop:win": "npm run build:app && rm -rf desktop/app && cp -R dist-app desktop/app && cd desktop && npm install --no-audit --no-fund && npm run dist:win"
+    "desktop:win": "npm run build:app && rm -rf desktop/app && cp -R dist-app desktop/app && cd desktop && npm install --no-audit --no-fund && npm run dist:win",
+    "mac:upload": "sh scripts/mac-upload.sh"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity": "^3.1067.0",
