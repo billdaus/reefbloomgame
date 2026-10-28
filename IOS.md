@@ -177,12 +177,17 @@ with the iOS version.
 ## Ads
 
 Rewarded video ads, served by **Google AdMob** through
-`@capacitor-community/admob`, live in one place: a "📺 Watch a short ad" row
-on the pearl shelf of Skip-7's Pearl Market. Two pearls per ad watched to the
-end, five a day (`REWARD_PEARLS` / `REWARDS_PER_DAY` in `src/3d/ads.js`); the
-count is saved per reef (`ads: { d, n }`). The row is only tappable while an
-ad is actually loaded, and the payout is driven by the SDK's *Rewarded* event,
-never by the tap.
+`@capacitor-community/admob`, appear as **ad clams** — Classic's clam, in the
+reef. Every 45 s there is a 35% chance a golden clam settles on a free tile
+near where the camera looks (first roll 90 s after the reef loads); it waits
+three minutes, then sinks away. Tap it → "Watch & open" → the ad plays → the
+clam opens on two rolled cards: riches (60% Bubble Energy 40–80, 40% pearls
+2–4) and a find (4% Common Pack, 20% common egg, 16% seedling voucher of a
+recorded coral, otherwise 6–14 polyps). Five clams a day
+(`REWARDS_PER_DAY` in `src/3d/ads.js`), counted per reef in the save as
+`ads: { d, n }`. A clam only appears while an ad is actually loaded, and the
+payout follows the SDK's *Rewarded* event, never the tap. Code: the
+"🐚 Ad clams" block in `src/3d/ReefScene3D.js`.
 
 Where ads exist: the iOS app on iPhone and iPad only. The website never loads
 the plugin (lazy import, like `iap.js`). The Mac edition has no ad SDK at all —
@@ -191,12 +196,15 @@ Google ships no Mac Catalyst slice of the Google Mobile Ads SDK, so
 and strips the ad frameworks from the Catalyst link line; `ads.supported()`
 also says no when the user agent carries `ReefBloomMac`.
 
-Privacy posture: requests are non-personalised (`npa`), the App Tracking
-Transparency prompt is never shown, content is capped at the *General*
-rating. The App Store privacy label should list *Advertising Data* and
-*Coarse Location / Device ID* as "used for third-party advertising, not linked
-to you" (Google's guidance for AdMob), and `public/privacy.html` carries the
-disclosure.
+Policy: the app is rated 4+ but is **not** in the Kids Category
+(`kidsAgeBand` is null), so Apple's Kids advertising rules don't apply; the
+clam is a free reward, not a purchase, so the loot-box disclosure doesn't
+either. Requests are non-personalised (`npa`), the App Tracking Transparency
+prompt is never shown, content is capped at the *General* rating. When the
+ads build is submitted, the age-rating questionnaire's "advertising" answer
+must flip to yes (it is `false` today; the rating stays 4+), and the privacy
+label should list *Advertising Data* and *Device ID* as "used for third-party
+advertising, not linked to you". `public/privacy.html` carries the disclosure.
 
 Ids: the app id goes in `ios/App/App/Info.plist` (`GADApplicationIdentifier`),
 the rewarded unit id in `REWARDED_UNIT` in `src/3d/ads.js`. Both come from
@@ -205,12 +213,11 @@ Dragonperch; `public/app-ads.txt` already lists it). Until a real unit id is
 set, every build serves Google's sample test ads (`usingTestAds()`), which
 look real and pay nothing. Dev builds always use the test unit.
 
-Testing the native path: `window.__rb3dFakeAds` lets a headless browser run
-the shop flow against a fake plugin, but the bridge round trip is only proved
-on the simulator — look for `⚡️ To Native -> AdMob initialize` and
-`prepareRewardVideoAd` followed by `TO JS` in the console, and the test ad on
-screen.
-
+Testing: `window.__rb3dFakeAds` lets a headless browser run the clam flow
+against a fake plugin (`window.__rb3d.spawnClam()` / `openClam()` /
+`clamState()` in dev builds), but the bridge round trip is only proved on the
+simulator — look for `⚡️ To Native -> AdMob initialize` and
+`prepareRewardVideoAd` followed by `TO JS`, and the test ad on screen.
 
 ## Building without a Mac
 
