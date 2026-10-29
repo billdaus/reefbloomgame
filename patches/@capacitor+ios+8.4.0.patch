@@ -1,0 +1,54 @@
+diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController.swift b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController.swift
+index a728521..8e99371 100644
+--- a/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController.swift
++++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController.swift
+@@ -123,7 +123,9 @@ import Cordova
+         webViewConfiguration.suppressesIncrementalRendering = false
+         webViewConfiguration.allowsAirPlayForMediaPlayback = true
+         webViewConfiguration.mediaTypesRequiringUserActionForPlayback = []
+-        webViewConfiguration.limitsNavigationsToAppBoundDomains = instanceConfiguration.limitsNavigationsToAppBoundDomains
++        if #available(iOS 14.0, *) {
++            webViewConfiguration.limitsNavigationsToAppBoundDomains = instanceConfiguration.limitsNavigationsToAppBoundDomains
++        }
+         if #available(iOS 15.4, *) {
+             webViewConfiguration.preferences.isElementFullscreenEnabled = true
+         }
+diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/WebViewAssetHandler.swift b/node_modules/@capacitor/ios/Capacitor/Capacitor/WebViewAssetHandler.swift
+index acc8eff..26357b5 100644
+--- a/node_modules/@capacitor/ios/Capacitor/Capacitor/WebViewAssetHandler.swift
++++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/WebViewAssetHandler.swift
+@@ -106,9 +106,11 @@ open class WebViewAssetHandler: NSObject, WKURLSchemeHandler {
+ 
+     open func mimeTypeForExtension(pathExtension: String) -> String {
+         if !pathExtension.isEmpty {
+-            if let uti = UTType(filenameExtension: pathExtension) {
+-                if let mimetype = uti.preferredMIMEType {
+-                    return mimetype
++            if #available(iOS 14.0, *) {
++                if let uti = UTType(filenameExtension: pathExtension) {
++                    if let mimetype = uti.preferredMIMEType {
++                        return mimetype
++                    }
+                 }
+             }
+             // TODO: Remove when deployment target is set to iOS 17
+diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/WebViewDelegationHandler.swift b/node_modules/@capacitor/ios/Capacitor/Capacitor/WebViewDelegationHandler.swift
+index 2b4a256..0d32d1c 100644
+--- a/node_modules/@capacitor/ios/Capacitor/Capacitor/WebViewDelegationHandler.swift
++++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/WebViewDelegationHandler.swift
+@@ -47,6 +47,7 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
+         bridge?.reset()
+     }
+ 
++    @available(iOS 15.0, *)
+     open func webView(
+         _ webView: WKWebView,
+         requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+@@ -57,6 +58,7 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
+         decisionHandler(.grant)
+     }
+ 
++    @available(iOS 15.0, *)
+     open func webView(_ webView: WKWebView,
+                       requestDeviceOrientationAndMotionPermissionFor origin: WKSecurityOrigin,
+                       initiatedByFrame frame: WKFrameInfo,

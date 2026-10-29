@@ -27,9 +27,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-        var onMac = ProcessInfo.processInfo.isiOSAppOnMac
+        var onMac = false
         #if targetEnvironment(macCatalyst)
         onMac = true
+        #else
+        if #available(iOS 14.0, *) { onMac = ProcessInfo.processInfo.isiOSAppOnMac }
         #endif
         if onMac {
             // Mac edition ("Designed for iPad" on Apple silicon): the reef lays

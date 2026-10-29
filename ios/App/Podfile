@@ -23,10 +23,15 @@ end
 post_install do |installer|
   assertDeploymentTarget(installer)
   # Mac edition: build every pod for Mac Catalyst too (Intel + Apple silicon).
+  # The Mac build reaches back to macOS 10.15 Catalina (Catalyst 13.1) while
+  # iOS stays at 15.0: Capacitor and the purchases plugin are patched
+  # (patches/) with availability guards for the iOS 14/15 APIs they use, so on
+  # Catalina in-app purchases simply report unsupported.
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
       config.build_settings['SUPPORTS_MACCATALYST'] = 'YES'
-      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '12.0'
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]'] = '13.1'
       # The Google Mobile Ads SDK ships no Mac Catalyst slice, so the AdMob
       # plugin's sources (which import it) are compiled for iOS only; the pod's
       # generated dummy.m keeps the static library non-empty on the Mac.

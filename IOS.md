@@ -145,8 +145,8 @@ no sandbox account. TestFlight builds use the sandbox automatically.
 ## Mac edition
 
 The Mac edition is a **Mac Catalyst** build of the same app — one binary for
-Intel and Apple-silicon Macs (macOS 12+), same bundle ID, saves, sign-in and
-pearl packs. To make it possible the project uses **CocoaPods** rather than
+Intel and Apple-silicon Macs (macOS 10.15 Catalina and up), same bundle ID,
+saves, sign-in and pearl packs (on macOS 12+; see below). To make it possible the project uses **CocoaPods** rather than
 Swift Package Manager: Capacitor's Swift package is a prebuilt binary with no
 Catalyst slice, while the pods build Capacitor, Cordova and the purchases
 plugin from source. Open `ios/App/App.xcworkspace` (not the .xcodeproj) and
@@ -156,8 +156,23 @@ run `pod install` in `ios/App` after `npm install` (`cap sync` does it too).
 Mac-specific pieces:
 
 - `project.pbxproj`: `SUPPORTS_MACCATALYST`, `TARGETED_DEVICE_FAMILY 1,2,6`
-  (Mac idiom), `MACOSX_DEPLOYMENT_TARGET 12.0`, hardened runtime and
+  (Mac idiom), `MACOSX_DEPLOYMENT_TARGET 10.15`, hardened runtime and
   `App/Mac.entitlements` (App Sandbox + outgoing network) for the macosx SDK.
+- **Catalina.** iOS stays at 15.0, but the Catalyst build sets
+  `IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*] = 13.1` (Catalyst 13.1 = macOS
+  10.15) in the project and, via the Podfile's `post_install`, in every pod.
+  Capacitor 8 and `@capgo/native-purchases` assume iOS 15, so `patches/`
+  (applied by `patch-package` on `npm install`) wrap their iOS 14/15 API uses
+  in availability guards: WKWebView's media-capture delegate, `UTType`,
+  `limitsNavigationsToAppBoundDomains`, `isiOSAppOnMac`, and the whole
+  StoreKit 2 surface of the purchases plugin. On macOS 10.15–11 the plugin
+  loads but every purchase call rejects ("need macOS 12 or newer") and
+  `isBillingSupported` is false, so the Pearl Shop shows no packs there; on
+  macOS 12+ nothing changes. When either package is upgraded, re-apply the
+  idea if the patch no longer applies: build with
+  `npm run mac:run` and fix whatever "only available in Mac Catalyst 14/15"
+  errors appear. The arm64 slice is stamped 14.0 (Apple silicon starts at 11
+  anyway); `LSMinimumSystemVersion` in the built app is 10.15.
 - `ReefBridgeViewController.swift` appends `ReefBloomMac` to the WebView user
   agent on Catalyst (and on "Designed for iPad"), so `app.html` labels the
   footer "Mac edition". `AppDelegate.swift` keeps the window ≥ 900×600.
@@ -181,8 +196,9 @@ own listing (description, keywords, 2880×1800 screenshots) and review.
 
 ## Desktop Edition (Electron) — older Macs, Linux, Windows
 
-Mac Catalyst stops at macOS 12, and there is no App Store for Linux or
-Windows, so `desktop/` wraps the same `dist-app` build in an unsigned
+Catalyst reaches macOS 10.15 (see above), but there is no App Store for
+Linux or Windows, and no signed build for Macs that cannot run the Mac App
+Store version, so `desktop/` wraps the same `dist-app` build in an unsigned
 **Electron 32** shell: the Desktop Edition. Electron 32 is the last Electron
 that runs on macOS 10.15 Catalina (Liam's mid-2012 unibody MacBook Pro tops
 out there); 33 dropped it — never bump past 32. Pages are served from a custom
