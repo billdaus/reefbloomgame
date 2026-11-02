@@ -31,7 +31,8 @@ import { createReefMusic } from './music.js';
 import { initCloudSave, cloudMarkWritten, onCloudSynced } from '../cloudsave.js';
 import { openAccountSheet, accountsEnabled, onAccountSignedIn } from '../accountSheet.js';
 import {
-  PEARL_PACKS, isNative as iapIsNative, loadProducts as iapLoadProducts, purchase as iapPurchase,
+  PEARL_PACKS, packLabel as iapPackLabel, shopPacks as iapShopPacks, markOnceBought as iapMarkOnceBought, onceBought as iapOnceBought,
+  isNative as iapIsNative, loadProducts as iapLoadProducts, purchase as iapPurchase,
   startTransactionListener as iapStartListener, takePendingPearls as iapTakePending,
   cachedProducts as iapCachedProducts, resetProducts as iapResetProducts,
   restorePurchases as iapRestore,
@@ -5639,6 +5640,7 @@ export async function initReefScene3D(canvas) {
       if (paid !== null) {
         if (paid > 0) grantPearls(paid);   // 0: the update stream already paid it out
         say(pickLine(SKIP7.done));
+        if (p.once) { iapMarkOnceBought(p.id); renderShopNative(); }
       }
     };
     row.title = p.title ?? '';
@@ -5665,27 +5667,28 @@ export async function initReefScene3D(canvas) {
     // Fast path: StoreKit's last answer is remembered, so real prices are on
     // screen and tappable the instant the shop opens; a fresh fetch then
     // updates them in place without any waiting state.
-    const remembered = iapCachedProducts();
+    const remembered = iapShopPacks(iapCachedProducts());
     if (remembered.length) {
       shopNote.textContent = '';
       remembered.forEach(p => {
-        const row = shopRow(`💎 ${p.pearls} pearls`, p.priceString, () => {});
+        const row = shopRow(iapPackLabel(p), p.priceString, () => {});
         wireShopRow(row, p);
         rowsById.set(p.id, row);
       });
       if (shopBusy) rowsById.forEach(r => { r.disabled = true; });
-      iapLoadProducts().then(fresh => {
+      iapLoadProducts().then(all => {
+        const fresh = iapShopPacks(all);
         if (seq !== shopOpenSeq || shopBusy) return;
         if (fresh.some(p => !rowsById.has(p.id)) || fresh.length !== rowsById.size) { renderShopNative(); return; }
         for (const p of fresh) {
-          rowsById.get(p.id).innerHTML = `<span>💎 ${p.pearls} pearls</span><span>${p.priceString}</span>`;
+          rowsById.get(p.id).innerHTML = `<span>${iapPackLabel(p)}</span><span>${p.priceString}</span>`;
         }
       }).catch(() => { /* remembered prices stay; buying still goes through StoreKit */ });
       return;
     }
     // First ever open: right pearl counts, prices pending, nothing tappable yet.
-    PEARL_PACKS.forEach(p => {
-      const row = shopRow(`💎 ${p.pearls} pearls`, '…', () => {});
+    iapShopPacks().forEach(p => {
+      const row = shopRow(iapPackLabel(p), '…', () => {});
       row.disabled = true;
       rowsById.set(p.id, row);
     });
@@ -5717,13 +5720,30 @@ export async function initReefScene3D(canvas) {
     for (const [id, row] of rowsById) {
       const p = byId.get(id);
       if (!p) { row.remove(); continue; }
-      row.innerHTML = `<span>💎 ${p.pearls} pearls</span><span>${p.priceString}</span>`;
+      row.innerHTML = `<span>${iapPackLabel(p)}</span><span>${p.priceString}</span>`;
       row.disabled = false;
       wireShopRow(row, p);
     }
   }
   // Warm the price cache shortly after launch so the shop opens ready.
   if (iapIsNative()) setTimeout(() => { iapLoadProducts().catch(() => {}); }, 1500);
+  // Website only: after a few minutes of play, one quiet invitation to the App
+  // Store, where pearls, ad clams and cloud saves live. Never in the native app
+  // or the Desktop Edition; at most once every three days per browser.
+  if (!iapIsNative() && !/ReefBloomDesktop/.test(navigator.userAgent)) setTimeout(() => {
+    const KEY = 'rb3d_store_nudge';
+    try { if (Date.now() - (Number(localStorage.getItem(KEY)) || 0) < 3 * 864e5) return; } catch (e) { return; }
+    const card = document.createElement('div');
+    card.className = 'store-nudge';
+    card.innerHTML = '<div class="sn-title">Reef Bloom is on the App Store</div>'
+      + '<div class="sn-body">Pearls, ad clams, cloud saves — and your reef in your pocket. Free on iPad &amp; iPhone.</div>'
+      + '<div class="sn-row"><a href="https://apps.apple.com/app/id6809200807" target="_blank" rel="noopener">Get the app</a>'
+      + '<button type="button">Not now</button></div>';
+    const dismiss = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch (e) { /* ignore */ } card.remove(); };
+    card.querySelector('button').onclick = dismiss;
+    card.querySelector('a').addEventListener('click', dismiss);
+    document.body.appendChild(card);
+  }, 4 * 60e3);
   // Likewise the first rewarded ad: fetched after the reef is up, so the first
   // ad clam (below) can settle as soon as its ad is on hand.
   if (ads.supported()) setTimeout(() => { ads.load().catch(() => {}); }, 3000);
@@ -7955,6 +7975,7 @@ export async function initReefScene3D(canvas) {
     clearInterval(tutTimer); tutTimer = null;
     tutGlow(null);
     tutDone = true;
+    setTimeout(starterBannerMaybe, 1500);   // the First Bloom welcome, once the orientation is over
     refreshProgress();   // orientation gates Level 2 — unlock it on the spot
     tutCard.querySelector('.t-skip').style.display = 'none';
     if (graduated) {
@@ -8022,6 +8043,37 @@ export async function initReefScene3D(canvas) {
   window.addEventListener('keydown',
     e => { if (e.key.startsWith('Arrow')) tutNote('camera'); });
   if (!tutDone) tutStart();
+
+  // ── First Bloom banner ───────────────────────────────────────────────────────
+  // A brand-new reef on the native app gets one welcome offer: the one-time
+  // First Bloom pack. It appears when the orientation ends (or two minutes in,
+  // if the orientation was skipped), once per device, never once it's bought,
+  // and never on the website or the Desktop Edition, where pearls aren't sold.
+  const STARTER_BANNER_KEY = 'rb3d_starter_banner';
+  const freshReef = !saved;
+  function starterBannerMaybe() {
+    if (!freshReef || !iapIsNative()) return;
+    const pack = PEARL_PACKS.find(p => p.once);
+    if (!pack || iapOnceBought(pack.id)) return;
+    try {
+      if (localStorage.getItem(STARTER_BANNER_KEY)) return;
+      localStorage.setItem(STARTER_BANNER_KEY, String(Date.now()));
+    } catch (e) { return; }
+    const price = iapCachedProducts().find(p => p.id === pack.id)?.priceString ?? pack.price;
+    const card = document.createElement('div');
+    card.className = 'starter-banner';
+    card.innerHTML = '<div class="sb-art" aria-hidden="true">🌱</div>'
+      + `<div class="sb-text"><div class="sb-title">First Bloom — ${pack.pearls} pearls for ${price}</div>`
+      + '<div class="sb-body">A one-time welcome price for a new reef. Pearls buy rare fish and coral at Skip-7\'s counter.</div></div>'
+      + '<div class="sb-row"><button type="button" class="sb-go">See it</button><button type="button" class="sb-no">Later</button></div>';
+    card.querySelector('.sb-go').onclick = () => {
+      card.remove(); openCounter();
+      setTimeout(() => packShelf.el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+    };
+    card.querySelector('.sb-no').onclick = () => card.remove();
+    document.body.appendChild(card);
+  }
+  if (freshReef) setTimeout(starterBannerMaybe, 120e3);
 
   // ── Bubbles the drone — dock, speech overlay, and state machine ──────────────
   const drone = makeDrone();

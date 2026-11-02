@@ -110,7 +110,7 @@ Users and Access → Integrations → App Store Connect API.
 
 ## In-app purchases
 
-The Pearl Shop sells three consumable pearl packs through StoreKit 2 via
+The Pearl Shop sells five consumable pearl packs through StoreKit 2 via
 `@capgo/native-purchases`. The product IDs, pearl amounts and fallback prices
 live in `src/3d/iap.js` and must match App Store Connect (Monetization →
 In-App Purchases) exactly:
@@ -120,6 +120,21 @@ In-App Purchases) exactly:
 | `…reefbloom.pearls10` | 10 | $0.99 |
 | `…reefbloom.pearls35` | 35 | $2.99 |
 | `…reefbloom.pearls60` | 60 | $4.99 |
+| `…reefbloom.pearls150` | 150 | $9.99 |
+| `…reefbloom.starter30` | 30 | $1.99, **once** ("First Bloom") |
+
+`pearls150` ("Pearls Reef Fund") and `starter30` ("First Bloom") were created
+in App Store Connect by API on Nov 2 2026 with en-US text, USA base price,
+all territories, the Pearl Market review screenshot and promotional images;
+they are **not yet submitted** — they go to review with the next app version
+(App Store Connect → the version → In-App Purchases and Subscriptions → add
+them before submitting). First Bloom is a one-time welcome price: `once: true`
+in `PEARL_PACKS`, remembered per device in `localStorage` (`rb3d_iap_once`)
+and hidden from the shop once bought. A brand-new reef on the native app also
+gets a one-time First Bloom banner when the orientation ends (or two minutes
+in), remembered in `rb3d_starter_banner`. On the website a separate
+"Reef Bloom is on the App Store" card appears after four minutes of play, at
+most every three days (`rb3d_store_nudge`); never on the Desktop Edition.
 
 Inside the app the shop shows the App Store's own names and localized prices
 and grants pearls only after a verified transaction; on the website (no
@@ -253,11 +268,16 @@ label should list *Advertising Data* and *Device ID* as "used for third-party
 advertising, not linked to you". `public/privacy.html` carries the disclosure.
 
 Ids: the app id goes in `ios/App/App/Info.plist` (`GADApplicationIdentifier`),
-the rewarded unit id in `REWARDED_UNIT` in `src/3d/ads.js`. Both come from
-AdMob → Apps → Reef Bloom (account pub-8911863192466816, the same one as
-Dragonperch; `public/app-ads.txt` already lists it). Until a real unit id is
-set, every build serves Google's sample test ads (`usingTestAds()`), which
-look real and pay nothing. Dev builds always use the test unit.
+the rewarded unit id in `REWARDED_UNIT` in `src/3d/ads.js`. Both were created
+Oct 29 2026 in AdMob → Apps → Reef Bloom (account pub-8911863192466816, the
+same one as Dragonperch): app id `ca-app-pub-8911863192466816~5268277071`,
+"Ad Clam Rewarded" unit `ca-app-pub-8911863192466816/1321740318`. The app
+is still *Requires review* / *Not verified* in AdMob: `public/app-ads.txt`
+is live at reefbloomgame.com but Google's crawl had not picked it up yet
+(re-check from the app's settings page; review itself takes a few days and
+ad serving is limited until it passes). Release builds now use the real
+unit; dev builds (`import.meta.env.DEV`) always use Google's sample unit
+(`usingTestAds()`), which looks real and pays nothing.
 
 Testing: `window.__rb3dFakeAds` lets a headless browser run the clam flow
 against a fake plugin (`window.__rb3d.spawnClam()` / `openClam()` /

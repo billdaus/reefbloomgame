@@ -11,12 +11,32 @@
 // exactly; `pearls` and the fallback `price` mirror the App Store listing.
 
 export const PEARL_PACKS = [
+  // First Bloom: a one-time welcome price (30 pearls at the 10-pack's rate).
+  // `once` packs disappear from the shop after they've been bought.
+  { id: 'com.defenestrationtech.games.reefbloom.starter30', pearls: 30, price: '$1.99', once: true, label: '🌱 First Bloom — 30 pearls, once' },
   { id: 'com.defenestrationtech.games.reefbloom.pearls10', pearls: 10, price: '$0.99' },
   { id: 'com.defenestrationtech.games.reefbloom.pearls35', pearls: 35, price: '$2.99' },
   { id: 'com.defenestrationtech.games.reefbloom.pearls60', pearls: 60, price: '$4.99' },
+  { id: 'com.defenestrationtech.games.reefbloom.pearls150', pearls: 150, price: '$9.99' },
 ];
 
 export const packById = (id) => PEARL_PACKS.find(p => p.id === id) ?? null;
+/** Shop label for a pack: the welcome pack says so, the rest are plain pearl counts. */
+export const packLabel = (p) => p.label ?? `💎 ${p.pearls} pearls`;
+
+// One-time packs already bought on this device (account-level, not per reef).
+const ONCE_KEY = 'rb3d_iap_once';
+export function onceBought(id) {
+  try { return (JSON.parse(localStorage.getItem(ONCE_KEY)) ?? []).includes(id); } catch (e) { return false; }
+}
+export function markOnceBought(id) {
+  try {
+    const ids = JSON.parse(localStorage.getItem(ONCE_KEY)) ?? [];
+    if (!ids.includes(id)) localStorage.setItem(ONCE_KEY, JSON.stringify([...ids, id]));
+  } catch (e) { /* storage full / disabled */ }
+}
+/** The packs the shop should offer right now: everything but spent one-time packs. */
+export const shopPacks = (list = PEARL_PACKS) => list.filter(p => !(p.once && onceBought(p.id)));
 
 /** True when running inside the Capacitor shell (the native bridge injects window.Capacitor). */
 export function isNative() {
@@ -56,7 +76,7 @@ export function cachedProducts() {
   if (!Array.isArray(saved)) return [];
   const byId = new Map(saved.filter(p => p && p.id && p.priceString).map(p => [p.id, p]));
   return PEARL_PACKS.filter(p => byId.has(p.id))
-    .map(p => ({ id: p.id, pearls: p.pearls, title: byId.get(p.id).title ?? '', priceString: byId.get(p.id).priceString }));
+    .map(p => ({ id: p.id, pearls: p.pearls, once: p.once, label: p.label, title: byId.get(p.id).title ?? '', priceString: byId.get(p.id).priceString }));
 }
 
 /**
@@ -76,7 +96,7 @@ export function loadProducts() {
           .filter(p => byId.has(p.id))
           .map(p => {
             const sp = byId.get(p.id);
-            return { id: p.id, pearls: p.pearls, title: sp.title, priceString: sp.priceString };
+            return { id: p.id, pearls: p.pearls, once: p.once, label: p.label, title: sp.title, priceString: sp.priceString };
           });
         if (list.length) {
           try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
@@ -155,7 +175,8 @@ export async function startTransactionListener(handler) {
       const pack = packById(tx?.productIdentifier);
       if (!pack || tx.revocationDate) return;
       if (!markGranted(tx.transactionId)) return;
-      if (grantHandler) grantHandler(pack.pearls);
+      if (pack.once) markOnceBought(pack.id);
+      if (grantHandler) grantHandler(pack.pearls, pack);
       else writeJSON(PENDING_KEY, (Number(readJSON(PENDING_KEY, 0)) || 0) + pack.pearls);
     });
   } catch (e) { listening = false; }

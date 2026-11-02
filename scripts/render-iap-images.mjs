@@ -9,6 +9,8 @@ const PACKS = [
   { id: 'pearls10', pearls: 10, label: 'Small Pack' },
   { id: 'pearls35', pearls: 35, label: 'Medium Pack' },
   { id: 'pearls60', pearls: 60, label: 'Large Pack' },
+  { id: 'pearls150', pearls: 150, label: 'Reef Fund' },
+  { id: 'starter30', pearls: 30, label: 'First Bloom', caption: 'FIRST BLOOM' },
 ];
 
 // Pearl pile layouts, as [x, y, r] relative to the clam's centre.
@@ -20,6 +22,14 @@ const PILES = {
              [-115, -70, 48], [-38, -74, 50], [38, -74, 50], [115, -70, 48],
              [-76, -146, 48], [0, -152, 52], [76, -146, 48],
              [-38, -222, 46], [38, -222, 46]],
+  // the Reef Fund: a heaped mound, five rows
+  pearls150: [[-170, 10, 42], [-102, 12, 44], [-34, 14, 46], [34, 14, 46], [102, 12, 44], [170, 10, 42],
+              [-136, -60, 42], [-68, -64, 44], [0, -66, 46], [68, -64, 44], [136, -60, 42],
+              [-102, -132, 42], [-34, -136, 44], [34, -136, 44], [102, -132, 42],
+              [-68, -202, 42], [0, -206, 44], [68, -202, 42],
+              [-34, -268, 40], [34, -268, 40]],
+  starter30: [[-96, 0, 52], [0, 4, 54], [96, 0, 52],
+              [-48, -78, 52], [48, -78, 52], [0, -152, 54]],
 };
 
 const pearl = ([x, y, r]) => `
@@ -40,7 +50,10 @@ function svgFor(pack) {
     pearls10: [[300, 470, 22], [740, 430, 16]],
     pearls35: [[270, 440, 22], [760, 400, 18], [700, 560, 12]],
     pearls60: [[250, 420, 24], [780, 380, 20], [700, 300, 14], [330, 330, 12], [760, 560, 12]],
+    pearls150: [[230, 400, 26], [800, 360, 22], [720, 280, 16], [300, 300, 14], [780, 560, 14], [250, 560, 12]],
+    starter30: [[290, 450, 22], [750, 420, 18], [700, 560, 12]],
   }[pack.id];
+  const caption = pack.caption ?? 'PEARLS';
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
@@ -123,7 +136,7 @@ function svgFor(pack) {
         paint-order="stroke" stroke-linejoin="round">${pack.pearls}</text>
   <text x="512" y="270" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
         font-size="84" font-weight="700" fill="#ffffff" stroke="#0a3050" stroke-width="10"
-        paint-order="stroke" stroke-linejoin="round" letter-spacing="4">PEARLS</text>
+        paint-order="stroke" stroke-linejoin="round" letter-spacing="4">${caption}</text>
 </svg>`;
 }
 

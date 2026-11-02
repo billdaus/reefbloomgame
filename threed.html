@@ -584,6 +584,47 @@
       font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.35);
     }
     .ct-packs .shop-pack:hover { background: linear-gradient(180deg, rgba(150,220,255,0.26), rgba(6,28,46,0.72)); }
+    /* First Bloom welcome banner on a new reef (native app; see ReefScene3D) */
+    .starter-banner {
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 60;
+      width: min(560px, calc(100vw - 32px)); box-sizing: border-box;
+      display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 14px;
+      background: linear-gradient(180deg, rgba(150,220,255,0.18), rgba(6,28,46,0.95));
+      border: 1px solid #7fd8b0; color: #eaf6ff; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      font-size: 13px; line-height: 1.35;
+    }
+    .starter-banner .sb-art { font-size: 30px; flex: none; }
+    .starter-banner .sb-text { flex: 1 1 auto; min-width: 0; }
+    .starter-banner .sb-title { font-weight: 700; font-size: 14px; color: #ffe9b0; }
+    .starter-banner .sb-body { color: #cfe6f4; }
+    .starter-banner .sb-row { display: flex; flex-direction: column; gap: 6px; flex: none; }
+    .starter-banner .sb-go {
+      background: #ffe9b0; color: #2b1a10; border: none; border-radius: 8px; font: inherit; font-weight: 700;
+      padding: 7px 14px; cursor: pointer;
+    }
+    .starter-banner .sb-go:hover { background: #fff3cc; }
+    .starter-banner .sb-no { background: none; border: none; color: #9fc4dc; font: inherit; cursor: pointer; padding: 4px; }
+    .starter-banner .sb-no:hover { color: #eaf6ff; }
+    @media (max-width: 520px) { .starter-banner { flex-wrap: wrap; } .starter-banner .sb-row { flex-direction: row; width: 100%; justify-content: flex-end; } }
+    /* Website-only App Store invitation (see ReefScene3D: store-nudge) */
+    .store-nudge {
+      position: fixed; left: 16px; bottom: 16px; z-index: 60; width: min(340px, calc(100vw - 32px));
+      box-sizing: border-box; padding: 14px 16px; border-radius: 12px;
+      background: rgba(6,28,46,0.94); border: 1px solid #2f6f92; color: #eaf6ff;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45); font-size: 13px; line-height: 1.4;
+    }
+    .store-nudge .sn-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .store-nudge .sn-body { color: #cfe6f4; }
+    .store-nudge .sn-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+    .store-nudge a {
+      display: inline-block; background: #ffe9b0; color: #2b1a10; text-decoration: none; font-weight: 700;
+      padding: 7px 14px; border-radius: 8px;
+    }
+    .store-nudge a:hover { background: #fff3cc; }
+    .store-nudge button {
+      background: none; border: none; color: #9fc4dc; cursor: pointer; font: inherit; padding: 7px 6px;
+    }
+    .store-nudge button:hover { color: #eaf6ff; }
     .ct-note { font-size: 12px; color: #cfe6f4; text-align: center; margin: 10px auto 0; max-width: 420px; }
     .ct-note a { color: #ffe9b0; }
     .ct-link {
