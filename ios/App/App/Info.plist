@@ -51,11 +51,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<!-- AdMob (rewarded ads in Skip-7's Pearl Market). The app id below is
-	     Google's SAMPLE id: replace it with Reef Bloom's own (AdMob → Apps →
-	     Reef Bloom → App ID, ca-app-pub-8911863192466816~…) before release. -->
+	<!-- AdMob (ad clams in the 3D reef). Reef Bloom's own app id, created
+	     Oct 29 2026 (AdMob → Apps → Reef Bloom → App settings → App ID).
+	     Google's sample id, for reference: ca-app-pub-3940256099942544~1458002511 -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-8911863192466816~5268277071</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

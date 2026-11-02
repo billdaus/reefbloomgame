@@ -12,12 +12,13 @@
 // General rating. See AdMob → Apps → Reef Bloom for the ids below.
 import { isNative } from './iap.js';
 
-// Google's public SAMPLE ids. They serve real-looking test ads and earn
-// nothing. Swap in Reef Bloom's own rewarded unit once it exists in AdMob
-// (Apps → Reef Bloom → Ad units → Rewarded); the app id lives in
-// ios/App/App/Info.plist under GADApplicationIdentifier.
+// TEST_REWARDED is Google's public SAMPLE unit: real-looking test ads that
+// earn nothing; dev builds always use it. REWARDED_UNIT is Reef Bloom's own
+// "Ad Clam Rewarded" unit (AdMob → Apps → Reef Bloom → Ad units, created
+// Oct 29 2026); the matching app id lives in ios/App/App/Info.plist under
+// GADApplicationIdentifier. Set REWARDED_UNIT to null to fall back to samples.
 const TEST_REWARDED = 'ca-app-pub-3940256099942544/1712485313';
-export const REWARDED_UNIT = null;   // e.g. 'ca-app-pub-8911863192466816/1234567890'
+export const REWARDED_UNIT = 'ca-app-pub-8911863192466816/1321740318';
 const unitId = () => (import.meta.env?.DEV ? TEST_REWARDED : (REWARDED_UNIT ?? TEST_REWARDED));
 /** True while the build still serves Google's sample ads (no real unit id yet). */
 export const usingTestAds = () => !REWARDED_UNIT || !!import.meta.env?.DEV;

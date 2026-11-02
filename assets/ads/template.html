@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;900&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;width:__W__px;height:__H__px;overflow:hidden}
+body{font-family:'Nunito',system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#156fb0 0%,#0f5490 55%,#0a3050 100%);position:relative}
+.rays{position:absolute;inset:0;width:100%;height:100%}
+.wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:calc(28px*var(--s));padding:calc(30px*var(--s));padding-bottom:calc(var(--reef)*1px);box-sizing:border-box}
+.portrait .wrap{flex-direction:column;text-align:center;justify-content:center;padding-top:calc(20px*var(--s));gap:calc(18px*var(--s))}
+.landscape .wrap{flex-direction:row;padding-right:calc(20px*var(--s))}
+.copy{display:flex;flex-direction:column;gap:calc(12px*var(--s))}
+.portrait .copy{align-items:center}
+.landscape .copy{align-items:flex-start}
+.eye{font-size:calc(10px*var(--s));font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#e0f4ff}
+h1{margin:0;font-size:calc(48px*var(--s));line-height:.95;font-weight:900;letter-spacing:-.02em}
+.sub{margin:0;font-size:calc(17px*var(--s));line-height:1.25;font-weight:600}
+.pills{display:flex;flex-wrap:wrap;gap:calc(6px*var(--s))}
+.portrait .pills{justify-content:center}
+.pill{font-size:calc(9.5px*var(--s));font-weight:700;padding:calc(4px*var(--s)) calc(9px*var(--s));border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35)}
+.cta{display:inline-flex;align-items:center;gap:calc(7px*var(--s));padding:calc(7px*var(--s)) calc(13px*var(--s)) calc(7px*var(--s)) calc(10px*var(--s));border-radius:calc(8px*var(--s));background:#111;border:1px solid rgba(255,255,255,.4);margin-top:calc(4px*var(--s))}
+.cta svg{width:calc(18px*var(--s));height:calc(18px*var(--s))}
+.cta .l{display:flex;flex-direction:column;line-height:1.05;text-align:left}
+.cta .a{font-size:calc(7.5px*var(--s));font-weight:600}.cta .b{font-size:calc(15px*var(--s));font-weight:800}
+.free{font-size:calc(10px*var(--s));font-weight:700;color:#e0f4ff}
+.icon{width:calc(110px*var(--s));height:calc(110px*var(--s));border-radius:22%;box-shadow:0 calc(12px*var(--s)) calc(30px*var(--s)) rgba(0,20,50,.45);flex:none}
+.reef{position:absolute;left:0;right:0;bottom:0;width:100%;height:calc(var(--reef)*1px)}
+</style></head>
+<body class="__ORI__" style="--s:__S__;--reef:__REEF__">
+<svg class="rays" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="58,0 68,0 46,100 36,100" fill="#fff" opacity=".05"/><polygon points="76,0 81,0 62,100 57,100" fill="#fff" opacity=".04"/></svg>
+<div class="wrap">
+  <img class="icon" src="file://__ICON__" alt="">
+  <div class="copy">
+    <div class="eye">A coral reef, yours to grow</div>
+    <h1>Reef Bloom</h1>
+    <p class="sub">Place coral. Hatch fish.<br>Watch life flourish.</p>
+    <div class="pills"><span class="pill">20+ species</span><span class="pill">3 biomes</span><span class="pill">No failure state</span></div>
+    <div class="cta"><svg viewBox="0 0 24 24" fill="#fff"><path d="M16.37 12.7c-.02-2.14 1.75-3.17 1.83-3.22-1-1.46-2.55-1.66-3.1-1.68-1.32-.13-2.58.78-3.25.78-.67 0-1.7-.76-2.8-.74-1.44.02-2.77.84-3.51 2.13-1.5 2.6-.38 6.45 1.08 8.56.71 1.03 1.56 2.19 2.67 2.15 1.07-.04 1.48-.7 2.78-.7 1.29 0 1.66.7 2.8.68 1.15-.02 1.88-1.05 2.58-2.09.81-1.2 1.15-2.36 1.17-2.42-.03-.01-2.24-.86-2.25-3.45zM14.24 6.4c.59-.72.99-1.71.88-2.7-.85.03-1.88.57-2.49 1.28-.55.63-1.03 1.65-.9 2.62.95.07 1.92-.48 2.51-1.2z"/></svg><span class="l"><span class="a">Download on the</span><span class="b">App Store</span></span></div>
+    <div class="free">Free on iPad &amp; iPhone</div>
+  </div>
+</div>
+<svg class="reef" viewBox="0 0 1080 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+<ellipse cx="540" cy="312" rx="640" ry="58" fill="#e8d3a3"/><ellipse cx="540" cy="316" rx="540" ry="40" fill="#d9bf8a"/>
+<path d="M160 290 L168 230 L152 180 L174 140 M168 230 L196 196 L190 160 M160 290 L136 240 L140 195" stroke="#ff6f9c" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M300 290 C300 230 370 210 410 240 C450 210 520 230 520 290 Z" fill="#ff9d57"/><path d="M332 282 C350 258 370 252 400 260 M370 280 C390 252 430 252 462 272 M415 284 C430 265 465 262 490 280" stroke="#d9741f" stroke-width="7" stroke-linecap="round"/>
+<path d="M640 290 C610 240 620 180 670 160 C720 180 730 240 700 290 Z" fill="#9b6ad9"/><path d="M670 290 L670 170 M646 280 L662 200 M694 280 L678 200" stroke="#7c4fc0" stroke-width="5" stroke-linecap="round"/>
+<path d="M840 290 L848 236 L832 196 L852 160 M848 236 L872 206 L868 176" stroke="#ff6f9c" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M40 290 C50 250 30 220 46 180 M68 290 C76 258 60 230 78 190 M1000 290 C1008 260 992 235 1010 200 M1030 290 C1036 262 1024 238 1040 206" stroke="#4fc77a" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="250" cy="150" rx="34" ry="18" fill="#ffb347"/><polygon points="278,150 302,136 302,164" fill="#ffb347"/><rect x="238" y="132" width="8" height="36" rx="4" fill="#fff"/><rect x="258" y="133" width="8" height="34" rx="4" fill="#fff"/><circle cx="228" cy="146" r="3" fill="#1a1a1a"/>
+<ellipse cx="780" cy="140" rx="26" ry="14" fill="#7fd8ff"/><polygon points="802,140 822,130 822,150" fill="#7fd8ff"/><circle cx="763" cy="138" r="2.5" fill="#1a1a1a"/>
+<ellipse cx="560" cy="170" rx="22" ry="12" fill="#7fd8ff"/><polygon points="578,170 596,162 596,178" fill="#7fd8ff"/><circle cx="546" cy="168" r="2.5" fill="#1a1a1a"/>
+</svg>
+</body></html>
