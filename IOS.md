@@ -237,53 +237,14 @@ and `desktop/dist` are build outputs and ignored.
 
 ## Ads
 
-Rewarded video ads, served by **Google AdMob** through
-`@capacitor-community/admob`, appear as **ad clams** — Classic's clam, in the
-reef. Every 45 s there is a 35% chance a golden clam settles on a free tile
-near where the camera looks (first roll 90 s after the reef loads); it waits
-three minutes, then sinks away. Tap it → "Watch & open" → the ad plays → the
-clam opens on two rolled cards: riches (60% Bubble Energy 40–80, 40% pearls
-2–4) and a find (4% Common Pack, 20% common egg, 16% seedling voucher of a
-recorded coral, otherwise 6–14 polyps). Five clams a day
-(`REWARDS_PER_DAY` in `src/3d/ads.js`), counted per reef in the save as
-`ads: { d, n }`. A clam only appears while an ad is actually loaded, and the
-payout follows the SDK's *Rewarded* event, never the tap. Code: the
-"🐚 Ad clams" block in `src/3d/ReefScene3D.js`.
-
-Where ads exist: the iOS app on iPhone and iPad only. The website never loads
-the plugin (lazy import, like `iap.js`). The Mac edition has no ad SDK at all —
-Google ships no Mac Catalyst slice of the Google Mobile Ads SDK, so
-`ios/App/Podfile`'s `post_install` compiles the plugin's sources for iOS only
-and strips the ad frameworks from the Catalyst link line; `ads.supported()`
-also says no when the user agent carries `ReefBloomMac`.
-
-Policy: the app is rated 4+ but is **not** in the Kids Category
-(`kidsAgeBand` is null), so Apple's Kids advertising rules don't apply; the
-clam is a free reward, not a purchase, so the loot-box disclosure doesn't
-either. Requests are non-personalised (`npa`), the App Tracking Transparency
-prompt is never shown, content is capped at the *General* rating. When the
-ads build is submitted, the age-rating questionnaire's "advertising" answer
-must flip to yes (it is `false` today; the rating stays 4+), and the privacy
-label should list *Advertising Data* and *Device ID* as "used for third-party
-advertising, not linked to you". `public/privacy.html` carries the disclosure.
-
-Ids: the app id goes in `ios/App/App/Info.plist` (`GADApplicationIdentifier`),
-the rewarded unit id in `REWARDED_UNIT` in `src/3d/ads.js`. Both were created
-Oct 29 2026 in AdMob → Apps → Reef Bloom (account pub-8911863192466816, the
-same one as Dragonperch): app id `ca-app-pub-8911863192466816~5268277071`,
-"Ad Clam Rewarded" unit `ca-app-pub-8911863192466816/1321740318`. The app
-is still *Requires review* / *Not verified* in AdMob: `public/app-ads.txt`
-is live at reefbloomgame.com but Google's crawl had not picked it up yet
-(re-check from the app's settings page; review itself takes a few days and
-ad serving is limited until it passes). Release builds now use the real
-unit; dev builds (`import.meta.env.DEV`) always use Google's sample unit
-(`usingTestAds()`), which looks real and pays nothing.
-
-Testing: `window.__rb3dFakeAds` lets a headless browser run the clam flow
-against a fake plugin (`window.__rb3d.spawnClam()` / `openClam()` /
-`clamState()` in dev builds), but the bridge round trip is only proved on the
-simulator — look for `⚡️ To Native -> AdMob initialize` and
-`prepareRewardVideoAd` followed by `TO JS`, and the test ad on screen.
+None. Reef Bloom shows no advertisements. A rewarded-ad feature (Google AdMob
+"ad clams" in the 3D reef, `@capacitor-community/admob`) was built in Oct 2026
+and removed before it ever shipped — 1.3.1 (Nov 2026) is the first build after
+the removal and carries no ad SDK, so the age-rating "advertising" answer stays
+no and the privacy label needs no advertising entries. The code is in git
+history (commits 892b0e0 and 0dbb522; removal in the 1.3.1 commit) should it
+ever come back. The AdMob app record and the house-ad campaign that advertises
+Reef Bloom *inside Dragonperch* are unrelated to this and still exist.
 
 ## Building without a Mac
 

@@ -37,7 +37,6 @@ import {
   cachedProducts as iapCachedProducts, resetProducts as iapResetProducts,
   restorePurchases as iapRestore,
 } from './iap.js';
-import * as ads from './ads.js';   // rewarded ads (iOS app only)
 
 const TILE = 2;
 const SURFACE_Y = 13;     // the ocean surface — everything swims beneath it
@@ -3578,7 +3577,6 @@ export async function initReefScene3D(canvas) {
   const vouchers = {};      // coralId -> free placements left (saved)
   let packBtn = null;       // menu button; assigned with the other menus
   let dailyPackDate = '';   // last calendar day the free Daily Pack was opened (saved)
-  let adDay = '', adCount = 0;   // rewarded ads watched today — the daily cap (saved)
 
   const rollRange = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
   // Pack and egg pools are level- AND biome-gated: they only roll species the
@@ -5004,7 +5002,7 @@ export async function initReefScene3D(canvas) {
         packs, vouchers, seasonPacks,
         nest: nestEggs, starterEggs: starterEggsGiven,
         starterPack: starterPackGiven, survey, coralDisc: true, quiz, lj,
-        dailyPack: dailyPackDate, ads: { d: adDay, n: adCount }, tut: tutDone, tutp: tutPaid }));
+        dailyPack: dailyPackDate, tut: tutDone, tutp: tutPaid }));
       cloudMarkWritten(slotKey(slot));
     } catch (e) { /* storage full / disabled — ignore */ }
   }
@@ -5744,9 +5742,6 @@ export async function initReefScene3D(canvas) {
     card.querySelector('a').addEventListener('click', dismiss);
     document.body.appendChild(card);
   }, 4 * 60e3);
-  // Likewise the first rewarded ad: fetched after the reef is up, so the first
-  // ad clam (below) can settle as soon as its ad is on hand.
-  if (ads.supported()) setTimeout(() => { ads.load().catch(() => {}); }, 3000);
   // Purchases can also complete OUTSIDE the buy tap — interrupted purchases,
   // approvals, anything finished while the app was closed. Listen for them, and
   // collect pearls banked while only the Home screen was open. Deferred a tick
@@ -7880,7 +7875,6 @@ export async function initReefScene3D(canvas) {
     ljLoad(saved.lj);
     refreshLjBadge();
     dailyPackDate = saved.dailyPack ?? '';
-    adDay = saved.ads?.d ?? ''; adCount = Number(saved.ads?.n) || 0;
     if (!saved.coralDisc) {
       // Pre-discovery save: everything the reef could already buy counts as
       // recorded — veterans lose nothing to the new gate.
@@ -8542,161 +8536,6 @@ export async function initReefScene3D(canvas) {
   droneReady = true;
 
   // ── Pointer picking ──────────────────────────────────────────────────────────
-  // ── 🐚 Ad clams — Classic's clam, in the reef ─────────────────────────────────
-  // Now and then a golden clam settles on a free tile near where the camera is
-  // looking. Tap it: watch a short ad and it opens on two rolled rewards (riches
-  // and a find). Five a day, counted with adDay/adCount and saved. Only where
-  // ads exist (src/3d/ads.js: the iOS app on iPhone/iPad), and only while an
-  // ad is actually loaded, so a clam never opens on a blank screen.
-  const adsLeft = () => (adDay === EV_TODAY() ? Math.max(0, ads.REWARDS_PER_DAY - adCount) : ads.REWARDS_PER_DAY);
-  const CLAM_TICK_S = 45, CLAM_CHANCE = 0.35, CLAM_LIFE_S = 180, CLAM_FIRST_S = 90;
-  const clamShellMat = new THREE.MeshStandardMaterial({ color: 0xffd58a, emissive: 0x5a3c08, emissiveIntensity: 0.35, roughness: 0.5, metalness: 0.08 });
-  const clamLipMat = new THREE.MeshStandardMaterial({ color: 0xd4a470, roughness: 0.6 });
-  const clamPearlMat = new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0x9fe8ff, emissiveIntensity: 0.9, roughness: 0.2 });
-  let adClam = null;            // { g, top, pearl, born, life, tile }
-  let clamNext = CLAM_FIRST_S;  // scene time of the next spawn roll
-  let clamBusy = false;         // an ad or its reveal is on screen
-  let clamT = 0;                // the render loop's clock, as last seen
-  function buildAdClam() {
-    const g = new THREE.Group();
-    const bottom = new THREE.Mesh(new THREE.SphereGeometry(0.5, 18, 12), clamShellMat);
-    bottom.scale.set(1, 0.42, 1.12); bottom.position.y = 0.2; g.add(bottom);
-    const lip = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.035, 8, 24), clamLipMat);
-    lip.rotation.x = Math.PI / 2; lip.position.y = 0.3; lip.scale.set(1, 1.12, 1); g.add(lip);
-    const top = new THREE.Mesh(new THREE.SphereGeometry(0.5, 18, 12), clamShellMat);
-    top.scale.set(1, 0.42, 1.12); top.position.set(0, 0.34, -0.18); top.rotation.x = -0.55; g.add(top);
-    const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.21, 14, 12), clamPearlMat);
-    pearl.position.set(0, 0.38, 0.08); g.add(pearl);
-    // a soft halo so the clam reads from across the reef, day or night
-    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.14, depthWrite: false }));
-    halo.position.y = 0.38; g.add(halo);
-    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.userData.adClam = true; } });
-    return { g, top, pearl };
-  }
-  function spawnAdClam(t) {
-    if (adClam || !ads.supported() || !ads.isReady() || !adsLeft()) return false;
-    // A free, unlocked tile near where the camera looks; nearest fifteen, one at random.
-    const c = controls.target;
-    const free = tiles.filter(x => !x.userData.occupied && zoneUnlocked(x.userData.biome))
-      .map(x => ({ x, d: Math.hypot(x.position.x - c.x, x.position.z - c.z) }))
-      .sort((a, b) => a.d - b.d).slice(0, 15);
-    if (!free.length) return false;
-    const tile = free[Math.floor(Math.random() * free.length)].x;
-    const { g, top, pearl } = buildAdClam();
-    g.position.set(tile.position.x, terrainHeight(tile.position.x, tile.position.z) + 0.02, tile.position.z);
-    g.rotation.y = Math.random() * Math.PI * 2;
-    g.scale.setScalar(0.01);
-    scene.add(g);
-    adClam = { g, top, pearl, born: t, life: CLAM_LIFE_S, tile, baseY: g.position.y };
-    droneQueue.push(pickLine(['🐚 A clam just settled in. It wants your attention. Shells are like that.',
-      '🐚 Clam on the sand. Tap it before it gets bored.', '🐚 A clam. Something is glowing inside it. Not my sensors — the clam.']));
-    return true;
-  }
-  function despawnAdClam() {
-    if (!adClam) return;
-    scene.remove(adClam.g);
-    adClam = null;
-  }
-  function tickAdClam(t, dt) {
-    clamT = t;
-    if (adClam) {
-      const a = adClam, age = t - a.born;
-      // settle in, breathe, then sink away unopened
-      const s = age < 0.6 ? Math.sin((age / 0.6) * Math.PI / 2) : (a.life - age < 1 ? Math.max(0.01, a.life - age) : 1);
-      a.g.scale.setScalar(s * 2.1);
-      a.g.position.y = a.baseY + Math.sin(t * 1.6) * 0.06;
-      a.top.rotation.x = -0.55 - Math.max(0, Math.sin(t * 1.3)) * 0.35;
-      a.pearl.material.emissiveIntensity = 0.7 + Math.sin(t * 3) * 0.3;
-      a.pearl.position.y = 0.36 + Math.sin(t * 2.2) * 0.03;
-      if (age > a.life && !clamBusy) despawnAdClam();
-      return;
-    }
-    if (t < clamNext) return;
-    clamNext = t + CLAM_TICK_S;
-    if (Math.random() < CLAM_CHANCE) spawnAdClam(t);
-  }
-  // Two rolled rewards: riches (Bubble Energy or pearls) and a find.
-  function rollClamRewards() {
-    const cards = [];
-    if (Math.random() < 0.6) {
-      const amt = rollRange([40, 80]); be = Math.min(be + amt, beMax);
-      cards.push({ icon: '🫧', title: `+${amt} Bubble Energy`, sub: 'Clam riches — the 60% roll', gain: { be: amt } });
-    } else {
-      const amt = rollRange([2, 4]); pearls += amt;
-      cards.push({ icon: '💎', title: `+${amt} Pearls`, sub: 'Clam riches — the 40% roll', gain: { pearls: amt } });
-    }
-    const r = Math.random();
-    const kn = reefCorals().filter(s => !s.utility && !s.eventId && !s.pearlCost && seen.has(s.id));
-    if (r < 0.04) {
-      packs.common = (packs.common ?? 0) + 1; refreshPackBtn();
-      cards.push({ icon: '🎁', title: 'A Common Pack', sub: 'The 4% find — open it from Packs', added: '✓ in your packs' });
-    } else if (r < 0.24 && nestEggs.length < NEST_CAP) {
-      nestEggs.push({ t: 'common', at: Date.now() + EGG_TYPES.common.ms }); refreshNestEggs();
-      cards.push({ icon: '🥚', title: 'A Common Egg settles into the nest', sub: 'The 20% find — incubating now', added: '✓ in the nest' });
-    } else if (r < 0.40 && kn.length) {
-      const spec = weightedPick(kn);
-      vouchers[spec.id] = (vouchers[spec.id] ?? 0) + 1; refreshLocks();
-      cards.push({ icon: '🌱', title: `${spec.name} seedling`, sub: 'The 16% find — a free placement', added: '✓ in your palette' });
-    } else {
-      const amt = rollRange([6, 14]); polyps = Math.min(polyps + amt, POLYP_MAX);
-      cards.push({ icon: '🪸', title: `+${amt} Polyps`, sub: 'The everyday find — science fuel', gain: { polyps: amt } });
-    }
-    return cards;
-  }
-  const clamModal = buildMenuModal('🐚 A clam on the sand');
-  function clamCards(cards) {
-    clamModal.body.innerHTML = cards.map((c, i) => {
-      const d = 0.15 + i * 0.55;
-      return `<div class="pack-card" style="animation-delay:${d.toFixed(2)}s">`
-        + `<span class="pc-icon">${c.icon}</span><div><b>${c.title}</b><br><small>${c.sub}</small></div>`
-        + `<span class="pc-added" style="animation-delay:${(d + 0.4).toFixed(2)}s">${c.added ?? '✓ added'}</span></div>`;
-    }).join('') + '<button class="m-tab" data-clam="close" style="margin-top:10px">Back to the reef</button>';
-    cards.forEach((c, i) => {
-      if (!c.gain) return;
-      const [key, amt] = Object.entries(c.gain)[0];
-      setTimeout(() => hudGain(key, amt), (0.15 + i * 0.55 + 0.3) * 1000);
-    });
-  }
-  function openAdClam() {
-    if (!adClam || clamBusy) return;
-    const left = adsLeft();
-    clamModal.body.innerHTML = '<div class="pack-confirm">'
-      + '<div class="pc-name">🐚 Something glows inside</div>'
-      + '<div class="m-sub" style="margin-top:6px">Watch a short ad and the clam opens: a roll of riches and a find. '
-      + `${left} clam${left === 1 ? '' : 's'} left today.</div>`
-      + '<div class="pc-actions">'
-      + `<button class="pack-open-btn" data-clam="watch"${ads.isReady() ? '' : ' disabled'}>📺 Watch &amp; open</button>`
-      + '<button class="m-tab" data-clam="close">Leave it</button></div></div>';
-    clamModal.show();
-  }
-  clamModal.body.addEventListener('click', async (e) => {
-    const act = e.target.closest('[data-clam]')?.dataset.clam;
-    if (!act) return;
-    if (act === 'close') { clamModal.ov.style.display = 'none'; return; }
-    if (act !== 'watch' || clamBusy || !adClam || !ads.isReady() || !adsLeft()) return;
-    clamBusy = true;
-    clamModal.ov.style.display = 'none';
-    let earned = 0;
-    try { earned = await ads.show(); } catch (err) { earned = 0; }
-    if (earned > 0 && adClam) {
-      if (adDay !== EV_TODAY()) { adDay = EV_TODAY(); adCount = 0; }
-      adCount += 1;
-      const cards = rollClamRewards();
-      refreshHud(); save();
-      despawnAdClam();
-      clamCards(cards); clamModal.show();
-      droneQueue.push(adsLeft() ? pickLine(['🐚 It opened. Clams keep their word.', '🐚 Rewards dispensed. The clam looks pleased, insofar as clams can.'])
-        : '🐚 That was the last clam for today. They need their sleep.');
-    } else if (adClam) {
-      droneQueue.push('🐚 The clam stays shut. Closed early, no hard feelings.');
-    }
-    clamBusy = false;
-  });
-  if (import.meta.env?.DEV && window.__rb3d) Object.assign(window.__rb3d, {
-    spawnClam: () => spawnAdClam(clamT), openClam: openAdClam,
-    clamState: () => ({ clam: !!adClam, at: adClam ? [adClam.g.position.x, adClam.g.position.y, adClam.g.position.z] : null, adDay, adCount, left: adsLeft(), pearls: Math.floor(pearls), be: Math.floor(be), polyps: Math.floor(polyps) }),
-  });
-
   const ray = new THREE.Raycaster();
   const ptr = new THREE.Vector2();
   let hovered = null;
@@ -8838,8 +8677,6 @@ export async function initReefScene3D(canvas) {
       const sp = castAll(glowSparks.map(s => s.m), true);
       if (sp) { const i = glowSparks.findIndex(s => s.m === sp || s.m === sp.parent); if (i >= 0) { popSpark(i); return; } }
     }
-    // An ad clam opens its little question.
-    if (adClam && castOne(adClam.g)) { openAdClam(); return; }
     // Poking Bubbles takes priority — it has sensors, and feelings.
     if (castOne(drone)) {
       if (droneState === 'napping') droneWake(true);
@@ -9332,7 +9169,6 @@ export async function initReefScene3D(canvas) {
     if (!sawNight && nf > 0.9) { sawNight = true; checkAch(); }
     // Bioluminescence Night: the dark goes deeper and the glow goes brighter.
     const bn = tickBioNight(t, dt, nf);
-    tickAdClam(t, dt);
     const dk = nf * bn;
     sun.intensity = 1.7 - nf * 1.35 - dk * 0.25;
     sun.color.copy(SUN_DAY).lerp(SUN_NIGHT, nf);
