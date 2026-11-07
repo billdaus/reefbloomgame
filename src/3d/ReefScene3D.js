@@ -3962,6 +3962,13 @@ export async function initReefScene3D(canvas) {
   let dq = null;                 // today's daily quest (saved)
   const achUnlocked = new Set(); // achievement ids earned (saved)
   const droneQueue = [];         // Bubbles' pending speech lines
+  // Declared up here, not with the rest of Bubbles' state: restoring a save
+  // can level the reef up (refreshProgress → checkLevelUp → droneTrigger)
+  // long before the drone section runs, and a `let` read before its line is
+  // a ReferenceError, not `false` — which took every boot down for any reef
+  // that qualified for a level-up on load. False until Bubbles wakes, so
+  // triggers fired during restore are still swallowed as intended.
+  let droneReady = false;
   let sawNight = false;          // has this reef been seen after dark (saved)
   let tutDone = false;           // reef orientation finished or skipped (saved)
   let tutPaid = false;           // graduation pearls dispensed — pays once (saved)
@@ -8294,8 +8301,7 @@ export async function initReefScene3D(canvas) {
   const dronePos = DOCK_POS.clone();
   let speechTimer = 0;
   let flavorTimer = 30 + Math.random() * 45;
-  let droneReady = false;          // suppress triggers fired during restore
-  let lowBEAt = -999;
+  let lowBEAt = -999;              // (droneReady is declared with droneQueue, far above)
 
   function droneTrigger(event) {
     if (!droneReady) return;

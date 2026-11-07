@@ -889,15 +889,24 @@
         }
       }
       document.getElementById('loading')?.remove();   // let the error panel through
+      // Only a context refusal is a WebGL problem; anything else is a bug in
+      // the game and the advice to restart the device would be a wild goose
+      // chase — say so, and show the line that matters.
+      const msg = String(lastErr?.message || lastErr || '');
+      const glFail = /webgl|context/i.test(msg);
       const d = document.createElement('div');
       d.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;'
         + 'justify-content:center;background:#0a3550;padding:24px;';
       d.innerHTML = '<div style="max-width:460px;background:#0d3550;border:1px solid #2f6f92;'
         + 'border-radius:14px;padding:22px 24px;color:#eaf6ff;font:15px/1.6 system-ui,sans-serif;">'
         + '<div style="font-size:17px;font-weight:700;margin-bottom:8px">🪸 The reef couldn&rsquo;t start</div>'
-        + 'The browser wouldn&rsquo;t give the 3D reef a working WebGL context, even after'
-        + ' three tries. Classic may still run (it can use simpler graphics). The surest'
-        + ' fix is closing other tabs and fully restarting the browser &mdash; or the device.'
+        + (glFail
+          ? 'The browser wouldn&rsquo;t give the 3D reef a working WebGL context, even after'
+            + ' three tries. Classic may still run (it can use simpler graphics). The surest'
+            + ' fix is closing other tabs and fully restarting the browser &mdash; or the device.'
+          : 'The reef hit an error while loading, three times in a row &mdash; a bug on our side,'
+            + ' not your device. Reloading sometimes helps; if it keeps happening, please send us'
+            + ' the line below.')
         + '<div style="margin-top:10px;color:#9fc4dc;font-size:13px">Your reef save is safe &mdash; '
         + 'nothing is written until the game has fully started.</div>'
         + '<div style="margin-top:10px;color:#ffb4ac;font-size:11px;font-family:ui-monospace,monospace;'
