@@ -21,50 +21,36 @@
       padding: 5px 10px; border-radius: 8px;
     }
     .slot-btn.active { border-color: #7fd8ff; background: rgba(20,80,120,0.7); color: #eaf6ff; }
-    /* HUD — a row of frosted-glass chips; BE and Harmony carry mini fill bars,
-       and the clock dial's ring is the day ticking by. */
+    /* HUD — one frosted-glass strip: icon + number per stat, nothing else.
+       Harmony's number carries its own colour; the BE rate reads "full" at
+       the wallet cap; the sky itself tells the time, the icon just echoes it. */
     #hud {
       /* Centered in the strip between the Classic button and the right menu,
-         so the chips never slide under either at narrow widths. */
+         so the strip never slides under either at narrow widths. */
       position: fixed; top: 10px; left: 120px; right: 480px; z-index: 3;
-      display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap;
-      justify-content: center; pointer-events: none;
+      display: flex; justify-content: center; pointer-events: none;
     }
-    .chip { pointer-events: auto; }
     .chip {
-      display: flex; align-items: center; gap: 8px;
+      pointer-events: auto; display: flex; align-items: center;
       background: linear-gradient(160deg, rgba(12,44,66,0.82), rgba(4,20,34,0.86));
       border: 1px solid rgba(127,216,255,0.22);
       box-shadow: 0 4px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
       backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-      border-radius: 13px; padding: 6px 12px; color: #eaf6ff;
+      border-radius: 13px; padding: 6px 4px; color: #eaf6ff;
     }
-    .chip .ico { font-size: 17px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
-    .chip .col { display: flex; flex-direction: column; gap: 3px; min-width: 54px; }
-    .chip .val {
+    .stat {
+      display: flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9px;
+      border-left: 1px solid rgba(127,216,255,0.16);
+    }
+    .stat:first-child { border-left: none; }
+    .stat .ico { font-size: 16px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
+    .stat .val {
       font-size: 15px; font-weight: 700; letter-spacing: 0.3px; line-height: 1;
       font-variant-numeric: tabular-nums;
     }
-    .chip .rate { font-size: 10px; font-weight: 600; color: #7fd8b0; margin-left: 5px; }
-    .mini-bar {
-      height: 4px; border-radius: 2px; background: rgba(255,255,255,0.13); overflow: hidden;
-    }
-    .mini-bar span { display: block; height: 100%; width: 0; border-radius: 2px; transition: width 0.3s; }
-    #be-bar { background: linear-gradient(90deg, #4fc3f7, #7fd8ff); }
-    #hm-bar { background: #46c08a; }
-    .chip.shop { cursor: pointer; }
-    .chip.shop:hover { border-color: #7fd8ff; background: linear-gradient(160deg, rgba(20,70,100,0.85), rgba(8,32,50,0.88)); }
-    .chip.clock { padding: 5px 8px; }
-    .dial {
-      width: 28px; height: 28px; border-radius: 50%; position: relative; flex: none;
-      display: grid; place-items: center;
-      background: conic-gradient(#ffd54f 0%, rgba(255,255,255,0.14) 0);
-    }
-    .dial::after {
-      content: ""; position: absolute; inset: 2.5px; border-radius: 50%;
-      background: rgba(6,24,38,0.94);
-    }
-    .dial em { position: relative; z-index: 1; font-style: normal; font-size: 13px; line-height: 1; }
+    .stat .rate { font-size: 10px; font-weight: 600; color: #7fd8b0; margin-left: 5px; }
+    .stat.shop { cursor: pointer; }
+    .stat.shop:hover { background: rgba(127,216,255,0.12); }
 
     .modal3d .panel {
       background: #0d3550; border: 1px solid #2f6f92; border-radius: 14px;
@@ -325,13 +311,13 @@
     }
     @keyframes addedPop { to { opacity: 1; transform: none; } }
     #hud.gain { z-index: 6; }
-    .chip.gain { animation: chipGain 0.7s ease; }
-    .chip.spend { animation: chipSpend 0.7s ease; }
+    .stat.gain { animation: chipGain 0.7s ease; }
+    .stat.spend { animation: chipSpend 0.7s ease; }
     @keyframes chipGain {
-      30% { transform: scale(1.12); border-color: #7fd8b0; box-shadow: 0 0 18px rgba(127,216,176,0.7); }
+      30% { transform: scale(1.12); background: rgba(127,216,176,0.22); box-shadow: 0 0 18px rgba(127,216,176,0.7); }
     }
     @keyframes chipSpend {
-      30% { transform: scale(1.08); border-color: #ff8a80; box-shadow: 0 0 18px rgba(255,138,128,0.6); }
+      30% { transform: scale(1.08); background: rgba(255,138,128,0.2); box-shadow: 0 0 18px rgba(255,138,128,0.6); }
     }
     .hud-float {
       position: fixed; z-index: 7; pointer-events: none; transform: translate(-50%, 0);
@@ -643,17 +629,17 @@
     /* Touchscreens: fatter buttons and roomier rows so taps land first try. */
     /* Fat chips only where there's room for them (touch + wide screen). */
     @media (pointer: coarse) and (min-width: 1201px) {
-      .chip { padding: 9px 13px; }
+      .chip { padding: 9px 5px; }
     }
     /* Tablets, laptops and ordinary desktop windows: the strip between the
        Classic button and the (twelve-button) menu row is too narrow for the
        chips — drop the HUD to its own second row, slightly compacted. */
     @media (max-width: 1799px) {
       #hud { left: 118px; right: 262px; top: 48px; }
-      .chip { padding: 5px 9px; gap: 6px; }
-      .chip .ico { font-size: 15px; }
-      .chip .val { font-size: 13.5px; }
-      .chip .col { min-width: 46px; }
+      .chip { padding: 5px 2px; }
+      .stat { padding: 2px 8px; gap: 5px; }
+      .stat .ico { font-size: 15px; }
+      .stat .val { font-size: 13.5px; }
     }
     /* Narrow windows (the Mac minimum, small tablets): a compact menu row so
        all of it stays on screen. */
@@ -662,26 +648,24 @@
       #menu3d { gap: 4px; }
     }
     @media (max-width: 900px) {
-      #hud { gap: 6px; }
-      .chip { padding: 4px 7px; gap: 5px; }
-      .chip .ico { font-size: 14px; }
-      .chip .col { min-width: 40px; }
-      .chip .rate { font-size: 9px; margin-left: 3px; }
-      .dial { width: 24px; height: 24px; }
+      .stat { padding: 2px 6px; gap: 4px; }
+      .stat .ico { font-size: 14px; }
+      .stat .rate { font-size: 9px; margin-left: 3px; }
     }
-    /* Phones: dock the chips in one scrollable strip along the bottom, clear
-       of every panel; the hint line and version badge have no room to live. */
+    /* Phones: dock the strip along the bottom, clear of every panel; the hint
+       line and version badge have no room to live. */
     @media (max-width: 700px) {
       #hud {
         top: auto; left: 0; right: 0;
         bottom: calc(6px + env(safe-area-inset-bottom, 0px));
         padding: 0 max(10px, env(safe-area-inset-right, 10px))
                  0 max(10px, env(safe-area-inset-left, 10px));
-        flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
+        overflow-x: auto; justify-content: flex-start;
         scrollbar-width: none;
       }
       #hud::-webkit-scrollbar { display: none; }
-      .chip { flex: none; }
+      .chip { flex: none; margin: 0 auto; }
+      .stat { flex: none; }
       #hint, #version-badge-3d { display: none; }
       #palette { bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
       #fish-toast { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
@@ -750,14 +734,15 @@
     html.big-text .m-row { font-size: 14px; }
     html.big-text .coral-btn { font-size: 15px; }
     html.big-text .menu-btn, html.big-text #palette-toggle { font-size: 14px; }
-    html.big-text .chip .val { font-size: 17px; }
+    html.big-text .stat .val { font-size: 17px; }
     html.big-text .j-chip { font-size: 12px; }
     /* Wide windows (Mac, big monitors): roomier chips, a wider species palette. */
     @media (min-width: 1800px) {
-      #hud { right: 940px; gap: 10px; }   /* the menu row is ~870px wide */
-      .chip { padding: 9px 14px; gap: 10px; }
-      .chip .val { font-size: 16px; }
-      .chip .ico { font-size: 19px; }
+      #hud { right: 940px; }   /* the menu row is ~870px wide */
+      .chip { padding: 9px 6px; }
+      .stat { padding: 3px 12px; gap: 8px; }
+      .stat .val { font-size: 16px; }
+      .stat .ico { font-size: 19px; }
       #palette, #palette-toggle { width: 300px; }
       .coral-btn { font-size: 14px; padding: 7px 12px; }
       .menu-btn { font-size: 13px; padding: 7px 12px; }
@@ -842,30 +827,20 @@
   <div id="photo-bar"><button data-snap>📷 Snap</button><button data-done>✕ Done</button></div>
   <div id="menu3d"></div>
   <div id="hud">
-    <div class="chip" title="Bubble Energy — the bar shows how full your wallet is">
-      <span class="ico">🫧</span>
-      <div class="col">
-        <span class="val"><span id="be-count">0</span><small class="rate" id="be-rate">+0.0/s</small></span>
-        <div class="mini-bar"><span id="be-bar"></span></div>
-      </div>
+    <div class="chip">
+      <span class="stat" title="Bubble Energy · the rate reads “full” at the wallet cap"><span class="ico">🫧</span><span class="val"><span id="be-count">0</span><small class="rate" id="be-rate">+0.0/s</small></span></span>
+      <span class="stat" title="Polyps · tap a coral to upgrade it"><span class="ico">🪸</span><span class="val" id="polyp-count">0</span></span>
+      <span class="stat shop" id="shop-btn" title="Pearls · tap for the Pearl Market"><span class="ico">💎</span><span class="val" id="pearl-count">0</span></span>
+      <span class="stat" title="Level"><span class="ico">⭐</span><span class="val" id="lvl-count">1</span></span>
+      <span class="stat" title="Harmony · green is healthy, red needs the Advisor"><span class="ico">⚖️</span><span class="val" id="hm-count">50</span></span>
+      <span class="stat" title="Time of day"><span class="ico" id="tod-icon">☀️</span></span>
     </div>
-    <div class="chip" title="Harmony">
-      <span class="ico">⚖️</span>
-      <div class="col">
-        <span class="val" id="hm-count">50</span>
-        <div class="mini-bar"><span id="hm-bar"></span></div>
-      </div>
-    </div>
-    <div class="chip" title="Level"><span class="ico">⭐</span><span class="val" id="lvl-count">1</span></div>
-    <div class="chip" title="Polyps · click a coral to upgrade it"><span class="ico">🪸</span><span class="val" id="polyp-count">0</span></div>
-    <div class="chip shop" id="shop-btn" title="Pearls · tap for the Pearl Market"><span class="ico">💎</span><span class="val" id="pearl-count">0</span></div>
-    <div class="chip clock" title="Time of day"><div class="dial" id="tod-dial"><em id="tod-icon">☀️</em></div></div>
   </div>
   <canvas id="app3d"></canvas>
   <button id="palette-toggle">🪸 Species ▾</button>
   <div id="palette"></div>
   <div id="fish-toast" role="button"></div>
-  <div id="hint">🏖️ Beach far west · 🌿 Seagrass · 🪸 Coral Reef centre · 🌌 Twilight east — plant in the matching biome · corals grow from hatchlings; tap one to check its stage · 🥚 fish hatch from Market eggs at the nest on the rocky outcrop (south-east) · tap a ＋ plot to expand a reef with 🪸 · ✕ Remove to sell · drag or arrow keys to move · right-drag or two fingers to orbit.</div>
+  <div id="hint">Drag to move · right-drag or two fingers to orbit · plant each species in its biome · tap a coral for its stage · ＋ plots expand a reef</div>
   <div id="version-badge-3d">3Dev 4.8</div>
   <script>
     // Boot-failure beacon: with no console on iPad, a silent blank page is
