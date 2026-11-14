@@ -3963,6 +3963,13 @@ export async function initReefScene3D(canvas) {
   let dq = null;                 // today's daily quest (saved)
   const achUnlocked = new Set(); // achievement ids earned (saved)
   const droneQueue = [];         // Bubbles' pending speech lines
+  // Declared up here, not with the rest of Bubbles' state: restoring a save
+  // can level the reef up (refreshProgress → checkLevelUp → droneTrigger)
+  // long before the drone section runs, and a `let` read before its line is
+  // a ReferenceError, not `false` — which took every boot down for any reef
+  // that qualified for a level-up on load. False until Bubbles wakes, so
+  // triggers fired during restore are still swallowed as intended.
+  let droneReady = false;
   let sawNight = false;          // has this reef been seen after dark (saved)
   let tutDone = false;           // reef orientation finished or skipped (saved)
   let tutPaid = false;           // graduation pearls dispensed — pays once (saved)
@@ -5017,9 +5024,6 @@ export async function initReefScene3D(canvas) {
   const lvlEl = document.getElementById('lvl-count');
   const polypEl = document.getElementById('polyp-count');
   const pearlEl = document.getElementById('pearl-count');
-  const beBarEl = document.getElementById('be-bar');
-  const hmBarEl = document.getElementById('hm-bar');
-  const todDialEl = document.getElementById('tod-dial');
   const todIconEl = document.getElementById('tod-icon');
 
   // A resource change the player should *see*: the chip pops above the modal
@@ -5028,7 +5032,7 @@ export async function initReefScene3D(canvas) {
   const hudEl = document.getElementById('hud');
   function hudGain(key, amt) {
     const valEl = key === 'be' ? beEl : key === 'pearls' ? pearlEl : key === 'polyps' ? polypEl : null;
-    const chip = valEl?.closest('.chip');
+    const chip = valEl?.closest('.stat');
     if (!chip || !amt) return;
     const icon = key === 'be' ? '🫧' : key === 'pearls' ? '💎' : '🪸';
     const spend = amt < 0;
@@ -5051,36 +5055,27 @@ export async function initReefScene3D(canvas) {
   function refreshHud() {
     if (beEl) beEl.textContent = Math.floor(be);
     if (rateEl && !(performance.now() < Number(rateEl.dataset.flashUntil ?? 0))) {
-      rateEl.textContent = `+${incomePerSec.toFixed(1)}/s`;
+      // The wallet has a cap; "full" is the one thing the old fill bar said
+      // that the number alone doesn't.
+      rateEl.textContent = be >= beMax - 0.5 ? 'full' : `+${incomePerSec.toFixed(1)}/s`;
     }
-    if (hmEl) hmEl.textContent = Math.round(harmony);
+    if (hmEl) {
+      const h = Math.round(clamp(harmony, 0, 100));
+      hmEl.textContent = h;
+      // Style writes are guarded — refreshHud runs every frame.
+      const band = h >= 70 ? 'ok' : h >= 40 ? 'warn' : 'bad';
+      if (hmEl.dataset.band !== band) {
+        hmEl.dataset.band = band;
+        hmEl.style.color = band === 'ok' ? '#7fd8b0' : band === 'warn' ? '#ffd54f' : '#ff9a85';
+      }
+    }
     if (lvlEl) lvlEl.textContent = level;
     if (polypEl) polypEl.textContent = Math.floor(polyps);
     if (pearlEl) pearlEl.textContent = Math.floor(pearls);
-    // Style writes below are guarded — refreshHud runs every frame.
-    if (beBarEl) {
-      const w = Math.round(clamp(be / beMax, 0, 1) * 100);
-      if (beBarEl.dataset.w != w) { beBarEl.dataset.w = w; beBarEl.style.width = `${w}%`; }
-    }
-    if (hmBarEl) {
-      const w = Math.round(clamp(harmony, 0, 100));
-      if (hmBarEl.dataset.w != w) {
-        hmBarEl.dataset.w = w;
-        hmBarEl.style.width = `${w}%`;
-        hmBarEl.style.background = w >= 70 ? '#46c08a' : w >= 40 ? '#ffd54f' : '#ef8a70';
-      }
-    }
-    if (todDialEl) {
-      const p = Math.round(timeOfDay * 100);
-      if (todDialEl.dataset.p != p) {
-        todDialEl.dataset.p = p;
-        todDialEl.style.background = `conic-gradient(#ffd54f ${p}%, rgba(255,255,255,0.14) 0)`;
-        if (todIconEl) {
-          todIconEl.textContent =
-            timeOfDay < 0.17 || timeOfDay >= 0.86 ? '🌙'
-              : timeOfDay < 0.33 ? '🌅' : timeOfDay < 0.7 ? '☀️' : '🌇';
-        }
-      }
+    if (todIconEl) {
+      const icon = timeOfDay < 0.17 || timeOfDay >= 0.86 ? '🌙'
+        : timeOfDay < 0.33 ? '🌅' : timeOfDay < 0.7 ? '☀️' : '🌇';
+      if (todIconEl.textContent !== icon) todIconEl.textContent = icon;
     }
   }
 
@@ -7283,6 +7278,13 @@ export async function initReefScene3D(canvas) {
         + ` ${tierHtml(feat.tier)} packs.</div>`;
     }
     const dailyOpen = dailyPackDate !== EV_TODAY();
+    // Two or more waiting? One button rips through the lot, revealing every
+    // card in one sitting (grouped by pack), instead of a tap per pack.
+    const waiting = packCount();
+    if (waiting >= 2) {
+      html += `<button class="pack-open-btn" data-pack="all" style="margin:8px 0 2px;`
+        + `width:100%;padding:8px 12px;font-size:13px">🎁 Open all ${waiting} packs</button>`;
+    }
     html += '<div class="m-sec">🌅 Daily Pack — free, once a day</div>'
       + '<div class="m-row"><span>Riches, a seedling from your recorded coral, an egg for the nest<br>'
       + '<span style="font-size:10.5px;color:#9fc4dc">60%: 20–50 🫧 / 40%: 5–12 🪸'
@@ -7351,9 +7353,32 @@ export async function initReefScene3D(canvas) {
     }
     packModal.body.innerHTML = html;
   }
-  function showPackReveal(cards) {
-    packModal.body.innerHTML = cards.map((c, i) => {
-      const d = 0.15 + i * 0.55;
+  // Opens every pack on hand — daily, starter, rarity tiers, season — and
+  // returns the cards flattened, with a `{ sec }` header before each pack.
+  function openAllPacks() {
+    const items = [];
+    const add = (label, cards) => { if (cards) items.push({ sec: label }, ...cards); };
+    add('🌅 Daily Pack', openDailyPack());
+    while (packs.starter > 0) add('Starter Pack', openStarterPack());
+    for (const tier of PACK_TIERS) {
+      while (packs[tier] > 0) add(`${TIER_LABEL[tier] ?? tier} Pack`, openRarityPack(tier));
+    }
+    while (seasonPacks.length) {
+      const def = eventById(seasonPacks[0]);
+      add(`${def?.icon ?? '🎁'} ${def?.name ?? 'Season'} Pack`, openSeasonPack(0));
+    }
+    return items.length ? items : null;
+  }
+  // Cards flip in one after another; a long open-all run tightens the beat
+  // so the last card never lands more than a few seconds after the first.
+  // `{ sec }` entries render as plain section headers between packs.
+  function showPackReveal(items) {
+    const cards = items.filter(c => !c.sec);
+    const step = cards.length > 5 ? Math.max(0.12, 3 / cards.length) : 0.55;
+    let i = 0;
+    packModal.body.innerHTML = items.map(c => {
+      if (c.sec) return `<div class="m-sec">${c.sec}</div>`;
+      const d = 0.15 + i++ * step;
       return `<div class="pack-card" style="animation-delay:${d.toFixed(2)}s">`
         + `<span class="pc-icon">${c.icon}</span>`
         + `<div><b>${c.title}</b><br><small>${c.sub}</small></div>`
@@ -7361,12 +7386,12 @@ export async function initReefScene3D(canvas) {
         + `${c.added ?? '✓ added'}</span></div>`;
     }).join('')
       + '<button class="m-tab" data-pack="back" style="margin-top:10px">← Back to packs</button>';
-    // The HUD chip pops the moment its card lands, so the number ticking up
+    // The HUD stat pops the moment its card lands, so the number ticking up
     // and the card saying so read as one event.
     cards.forEach((c, i) => {
       if (!c.gain) return;
       const [key, amt] = Object.entries(c.gain)[0];
-      setTimeout(() => hudGain(key, amt), (0.15 + i * 0.55 + 0.3) * 1000);
+      setTimeout(() => hudGain(key, amt), (0.15 + i * step + 0.3) * 1000);
     });
   }
   // Buying asks first — the price leaves the HUD in one tap, which is easy to
@@ -7426,13 +7451,15 @@ export async function initReefScene3D(canvas) {
     }
     if (b.dataset.pack === 'back') { fillPack(); return; }
     if (b.dataset.pack === 'askagain') { setPackConfirm(false); fillPack(); return; }
-    const cards = b.dataset.pack === 'season'
-      ? openSeasonPack(Number(b.dataset.idx))
-      : b.dataset.pack === 'starter'
-        ? openStarterPack()
-        : b.dataset.pack === 'daily'
-          ? openDailyPack()
-          : openRarityPack(b.dataset.pack);
+    const cards = b.dataset.pack === 'all'
+      ? openAllPacks()
+      : b.dataset.pack === 'season'
+        ? openSeasonPack(Number(b.dataset.idx))
+        : b.dataset.pack === 'starter'
+          ? openStarterPack()
+          : b.dataset.pack === 'daily'
+            ? openDailyPack()
+            : openRarityPack(b.dataset.pack);
     if (cards) showPackReveal(cards);
   });
 
@@ -7922,7 +7949,7 @@ export async function initReefScene3D(canvas) {
     { say: 'Coral hatchlings breathe out Bubble Energy 🫧 — that +/s by your '
         + 'counter is your reef working, and it rises as they grow. Plant '
         + 'until you have three corals. Three is a good number. I checked.',
-      glow: '#hud', done: () => placedCorals.length >= 3 },
+      glow: '#hud .chip', done: () => placedCorals.length >= 3 },
     { say: 'Three corals down. Now, fish: two starter eggs are already warming '
         + 'in the 🥚 nest on the rocky outcrop, south-east. The first hatches '
         + 'any minute — no action required. Feels wrong, I know.',
@@ -8326,8 +8353,7 @@ export async function initReefScene3D(canvas) {
   const dronePos = DOCK_POS.clone();
   let speechTimer = 0;
   let flavorTimer = 30 + Math.random() * 45;
-  let droneReady = false;          // suppress triggers fired during restore
-  let lowBEAt = -999;
+  let lowBEAt = -999;              // (droneReady is declared with droneQueue, far above)
 
   function droneTrigger(event) {
     if (!droneReady) return;
